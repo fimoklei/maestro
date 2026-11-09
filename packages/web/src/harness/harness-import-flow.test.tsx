@@ -331,6 +331,33 @@ describe("Harness import flow", () => {
     expect(folder).toBeValid();
   });
 
+  it("opens empty again after Cancel, with no folder, name or field error left", async () => {
+    stubImportServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    await openImportSkill(user);
+    await user.click(dialogImport());
+    await user.click(await screen.findByRole("button", { name: "Browse" }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Name")).toHaveValue("code-review"),
+    );
+    await user.clear(screen.getByLabelText("Name"));
+    await user.type(screen.getByLabelText("Name"), "renamed");
+    await user.click(
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    await openImportSkill(user);
+    const folder = await screen.findByRole("textbox", { name: "Folder path" });
+    expect(folder).toHaveValue("");
+    expect(folder).toBeValid();
+    expect(screen.queryByLabelText("Name")).not.toHaveValue("renamed");
+  });
+
   it("checks a typed folder on submit", async () => {
     const { imports } = stubImportServer({});
     const user = userEvent.setup();

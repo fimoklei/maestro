@@ -5,17 +5,12 @@ import type {
   ReleasePlan,
   SemverStep,
 } from "@maestro/core";
-import type { ComponentProps } from "react";
 import { HttpError } from "../api/http";
-import { useFolderChooser } from "../ui/use-folder-chooser";
 import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { DiscardDialog } from "./discard-dialog";
-import { ImportDialog } from "./import-dialog";
-import { importNotice } from "./import-notice-copy";
 import { ImportPromptDialog } from "./import-prompt-dialog";
 import { ImportPromptsDialog } from "./import-prompts-dialog";
-import type { ImportCheckLoad } from "./import-view-model";
 import {
   deletionCheckNotice,
   type LocalDeletionContext,
@@ -29,11 +24,9 @@ import {
   folderInClone,
   useDeletionCheck,
   useHarness,
-  type useImportCheck,
   type useReleasePlan,
 } from "./use-harness";
 import type { useHarnessPresses } from "./use-harness-presses";
-import type { useImportFlow } from "./use-import-flow";
 import type { ImportPromptFlow } from "./use-import-prompt-flow";
 import type { ImportPromptsFlow } from "./use-import-prompts-flow";
 import { WithdrawDialogHost } from "./withdraw-dialog-host";
@@ -82,7 +75,6 @@ type Presses = ReturnType<typeof useHarnessPresses>;
 
 export type HarnessDialogsProps = {
   origin: string;
-  importFlow: ReturnType<typeof useImportFlow>;
   promptImportFlow: ImportPromptFlow;
   promptsImportFlow: ImportPromptsFlow;
   editPromptFlow: EditPromptFlow;
@@ -117,24 +109,6 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
   const mode = deletionMode(deletionRow, props.origin);
   return (
     <>
-      {props.importFlow.open ? (
-        <ImportDialogHost
-          source={props.importFlow.source}
-          sourceText={props.importFlow.sourceText}
-          sourceError={props.importFlow.sourceError}
-          onSourceChange={props.importFlow.setSourceText}
-          onSourceCommit={props.importFlow.commitSource}
-          name={props.importFlow.name}
-          load={importLoad(props.importFlow.source, props.importFlow.check)}
-          onNameChange={props.importFlow.setEditedName}
-          onClose={props.importFlow.close}
-          onImport={props.importFlow.submit}
-          importing={props.importFlow.importing}
-          importError={props.importFlow.importError}
-          outcome={props.importFlow.outcome}
-          category={props.importFlow.category.field}
-        />
-      ) : null}
       {props.promptsImportFlow.open ? (
         <ImportPromptsDialog {...props.promptsImportFlow} />
       ) : null}
@@ -323,12 +297,6 @@ export function LocalDeletionDialog({
   );
 }
 
-function ImportDialogHost(
-  props: Omit<ComponentProps<typeof ImportDialog>, "chooser">,
-) {
-  return <ImportDialog {...props} chooser={useFolderChooser()} />;
-}
-
 // The proposed deletion this row confirms, or null where it offers none.
 function deletionMode(
   row: HarnessStageRow | null,
@@ -348,25 +316,6 @@ function deletionMode(
     openRequest:
       open === undefined ? null : { number: open.number, author: open.author },
   };
-}
-
-// Idle until a folder is picked: with nothing to judge there is no refusal to
-// state, and "loading" would claim a request that was never made.
-function importLoad(
-  source: string | null,
-  check: ReturnType<typeof useImportCheck>,
-): ImportCheckLoad {
-  if (source === null) {
-    return { kind: "idle" };
-  }
-  if (check.data !== undefined) {
-    return { kind: "ready", check: check.data };
-  }
-  const failed = importNotice(check.error);
-  if (failed !== null) {
-    return { kind: "error", notice: failed };
-  }
-  return { kind: "loading" };
 }
 
 function planLoad(plan: ReturnType<typeof useReleasePlan>): ReleasePlanLoad {

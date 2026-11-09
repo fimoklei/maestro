@@ -19,13 +19,13 @@ const importedRow = ({ name }: ImportOutcome) =>
 
 // Import skill's UI-state: the folder, the name, and the check both are sent
 // to. Every refusal comes from the server's check, so nothing here decides
-// one (#576).
+// one (#576). It lives only while the dialog stands, so closing forgets it.
 export function useImportFlow(
   screen: ScreenWrites,
   /** Opens the imported row's pane. */
   onImported: (row: string) => void,
+  onClose: () => void,
 ) {
-  const [open, setOpen] = useState(false);
   // What the Folder path field holds, and the folder last sent to the check.
   const [sourceText, setSourceText] = useState("");
   const [source, setSource] = useState<string | null>(null);
@@ -54,7 +54,7 @@ export function useImportFlow(
     name,
     mode: check.data?.mode ?? "add",
     fromFile: check.data?.category ?? null,
-    open,
+    open: true,
   });
 
   // Imports only a folder whose check came back clean: a check under way is
@@ -88,7 +88,7 @@ export function useImportFlow(
       {
         onSuccess: (outcome) =>
           category.save(outcome, () => {
-            close();
+            onClose();
             onImported(importedRow(outcome));
           }),
       },
@@ -98,16 +98,6 @@ export function useImportFlow(
     void submitNow();
   });
 
-  const close = () => {
-    setOpen(false);
-    setSource(null);
-    setSourceText("");
-    setFolderMissing(false);
-    setEditedName(null);
-    importSkill.reset();
-    category.reset();
-  };
-
   const commitSource = (path: string) => {
     setSource(path);
     setEditedName(null);
@@ -115,7 +105,6 @@ export function useImportFlow(
   };
 
   return {
-    open,
     source,
     sourceText,
     sourceError: folderMissing ? FOLDER_MISSING : undefined,
@@ -123,7 +112,6 @@ export function useImportFlow(
     check,
     importWrite,
     category,
-    start: () => setOpen(true),
     setSourceText: (text: string) => {
       setFolderMissing(false);
       setSourceText(text);
@@ -138,6 +126,6 @@ export function useImportFlow(
     outcome: category.failure !== null,
     submit: afterAdd.submit,
     /** After a failure, Close hands the import over as a clean one would. */
-    close: () => (category.failure === null ? close() : category.leave()),
+    close: () => (category.failure === null ? onClose() : category.leave()),
   };
 }
