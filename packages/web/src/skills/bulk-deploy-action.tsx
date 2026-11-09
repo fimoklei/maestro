@@ -40,10 +40,16 @@ import type { NoticeContent } from "../ui/notice";
 import type { ReportGroup, ReportRowAction } from "../ui/report";
 import { useScreenWrites, useWriteAction } from "../ui/use-write-action";
 import { BulkDeployDialog } from "./bulk-deploy-dialog";
+import {
+  type BulkDeployRunState,
+  ranWith,
+  redeployedIn,
+  type SkillRelease,
+} from "./bulk-deploy-run-state";
 import { bulkDeploySkillGroups } from "./bulk-deploy-skill-groups";
 import { globalToolTargets, repoTarget } from "./deployment-target-rows";
 import { type HeldDeployView, heldDeployView } from "./held-deploy-view";
-import { type BulkDeployPlan, planBulkDeploy } from "./plan-bulk-deploy";
+import { planBulkDeploy } from "./plan-bulk-deploy";
 import {
   bulkDeployDidNotRun,
   DEPLOY_SKILLS,
@@ -97,17 +103,10 @@ export function BulkDeployRun({
   onClose,
 }: BulkDeployProps & { onClose: (reported: boolean) => void }) {
   const [chosen, setChosen] = useState<string | null>(null);
-  const [plan, setPlan] = useState<BulkDeployPlan | null>(null);
+  const [run, setRun] = useState<BulkDeployRunState>({ phase: "choosing" });
   const bulk = useBulkDeploy();
   // Reuses the single-deploy path with the row's own receipt (#66).
   const forceDeploy = useDeploySkill();
-  // The skill a refused row asked Update target to add (#955). Set, the Update
-  // dialog takes this one's place: the Report described a target it may move.
-  const [updateFor, setUpdateFor] = useState<string | null>(null);
-  // The Attention rows Deploy again has since deployed: they read as Deployed.
-  const [redeployed, setRedeployed] = useState<SkillRelease[]>([]);
-  // The Global folders as the latest row's Deploy again read them back.
-  const [reread, setReread] = useState<FolderOutcomes | null>(null);
   const update = useUpdateTarget();
   const screen = useScreenWrites();
   // A held run's footer Deploy again; its report replaces the held rows.
@@ -125,6 +124,13 @@ export function BulkDeployRun({
           subject: null,
         },
   );
+  // A new run or a new target leaves every earlier write's outcome behind.
+  const startOver = (next: BulkDeployRunState) => {
+    bulk.reset();
+    again.reset();
+    retry.reset();
+    setRun(next);
+  };
   // The Report states the run, its request failure included.
   const bulkWrite = useWriteAction(bulk, {
     screen,
@@ -205,12 +211,7 @@ export function BulkDeployRun({
 
   const onDeploy = () => {
     if (chosenRun === null || preview === null) return;
-    bulk.reset();
-    again.reset();
-    retry.reset();
-    setRedeployed([]);
-    setReread(null);
-    setPlan(preview);
+    startOver(ranWith(preview));
     if (preview.toDeploy.length > 0) {
       bulkWrite.run({ names: preview.toDeploy, target: chosenRun.target });
     }
@@ -219,7 +220,7 @@ export function BulkDeployRun({
   // Empty until bulk.data lands, so the skipped-clean plan still shows. A
   // failed request never falls back to this shape — it takes the error branch.
   const view =
-    plan === null || chosenRun === null || bulk.isPending
+    run.phase !== "ran" || chosenRun === null || bulk.isPending
       ? null
       : bulkDeployReportView({
           report: ran ?? {
@@ -231,23 +232,25 @@ export function BulkDeployRun({
           globalFolders: isGlobal
             ? (globalDeployState.data?.folders ?? [])
             : [],
-          skippedClean: plan.skippedClean,
-          redeployed,
+          skippedClean: run.plan.skippedClean,
+          redeployed: run.redeployed,
           retried: retry.landed(chosenRun.target)?.outcome ?? null,
-          reread,
+          reread: run.reread,
           targetLabel: chosenRun.label,
           requestFailed: bulk.isError,
         });
 
-  const close = () => onClose(plan !== null && !bulk.isError);
+  const close = () => onClose(run.phase !== "choosing" && !bulk.isError);
 
-  if (updateFor !== null && chosenRun !== null) {
+  // The Report described a target Update target may move, so it takes the
+  // dialog's place.
+  if (run.phase === "updating" && chosenRun !== null) {
     return (
       <UpdateTargetAction
         targetName={chosenRun.label}
         target={chosenRun.target}
         update={update}
-        add={updateFor}
+        add={run.add}
         defaultOpen
         onClose={close}
       />
@@ -276,12 +279,7 @@ export function BulkDeployRun({
           : null
       }
       onSelect={(value) => {
-        bulk.reset();
-        again.reset();
-        retry.reset();
-        setRedeployed([]);
-        setReread(null);
-        setPlan(null);
+        startOver({ phase: "choosing" });
         setChosen(value);
       }}
       unavailable={
@@ -347,20 +345,24 @@ export function BulkDeployRun({
                         confirmedCopyReceipt,
                       },
                       {
-                        onSuccess: ({ deployed, outcome }) => {
-                          setRedeployed((rows) => [
-                            ...rows,
-                            { name: deployed.name, version: deployed.version },
-                          ]);
-                          if (outcome !== undefined) setReread(outcome);
-                        },
+                        onSuccess: ({ deployed, outcome }) =>
+                          setRun((current) =>
+                            redeployedIn(
+                              current,
+                              {
+                                name: deployed.name,
+                                version: deployed.version,
+                              },
+                              outcome,
+                            ),
+                          ),
                       },
                     ),
                   running: forceDeploy.isPending
                     ? forceDeploy.variables.name
                     : null,
                 },
-                onUpdate: setUpdateFor,
+                onUpdate: (add) => setRun({ phase: "updating", add }),
               }),
             }
       }
@@ -376,9 +378,6 @@ export function BulkDeployRun({
     />
   );
 }
-
-/** A skill at the release a run deployed. */
-type SkillRelease = { name: string; version: string };
 
 type BulkReportCounts = {
   deployed: number;
