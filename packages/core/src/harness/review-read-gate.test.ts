@@ -39,7 +39,11 @@ function build() {
       asked.viewer += 1;
       return { outcome: "read", login: "fimoklei" };
     },
-    createRequest: async () => written,
+    createRequest: async () => ({
+      ok: true,
+      number: 52,
+      url: "https://github.com/fimoklei/agent-harness/pull/52",
+    }),
     reopenRequest: async () => written,
     closeRequest: async () => written,
     editRequest: async () => written,
@@ -192,6 +196,11 @@ describe("ReviewReadGate", () => {
   it.each([
     {
       action: "create",
+      answer: {
+        ok: true,
+        number: 52,
+        url: "https://github.com/fimoklei/agent-harness/pull/52",
+      },
       write: (port: HarnessReviewPort) =>
         port.createRequest(ORIGIN, {
           head: "maestro/tdd",
@@ -202,21 +211,26 @@ describe("ReviewReadGate", () => {
     },
     {
       action: "reopen",
+      answer: { ok: true },
       write: (port: HarnessReviewPort) => port.reopenRequest(ORIGIN, 45),
     },
     {
       action: "withdraw",
+      answer: { ok: true },
       write: (port: HarnessReviewPort) => port.closeRequest(ORIGIN, 45),
     },
-  ])("drops the remembered answer after a $action", async ({ write }) => {
-    const { asked, reads, writes } = build();
-    await reads.readReviews(ORIGIN);
+  ])(
+    "drops the remembered answer after a $action",
+    async ({ answer, write }) => {
+      const { asked, reads, writes } = build();
+      await reads.readReviews(ORIGIN);
 
-    await expect(write(writes)).resolves.toEqual({ ok: true });
+      await expect(write(writes)).resolves.toEqual(answer);
 
-    await expect(reads.readReviews(ORIGIN)).resolves.toEqual(readOf(2));
-    expect(asked.reviews).toBe(2);
-  });
+      await expect(reads.readReviews(ORIGIN)).resolves.toEqual(readOf(2));
+      expect(asked.reviews).toBe(2);
+    },
+  );
 
   it("gives a Proposal action's recheck a fresh read, never the remembered one", async () => {
     const { asked, reads, writes } = build();

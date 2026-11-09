@@ -59,14 +59,16 @@ type Checklist = {
 type SlottedRow = {
   key: string;
   name: string;
-  /** One value per slot, in the slots' order. */
-  slots: readonly string[];
+  /** One cell per slot, in the slots' order. */
+  slots: readonly ReactNode[];
 };
 
 type SlottedGroup = {
   tone: StatusFamily;
   legend: string;
   rows: readonly SlottedRow[];
+  /** Starts shut, so a group the reader need not read first stays out of view. */
+  folded?: boolean;
 };
 
 // Slots and folding exist only on a read-only list, so a checklist can never
@@ -131,7 +133,7 @@ function FoldingGroup({
   group: SlottedGroup;
   slots: readonly number[];
 }) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(!group.folded);
   const listId = useId();
   const { edge } = LIST_TOKENS[group.tone];
   return (

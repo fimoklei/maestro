@@ -60,7 +60,8 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
 export const NOTHING_TO_RELEASE = "Nothing to release";
 
 // Delete and Discard change confirm against the next release (#1731).
-const STALE_NEXT_RELEASE = "The next release changed after this confirmation.";
+export const STALE_NEXT_RELEASE =
+  "The next release changed after this confirmation.";
 
 const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   ...harnessHeadings,

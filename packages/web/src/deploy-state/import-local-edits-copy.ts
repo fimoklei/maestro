@@ -3,10 +3,11 @@ import { HARNESS_BUSY } from "../ui/busy-copy";
 
 import type { LocalEditsError } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { PROPOSE_CHANGES } from "../harness/propose-batch-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import {
   IMPORT_LOCAL_EDITS,
-  PROPOSE_CHANGE,
+  IMPORT_SKILLS,
   rereadLabel,
   UPDATE_TARGET,
 } from "../ui/control-labels";
@@ -28,6 +29,15 @@ export const canBeImportedLegend = (count: number): string =>
 export const cannotBeImportedLegend = (count: number): string =>
   `${LIST_TOKENS.failed.glyph} Cannot be imported · ${count}`;
 
+export const ALREADY_IN_HARNESS = "Already in the Harness";
+
+export const alreadyInHarnessLegend = (count: number): string =>
+  `${LIST_TOKENS.attention.glyph} ${ALREADY_IN_HARNESS} · ${count}`;
+
+/** Under a row whose import replaces what the Harness holds under its name. */
+export const replacesLine = (name: string): Phrase =>
+  phrase`Replaces ${named(name)} in the Harness.`;
+
 export const copiesDifferLegend = (count: number): string =>
   `${LIST_TOKENS.attention.glyph} Copies differ · ${count}`;
 
@@ -41,7 +51,6 @@ export const SELECT_A_COPY = "Select a copy.";
 export const differingCopiesLine = (folders: readonly string[]): Phrase =>
   phrase`The copies in ${machineList(folders)} differ. Select ${IMPORT_LOCAL_EDITS} to import one.`;
 
-const IMPORT_SKILLS = "Import skills";
 export const NO_SKILL_QUALIFIES = "You cannot import any of these skills.";
 export const NOTHING_CHECKED = "Check at least one skill.";
 
@@ -70,16 +79,17 @@ export const importReportHeading = (landed: number, asked: number): string =>
 
 export const NOT_IMPORTED = "Not imported";
 export const IMPORTED = "Imported";
-export const IMPORTED_NEXT_STEP = `Each is now a Pending proposal on the Harness screen. Select ${PROPOSE_CHANGE} there.`;
+// Shared by every import that lands rows under Pending proposal.
+export const IMPORTED_NEXT_STEP = `The imported items are now Pending proposals. On the Harness screen, check the rows, then select ${PROPOSE_CHANGES}.`;
 
 const NOT_CHECKED = {
   label: "Local edits not checked",
   message: `Nothing was imported. Select ${CLOSE}, then select ${IMPORT_LOCAL_EDITS} again.`,
 };
 
-const NOT_CONFIRMED = {
+export const NOT_CONFIRMED = {
   label: "Import not confirmed",
-  message: `The Maestro server did not answer, so some skills may have landed. Select ${CLOSE}, then check the Harness screen.`,
+  message: `The Maestro server did not respond, so some skills may have landed. Select ${CLOSE}, then check the Harness screen.`,
 };
 
 // Headings shared with the other surfaces that meet the same block.

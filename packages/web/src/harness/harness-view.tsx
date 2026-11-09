@@ -9,12 +9,15 @@ import { useRereadInventory } from "../shell/use-reread-inventory";
 import { ActionsMenu } from "../ui/actions-menu";
 import { BandAction } from "../ui/band-action";
 import { NOT_RELEASED_YET, ORIGIN_FACT, RELEASE_FACT } from "../ui/band-copy";
+import { setStagedMany, toggleStaged } from "../ui/bulk-selection";
 import { Button } from "../ui/button";
 import {
   CREATE_RELEASE,
   IMPORT,
   IMPORT_PROMPT,
+  IMPORT_PROMPTS,
   IMPORT_SKILL,
+  IMPORT_SKILLS,
 } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
 import { GatedButton } from "../ui/gated-button";
@@ -23,6 +26,7 @@ import { Icon } from "../ui/icon";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { plainText } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
+import { SelectionBar } from "../ui/selection-bar";
 import { StatusBadge } from "../ui/status-badge";
 import { reading, readingRank } from "../ui/status-reading";
 import { TableScreen } from "../ui/table-screen";
@@ -41,6 +45,7 @@ import {
   stageSections,
 } from "./harness-view-model";
 import { harnessPromptReadNotice } from "./import-prompt-copy";
+import { ImportSkillsAction } from "./import-skills-action";
 import {
   harnessStateNotice,
   publishReleaseNotice,
@@ -50,11 +55,17 @@ import {
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
+import { ProposeBatchAction } from "./propose-batch-action";
 import { type RowActionHandlers, rowItems } from "./row-actions";
 import {
   ALL_RELEASED,
   harnessCounts,
   JOURNEY_EMPTY,
+  SELECT_PRIMITIVES,
+  STAGE_NAMES,
+  selectAllUnder,
+  selectionBlock,
+  selectRowLabel,
   statusReading,
 } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
@@ -69,6 +80,7 @@ import {
 import { useHarnessPresses } from "./use-harness-presses";
 import { useImportFlow } from "./use-import-flow";
 import { useImportPromptFlow } from "./use-import-prompt-flow";
+import { useImportPromptsFlow } from "./use-import-prompts-flow";
 
 // Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
 // counts; the dot and Read never drop.
@@ -112,6 +124,7 @@ export function HarnessView({
     if (written !== null) settle(written);
   }, [written, settle]);
 
+  const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
   const [planOpen, setPlanOpen] = useState(false);
   const plan = useReleasePlan(planOpen);
   const discardPlan = useDiscardReleasePlan();
@@ -150,7 +163,9 @@ export function HarnessView({
   };
 
   const importFlow = useImportFlow(table, open);
+  const [importingSkills, setImportingSkills] = useState(false);
   const promptImportFlow = useImportPromptFlow(table, open);
+  const promptsImportFlow = useImportPromptsFlow();
   const presses = useHarnessPresses(state, table);
   // The edited row's pane opens here; a row the edit removed leaves none.
   const editFlow = useEditPromptFlow({
@@ -280,6 +295,18 @@ export function HarnessView({
                   (a, b) => readingRank(a.reading) - readingRank(b.reading),
                 ),
         );
+  // Held by row id apart from the rows, so a re-read or a folded group keeps
+  // it; a row that left Pending proposal, or now waits, leaves it.
+  const chosen = new Set(
+    rows
+      .filter(
+        (row) =>
+          isSelectable(row) &&
+          selectionBlock(row) === null &&
+          staged.has(row.id),
+      )
+      .map((row) => row.id),
+  );
   const bandCounts = harnessCounts(
     sections.flatMap((section) =>
       section.read.outcome === "read"
@@ -328,7 +355,7 @@ export function HarnessView({
       action={
         state === undefined ? null : (
           <>
-            {/* Both items open a dialog, so focus returns to Import, its opener. */}
+            {/* Every item opens a dialog, so focus returns to Import, its opener. */}
             <ActionsMenu
               label={IMPORT}
               trigger={
@@ -336,7 +363,12 @@ export function HarnessView({
               }
               items={[
                 { label: IMPORT_SKILL, onSelect: importFlow.start },
+                {
+                  label: IMPORT_SKILLS,
+                  onSelect: () => setImportingSkills(true),
+                },
                 { label: IMPORT_PROMPT, onSelect: promptImportFlow.start },
+                { label: IMPORT_PROMPTS, onSelect: promptsImportFlow.start },
               ]}
             />
             {/* Closed while the remote's answer is unknown — an offline or
@@ -414,6 +446,49 @@ export function HarnessView({
                 .trim();
         },
       }}
+      selection={{
+        label: SELECT_PRIMITIVES,
+        rowLabel: selectRowLabel,
+        selected: chosen,
+        selectable: isSelectable,
+        blocked: selectionBlock,
+        groupLabel: (key) =>
+          key === STAGE_NAMES["pending-proposal"]
+            ? selectAllUnder("pending-proposal")
+            : null,
+        onToggle: (row) => setStaged(toggleStaged(chosen, row.id)),
+        onSetSelected: (many, select) =>
+          setStaged(
+            setStagedMany(
+              chosen,
+              many.map((row) => row.id),
+              select,
+            ),
+          ),
+      }}
+      // Rises with the first choice and leaves with the last.
+      selectionBar={
+        chosen.size > 0 ? (
+          <SelectionBar
+            count={chosen.size}
+            onClear={() => setStaged(new Set())}
+          >
+            <ProposeBatchAction
+              chosen={rows
+                .filter((row) => chosen.has(row.id))
+                .map(({ type, name, change, remoteTree }) => ({
+                  type,
+                  name,
+                  change,
+                  seenRemoteTree: remoteTree,
+                }))}
+              // The host is dropped: owner/repo names it.
+              origin={state?.origin.replace(/^[^/]+\//, "") ?? ""}
+              onSelectionSpent={() => setStaged(new Set())}
+            />
+          </SelectionBar>
+        ) : null
+      }
       empty={{
         icon: <Icon of={FolderGit2} />,
         title: JOURNEY_EMPTY.title,
@@ -448,11 +523,18 @@ export function HarnessView({
         />
       }
     >
+      {state !== undefined && importingSkills ? (
+        <ImportSkillsAction
+          screen={table}
+          onClose={() => setImportingSkills(false)}
+        />
+      ) : null}
       {state === undefined ? null : (
         <HarnessDialogs
           origin={state.origin}
           importFlow={importFlow}
           promptImportFlow={promptImportFlow}
+          promptsImportFlow={promptsImportFlow}
           editPromptFlow={editFlow}
           deletionRow={presses.pendingDeletion}
           deletion={presses.deletionWrite}
@@ -483,6 +565,8 @@ export function HarnessView({
     </TableScreen>
   );
 }
+
+const isSelectable = (row: HarnessTableRow) => row.stage === "pending-proposal";
 
 function groupMeta(section: StageSection | undefined) {
   if (section === undefined) return null;

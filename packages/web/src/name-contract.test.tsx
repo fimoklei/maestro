@@ -87,6 +87,9 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`${movement.previousName} → ${movement.name}`": "list row",
     "`${movement.type}:${movement.name}`": "key",
   },
+  "harness/propose-batch-view.ts": {
+    "`${type}:${name}`": "key",
+  },
   "harness/release-dialog.tsx": {
     "`${PUBLISH_RELEASE} for ${repoName}`": "dialog title",
   },
@@ -107,6 +110,9 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
   "prompts/prompts-copy.ts": {
     "`Select ${name}`": "checkbox label",
+  },
+  "harness/stage-copy.ts": {
+    "`Select ${row.name} ${ITEM_WORDS[row.type].noun}`": "checkbox label",
   },
   "registry/repositories-copy.ts": {
     "`${UNREGISTER} ${name}`": "dialog title",

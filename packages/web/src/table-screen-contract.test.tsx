@@ -496,6 +496,7 @@ const ON_TABLE_SCREEN: Row[] = [
     },
     reading: null,
     columns: [
+      "Select skills and prompts",
       "Name",
       "Status",
       "Type",

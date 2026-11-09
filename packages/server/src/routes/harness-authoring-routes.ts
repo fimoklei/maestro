@@ -1,4 +1,8 @@
-import type { ImportPromptSuccess, PrimitiveRef } from "@maestro/core";
+import type {
+  ImportPromptSuccess,
+  ImportPromptsAnswer,
+  PrimitiveRef,
+} from "@maestro/core";
 import type { PromptFile } from "@maestro/core/prompt-file";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
@@ -10,6 +14,8 @@ import {
   editPromptErrorResponses,
   importErrorResponses,
   importPromptErrorResponses,
+  importPromptsErrorResponses,
+  importSkillsErrorResponses,
   isEditPromptRefusal,
   isImportPromptRefusal,
   localDeletionErrorResponses,
@@ -29,8 +35,14 @@ import {
   discardBodySchema,
   IMPORT_BODY,
   IMPORT_PROMPT_BODY,
+  IMPORT_PROMPTS_BODY,
+  IMPORT_SKILLS_BODY,
+  IMPORT_SKILLS_CHECK_BODY,
   importBodySchema,
   importPromptBodySchema,
+  importPromptsBodySchema,
+  importSkillsBodySchema,
+  importSkillsCheckBodySchema,
   LOCAL_DELETION_BODY,
   localDeletionBodySchema,
   PATH_BODY,
@@ -67,6 +79,7 @@ type Deps = Pick<
   | "withdrawFromRelease"
   | "proposals"
   | "importSkill"
+  | "importSkills"
   | "importPrompt"
   | "scaffold"
 >;
@@ -321,6 +334,38 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     });
   });
 
+  // Each folder's refusal is data; only an unconnected harness is a status.
+  app.post("/api/harness/import/skills/check", async (c) => {
+    const body = await parseBody(
+      c,
+      importSkillsCheckBodySchema,
+      IMPORT_SKILLS_CHECK_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importSkills.scan(body.data.source);
+    if (!result.ok) {
+      const { status } = importSkillsErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json(result.scan);
+  });
+
+  // Re-judges every folder before it copies; one refusal never stops the rest.
+  app.post("/api/harness/import/skills", async (c) => {
+    const body = await parseBody(c, importSkillsBodySchema, IMPORT_SKILLS_BODY);
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importSkills.execute(body.data);
+    if (!result.ok) {
+      const { status } = importSkillsErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({ outcomes: result.outcomes });
+  });
+
   // Free or taken in the Working Harness; an invalid name is data, not a status.
   app.post("/api/harness/prompt/check", async (c) => {
     const body = await parseBody(c, promptCheckBodySchema, PROMPT_CHECK_BODY);
@@ -354,6 +399,26 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       mode: result.mode,
       name: result.name,
     } satisfies ImportPromptSuccess);
+  });
+
+  // One outcome per file, in the order sent; a refused file is data.
+  app.post("/api/harness/prompts/import", async (c) => {
+    const body = await parseBody(
+      c,
+      importPromptsBodySchema,
+      IMPORT_PROMPTS_BODY,
+    );
+    if (!body.ok) {
+      return body.response;
+    }
+    const result = await deps.importPrompt.importMany(body.data.prompts);
+    if (!result.ok) {
+      const { status } = importPromptsErrorResponses[result.error];
+      return c.json({ error: result.error }, status);
+    }
+    return c.json({
+      outcomes: result.outcomes,
+    } satisfies ImportPromptsAnswer);
   });
 
   // Reads the Working Harness the server resolves, never the Released harness.

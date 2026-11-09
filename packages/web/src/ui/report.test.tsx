@@ -46,10 +46,10 @@ describe("Report", () => {
         .map((each) => each.textContent),
     ).toEqual([
       // The gaps are spacing, not text: happy-dom renders without CSS.
-      "✕Failed1",
-      "⚠Attention1",
-      "Already up to date1",
-      "✓Deployed1",
+      "✕Failed · 1",
+      "⚠Attention · 1",
+      "Already up to date · 1",
+      "✓Deployed · 1",
     ]);
   });
 
@@ -84,6 +84,97 @@ describe("Report", () => {
     const live = screen.getByRole("status");
     expect(live).toHaveTextContent("Deployed to maestro");
     expect(document.activeElement).toBe(document.body);
+  });
+
+  it("opens with its outcome heading inside its status region", () => {
+    render(<Report heading="Deployed to maestro" groups={GROUPS} />);
+
+    expect(
+      within(screen.getByRole("status")).getByRole("heading", {
+        level: 3,
+        name: "Deployed to maestro",
+      }),
+    ).toBeVisible();
+  });
+
+  it("states each row's Change word beside its name", () => {
+    render(
+      <Report
+        heading="Proposed 2 of 2 changes"
+        groups={[
+          {
+            tone: "good",
+            label: "Proposed",
+            rows: [
+              { name: "code-review", change: "Added" },
+              { name: "legacy-review", change: "Deleted" },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getAllByRole("listitem").map((row) => row.textContent),
+    ).toEqual(["code-reviewAdded", "legacy-reviewDeleted"]);
+  });
+
+  it("links a row's pull request by its number, reachable by keyboard", () => {
+    render(
+      <Report
+        heading="Proposed 1 of 1 change"
+        groups={[
+          {
+            tone: "good",
+            label: "Proposed",
+            rows: [
+              {
+                name: "code-review",
+                change: "Added",
+                pullRequest: {
+                  number: 214,
+                  url: "https://github.com/fimoklei/agent-harness/pull/214",
+                },
+              },
+            ],
+          },
+        ]}
+      />,
+    );
+
+    const link = screen.getByRole("link", {
+      name: "Pull request #214, opens in a new tab",
+    });
+    expect(link).toHaveAttribute(
+      "href",
+      "https://github.com/fimoklei/agent-harness/pull/214",
+    );
+    expect(link).toHaveTextContent("#214");
+    expect(link).not.toHaveAttribute("tabindex");
+  });
+
+  it("closes a group with its next step, after its rows", () => {
+    render(
+      <Report
+        heading="Imported 1 of 1 skill"
+        groups={[
+          {
+            tone: "good",
+            label: "Imported",
+            note: "Select Propose change on the Harness screen.",
+            rows: [{ name: "tdd" }],
+          },
+        ]}
+      />,
+    );
+
+    const note = screen.getByText(
+      "Select Propose change on the Harness screen.",
+    );
+    expect(
+      screen.getByRole("list").compareDocumentPosition(note) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("offers a row's own way out where the caller gave one", async () => {
@@ -129,7 +220,7 @@ describe("Report", () => {
     );
 
     expect(screen.getByRole("heading", { level: 4 })).toHaveTextContent(
-      "Failed2",
+      "Failed · 2",
     );
   });
 

@@ -140,6 +140,7 @@ export type {
   HarnessReviewPort,
   HarnessReviewRead,
   NewReviewRequest,
+  PullRequestRef,
   RequestedReviewer,
   ReviewRequest,
   ReviewWriteOutcome,
@@ -167,7 +168,12 @@ export {
   type ImportPromptCheck,
   type ImportPromptError,
   type ImportPromptSuccess,
+  type ImportPromptsAnswer,
+  type ImportPromptsError,
   type PromptEdit,
+  type PromptImportDraft,
+  type PromptImportOutcome,
+  type PromptImportRefusal,
   type ReadPromptError,
 } from "./harness/import-prompt";
 export {
@@ -177,6 +183,12 @@ export {
   type ImportSkillError,
   type ImportSourceBlocker,
 } from "./harness/import-skill";
+export type {
+  ImportSkillsError,
+  ImportSkillsInput,
+  SkillFolder,
+  SkillFolderScan,
+} from "./harness/import-skills";
 export {
   Promote,
   type PromoteError,
@@ -191,6 +203,15 @@ export {
   ProposalActions,
   type WithdrawError,
 } from "./harness/proposal-actions";
+export type {
+  BatchItemError,
+  BatchItemOutcome,
+  BatchLine,
+  BatchProposal,
+  BatchReport,
+  BatchRequest,
+  ProposeBatchError,
+} from "./harness/propose-batch";
 export type { SemverStep } from "./harness/propose-release-version";
 export {
   PublishRelease,

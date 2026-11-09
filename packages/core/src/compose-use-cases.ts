@@ -40,9 +40,11 @@ import type { HarnessReviewPort } from "./harness/harness-review-port";
 import { ImportLocalEdits } from "./harness/import-local-edits";
 import { ImportPrompt } from "./harness/import-prompt";
 import { ImportSkill } from "./harness/import-skill";
+import { ImportSkills } from "./harness/import-skills";
 import { Promote } from "./harness/promote";
 import { PromoteDeletion } from "./harness/promote-deletion";
 import { ProposalActions } from "./harness/proposal-actions";
+import { ProposeBatch } from "./harness/propose-batch";
 import { PublishRelease } from "./harness/publish-release";
 import {
   type HarnessGitPort,
@@ -370,6 +372,13 @@ export function composeUseCases(ports: UseCasePorts) {
     }),
     harness,
     importSkill,
+    // Shares the lock Delete takes, as Import local edits does.
+    importSkills: new ImportSkills({
+      resolveRoot: harnessRoot,
+      fs,
+      importSkill,
+      locks: harnessPromoteLocks,
+    }),
     // Shares the lock Delete takes: an import never writes while another Harness change runs.
     importPrompt: new ImportPrompt({
       resolveRoot: harnessRoot,
@@ -409,6 +418,18 @@ export function composeUseCases(ports: UseCasePorts) {
     ),
     promote: droppingOutdated(
       new Promote({
+        resolveRoot: harnessRoot,
+        fs,
+        git: harnessGit,
+        fetchGate: harnessFetchGate,
+        locks: harnessPromoteLocks,
+        review: reviewGate.writes,
+      }),
+    ),
+    // Holds the promotion's lock for the whole batch, so no single proposal
+    // runs between two of its items.
+    proposeBatch: droppingOutdated(
+      new ProposeBatch({
         resolveRoot: harnessRoot,
         fs,
         git: harnessGit,

@@ -22,7 +22,7 @@ describe("import refusal text", () => {
     expect(sourceBlockerNotice("missing-manifest")).toEqual({
       level: "error",
       label: "No SKILL.md",
-      message: "Choose the folder that holds the skill's SKILL.md.",
+      message: "Choose the folder that contains the skill's SKILL.md.",
     });
     expect(sourceBlockerNotice(null)).toBeNull();
   });
@@ -40,7 +40,8 @@ describe("import refusal text", () => {
     expect(nameBlockerNotice("name-taken")).toEqual({
       level: "error",
       label: "Name taken",
-      message: "The Harness already holds a skill under it. Pick another name.",
+      message:
+        "The Harness already contains a skill under it. Pick another name.",
     });
     expect(nameBlockerNotice(null)).toBeNull();
   });

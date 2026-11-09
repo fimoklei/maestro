@@ -59,9 +59,18 @@ export const stubReview = (initial: HarnessReviewRead = EMPTY): StubReview => {
       return current;
     },
     readViewer: async () => viewer,
-    createRequest: async (_origin, request) => {
+    // Numbers each opened request from 101 up, in the order it was asked.
+    createRequest: async (origin, request) => {
       created.push(request);
-      return write;
+      if (!write.ok) {
+        return write;
+      }
+      const number = 100 + created.length;
+      return {
+        ok: true,
+        number,
+        url: `https://github.com/${origin.ownerRepo}/pull/${number}`,
+      };
     },
     reopenRequest: async (_origin, number) => {
       reopened.push(number);

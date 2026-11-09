@@ -17,7 +17,7 @@ import {
   rereadLabel,
   UPDATE_TARGET,
 } from "../ui/control-labels";
-import { type Copy, machine, named, phrase } from "../ui/phrase";
+import { type Copy, machine, named, phrase, plainText } from "../ui/phrase";
 import { type StatusFamily, WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 import { ITEM_WORDS } from "./item-words";
@@ -87,13 +87,16 @@ const READINGS: Record<Exclude<StageStatus, "proposed-by-other">, string> = {
   "not-yet-released": "Not yet released",
 };
 
-// A stuck row is a warning, not a lag, so it carries ⚠ rather than ↑.
+// A stuck row is a warning, not a lag, so it carries ⚠ rather than ↑. Local
+// work behind another contributor's open request reads as that request.
 export const statusReading = (row: HarnessStageRow): StatusReading => {
-  const family = FAMILIES[row.status];
+  const status =
+    row.waitingOn === null ? row.status : ("proposed-by-other" as const);
+  const family = FAMILIES[status];
   return reading(
-    row.status === "proposed-by-other"
+    status === "proposed-by-other"
       ? `Proposed by ${row.waitingOn ?? "another contributor"}`
-      : READINGS[row.status],
+      : READINGS[status],
     family,
     family === "attention" ? WARNING_GLYPH : undefined,
   );
@@ -135,6 +138,18 @@ const first = (row: HarnessStageRow): string => requestNumbers(row)[0] ?? "";
 
 const waitSentence = (row: HarnessStageRow, login: string): Copy =>
   phrase`${named(login)} has pull request ${first(row)} open for this ${ITEM_WORDS[row.type].noun}. Wait until it is merged or closed.`;
+
+// The selection column under Pending proposal (#1825). A skill and a prompt
+// can share a name, so a row's box names its type too.
+export const SELECT_PRIMITIVES = "Select skills and prompts";
+export const selectAllUnder = (stage: HarnessStage) =>
+  `Select all under ${STAGE_NAMES[stage]}`;
+export const selectRowLabel = (row: Pick<HarnessStageRow, "name" | "type">) =>
+  `Select ${row.name} ${ITEM_WORDS[row.type].noun}`;
+
+/** Why a row cannot join a selection: another contributor's open request; null: it can. */
+export const selectionBlock = (row: HarnessStageRow): string | null =>
+  row.waitingOn === null ? null : plainText(waitSentence(row, row.waitingOn));
 
 // Cause first, then `Select {control} to {result}` with the row's own control
 // (#838). A status with no cockpit control names the place instead.
@@ -256,9 +271,6 @@ export const reviewerLine = (row: HarnessStageRow): string | null => {
   const requested = requestedReviewers(row);
   return requested === null ? null : `Review requested from ${requested}.`;
 };
-
-export const pullRequestLinkName = (number: number): string =>
-  `Pull request #${number}, opens in a new tab`;
 
 // `into` stands in for the arrow between the branches, which is not read out.
 export const PULL_REQUEST_CARD = {

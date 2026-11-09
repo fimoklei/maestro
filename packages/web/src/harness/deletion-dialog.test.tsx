@@ -452,7 +452,7 @@ describe("DeletionDialog", () => {
       );
     });
 
-    it("proposes the deletion and says the Prompts screen keeps the prompt until the release", () => {
+    it("proposes the deletion and says the prompt is kept until the release", () => {
       renderPrompt(PROMPT_PROPOSE);
 
       expect(
@@ -463,11 +463,7 @@ describe("DeletionDialog", () => {
         ),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(
-          sentence(
-            "The Prompts screen keeps pr-review until the next release.",
-          ),
-        ),
+        screen.getByText(sentence("pr-review is kept until the next release.")),
       ).toBeInTheDocument();
       expect(screen.queryByText(/targets/)).not.toBeInTheDocument();
     });

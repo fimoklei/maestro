@@ -61,6 +61,23 @@ export const PLAN = {
   blocked: null,
 } satisfies ReleasePlan;
 
+// Each line leaves the stream once its gate opens, in order.
+function gatedLines(lines: unknown[], gates: Promise<void>[]) {
+  const encoder = new TextEncoder();
+  let sent = 0;
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      if (sent >= lines.length) {
+        controller.close();
+        return;
+      }
+      await gates[sent];
+      controller.enqueue(encoder.encode(`${JSON.stringify(lines[sent])}\n`));
+      sent += 1;
+    },
+  });
+}
+
 export function stubHarnessServer(options: {
   read: {
     body: unknown;
@@ -97,6 +114,15 @@ export function stubHarnessServer(options: {
   };
   promote?: { body: unknown; status?: number };
   promotions?: Record<string, unknown>[];
+  // Propose changes: the stream's lines, or one body under a refusal status.
+  // `gates[i]` opens line i, so a test sees each row fill in before the report.
+  batch?: {
+    lines: unknown[];
+    status?: number;
+    heldUntil?: Promise<void>;
+    gates?: Promise<void>[];
+  };
+  batches?: Record<string, unknown>[];
   // `retry` answers every call after the first.
   deletion?: {
     body: unknown;
@@ -256,6 +282,27 @@ export function stubHarnessServer(options: {
           promoted = true;
         }
         return jsonResponse(back.body, back.status);
+      }
+      if (url === "/api/harness/promote/batch") {
+        options.batches?.push(JSON.parse(String(init?.body)));
+        const batch = options.batch ?? { lines: [{}], status: 500 };
+        await batch.heldUntil;
+        const status = batch.status ?? 200;
+        if (status >= 400) {
+          return jsonResponse(batch.lines[0], status);
+        }
+        promoted = true;
+        const headers = { "content-type": "application/x-ndjson" };
+        if (batch.gates !== undefined) {
+          return new Response(gatedLines(batch.lines, batch.gates), {
+            status,
+            headers,
+          });
+        }
+        return new Response(
+          batch.lines.map((line) => `${JSON.stringify(line)}\n`).join(""),
+          { status, headers },
+        );
       }
       if (url === "/api/harness/promote") {
         options.promotions?.push(JSON.parse(String(init?.body)));

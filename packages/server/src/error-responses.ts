@@ -8,11 +8,14 @@ import type {
   EditPromptError,
   HarnessStateError,
   ImportPromptError,
+  ImportPromptsError,
   ImportSkillError,
+  ImportSkillsError,
   LocalEditsError,
   PromoteDeletionError,
   PromoteError,
   ProposalActionError,
+  ProposeBatchError,
   PublishReleaseError,
   ReadPromptError,
   ReleasePlanError,
@@ -240,6 +243,14 @@ export const promoteErrorResponses: ErrorTable<PromoteError> = {
   "promote-in-progress": { status: 409 },
 };
 
+// Only what stops the whole batch; an item's refusal rides in its stream.
+export const proposeBatchErrorResponses: ErrorTable<ProposeBatchError> = {
+  ...harnessErrorResponses,
+  "no-answer": { status: 409 },
+  "confirmation-stale": { status: 409 },
+  "promote-in-progress": { status: 409 },
+};
+
 export const proposalErrorResponses: ErrorTable<ProposalActionError> = {
   ...harnessErrorResponses,
   "invalid-skill": { status: 400 },
@@ -397,6 +408,15 @@ export const importPromptErrorResponses: ErrorTable<ImportPromptRefusal> = {
   "write-failed": { status: 500 },
 };
 
+// A refusal of one file is data in the answer; these refuse the batch.
+export const importPromptsErrorResponses: ErrorTable<ImportPromptsError> = {
+  "not-configured": importPromptErrorResponses["not-configured"],
+  "destination-unsafe": importPromptErrorResponses["destination-unsafe"],
+  "destination-unreadable":
+    importPromptErrorResponses["destination-unreadable"],
+  "import-in-progress": importPromptErrorResponses["import-in-progress"],
+};
+
 export const isImportPromptRefusal = (
   code: ImportPromptError,
 ): code is ImportPromptRefusal =>
@@ -433,6 +453,11 @@ export const importLocalEditsErrorResponses: ErrorTable<LocalEditsError> = {
   "repo-not-registered": { status: 403 },
   "unfinished-operation": { status: 409 },
   "target-unreadable": { status: 422 },
+  "import-in-progress": { status: 409 },
+};
+
+export const importSkillsErrorResponses: ErrorTable<ImportSkillsError> = {
+  "not-configured": { status: 409 },
   "import-in-progress": { status: 409 },
 };
 
