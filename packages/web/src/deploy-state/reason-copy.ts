@@ -26,6 +26,7 @@ export const REASON: Record<ReasonCode, string> = {
   "inventory-origin-unavailable": "No GitHub origin",
   "no-published-tag": "Not in any release",
   "local-diverged-from-tag": "Harness copy unreleased",
+  "target-behind-release": "Target behind",
   "deployed-diverged-from-lock": "Local changes in deployed files",
   "deployed-diverged-pinned-per-skill": "Local changes in deployed files",
   "deployed-unverifiable": "Local edits unverifiable",

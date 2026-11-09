@@ -44,6 +44,7 @@ const DEPLOY = codes<DeploySkillError>({
   "inventory-origin-unavailable": true,
   "no-published-tag": true,
   "local-diverged-from-tag": true,
+  "target-behind-release": true,
   "deployed-diverged-from-lock": true,
   "deployed-unverifiable": true,
   "deployed-unreadable": true,
@@ -259,6 +260,17 @@ describe("a bulk run's deploy notice", () => {
         deployNotice(refusal(code)),
       );
     }
+  });
+});
+
+describe("a deploy refused because the target is behind", () => {
+  it("sends the reader to Update target, not to a new release", () => {
+    expect(deployNotice(refusal("target-behind-release"))).toEqual({
+      label: "Target behind",
+      message:
+        "Nothing was deployed. Select Update target on the Deploy-state screen to move this target to the latest release. Then deploy again.",
+      detail: "This skill changed after the release this target follows.",
+    });
   });
 });
 

@@ -6,6 +6,7 @@ import {
   DeploySkill,
   type DeployTarget,
   type RecordedPackageResult,
+  type ResolveLatestTagResult,
 } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import { deployedCopies } from "./deployed-content.fake";
@@ -439,6 +440,66 @@ describe("DeploySkill", () => {
       }),
     ).toEqual({ ok: false, error: "not-at-target-release" });
     expect(deployed).toEqual([]);
+  });
+
+  describe("a Harness copy that differs from the release a Behind target follows", () => {
+    const behind = (
+      divergesAt: (tag: string) => boolean,
+      latest: ResolveLatestTagResult = { ok: true, tag: "v2.0.0" },
+    ) => {
+      const built = buildDeps({
+        apm: {
+          resolveLatestTag: async () => latest,
+          deploySkill: async () => ({ ok: true as const }),
+        },
+        inventoryGit: {
+          skillExistsAtTag: async () => true,
+          skillDivergesFromTag: async (tag: string) => divergesAt(tag),
+          readSkillFilesAtTag: async () => null,
+        },
+      });
+      built.world.seed({ release: "v1.1.0", skills: ["review"] });
+      return built;
+    };
+    const deployTdd = (deps: ReturnType<typeof behind>["deps"]) =>
+      new DeploySkill(deps).execute({
+        type: "skill",
+        name: "tdd",
+        target: repo("/registered/repo"),
+      });
+
+    it("refuses as Behind when the copy equals the latest release", async () => {
+      const { deps, deployed } = behind((tag) => tag === "v1.1.0");
+
+      expect(await deployTdd(deps)).toEqual({
+        ok: false,
+        error: "target-behind-release",
+      });
+      expect(deployed).toEqual([]);
+    });
+
+    it("refuses as unreleased when the copy differs from the latest release too", async () => {
+      const { deps, deployed } = behind(() => true);
+
+      expect(await deployTdd(deps)).toEqual({
+        ok: false,
+        error: "local-diverged-from-tag",
+      });
+      expect(deployed).toEqual([]);
+    });
+
+    it("refuses as unreleased when the latest release cannot be read", async () => {
+      const { deps, deployed } = behind((tag) => tag === "v1.1.0", {
+        ok: false,
+        reason: "timed-out",
+      });
+
+      expect(await deployTdd(deps)).toEqual({
+        ok: false,
+        error: "local-diverged-from-tag",
+      });
+      expect(deployed).toEqual([]);
+    });
   });
 
   it("deploys a known skill globally at the latest tag", async () => {

@@ -60,6 +60,7 @@ export const deployErrorResponses: ErrorTable<DeploySkillError> = {
   "operation-unfinished": { status: 409 },
   "deploy-incomplete": { status: 502 },
   "local-diverged-from-tag": { status: 409 },
+  "target-behind-release": { status: 409 },
   "deployed-diverged-from-lock": { status: 409 },
   "deployed-unverifiable": { status: 409 },
   "deployed-unreadable": { status: 409 },

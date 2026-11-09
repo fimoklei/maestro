@@ -84,9 +84,17 @@ const LINK_TARGET_SURVIVES =
 
 type Body = { message: string; detail?: string };
 
+/** A refused deploy's way out, offered as a button on its bulk Report row. */
+export type DeployRecovery = { kind: "update-target"; label: string };
+
+const UPDATE_TARGET_RECOVERY: DeployRecovery = {
+  kind: "update-target",
+  label: UPDATE_TARGET,
+};
+
 // Kept apart from REASON because codes shared by deploy and removal state
 // their own way through (#684). Keyed by core's unions, so a new code fails typecheck.
-const DEPLOY: Record<DeploySkillError, Body> = {
+const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
   "unsupported-primitive-type": {
     message:
       "Nothing was deployed. Maestro deploys skills only. Select a skill, then deploy again.",
@@ -122,6 +130,11 @@ const DEPLOY: Record<DeploySkillError, Body> = {
     message: `Nothing was deployed. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
     detail: "A deploy takes the latest release, not the Harness copy.",
   },
+  "target-behind-release": {
+    message: `Nothing was deployed. Select ${UPDATE_TARGET} on the Deploy-state screen to move this target to the latest release. Then deploy again.`,
+    detail: "This skill changed after the release this target follows.",
+    recovery: UPDATE_TARGET_RECOVERY,
+  },
   "deployed-diverged-from-lock": {
     message:
       "Deploy this skill again to replace the local edits with the latest release.",
@@ -155,6 +168,7 @@ const DEPLOY: Record<DeploySkillError, Body> = {
   "not-at-target-release": {
     message: `Nothing was deployed. Select ${UPDATE_TARGET} on the Deploy-state screen to move this target to a release that holds the skill.`,
     detail: "This skill is not in the release this target follows.",
+    recovery: UPDATE_TARGET_RECOVERY,
   },
   "target-pinned-per-skill": {
     message: `Nothing was deployed. Select ${REMOVE_SKILL} for each skill on the Deploy-state screen. Then select ${DEPLOY_SKILL} to put them on one release.`,
@@ -441,10 +455,18 @@ export function deployNoticeFor(
   code: DeploySkillError,
   linkedPath: string | undefined,
 ): DeployStateNotice {
-  const notice = { label: REASON[code], ...DEPLOY[code] };
+  const { recovery: _recovery, ...body } = DEPLOY[code];
+  const notice = { label: REASON[code], ...body };
   return code === "destination-symlinked" && linkedPath !== undefined
     ? withRm(notice, linkedPath, DEPLOY_AGAIN)
     : notice;
+}
+
+/** The row button a bulk Report offers for one refused deploy, if any. */
+export function deployRecoveryFor(
+  code: DeploySkillError,
+): DeployRecovery | null {
+  return DEPLOY[code].recovery ?? null;
 }
 
 /** A held bulk deploy row, naming each skill whose copy its Deploy again replaces. */

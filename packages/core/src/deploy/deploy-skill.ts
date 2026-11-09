@@ -64,6 +64,7 @@ export type DeploySkillError =
   | "operation-unfinished"
   | "deploy-incomplete"
   | "local-diverged-from-tag"
+  | "target-behind-release"
   | "deployed-diverged-from-lock"
   | "deployed-unverifiable"
   | "deployed-unreadable"
@@ -140,6 +141,7 @@ const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
   "deployed-diverged-from-lock": { forceable: true },
   "deployed-unverifiable": { forceable: true },
   "not-at-target-release": { forceable: false },
+  "target-behind-release": { forceable: false },
   "target-pinned-per-skill": { forceable: false },
   "deploy-in-progress": { forceable: false },
   "manifest-not-recognised": { forceable: false },
@@ -445,12 +447,13 @@ export class DeploySkill {
       }
       await this.deps.syncHarness();
 
+      const latest = once(() => this.latestTag(origin.ownerRepo));
       const tagged: string[] = [];
       for (const name of known) {
         const refusal = await this.nameRefusal(
           name,
           tag,
-          current.kind === "root",
+          current.kind === "root" ? latest : null,
         );
         if (refusal === null) {
           tagged.push(name);
@@ -627,22 +630,39 @@ export class DeploySkill {
     }
   }
 
-  // Null lets the name into the install.
+  // Null lets the name into the install. `latest` is set only when the target
+  // follows a release.
   private async nameRefusal(
     name: string,
     tag: string,
-    followsRelease: boolean,
+    latest: (() => Promise<string | null>) | null,
   ): Promise<DeploySkillResult | null> {
-    if (!(await this.deps.inventoryGit.skillExistsAtTag(tag, name))) {
+    const git = this.deps.inventoryGit;
+    if (!(await git.skillExistsAtTag(tag, name))) {
       return {
         ok: false,
-        error: followsRelease ? "not-at-target-release" : "no-published-tag",
+        error: latest ? "not-at-target-release" : "no-published-tag",
       };
     }
-    if (await this.deps.inventoryGit.skillDivergesFromTag(tag, name)) {
-      return { ok: false, error: "local-diverged-from-tag" };
+    if (!(await git.skillDivergesFromTag(tag, name))) {
+      return null;
     }
-    return null;
+    const newer = latest === null ? null : await latest();
+    return newer !== null &&
+      newer !== tag &&
+      !(await git.skillDivergesFromTag(newer, name))
+      ? { ok: false, error: "target-behind-release" }
+      : { ok: false, error: "local-diverged-from-tag" };
+  }
+
+  // Null on any failure: an unread latest release keeps the plainer refusal.
+  private async latestTag(ownerRepo: string): Promise<string | null> {
+    try {
+      const result = await this.deps.apm.resolveLatestTag(ownerRepo);
+      return result.ok ? result.tag : null;
+    } catch {
+      return null;
+    }
   }
 
   private async blockingFilter(
@@ -703,6 +723,14 @@ export class DeploySkill {
               : await this.failureAt(lockKey),
     };
   }
+}
+
+function once<T>(read: () => Promise<T>): () => Promise<T> {
+  let value: Promise<T> | undefined;
+  return () => {
+    value ??= read();
+    return value;
+  };
 }
 
 function union(left: readonly string[], right: readonly string[]): string[] {
