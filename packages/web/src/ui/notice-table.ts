@@ -26,13 +26,11 @@ export function requestShapeNotice(error: unknown): NoticeContent | null {
   if (!(error instanceof HttpError) || error.code !== "invalid-body") {
     return null;
   }
-  const detail = (error.body as { detail?: unknown } | null | undefined)
-    ?.detail;
+  // Never show the body's `detail`: it is for developers (#1749).
   return {
     level: "error",
     label: "Maestro could not start the action",
     message: error.message,
-    ...(typeof detail === "string" ? { detail } : {}),
   };
 }
 

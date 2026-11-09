@@ -234,7 +234,6 @@ describe.each(SURFACES)("$name", (each) => {
       label: "Maestro could not start the action",
       message:
         "Maestro could not start this change. Reload the page, then try again.",
-      detail: "The request carries a type, a name and a target.",
     });
   });
 });

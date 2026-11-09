@@ -40,7 +40,7 @@ describe("noticeFromTable", () => {
     });
   });
 
-  it("hands a request-shape refusal to the shared path", () => {
+  it("shows a request-shape refusal without the server's developer detail", () => {
     const notice = noticeFromTable(
       headings,
       new HttpError(
@@ -62,7 +62,6 @@ describe("noticeFromTable", () => {
       label: "Maestro could not start the action",
       message:
         "Maestro did not receive a folder. Reload the page, then choose a folder again.",
-      detail: "The request carries a path: { path: string }.",
     });
   });
 
