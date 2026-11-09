@@ -3,6 +3,25 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { ActionsMenu } from "./actions-menu";
 
+// An item that opens a pane and focuses a field there keeps that focus.
+function Opener() {
+  return (
+    <>
+      <ActionsMenu
+        label="Actions for tdd"
+        items={[
+          {
+            label: "Deploy skill",
+            onSelect: () => document.getElementById("target-picker")?.focus(),
+            movesFocus: true,
+          },
+        ]}
+      />
+      <select id="target-picker" aria-label="Deploy target" />
+    </>
+  );
+}
+
 describe("ActionsMenu", () => {
   it("renders a trigger that names itself for assistive tech", () => {
     render(
@@ -133,25 +152,6 @@ describe("ActionsMenu", () => {
   });
 
   it("leaves focus where a chosen item put it", async () => {
-    // An item that opens a pane and focuses a field there keeps that focus.
-    function Opener() {
-      return (
-        <>
-          <ActionsMenu
-            label="Actions for tdd"
-            items={[
-              {
-                label: "Deploy skill",
-                onSelect: () =>
-                  document.getElementById("target-picker")?.focus(),
-                movesFocus: true,
-              },
-            ]}
-          />
-          <select id="target-picker" aria-label="Deploy target" />
-        </>
-      );
-    }
     render(<Opener />);
 
     await userEvent.tab();

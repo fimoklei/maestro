@@ -29,6 +29,26 @@ function Labelled({ onChange }: { onChange?: (value: string) => void }) {
   );
 }
 
+function Unchosen() {
+  const [value, setValue] = useState<string | null>(null);
+  return (
+    <div>
+      <span id="target-name">Target</span>
+      <Select
+        labelledBy="target-name"
+        value={value}
+        placeholder="Choose a target"
+        options={[
+          { value: "global", label: "Global" },
+          { value: "repo", label: "maestro" },
+        ]}
+        disabled={false}
+        onValueChange={setValue}
+      />
+    </div>
+  );
+}
+
 describe("Select", () => {
   it("takes its accessible name from the visible label and shows the value", () => {
     render(<Labelled />);
@@ -81,25 +101,6 @@ describe("Select", () => {
   });
 
   it("shows its placeholder while no value is chosen, then the chosen one", async () => {
-    function Unchosen() {
-      const [value, setValue] = useState<string | null>(null);
-      return (
-        <div>
-          <span id="target-name">Target</span>
-          <Select
-            labelledBy="target-name"
-            value={value}
-            placeholder="Choose a target"
-            options={[
-              { value: "global", label: "Global" },
-              { value: "repo", label: "maestro" },
-            ]}
-            disabled={false}
-            onValueChange={setValue}
-          />
-        </div>
-      );
-    }
     render(<Unchosen />);
     const select = screen.getByRole("combobox", { name: "Target" });
     expect(select).toHaveTextContent("Choose a target");

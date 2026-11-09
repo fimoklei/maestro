@@ -225,14 +225,6 @@ describe("driftViewModel — targetIndicator", () => {
   });
 });
 
-describe("driftViewModel — orphanBehind", () => {
-  it("leaves out a name that only lags a tag", () => {
-    expect(ran([laggingPin("foo"), pair("bar")]).orphanBehind([])).toEqual([
-      "bar",
-    ]);
-  });
-});
-
 describe("driftViewModel — driftCount", () => {
   it("counts the deployed skills that are behind", () => {
     expect(
@@ -313,6 +305,12 @@ describe("driftViewModel — driftCount", () => {
 });
 
 describe("driftViewModel — orphanBehind", () => {
+  it("leaves out a name that only lags a tag", () => {
+    expect(ran([laggingPin("foo"), pair("bar")]).orphanBehind([])).toEqual([
+      "bar",
+    ]);
+  });
+
   it("surfaces behind names that are not deployed in the repo", () => {
     expect(ran([pair("tdd"), pair("foo")]).orphanBehind(["tdd"])).toEqual([
       "foo",

@@ -56,6 +56,50 @@ const clickOutside = async () => {
   fireEvent.click(document.body);
 };
 
+function Host() {
+  const [open, setOpen] = useState(false);
+  const [landed, setLanded] = useState(false);
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Opener
+      </button>
+      {landed ? <Landing /> : null}
+      {open ? (
+        <Dialog
+          title="Import a skill"
+          version={null}
+          width={480}
+          phase="idle"
+          action={action({
+            label: "Import skill",
+            onRun: () => {
+              setOpen(false);
+              setLanded(true);
+            },
+          })}
+          failure={null}
+          describedBy={null}
+          fieldsChanged={false}
+          onClose={() => setOpen(false)}
+        >
+          <p>Body sentence.</p>
+        </Dialog>
+      ) : null}
+    </>
+  );
+}
+
+function Landing() {
+  const ref = useRef<HTMLHeadingElement>(null);
+  useEffect(() => ref.current?.focus(), []);
+  return (
+    <h2 ref={ref} tabIndex={-1}>
+      code-review
+    </h2>
+  );
+}
+
 describe("Dialog", () => {
   it("titles the panel, offers a ✕ Close, Cancel and the action", () => {
     renderDialog();
@@ -144,49 +188,6 @@ describe("Dialog", () => {
   // A dialog that closes by sending the reader on (a successful import opens a
   // pane that takes focus) must not pull focus back to the opener (#1045).
   describe("on close", () => {
-    function Host() {
-      const [open, setOpen] = useState(false);
-      const [landed, setLanded] = useState(false);
-      return (
-        <>
-          <button type="button" onClick={() => setOpen(true)}>
-            Opener
-          </button>
-          {landed ? <Landing /> : null}
-          {open ? (
-            <Dialog
-              title="Import a skill"
-              version={null}
-              width={480}
-              phase="idle"
-              action={action({
-                label: "Import skill",
-                onRun: () => {
-                  setOpen(false);
-                  setLanded(true);
-                },
-              })}
-              failure={null}
-              describedBy={null}
-              fieldsChanged={false}
-              onClose={() => setOpen(false)}
-            >
-              <p>Body sentence.</p>
-            </Dialog>
-          ) : null}
-        </>
-      );
-    }
-    function Landing() {
-      const ref = useRef<HTMLHeadingElement>(null);
-      useEffect(() => ref.current?.focus(), []);
-      return (
-        <h2 ref={ref} tabIndex={-1}>
-          code-review
-        </h2>
-      );
-    }
-
     it("returns focus to the control that opened it", async () => {
       render(<Host />);
       await userEvent.click(screen.getByRole("button", { name: "Opener" }));
