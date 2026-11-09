@@ -12,15 +12,9 @@ import {
   type Subject,
   useWriteAction,
 } from "../ui/use-write-action";
+import { type Confirmation, closed, targetOf } from "./confirmation";
 import { rowId } from "./harness-columns";
-import type {
-  DiscardTarget,
-  LocalDeletionTarget,
-  ReleaseWithdrawalItem,
-  ReleaseWithdrawalTarget,
-  RestoreTarget,
-  WithdrawTarget,
-} from "./harness-dialogs";
+import type { ReleaseWithdrawalItem } from "./harness-dialogs";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
   deletionNotice,
@@ -62,6 +56,17 @@ export function useHarnessPresses(
   state: HarnessState | undefined,
   screen: ScreenWrites,
 ) {
+  // At most one confirmation stands; a press opens it in place of any other.
+  const [open, setOpen] = useState<Confirmation | null>(null);
+  const close = (kind: Confirmation["kind"]) => () =>
+    setOpen((current) => closed(current, kind));
+  const confirming = targetOf(open, "deletion");
+  const localDeletion = targetOf(open, "local-deletion");
+  const restoring = targetOf(open, "restore");
+  const discarding = targetOf(open, "discard");
+  const withdrawing = targetOf(open, "withdraw");
+  const releaseWithdrawalTarget = targetOf(open, "release-withdrawal");
+
   const promote = usePromotePrimitive();
   const promoteWrite = useWriteAction(promote, {
     screen,
@@ -100,17 +105,12 @@ export function useHarnessPresses(
         screen: "harness",
       }),
   });
-  const [confirming, setConfirming] = useState<PrimitiveRef | null>(null);
   const pendingDeletion =
     confirming === null
       ? null
       : (proposalRows(state).find(
           (row) => row.type === confirming.type && row.name === confirming.name,
         ) ?? null);
-  // Frozen at the press: two stages carry Delete skill, and the row it came
-  // from turns into a Deletion once the folder is gone.
-  const [localDeletion, setLocalDeletion] =
-    useState<LocalDeletionTarget | null>(null);
 
   // The press freezes what it was made against, so a check landing while the
   // confirmation stands cannot rewrite the source or close it (#915).
@@ -129,7 +129,6 @@ export function useHarnessPresses(
     failure: (error) =>
       restoreNotice(error, restore.variables?.type ?? "skill"),
   });
-  const [restoring, setRestoring] = useState<RestoreTarget | null>(null);
 
   const discard = useDiscardChange();
   const discardWrite = useWriteAction(discard, {
@@ -142,13 +141,6 @@ export function useHarnessPresses(
         name: discard.variables?.name ?? "",
       }),
   });
-  // Frozen at the press, like a restore: a later read never rewrites the tree
-  // the author confirms.
-  const [discarding, setDiscarding] = useState<DiscardTarget | null>(null);
-
-  // Frozen at the press: the dialog's copy follows the row it was opened from.
-  const [releaseWithdrawalTarget, setReleaseWithdrawing] =
-    useState<ReleaseWithdrawalTarget | null>(null);
   // Its open pull requests come from the latest read: a refusal re-reads
   // GitHub, and the notice names what it found.
   const releaseWithdrawing: ReleaseWithdrawalItem | null =
@@ -184,7 +176,6 @@ export function useHarnessPresses(
   });
 
   const proposalAction = useProposalAction();
-  const [withdrawing, setWithdrawing] = useState<WithdrawTarget | null>(null);
   const proposalWrite = useWriteAction(proposalAction, {
     screen,
     action: ({ action }) => action,
@@ -276,7 +267,10 @@ export function useHarnessPresses(
       setPromotedFrom(row.stage);
       if (row.change === "deletion") {
         deletion.reset();
-        setConfirming({ type: row.type, name: row.name });
+        setOpen({
+          kind: "deletion",
+          target: { type: row.type, name: row.name },
+        });
         return;
       }
       promoteWrite.run({ type: row.type, name: row.name });
@@ -292,20 +286,23 @@ export function useHarnessPresses(
       }),
     withdraw: (row, number) => {
       proposalAction.reset();
-      setWithdrawing({
-        type: row.type,
-        name: row.name,
-        branch: row.branch,
-        number,
+      setOpen({
+        kind: "withdraw",
+        target: { type: row.type, name: row.name, branch: row.branch, number },
       });
     },
     deleteLocal: (row) => {
       deleteLocal.reset();
-      setLocalDeletion({
-        type: row.type,
-        name: row.name,
-        path: row.path,
-        localOnly: row.localOnly,
+      // Frozen at the press: two stages carry Delete skill, and the row it
+      // came from turns into a Deletion once the folder is gone.
+      setOpen({
+        kind: "local-deletion",
+        target: {
+          type: row.type,
+          name: row.name,
+          path: row.path,
+          localOnly: row.localOnly,
+        },
       });
     },
     discard: (row) => {
@@ -313,31 +310,43 @@ export function useHarnessPresses(
         return;
       }
       discard.reset();
-      setDiscarding({
-        type: row.type,
-        name: row.name,
-        path: row.path,
-        seenRemoteTree: row.remoteTree,
+      // Frozen at the press, like a restore: a later read never rewrites the
+      // tree the author confirms.
+      setOpen({
+        kind: "discard",
+        target: {
+          type: row.type,
+          name: row.name,
+          path: row.path,
+          seenRemoteTree: row.remoteTree,
+        },
       });
     },
     withdrawFromRelease: (row) => {
       releaseWithdrawal.reset();
-      setReleaseWithdrawing({
-        type: row.type,
-        name: row.name,
-        path: row.path,
-        change: row.change,
-        previousName: row.previousName,
+      // Frozen at the press: the dialog's copy follows the row it was opened from.
+      setOpen({
+        kind: "release-withdrawal",
+        target: {
+          type: row.type,
+          name: row.name,
+          path: row.path,
+          change: row.change,
+          previousName: row.previousName,
+        },
       });
     },
     restore: (row, commit) => {
       restore.reset();
-      setRestoring({
-        type: row.type,
-        name: row.name,
-        path: row.path,
-        commit,
-        hasRequest: row.requests.length > 0,
+      setOpen({
+        kind: "restore",
+        target: {
+          type: row.type,
+          name: row.name,
+          path: row.path,
+          commit,
+          hasRequest: row.requests.length > 0,
+        },
       });
     },
   };
@@ -362,17 +371,17 @@ export function useHarnessPresses(
     pendingDeletion,
     // Left unreset, so a landed deletion still names the row that just moved
     // after its dialog closes. The next press resets it (#580, #581).
-    closeConfirmation: () => setConfirming(null),
+    closeConfirmation: close("deletion"),
     localDeletion,
-    closeLocalDeletion: () => setLocalDeletion(null),
+    closeLocalDeletion: close("local-deletion"),
     restoring,
-    closeRestore: () => setRestoring(null),
+    closeRestore: close("restore"),
     discarding,
-    closeDiscard: () => setDiscarding(null),
+    closeDiscard: close("discard"),
     withdrawing,
-    closeWithdrawal: () => setWithdrawing(null),
+    closeWithdrawal: close("withdraw"),
     releaseWithdrawing,
-    closeReleaseWithdrawal: () => setReleaseWithdrawing(null),
+    closeReleaseWithdrawal: close("release-withdrawal"),
   };
 }
 
