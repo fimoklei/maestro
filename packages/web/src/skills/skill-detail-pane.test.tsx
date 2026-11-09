@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { skillMark } from "../deploy-state/skill-mark";
 import type { DriftStatus } from "../drift/drift-view-model";
 import type { SkillDeployment } from "../inventory/skill-deployments";
-import { openFootMenu, sentence } from "../test-utils";
+import { expectDescription, openFootMenu, sentence } from "../test-utils";
 import type { FootItem } from "../ui/foot-actions";
 import { SkillDetailPane } from "./skill-detail-pane";
 
@@ -325,6 +325,11 @@ describe("SkillDetailPane", () => {
     expect(targetRow("Claude Code")).toHaveTextContent("v1.0.0");
     expect(within(targetRow("acme-web")).getByText("v1.1.0")).toHaveClass(
       "font-mono",
+    );
+    // The release gives up its width to the name, so the hover holds it whole.
+    expectDescription(
+      within(targetRow("acme-web")).getByRole("img", { name: "Up to date" }),
+      "v1.1.0",
     );
   });
 

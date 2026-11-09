@@ -24,27 +24,6 @@ export function useLocalEditsCheck(target: DeployTarget) {
   return useQuery(localEditsCheck(target));
 }
 
-/**
- * The skills folders of each skill whose edited copies differ, one entry per
- * distinct set; empty while the check runs or where it is not `enabled`.
- */
-export function useDifferingCopyFolders(
-  target: DeployTarget,
-  enabled: boolean,
-): string[][] {
-  const check = useQuery({ ...localEditsCheck(target), enabled });
-  const sets = new Map<string, string[]>();
-  for (const { name, folders } of check.data?.skills ?? []) {
-    if (folders === undefined) continue;
-    const parents = folders.map((folder) => {
-      const cut = folder.lastIndexOf("/");
-      return folder.slice(cut + 1) === name ? folder.slice(0, cut) : folder;
-    });
-    sets.set(parents.join("\n"), parents);
-  }
-  return [...sets.values()];
-}
-
 // Invalidated whatever the answer: a partial run changed the Harness too.
 export function useImportLocalEdits() {
   const queryClient = useQueryClient();

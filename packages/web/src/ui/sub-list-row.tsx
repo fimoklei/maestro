@@ -1,15 +1,18 @@
-import type { ReactNode } from "react";
 import type { ActionsMenuItem } from "./actions-menu";
 import { cn } from "./cn";
 import { MachineValue } from "./machine-value";
 import { RowMenu } from "./row-menu";
 import { Skeleton } from "./skeleton";
+import { StatusMark } from "./status-mark";
 import type { StatusReading } from "./status-reading";
 import { Tooltip } from "./tooltip";
 import { useReadSkeleton } from "./use-read-skeleton";
 
 // Inside the pane a row carries a mark, never a badge (#1065).
 type RowMark = StatusReading & { hint?: string };
+
+/** A row's value: a version or path is a machine value; words such as a count are not. */
+export type SubListValue = { text: string; machine: boolean };
 
 export function SubListRow({
   mark,
@@ -21,17 +24,21 @@ export function SubListRow({
   /** Null while the reading has not answered: no status before the server. */
   mark: RowMark | null;
   name: string;
-  value: ReactNode;
+  value: SubListValue;
   menuLabel: string;
   /** A page elsewhere, such as GitHub, is an item here: the row has no link cell. */
   items: readonly ActionsMenuItem[];
 }) {
   return (
     <li className="group/row flex h-row items-center gap-inline border-divider border-b text-row">
-      <Mark mark={mark} />
-      <span className="min-w-0 flex-1 truncate text-gray-12">{name}</span>
-      <span className="text-gray-11">
-        <MachineValue>{value}</MachineValue>
+      {/* A reading with no line of its own shows the value whole, which the row may shorten. */}
+      <Mark
+        mark={mark === null ? null : { ...mark, hint: mark.hint ?? value.text }}
+      />
+      {/* The name keeps priority: the value gives up its width first. */}
+      <span className="min-w-0 truncate text-gray-12">{name}</span>
+      <span className="min-w-0 flex-1 truncate text-right text-gray-11">
+        {value.machine ? <MachineValue>{value.text}</MachineValue> : value.text}
       </span>
       <RowMenu
         label={menuLabel}
@@ -44,25 +51,34 @@ export function SubListRow({
   );
 }
 
-/** A read-only sub-list row: mark, a machine value such as a path, and one meta line under it. */
+/**
+ * A read-only sub-list row: its reading as glyph and visible word, a machine
+ * value such as a path, and one meta line under it.
+ */
 export function SubListValueRow({
-  mark,
+  status,
   value,
   meta,
 }: {
-  mark: RowMark | null;
+  /** Null while the reading has not answered: no status before the server. */
+  status: StatusReading | null;
   value: string;
   meta: string;
 }) {
   return (
     <li className="border-divider border-b pb-tight text-row">
       <span className="flex h-row items-center gap-inline">
-        <Mark mark={mark} />
+        {status === null ? null : (
+          <span className="flex-none text-gray-12 text-meta">
+            <StatusMark reading={status} />
+          </span>
+        )}
         <span className="min-w-0 flex-1 truncate text-gray-12">
           <MachineValue>{value}</MachineValue>
         </span>
       </span>
-      <span className="block pl-8 text-gray-11 text-meta">{meta}</span>
+      {/* Flush with the glyph: the reading's word sets no fixed indent to align under. */}
+      <span className="block text-gray-11 text-meta">{meta}</span>
     </li>
   );
 }

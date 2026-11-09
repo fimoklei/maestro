@@ -501,6 +501,39 @@ describe("SkillsPanel", () => {
       expect(await screen.findByText("30 min ago")).toBeInTheDocument();
     });
 
+    // Skills reads the repo, not Global's folders (#1772, #1811).
+    it("shows no Missing on a skill a Global folder lacks, in its row or its target rows", async () => {
+      const tdd = { type: "skill" as const, name: "tdd", version: "v1.4.0" };
+      stubReads([], {
+        primitives: [tdd],
+        folders: [
+          {
+            path: "~/.claude/skills",
+            tool: "claude",
+            detected: true,
+            primitives: [tdd],
+          },
+          {
+            path: "~/.agents/skills",
+            tool: "codex",
+            detected: true,
+            primitives: [],
+            missing: ["tdd"],
+          },
+        ],
+      });
+      renderPanel();
+
+      const pane = await openPane("tdd");
+      await waitFor(() =>
+        expect(pane.getAllByRole("img").length).toBeGreaterThan(0),
+      );
+      expect(
+        pane.getAllByRole("img").map((mark) => mark.getAttribute("aria-label")),
+      ).toEqual(["Up to date"]);
+      expect(screen.queryByText("Missing")).toBeNull();
+    });
+
     it("keeps the screen read and its age when one target is unreadable (#1492)", async () => {
       stubReads(["/api/deploy-state/global"]);
       renderPanel();

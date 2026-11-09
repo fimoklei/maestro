@@ -8,7 +8,6 @@ import {
   COPY_TO_IMPORT,
   cannotBeImportedLegend,
   copiesDifferLegend,
-  differingCopiesLine,
   IMPORTED_NEXT_STEP,
   importConfirmLabel,
   importReportHeading,
@@ -46,24 +45,6 @@ describe("Import local edits copy", () => {
       "Copies you do not select stay as they are. Update target replaces them only if you check Discard local edits.",
     );
     expect(SELECT_A_COPY).toBe("Select a copy.");
-  });
-
-  it("names the folders whose copies differ in the pane", () => {
-    const two = differingCopiesLine(["~/.claude/skills", "~/.agents/skills"]);
-    expect(plainText(two)).toBe(
-      "The copies in ~/.claude/skills and ~/.agents/skills differ. Select Import local edits to import one.",
-    );
-    expect(machineValues(two)).toEqual([
-      "~/.claude/skills",
-      "~/.agents/skills",
-    ]);
-    expect(
-      plainText(
-        differingCopiesLine(["~/.a/skills", "~/.b/skills", "~/.c/skills"]),
-      ),
-    ).toBe(
-      "The copies in ~/.a/skills, ~/.b/skills and ~/.c/skills differ. Select Import local edits to import one.",
-    );
   });
 
   it("counts the checked skills in the confirm", () => {

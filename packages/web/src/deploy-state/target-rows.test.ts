@@ -6,6 +6,8 @@ import type {
 import { describe, expect, it } from "vitest";
 import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
 import { plainText } from "../ui/phrase";
+import { WARNING_GLYPH } from "../ui/status-family";
+import { reading } from "../ui/status-reading";
 import { GLOBAL, REPOSITORIES } from "./deploy-state-copy";
 import { targetMenuItems } from "./target-menu";
 import {
@@ -43,6 +45,7 @@ const row = (facts: Partial<TargetRow>): TargetRow => ({
   status: null,
   skills: 1,
   primitives: [],
+  skillRows: [],
   drift: {} as DriftViewModel,
   skipped: [],
   otherOrigins: [],
@@ -197,6 +200,7 @@ describe("statusCard", () => {
           statusCard(
             row({
               head: ON_LATEST,
+              status: reading("Local edits", "attention", WARNING_GLYPH),
               primitives: [
                 skill("tdd", "local-edits"),
                 skill("grill"),
@@ -212,6 +216,28 @@ describe("statusCard", () => {
         "2 skills have changes that are not in the latest release: tdd and review. Select Import local edits to keep them.",
       readAge: "Read just now",
     });
+  });
+
+  it("explains an Attention reading by its own cause, though a skill holds local edits", () => {
+    expect(
+      readCard(
+        statusCard(
+          row({
+            head: ON_LATEST,
+            status: reading("Attention", "attention", WARNING_GLYPH),
+            primitives: [skill("tdd", "local-edits")],
+            skipped: [
+              {
+                reason: "invalid-package",
+                virtualPath: "skills/tdd",
+                packageType: "invalid",
+              },
+            ],
+          }),
+          COMPARED,
+        ),
+      ).reason,
+    ).toBe("The deploy of skills/tdd landed no files.");
   });
 
   it("names a skipped entry without its fix", () => {
@@ -253,7 +279,14 @@ const skill = (
   ...(copy ? { copy } : {}),
 });
 
+// Every skill up to date, with no newer release named.
+const skillsUpToDate = {
+  skillStatus: () => "up-to-date",
+  latest: () => undefined,
+};
+
 const syncedDrift = {
+  ...skillsUpToDate,
   targetIndicator: () => "ok",
   forTool: () => syncedDrift,
 } as unknown as DriftViewModel;
@@ -338,6 +371,7 @@ describe("local edits on a target", () => {
       isError: true,
     };
     const unknownDrift = {
+      ...skillsUpToDate,
       targetIndicator: () => "unknown",
     } as unknown as DriftViewModel;
     expect(words(repoRow("/me/a", [], stale, unknownDrift))).toBe("? Unknown");
@@ -416,13 +450,22 @@ describe("a Global folder left at an older release", () => {
     return global;
   };
 
-  it("reads that folder and the Global row as Not updated, over Local edits", () => {
+  it("reads that folder and the Global row as Not updated", () => {
+    const global = lagging([{ name: "code-review", stillAt: "v1.0.0" }]);
+    expect(folderMarks(global)).toEqual([
+      ["~/.claude/skills", "✓ In sync"],
+      ["~/.agents/skills", "⚠ Not updated"],
+    ]);
+    expect(words(global)).toBe("⚠ Not updated");
+  });
+
+  it("reads the Global row as Local edits where another folder holds an edit", () => {
     const global = lagging([{ name: "code-review", stillAt: "v1.0.0" }], true);
     expect(folderMarks(global)).toEqual([
       ["~/.claude/skills", "⚠ Local edits"],
       ["~/.agents/skills", "⚠ Not updated"],
     ]);
-    expect(words(global)).toBe("⚠ Not updated");
+    expect(words(global)).toBe("⚠ Local edits");
   });
 
   it("names the release the copy is still at in the hover card", () => {
@@ -441,12 +484,12 @@ describe("a Global folder left at an older release", () => {
 });
 
 describe("a Global folder that lacks skills", () => {
-  const lacking = (missing: string[]) => {
+  const lacking = (missing: string[], edited = false) => {
     const [global] = globalRows(
       globalRead([
         claude([skill("code-review"), skill("tdd")]),
         {
-          ...agents([skill("code-review", "local-edits")]),
+          ...agents([skill("code-review", edited ? "local-edits" : undefined)]),
           missing,
           notUpdated: [{ name: "code-review", stillAt: "v1.0.0" }],
         },
@@ -465,6 +508,15 @@ describe("a Global folder that lacks skills", () => {
       ["~/.agents/skills", "⚠ Skills missing"],
     ]);
     expect(words(global)).toBe("⚠ Skills missing");
+  });
+
+  it("reads that folder and the Global row as Local edits where its copy holds an edit", () => {
+    const global = lacking(["tdd"], true);
+    expect(folderMarks(global)).toEqual([
+      ["~/.claude/skills", "✓ In sync"],
+      ["~/.agents/skills", "⚠ Local edits"],
+    ]);
+    expect(words(global)).toBe("⚠ Local edits");
   });
 
   it("counts the missing skills against Global's list in the hover card", () => {
@@ -563,12 +615,12 @@ describe("Global as one target", () => {
       false,
     );
     expect(
-      global?.folders?.map((folder) => [folder.path, folder.readBy]),
+      global?.folders?.map((folder) => [folder.path, folder.meta]),
     ).toEqual([
-      ["~/.claude/skills", "Read by Claude Code, Cursor and OpenCode."],
+      ["~/.claude/skills", "Read by Claude Code, Cursor and OpenCode"],
       [
         "~/.agents/skills",
-        "Read by Codex, Copilot CLI, Cursor, Gemini CLI and others.",
+        "Read by Codex, Copilot CLI, Cursor, Gemini CLI and others",
       ],
     ]);
   });

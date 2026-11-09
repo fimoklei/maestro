@@ -9,6 +9,7 @@ import { ToastHost } from "../ui/toast";
 import { useTableScreen } from "../ui/use-table-screen";
 import { ScreenWritesContext } from "../ui/use-write-action";
 import { SelectedSkills } from "./selected-skills";
+import { repoSkillRows } from "./skill-list-row";
 
 // Sonner keeps toasts in a module-global store that leaks across tests.
 export const clearToasts = () => toast.dismiss();
@@ -112,8 +113,10 @@ export function renderRow({
   const list = (primitives: (typeof tdd)[]) => (
     <ScreenHost>
       <SelectedSkills
+        basis={{ checked: false, readVersion: "0", listFit: () => true }}
         row={{
           primitives,
+          skillRows: repoSkillRows(primitives, PENDING_DRIFT),
           drift: PENDING_DRIFT,
           target: target.kind === "repo" ? { ...target, name } : target,
           wire: target.kind === "repo" ? target : { kind: "global" },

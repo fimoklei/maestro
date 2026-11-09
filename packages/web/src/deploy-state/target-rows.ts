@@ -8,20 +8,21 @@ import type {
   SkippedEntry,
 } from "@maestro/core";
 import type { DriftViewModel } from "../drift/drift-view-model";
+import { UP_TO_DATE } from "../inventory/skill-status";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
 import { repoTargetName } from "../shell/target-name";
 import type { Copy } from "../ui/phrase";
 import type { StatusReading } from "../ui/status-reading";
 import {
+  folderMetaLine,
   GLOBAL,
-  localEditsLine,
+  localEditsCardLine,
   NO_REPOSITORIES,
   NO_TOOL_DETECTED,
   notUpdatedLine,
   otherOriginLine,
   REPO_NOT_READ,
   REPOSITORIES,
-  readByLine,
   skillsMissingLine,
   strayCopiesLine,
   strayCopiesNote,
@@ -35,7 +36,12 @@ import {
   withOtherOrigins,
 } from "./deployed-view";
 import {
+  type FolderCounts,
+  globalSkillReadings,
+} from "./global-skill-readings";
+import {
   behindLine,
+  globalAlsoBehindLine,
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
   pinnedTagsLine,
@@ -44,11 +50,19 @@ import {
 } from "./release-head-copy";
 import type { RemoveDialogTarget } from "./remove-ledger-rows";
 import {
+  globalSkillRows,
+  repoSkillRows,
+  type SkillListRow,
+} from "./skill-list-row";
+import {
   skippedEntryReason,
   skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
 import {
+  BEHIND,
+  IN_SYNC,
+  LOCAL_EDITS,
   NOT_UPDATED,
   SKILLS_MISSING,
   targetStatus,
@@ -64,7 +78,10 @@ export type FolderRow = {
   detected: boolean;
   /** The folder's reading; null where Global does not write it, or not read yet. */
   status: StatusReading | null;
-  readBy: string;
+  /** The word its pane row and table sub-row show: the status, or Up to date where no copy deviates. */
+  word: StatusReading | null;
+  /** The pane's line under the path: who reads the folder, then its counts. */
+  meta: string;
   /** Muted beside a folder Global does not write; null on one it writes. */
   note: string | null;
   /** Why the folder reads Not updated; null where it does not. */
@@ -93,6 +110,8 @@ export type TargetRow = {
   pinned?: PinnedPerSkill;
   pending?: PendingOperation;
   primitives: DeployedPrimitive[];
+  /** Deployed skills' rows, ready to render. */
+  skillRows: SkillListRow[];
   drift: DriftViewModel;
   skipped: SkippedEntry[];
   otherOrigins: string[];
@@ -142,19 +161,18 @@ const skillsMissingLines = (row: Pick<TargetRow, "folders">): Copy[] =>
   );
 
 /**
- * The pane's folder lines: each Skills missing sentence, each Not updated
- * sentence, and for an undetected tool's folder the line on which tool loads
- * its copies where one is proven.
+ * The pane's lines on undetected tools' folders: which tool loads their
+ * copies where one is proven, else how many differ. A written folder's
+ * readings sit on its own row instead.
  */
-export const folderPaneLines = (row: Pick<TargetRow, "folders">): Copy[] => [
-  ...skillsMissingLines(row),
-  ...(row.folders ?? []).flatMap((folder) => {
-    const line = folder.detected
-      ? folder.notUpdated
-      : (folder.strayCopies ?? folder.notUpdated);
+export const undetectedFolderLines = (
+  row: Pick<TargetRow, "folders">,
+): Copy[] =>
+  (row.folders ?? []).flatMap((folder) => {
+    if (folder.detected) return [];
+    const line = folder.strayCopies ?? folder.notUpdated;
     return line === null ? [] : [line];
-  }),
-];
+  });
 
 // OpenCode prefers Codex's folder over Claude Code's (#1793); the other way
 // round no tool is proven to prefer the stray copy.
@@ -208,6 +226,16 @@ const releaseOf = (
       ? { current: pinned[0].release, latest: null }
       : null;
 
+const NO_COUNTS: FolderCounts = { missing: 0, notUpdated: 0, localEdits: 0 };
+
+// Behind is Global's own axis: a folder whose copies all match the Target
+// release is Up to date, also while a newer release exists.
+const folderWord = (status: StatusReading | null): StatusReading | null =>
+  status !== null &&
+  (status.word === IN_SYNC.word || status.word === BEHIND.word)
+    ? UP_TO_DATE
+    : status;
+
 export function globalRows(
   data: GlobalDeployStateView,
   drift: DriftViewModel,
@@ -218,11 +246,22 @@ export function globalRows(
   if (tools.length === 0) return [];
   const pending = data.pendingOperation;
   const behind = isBehind(data.releaseHead, pending);
+  const table = globalSkillReadings(
+    data.primitives.map((primitive) => primitive.name),
+    data.folders,
+    data.releaseHead?.release,
+  );
+  // A failed read's stale copies count nowhere.
+  const countsOf = (folder: GlobalFolderState): FolderCounts =>
+    (readFailed
+      ? undefined
+      : table.folders.find((each) => each.path === folder.path)?.counts) ??
+    NO_COUNTS;
   // Every folder shares Global's release, operation and read; only its own
   // copies differ.
   const readingOf = (folder: GlobalFolderState) => {
-    const primitives = folder.primitives;
-    const names = primitives.map((primitive) => primitive.name);
+    const names = folder.primitives.map((primitive) => primitive.name);
+    const counts = countsOf(folder);
     const indicator = readFailed
       ? "unknown"
       : withOtherOrigins(
@@ -239,46 +278,51 @@ export function globalRows(
       behind,
       // A failed read's stale record never outranks its Unknown.
       pending: readFailed ? undefined : pending?.kind,
-      localEdits: !readFailed && editedSkills(primitives).length > 0,
-      notUpdated: !readFailed && (folder.notUpdated?.length ?? 0) > 0,
-      missing: !readFailed && (folder.missing?.length ?? 0) > 0,
+      localEdits: counts.localEdits > 0,
+      notUpdated: counts.notUpdated > 0,
+      missing: counts.missing > 0,
     });
   };
   const release = data.releaseHead?.release;
-  const folders: FolderRow[] = data.folders.map((folder) => ({
-    path: folder.path,
-    detected: folder.detected,
-    status: folder.detected ? readingOf(folder) : null,
-    readBy: readByLine(readByOf(folder.tool)),
-    missing:
-      readFailed || !folder.missing?.length
-        ? null
-        : skillsMissingLine(
-            folder.path,
-            folder.missing.length,
-            data.primitives.length,
-          ),
-    note: folder.detected
-      ? null
-      : strayCopiesNote(
-          toolDisplayName(folder.tool),
-          readFailed ? 0 : (folder.strayCopies?.length ?? 0),
-        ),
-    notUpdated: readFailed
-      ? null
-      : !folder.detected
-        ? strayDiffers(folder, release)
-        : release === undefined || !folder.notUpdated?.length
+  const folders: FolderRow[] = data.folders.map((folder) => {
+    const status = folder.detected ? readingOf(folder) : null;
+    return {
+      path: folder.path,
+      detected: folder.detected,
+      status,
+      word: folderWord(status),
+      meta: folderMetaLine(readByOf(folder.tool), countsOf(folder)),
+      missing:
+        readFailed || !folder.missing?.length
           ? null
-          : notUpdatedLine(folder.path, folder.notUpdated, release),
-    strayCopies: readFailed ? null : openCodeLine(folder, data.folders),
-  }));
+          : skillsMissingLine(
+              folder.path,
+              folder.missing.length,
+              data.primitives.length,
+            ),
+      note: folder.detected
+        ? null
+        : strayCopiesNote(
+            toolDisplayName(folder.tool),
+            readFailed ? 0 : (folder.strayCopies?.length ?? 0),
+          ),
+      notUpdated: readFailed
+        ? null
+        : !folder.detected
+          ? strayDiffers(folder, release)
+          : release === undefined || !folder.notUpdated?.length
+            ? null
+            : notUpdatedLine(folder.path, folder.notUpdated, release),
+      strayCopies: readFailed ? null : openCodeLine(folder, data.folders),
+    };
+  });
   // An undetected folder carries no mark of its own, but a copy there that
   // differs keeps Global from reading In sync.
   const strayDiffer = folders.some(
     (folder) => !folder.detected && folder.notUpdated !== null,
   );
   const names = data.primitives.map((primitive) => primitive.name);
+  const globalDrift = drift.forTool(names);
   return [
     {
       id: GLOBAL_ROW_ID,
@@ -308,7 +352,11 @@ export function globalRows(
       // A failed read's stale record offers no retry: Re-read is the way back.
       ...(pending && !readFailed ? { pending } : {}),
       primitives: data.primitives,
-      drift: drift.forTool(names),
+      // A failed read's stale copies name no folder.
+      skillRows: readFailed
+        ? repoSkillRows(data.primitives, globalDrift)
+        : globalSkillRows(data.primitives, globalDrift, table),
+      drift: globalDrift,
       skipped: data.skipped,
       otherOrigins: data.otherOrigins,
       ...(data.extraFiles === undefined ? {} : { extraFiles: data.extraFiles }),
@@ -370,6 +418,7 @@ export function repoRow(
     ...(pinned ? { pinned } : {}),
     ...(pending && !read.isError ? { pending } : {}),
     primitives: data?.primitives ?? [],
+    skillRows: repoSkillRows(data?.primitives ?? [], drift),
     drift,
     skipped: data?.skipped ?? [],
     otherOrigins: [],
@@ -411,17 +460,27 @@ export type StatusCard = { reason: Copy | null; readAge: string | null };
 
 function statusReason(row: TargetRow): Copy | null {
   if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
+  const edited = editedSkills(row.primitives);
+  if (
+    !row.readFailed &&
+    edited.length > 0 &&
+    row.status?.word === LOCAL_EDITS.word
+  ) {
+    return localEditsCardLine(
+      edited,
+      row.behind ? (row.head?.latestRelease ?? null) : null,
+    );
+  }
   const [missing] = skillsMissingLines(row);
   if (missing !== undefined && row.status?.word === SKILLS_MISSING.word) {
-    return missing;
+    return row.behind && row.head
+      ? globalAlsoBehindLine(missing, row.head)
+      : missing;
   }
   const [notUpdated] = notUpdatedLines(row);
   if (notUpdated !== undefined && row.status?.word === NOT_UPDATED.word) {
     return notUpdated;
   }
-  const edited = editedSkills(row.primitives);
-  if (!row.readFailed && edited.length > 0)
-    return localEditsLine(edited, row.behind);
   if (row.pinned) return pinnedTagsLine(row.pinned);
   if (row.readFailed) return REPO_NOT_READ;
   if (row.primitives.length === 0 && row.otherOrigins.length > 0) {

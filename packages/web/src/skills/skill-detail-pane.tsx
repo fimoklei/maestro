@@ -144,7 +144,7 @@ export function SkillDetailPane({
                   key={deployment.rowId ?? deployment.label}
                   mark={deployment.mark}
                   name={deployment.label}
-                  value={deployment.release}
+                  value={{ text: deployment.release, machine: true }}
                   menuLabel={rowActionsLabel(
                     wholeTargetName(deployment.target, deployment.label),
                   )}

@@ -40,8 +40,8 @@ export function skillStatus(rollup: DeployedRollup): StatusReading | null {
   return worstReading(readings) ?? NOT_DEPLOYED;
 }
 
-const UNVERIFIED = reading("Unverified", "unknown");
-const NO_LONGER_RELEASED = reading(
+export const UNVERIFIED = reading("Unverified", "unknown");
+export const NO_LONGER_RELEASED = reading(
   "No longer released",
   "attention",
   WARNING_GLYPH,

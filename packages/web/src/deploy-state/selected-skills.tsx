@@ -1,35 +1,50 @@
 import { type Ref, useEffect, useState } from "react";
-import { lagsPin } from "../drift/drift-view-model";
+import { UP_TO_DATE } from "../inventory/skill-status";
 import { IMPORT_LOCAL_EDITS, REMOVE_SKILL } from "../ui/control-labels";
 import { Notice } from "../ui/notice";
+import { rowActionsLabel } from "../ui/row-menu-copy";
+import { SubListGroup } from "../ui/sub-list-group";
 import { SubListHeading } from "../ui/sub-list-heading";
 import { SubListRow } from "../ui/sub-list-row";
 import { packageBehindNotice, VIEW_SKILL_ON_GITHUB } from "./deploy-state-copy";
 import { ImportLocalEditsAction } from "./import-local-edits-action";
-
 import { RemoveSkillFlow } from "./remove-skill-flow";
-import { skillMark } from "./skill-mark";
+import type { SkillListRow } from "./skill-list-row";
 import { canImportLocalEdits, type TargetRow } from "./target-rows";
+import {
+  type SkillsListBasis,
+  useDeployedSkillsList,
+} from "./use-deployed-skills-list";
 
 type SkillsRow = Pick<
   TargetRow,
-  "primitives" | "drift" | "target" | "wire" | "name" | "updateName" | "pending"
+  | "primitives"
+  | "skillRows"
+  | "drift"
+  | "target"
+  | "wire"
+  | "name"
+  | "updateName"
+  | "pending"
 >;
 
 type OpenDialog = { kind: "remove" | "import"; name: string };
 
 export function SelectedSkills({
   row,
+  basis,
   onRemoved,
   headingRef,
 }: {
   row: SkillsRow;
+  basis: SkillsListBasis;
   // Called after the dialog is gone: a successful removal destroys the trigger
   // the modal's own focus-restore would aim at.
   onRemoved?: () => void;
   headingRef: Ref<HTMLHeadingElement>;
 }) {
   const { primitives, drift } = row;
+  const list = useDeployedSkillsList({ rows: row.skillRows, ...basis });
   const [open, setOpen] = useState<OpenDialog | null>(null);
   const [justRemoved, setJustRemoved] = useState(false);
 
@@ -46,6 +61,35 @@ export function SelectedSkills({
     primitives.map((primitive) => primitive.name),
   );
 
+  const skillRow = ({ primitive, mark, value, hover }: SkillListRow) => (
+    <SubListRow
+      key={primitive.name}
+      mark={mark === null ? null : { ...mark, hint: hover }}
+      name={primitive.name}
+      value={value}
+      menuLabel={rowActionsLabel(primitive.name)}
+      items={[
+        ...(primitive.github?.kind === "link"
+          ? [{ label: VIEW_SKILL_ON_GITHUB, href: primitive.github.url }]
+          : []),
+        ...(canImportLocalEdits(row.pending, primitive)
+          ? [
+              {
+                label: IMPORT_LOCAL_EDITS,
+                onSelect: () =>
+                  setOpen({ kind: "import", name: primitive.name }),
+              },
+            ]
+          : []),
+        {
+          label: REMOVE_SKILL,
+          danger: true,
+          onSelect: () => setOpen({ kind: "remove", name: primitive.name }),
+        },
+      ]}
+    />
+  );
+
   return (
     <section>
       <SubListHeading
@@ -53,49 +97,21 @@ export function SelectedSkills({
         count={primitives.length}
         headingRef={headingRef}
       />
-      <ul className="m-0 list-none border-divider border-t p-0">
-        {primitives.map((primitive) => {
-          const status = drift.skillStatus(primitive.name);
-          const latest = drift.latest(primitive.name);
-          return (
-            <SubListRow
-              key={primitive.name}
-              mark={skillMark(primitive.copy, status)}
-              name={primitive.name}
-              value={
-                lagsPin(status) && latest
-                  ? `${primitive.version} → ${latest}`
-                  : primitive.version
-              }
-              menuLabel={`Actions for ${primitive.name}`}
-              items={[
-                ...(primitive.github?.kind === "link"
-                  ? [
-                      {
-                        label: VIEW_SKILL_ON_GITHUB,
-                        href: primitive.github.url,
-                      },
-                    ]
-                  : []),
-                ...(canImportLocalEdits(row.pending, primitive)
-                  ? [
-                      {
-                        label: IMPORT_LOCAL_EDITS,
-                        onSelect: () =>
-                          setOpen({ kind: "import", name: primitive.name }),
-                      },
-                    ]
-                  : []),
-                {
-                  label: REMOVE_SKILL,
-                  danger: true,
-                  onSelect: () =>
-                    setOpen({ kind: "remove", name: primitive.name }),
-                },
-              ]}
-            />
-          );
-        })}
+      <ul
+        ref={list.listRef}
+        className="m-0 list-none border-divider border-t p-0"
+      >
+        {list.rows.map(skillRow)}
+        {list.folded.length === 0 ? null : (
+          <SubListGroup
+            label={UP_TO_DATE.word}
+            count={list.folded.length}
+            open={list.open}
+            onToggle={list.toggle}
+          >
+            {list.folded.map(skillRow)}
+          </SubListGroup>
+        )}
       </ul>
       {open?.kind === "remove" ? (
         <RemoveSkillFlow

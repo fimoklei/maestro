@@ -156,7 +156,7 @@ describe("Deploy-state — Import local edits where Global copies differ", () =>
     ).toBeInTheDocument();
   });
 
-  it("names the folders whose copies differ in the Global pane", async () => {
+  it("leaves the differing folders out of the Global pane's one paragraph", async () => {
     stubDifferingCopies();
     renderDeployState();
 
@@ -165,9 +165,10 @@ describe("Deploy-state — Import local edits where Global copies differ", () =>
     expect(
       await within(pane).findByText(
         sentence(
-          "The copies in ~/.claude/skills and ~/.agents/skills differ. Select Import local edits to import one.",
+          "2 skills have changes that are not in the latest release. Select Import local edits to keep them.",
         ),
       ),
     ).toBeInTheDocument();
+    expect(within(pane).queryByText(/differ/)).toBeNull();
   });
 });

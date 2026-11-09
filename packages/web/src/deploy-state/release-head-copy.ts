@@ -41,6 +41,10 @@ export function behindLine(head: ReleaseHead): Copy {
     : phrase`${reason} Select ${UPDATE_TARGET} to move this target to ${machine(head.latestRelease)}.`;
 }
 
+/** A worse reading's reason on a Global that is also behind. */
+export const globalAlsoBehindLine = (reason: Copy, head: ReleaseHead): Copy =>
+  phrase`${reason} Global is also behind: ${behindReason(head)}`;
+
 export const ON_LATEST_RELEASE = "On the latest release.";
 export const LATEST_RELEASE_UNKNOWN = "Latest release could not be read.";
 

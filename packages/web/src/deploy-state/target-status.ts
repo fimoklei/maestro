@@ -3,6 +3,7 @@ import type { TargetDriftIndicator } from "../drift/drift-view-model";
 import type { StatusChip } from "../ui/band-summary";
 import { WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
+import { FOLDER_READINGS, type FolderSkillReading } from "./folder-reading";
 import { UNFINISHED_HEADINGS } from "./release-head-copy";
 
 /** An unfinished operation's badge: its pane notice's own heading. */
@@ -23,14 +24,20 @@ const PINNED = reading("Pinned per skill", "neutral");
 const OTHER_ORIGIN = reading("Other origin", "neutral");
 const EMPTY = reading("Empty", "neutral");
 
+// A target's reading for each folder reading, which keeps its order.
+const FOLDER_ROLLUP = {
+  "local-edits": LOCAL_EDITS,
+  missing: SKILLS_MISSING,
+  "not-updated": NOT_UPDATED,
+} satisfies Record<FolderSkillReading, StatusReading>;
+const DEVIATIONS = FOLDER_READINGS.map((each) => FOLDER_ROLLUP[each]);
+
 /** Every word the badge can read, worst first, as Filter offers them. */
 export const TARGET_STATUS_WORDS = [
   ...Object.values(UNFINISHED_HEADINGS),
   ...[
     ATTENTION,
-    SKILLS_MISSING,
-    NOT_UPDATED,
-    LOCAL_EDITS,
+    ...DEVIATIONS,
     BEHIND,
     UNKNOWN,
     IN_SYNC,
@@ -69,14 +76,13 @@ export const TARGET_CHIPS: readonly StatusChip[] = [
     family: "attention",
     covers: [ATTENTION.word, ...Object.values(UNFINISHED_HEADINGS)],
   },
-  {
-    word: SKILLS_MISSING.word,
-    family: "attention",
-    covers: [SKILLS_MISSING.word],
-  },
-  { word: NOT_UPDATED.word, family: "attention", covers: [NOT_UPDATED.word] },
-  { word: LOCAL_EDITS.word, family: "attention", covers: [LOCAL_EDITS.word] },
-  { word: BEHIND.word, family: "attention", covers: [BEHIND.word] },
+  ...[...DEVIATIONS, BEHIND].map(
+    (each): StatusChip => ({
+      word: each.word,
+      family: "attention",
+      covers: [each.word],
+    }),
+  ),
 ];
 
 // How a target was built outranks what the drift check made of it; nothing
@@ -103,11 +109,16 @@ export function targetStatus({
   missing?: boolean;
 }): StatusReading | null {
   if (pending) return unfinishedReading(pending);
-  if ((localEdits || notUpdated || missing) && indicator === "attention")
-    return ATTENTION;
-  if (missing && indicator !== "pending") return SKILLS_MISSING;
-  if (notUpdated && indicator !== "pending") return NOT_UPDATED;
-  if (localEdits && indicator !== "pending") return LOCAL_EDITS;
+  const deviates = {
+    "local-edits": localEdits,
+    missing,
+    "not-updated": notUpdated,
+  } satisfies Record<FolderSkillReading, boolean>;
+  const worst = FOLDER_READINGS.find((each) => deviates[each]);
+  if (worst !== undefined && indicator === "attention") return ATTENTION;
+  if (worst !== undefined && indicator !== "pending") {
+    return FOLDER_ROLLUP[worst];
+  }
   if (pinnedPerSkill) return PINNED;
   switch (indicator) {
     case "ok":

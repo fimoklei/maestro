@@ -8,7 +8,7 @@ const meta = {
   args: {
     mark: reading("In sync", "good"),
     name: "Claude Code",
-    value: "v1.4.0",
+    value: { text: "v1.4.0", machine: true },
     menuLabel: "Actions for Claude Code",
     items: [
       { label: "View Deploy-state", onSelect: () => {} },
@@ -34,12 +34,35 @@ export const Behind: Story = {
   args: {
     mark: { ...reading("Behind", "attention"), hint: "v1.4.0 is released." },
     name: "Codex",
-    value: "v1.3.2",
+    value: { text: "v1.3.2", machine: true },
     menuLabel: "Actions for Codex",
     items: [
       { label: "Update target", onSelect: () => {} },
       { label: "Remove from target", danger: true, onSelect: () => {} },
     ],
+  },
+};
+
+// A long name keeps its width; the folder in place of the version gives way.
+export const LongNameAndFolder: Story = {
+  args: {
+    mark: {
+      ...reading("Missing", "attention", "⚠"),
+      hint: "No copy in ~/.agents/skills.",
+    },
+    name: "improve-codebase-architecture",
+    value: { text: "~/.agents/skills", machine: true },
+    menuLabel: "Actions for improve-codebase-architecture",
+  },
+};
+
+// A long name shortens a version pair; the mark's hover holds it whole.
+export const LongNameAndVersion: Story = {
+  args: {
+    mark: reading("Behind", "attention"),
+    name: "improve-codebase-architecture",
+    value: { text: "v0.4.1 → v0.4.3", machine: true },
+    menuLabel: "Actions for improve-codebase-architecture",
   },
 };
 
@@ -53,13 +76,24 @@ export const Reading: Story = {
   render: () => <SubListSkeleton rows={2} />,
 };
 
-// A read-only row with no menu: a Global folder and who reads it.
+// A read-only row with no menu: a Global folder, its word, and who reads it.
 export const ValueWithMeta: Story = {
   render: () => (
     <SubListValueRow
-      mark={reading("In sync", "good")}
+      status={reading("Up to date", "good")}
       value="~/.claude/skills"
-      meta="Read by Claude Code, Cursor and OpenCode."
+      meta="Read by Claude Code, Cursor and OpenCode"
+    />
+  ),
+};
+
+// A folder that deviates, with its counts; the longest realistic readers.
+export const ValueWithCounts: Story = {
+  render: () => (
+    <SubListValueRow
+      status={reading("Local edits", "attention", "⚠")}
+      value="~/.agents/skills"
+      meta="Read by Codex, Copilot CLI, Cursor, Gemini CLI and others · 1 missing · 1 not updated · 2 with local edits"
     />
   ),
 };

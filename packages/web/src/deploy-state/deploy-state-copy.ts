@@ -6,8 +6,17 @@ import {
 } from "../ui/control-labels";
 import { originNotRead } from "../ui/github-link-copy";
 import type { NoticeContent } from "../ui/notice";
-import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
+import {
+  machine,
+  machineList,
+  named,
+  namedList,
+  type Phrase,
+  phrase,
+} from "../ui/phrase";
+import type { SubListValue } from "../ui/sub-list-row";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
+import type { FolderCounts } from "./global-skill-readings";
 import { joinNames } from "./join-names";
 
 // Every word the Deploy-state screen shows outside its dialogs.
@@ -84,12 +93,50 @@ export const CHECKING_LOCAL_EDITS = "Checking for local edits…";
 /** The Global pane's sub-list of the folders Global writes. */
 export const GLOBAL_FOLDERS = "Global folders";
 
-/** A Global folder's readers, in the Global pane: the only place a detected tool is named. */
-export const readByLine = (readBy: {
-  tools: readonly string[];
-  others: boolean;
-}) =>
-  `Read by ${joinNames(readBy.others ? [...readBy.tools, "others"] : readBy.tools)}.`;
+/**
+ * A Global folder's meta line in the Global pane, the only place a detected
+ * tool is named: its readers, then each count above 0. One list, so no full stop.
+ */
+export function folderMetaLine(
+  readBy: { tools: readonly string[]; others: boolean },
+  counts: FolderCounts,
+): string {
+  const readers = readBy.others ? [...readBy.tools, "others"] : readBy.tools;
+  return [
+    `Read by ${joinNames(readers)}`,
+    ...(counts.missing > 0 ? [`${counts.missing} missing`] : []),
+    ...(counts.notUpdated > 0 ? [`${counts.notUpdated} not updated`] : []),
+    ...(counts.localEdits > 0 ? [`${counts.localEdits} with local edits`] : []),
+  ].join(" · ");
+}
+
+/**
+ * A Global skill row's value where its copies deviate: the one folder's path,
+ * or a count of the `deviating` folders out of the `written` ones.
+ */
+export function deviatingFoldersValue(
+  deviating: readonly string[],
+  written: number,
+): SubListValue {
+  const [only] = deviating;
+  if (deviating.length === 1 && only !== undefined)
+    return { text: only, machine: true };
+  const text =
+    deviating.length < written
+      ? `${deviating.length} folders`
+      : written === 2
+        ? "Both folders"
+        : `All ${written} folders`;
+  return { text, machine: false };
+}
+
+/** A Global skill row's hover: the folders its copies deviate in. */
+export const inFoldersHint = (folders: readonly string[]): Phrase =>
+  phrase`In ${machineList(folders)}.`;
+
+/** A Global skill row's Missing hover. */
+export const noCopyInHint = (folder: string): Phrase =>
+  phrase`No copy in ${machine(folder)}.`;
 
 /** A Global dialog's list of the Global folders its action writes. */
 export const WRITES_TO = "Writes to";
@@ -185,6 +232,19 @@ const localEditsReason = (names: readonly string[]) =>
 
 export const localEditsLine = (names: readonly string[], behind: boolean) =>
   phrase`${localEditsReason(names)} ${behind ? KEEP_BEFORE_UPDATE : KEEP_LOCAL_EDITS}`;
+
+/** The Global pane's one paragraph on its local edits: a count, no folder and no skill. */
+export const globalLocalEditsLine = (count: number, behind: boolean) =>
+  `${count} ${count === 1 ? "skill has" : "skills have"} changes that are not in the latest release. ${behind ? KEEP_BEFORE_UPDATE : KEEP_LOCAL_EDITS}`;
+
+/** The Status hover card's Local edits reason; `latest` is the newer release, null where not behind. */
+export const localEditsCardLine = (
+  names: readonly string[],
+  latest: string | null,
+) =>
+  latest === null
+    ? localEditsLine(names, false)
+    : phrase`${localEditsReason(names)} To keep them, select ${IMPORT_LOCAL_EDITS} before you update to ${machine(latest)}.`;
 
 // A skill row's mark carries its reading's hint as its tooltip: one fact, no action.
 export const NO_LONGER_RELEASED_HINT = "Not in the latest release.";
