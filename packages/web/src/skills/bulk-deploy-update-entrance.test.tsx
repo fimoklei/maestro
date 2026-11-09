@@ -107,6 +107,14 @@ describe("BulkDeployAction routing into the Update preview", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers Update target when the target is behind the released copy", async () => {
+    await refusedDeploy("target-behind-release");
+
+    expect(
+      screen.getByRole("button", { name: "Update target" }),
+    ).toBeInTheDocument();
+  });
+
   it("offers no Update target for a refusal another release cannot clear", async () => {
     await refusedDeploy("target-pinned-per-skill");
 

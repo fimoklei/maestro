@@ -11,6 +11,7 @@ import {
   deployAttentionNotice,
   deployNotice,
   deployNoticeFor,
+  deployRecoveryFor,
 } from "../deploy-state/notice-copy";
 import { RETRY_DEPLOY } from "../deploy-state/release-head-copy";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
@@ -33,11 +34,7 @@ import type { RegisteredRepo } from "../registry/use-registry";
 import { repoTargetName } from "../shell/target-name";
 import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
-import {
-  DEPLOY_AGAIN,
-  deployAgainLabel,
-  UPDATE_TARGET,
-} from "../ui/control-labels";
+import { DEPLOY_AGAIN, deployAgainLabel } from "../ui/control-labels";
 import type { FoldLine } from "../ui/fold-list";
 import type { NoticeContent } from "../ui/notice";
 import type { ReportGroup, ReportRowAction } from "../ui/report";
@@ -530,6 +527,16 @@ function deployAgain(
     : { label: deployAgainLabel(name), onClick, status: "locked" };
 }
 
+function recoveryAction(
+  row: BulkDeployReport["attention"][number],
+  onUpdate: ((name: string) => void) | undefined,
+): ReportRowAction | undefined {
+  const recovery = deployRecoveryFor(row.error);
+  return recovery !== null && onUpdate
+    ? { label: recovery.label, onClick: () => onUpdate(row.name) }
+    : undefined;
+}
+
 /** The run folded into the Report's groups. Empty groups are not drawn. */
 function bulkDeployReportGroups(input: {
   view: Extract<BulkDeployReportView, { tone: "ran" }>;
@@ -556,9 +563,7 @@ function bulkDeployReportGroups(input: {
         notice: deployAttentionNotice(row),
         action: row.forceable
           ? deployAgain(row.name, row.copyReceipt, force)
-          : onUpdate && row.error === "not-at-target-release"
-            ? { label: UPDATE_TARGET, onClick: () => onUpdate(row.name) }
-            : undefined,
+          : recoveryAction(row, onUpdate),
       })),
     },
     {
