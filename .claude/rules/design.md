@@ -36,7 +36,7 @@ Never take design values (colour, size, spacing) from a flow screen; build from 
 **Reuse.** Before building an element, look in `packages/web/src/ui/` and
 its stories; build from the module that fits. Done when every element in the
 change comes from `ui/`, or the handoff names the new one and why no existing
-module fits. When none fits, measure what Vercel, Linear and Circle do; add
+module fits. When none fits, measure what Vercel and Linear do; add
 the new pattern to this section before building it.
 
 **Meaning and emphasis.**

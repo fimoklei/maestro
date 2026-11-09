@@ -9,6 +9,8 @@ auto-loaded rule files, and it may not start on the branch you build on.
 - First run `pnpm install --frozen-lockfile`. Then read the rule files for
   your task (CODING_STANDARDS.md → Rule files by task) and LEARNINGS.md → Active.
 - To build on a branch, run `git reset --hard <branch>` as its own call.
+- Build test-first: see each new test go red on its own assertion before you
+  write the code that turns it green.
 - Run one plain command per call. The isolation guard refuses `&&` and `;`
   chains, `$VAR`, `eval`, heredocs and `python3 -`.
 - `cd` only to an absolute path.
