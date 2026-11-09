@@ -45,6 +45,7 @@ import {
   stageSections,
 } from "./harness-view-model";
 import { harnessPromptReadNotice } from "./import-prompt-copy";
+import { ImportSkillAction } from "./import-skill-action";
 import { ImportSkillsAction } from "./import-skills-action";
 import {
   harnessStateNotice,
@@ -78,7 +79,6 @@ import {
   useReleasePlan,
 } from "./use-harness";
 import { useHarnessPresses } from "./use-harness-presses";
-import { useImportFlow } from "./use-import-flow";
 import { useImportPromptFlow } from "./use-import-prompt-flow";
 import { useImportPromptsFlow } from "./use-import-prompts-flow";
 
@@ -162,7 +162,7 @@ export function HarnessView({
     );
   };
 
-  const importFlow = useImportFlow(table, open);
+  const [importingSkill, setImportingSkill] = useState(false);
   const [importingSkills, setImportingSkills] = useState(false);
   const promptImportFlow = useImportPromptFlow(table, open);
   const promptsImportFlow = useImportPromptsFlow();
@@ -362,7 +362,10 @@ export function HarnessView({
                 <BandAction icon={FolderInput} label={IMPORT} menu={true} />
               }
               items={[
-                { label: IMPORT_SKILL, onSelect: importFlow.start },
+                {
+                  label: IMPORT_SKILL,
+                  onSelect: () => setImportingSkill(true),
+                },
                 {
                   label: IMPORT_SKILLS,
                   onSelect: () => setImportingSkills(true),
@@ -494,7 +497,7 @@ export function HarnessView({
         title: JOURNEY_EMPTY.title,
         description: JOURNEY_EMPTY.body,
         action: (
-          <Button variant="quiet" onClick={importFlow.start}>
+          <Button variant="quiet" onClick={() => setImportingSkill(true)}>
             {IMPORT_SKILL}
           </Button>
         ),
@@ -523,6 +526,13 @@ export function HarnessView({
         />
       }
     >
+      {state !== undefined && importingSkill ? (
+        <ImportSkillAction
+          screen={table}
+          onImported={open}
+          onClose={() => setImportingSkill(false)}
+        />
+      ) : null}
       {state !== undefined && importingSkills ? (
         <ImportSkillsAction
           screen={table}
@@ -532,7 +542,6 @@ export function HarnessView({
       {state === undefined ? null : (
         <HarnessDialogs
           origin={state.origin}
-          importFlow={importFlow}
           promptImportFlow={promptImportFlow}
           promptsImportFlow={promptsImportFlow}
           editPromptFlow={editFlow}
