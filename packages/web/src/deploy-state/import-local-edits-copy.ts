@@ -3,11 +3,11 @@ import { HARNESS_BUSY } from "../ui/busy-copy";
 
 import type { LocalEditsError } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { PROPOSE_CHANGES } from "../harness/propose-batch-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import {
   IMPORT_LOCAL_EDITS,
   IMPORT_SKILLS,
-  PROPOSE_CHANGE,
   rereadLabel,
   UPDATE_TARGET,
 } from "../ui/control-labels";
@@ -79,7 +79,8 @@ export const importReportHeading = (landed: number, asked: number): string =>
 
 export const NOT_IMPORTED = "Not imported";
 export const IMPORTED = "Imported";
-export const IMPORTED_NEXT_STEP = `Each is now a Pending proposal on the Harness screen. Select ${PROPOSE_CHANGE} there.`;
+// Shared by every import that lands rows under Pending proposal.
+export const IMPORTED_NEXT_STEP = `The imported items are now Pending proposals. On the Harness screen, check the rows, then select ${PROPOSE_CHANGES}.`;
 
 const NOT_CHECKED = {
   label: "Local edits not checked",
@@ -88,7 +89,7 @@ const NOT_CHECKED = {
 
 export const NOT_CONFIRMED = {
   label: "Import not confirmed",
-  message: `The Maestro server did not answer, so some skills may have landed. Select ${CLOSE}, then check the Harness screen.`,
+  message: `The Maestro server did not respond, so some skills may have landed. Select ${CLOSE}, then check the Harness screen.`,
 };
 
 // Headings shared with the other surfaces that meet the same block.

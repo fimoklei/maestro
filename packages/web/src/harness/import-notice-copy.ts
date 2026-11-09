@@ -72,7 +72,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "missing-manifest": {
     level: "error",
     label: "No SKILL.md",
-    message: "Choose the folder that holds the skill's SKILL.md.",
+    message: "Choose the folder that contains the skill's SKILL.md.",
   },
   "invalid-frontmatter": {
     level: "error",
@@ -95,7 +95,8 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "name-taken": {
     level: "error",
     label: "Name taken",
-    message: "The Harness already holds a skill under it. Pick another name.",
+    message:
+      "The Harness already contains a skill under it. Pick another name.",
   },
   "not-found": {
     level: "error",
@@ -110,7 +111,8 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "destination-exists": {
     level: "error",
     label: "Name taken",
-    message: "The Harness already holds a folder under it. Pick another name.",
+    message:
+      "The Harness already contains a folder under it. Pick another name.",
   },
   "unsafe-link": {
     level: "error",
@@ -202,15 +204,15 @@ const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
   "invalid-name":
     "The deployment record gives this skill a name the Harness cannot use. Copy the changed files into the Harness clone yourself.",
   "name-taken":
-    "The Harness already holds a skill under this name. Copy the changed files into the Harness clone yourself.",
+    "The Harness already contains a skill under this name. Copy the changed files into the Harness clone yourself.",
   "not-found": `Nothing was copied. The deployed folder is gone. Select ${CLOSE}, then select ${IMPORT_LOCAL_EDITS} again.`,
   "not-a-directory": `Nothing was copied. The deployed copy is no longer a folder. Select ${CLOSE}, then select ${IMPORT_LOCAL_EDITS} again.`,
   "destination-exists":
-    "The Harness already holds a folder under this name. Copy the changed files into the Harness clone yourself.",
+    "The Harness already contains a folder under this name. Copy the changed files into the Harness clone yourself.",
   "unsafe-link": `Nothing was copied. Replace the symbolic link in the skill folder with a real file, then select ${IMPORT_LOCAL_EDITS} again.`,
   "hard-linked-file": `Nothing was copied. Replace the shared file in the skill folder with a plain copy, then select ${IMPORT_LOCAL_EDITS} again.`,
   "special-file": `Nothing was copied. Take the special file out of the skill folder, then select ${IMPORT_LOCAL_EDITS} again.`,
-  "too-many-files": `Nothing was copied. This copy holds over 1,000 files. Remove the files the skill does not need, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "too-many-files": `Nothing was copied. This copy contains over 1,000 files. Remove the files the skill does not need, then select ${IMPORT_LOCAL_EDITS} again.`,
   "too-large": `Nothing was copied. This copy is over 50 MiB. Remove the files the skill does not need, then select ${IMPORT_LOCAL_EDITS} again.`,
   "source-changed": `The skill was not imported. Let the folder change finish, then select ${IMPORT_LOCAL_EDITS} again.`,
   "copy-failed": `The skill was not imported. Free up disk space, then select ${IMPORT_LOCAL_EDITS} again.`,

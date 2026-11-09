@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  IMPORTED_PROMPTS_NEXT_STEP,
   importPromptsConfirm,
   importPromptsNotice,
   importPromptsReportHeading,
@@ -24,24 +23,24 @@ describe("import prompts copy", () => {
   it("gives each refused file one reason and its next step", () => {
     expect(PROMPT_FILE_REFUSALS).toEqual({
       "not-text":
-        "Maestro reads only UTF-8 text. Save the file as UTF-8, then choose it again.",
+        "Maestro reads only UTF-8 text. Save the file as UTF-8, then select it again.",
       "empty-name":
-        "The file name has no letters or digits. Rename the file, then choose it again.",
+        "The file name has no letters or digits. Rename the file, then select it again.",
       "invalid-name":
-        "The file name does not make a usable prompt name. Rename the file, then choose it again.",
+        "The file name cannot become a prompt name. Use letters, digits and hyphens, up to 64 characters. Then select the file again.",
       "same-name":
-        "Another chosen file has the same name. Rename the file, then choose it again.",
+        "Another file has the same name. Rename the file, then select it again.",
       "empty-description":
-        "The file has no description in its front matter. Add one, then choose the file again.",
+        "The file has no description in its front matter. Add one, then select the file again.",
       "multiline-description":
-        "Keep the description to one line of 1,024 characters or less. Then choose the file again.",
+        "Keep the description to one line of 1,024 characters or less. Then select the file again.",
       "long-description":
-        "Keep the description to one line of 1,024 characters or less. Then choose the file again.",
+        "Keep the description to one line of 1,024 characters or less. Then select the file again.",
       "empty-text":
-        "The file has no prompt text below its front matter. Add the text, then choose the file again.",
-      "long-text": "The file is over 100 KB. Shorten it, then choose it again.",
+        "The file has no prompt text below its front matter. Add the text, then select the file again.",
+      "long-text": "The file is over 100 KB. Shorten it, then select it again.",
       "prompt-taken":
-        "The Harness now has a prompt with this name. To replace it, select Import prompts again. Choose the file, then check it under Already in the Harness.",
+        "The Harness already contains a prompt with this name. To replace it, select Import prompts again. Choose the file, then check it under Already in the Harness.",
       "destination-unsafe":
         "The prompt file in the Harness is a link. Replace the link with a real file, then import the prompt again.",
       "destination-unreadable":
@@ -51,20 +50,17 @@ describe("import prompts copy", () => {
     });
   });
 
-  it("reports how many prompts landed and what comes next", () => {
+  it("reports how many prompts landed", () => {
     expect(importPromptsReportHeading(2, 3)).toBe("Imported 2 of 3 prompts");
     expect(importPromptsReportHeading(1, 1)).toBe("Imported 1 of 1 prompt");
-    expect(IMPORTED_PROMPTS_NEXT_STEP).toBe(
-      "Each is now a Pending proposal. Open the row's menu, then select Propose change.",
-    );
   });
 
-  it("says the server did not answer when no table row covers the failure", () => {
+  it("says the server did not respond when no table row covers the failure", () => {
     expect(importPromptsNotice(new Error("offline"))).toEqual({
       level: "error",
-      label: "Prompts not imported",
+      label: "Import not confirmed",
       message:
-        "The Maestro server did not answer, so some prompts may have landed. Select Close, then check the Harness screen.",
+        "The Maestro server did not respond, so some prompts may already be imported. Select Close, then check the Harness screen.",
     });
   });
 });

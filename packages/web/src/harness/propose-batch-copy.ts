@@ -113,8 +113,8 @@ export const deletionsKept = (skills: number, prompts: number): string[] => [
     : [
         plural(
           prompts,
-          "The Prompts screen keeps the prompt until the next release.",
-          "The Prompts screen keeps the prompts until the next release.",
+          "The prompt is kept until the next release.",
+          "The prompts are kept until the next release.",
         ),
       ]),
 ];

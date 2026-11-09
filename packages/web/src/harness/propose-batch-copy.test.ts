@@ -91,7 +91,10 @@ describe("Propose changes copy", () => {
       "Your targets keep the skill. After the next release, select Update target on each target to remove it.",
     ]);
     expect(deletionsKept(0, 2)).toEqual([
-      "The Prompts screen keeps the prompts until the next release.",
+      "The prompts are kept until the next release.",
+    ]);
+    expect(deletionsKept(0, 1)).toEqual([
+      "The prompt is kept until the next release.",
     ]);
     expect(deletionsKept(0, 0)).toEqual([]);
   });

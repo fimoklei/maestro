@@ -4,6 +4,7 @@ import {
   canBeImportedLegend,
   cannotBeImportedLegend,
   IMPORTED,
+  IMPORTED_NEXT_STEP,
   NOT_IMPORTED,
   replacesLine,
 } from "../deploy-state/import-local-edits-copy";
@@ -17,7 +18,6 @@ import { CHANGE_WORD } from "./change-words";
 import {
   CHOOSE_FILES,
   CHOOSE_FILES_FIRST,
-  IMPORTED_PROMPTS_NEXT_STEP,
   importPromptsConfirm,
   importPromptsNotice,
   importPromptsReportHeading,
@@ -108,7 +108,7 @@ export function ImportPromptsDialog({
             {
               tone: "good",
               label: IMPORTED,
-              note: IMPORTED_PROMPTS_NEXT_STEP,
+              note: IMPORTED_NEXT_STEP,
               rows: report.flatMap((outcome) =>
                 outcome.imported
                   ? [

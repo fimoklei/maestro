@@ -206,13 +206,13 @@ describe("Harness import prompts flow", () => {
       return box;
     };
     expect(reason("onboarding")).toHaveAccessibleDescription(
-      "The file has no description in its front matter. Add one, then choose the file again.",
+      "The file has no description in its front matter. Add one, then select the file again.",
     );
     expect(reason("_.md")).toHaveAccessibleDescription(
-      "The file name has no letters or digits. Rename the file, then choose it again.",
+      "The file name has no letters or digits. Rename the file, then select it again.",
     );
     expect(reason("pairing")).toHaveAccessibleDescription(
-      "Maestro reads only UTF-8 text. Save the file as UTF-8, then choose it again.",
+      "Maestro reads only UTF-8 text. Save the file as UTF-8, then select it again.",
     );
     expect(group(dialog, /Can be imported · 1/)).toBeVisible();
 
@@ -351,7 +351,7 @@ describe("Harness import prompts flow", () => {
     expect(within(failed).getByText("standup-notes")).toBeVisible();
     expect(
       within(failed).getByText(
-        "The Harness now has a prompt with this name. To replace it, select Import prompts again. Choose the file, then check it under Already in the Harness.",
+        "The Harness already contains a prompt with this name. To replace it, select Import prompts again. Choose the file, then check it under Already in the Harness.",
       ),
     ).toBeVisible();
   });

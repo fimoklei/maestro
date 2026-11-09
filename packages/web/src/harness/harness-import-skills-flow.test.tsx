@@ -241,7 +241,7 @@ describe("Harness import of several skills", () => {
     );
     expect(
       within(dialog).getByText(
-        "Enter the absolute path of the folder that holds your skills.",
+        "Enter the absolute path of the folder that contains your skills.",
       ),
     ).toBeInTheDocument();
 

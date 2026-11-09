@@ -348,7 +348,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     expect(within(imported).getByText("code-review")).toBeInTheDocument();
     expect(
       within(imported).getByText(
-        "Each is now a Pending proposal on the Harness screen. Select Propose change there.",
+        "The imported items are now Pending proposals. On the Harness screen, check the rows, then select Propose changes.",
       ),
     ).toBeInTheDocument();
     expect(

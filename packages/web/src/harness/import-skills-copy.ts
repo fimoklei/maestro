@@ -16,12 +16,12 @@ import { harnessHeadings } from "./notice-copy";
 export const IMPORT_SKILLS_HINT = "Maestro lists all skills inside the folder.";
 export const IMPORT_SKILLS_PLACEHOLDER = "/path/to/skills";
 export const SKILLS_FOLDER_MISSING =
-  "Enter the absolute path of the folder that holds your skills.";
+  "Enter the absolute path of the folder that contains your skills.";
 export const READING_FOLDER = "Reading the folder…";
 
 export const NO_SKILL_FOLDERS: NoticeCopy = {
   label: "No skill folders",
-  message: "Choose the folder that holds your skill folders.",
+  message: "Choose the folder that contains your skill folders.",
 };
 
 const AGAIN = `then select ${IMPORT_SKILLS} again.`;
@@ -47,15 +47,15 @@ const REFUSAL: Record<ImportSkillError, string> = {
     "Maestro cannot make a skill name from this folder name. Give the folder a name like code-review, then choose the folder again.",
   // A held skill is listed apart, so this reaches only the Report: the name
   // was taken after the scan.
-  "name-taken": `The Harness now holds a skill with this name. To replace it, select ${IMPORT_SKILLS} again. Choose the folder, then check it under ${ALREADY_IN_HARNESS}.`,
-  "destination-exists": `The Harness already holds a folder under this name. To import it under another name, select ${IMPORT_SKILL}.`,
+  "name-taken": `The Harness already contains a skill with this name. To replace it, select ${IMPORT_SKILLS} again. Choose the folder, then check it under ${ALREADY_IN_HARNESS}.`,
+  "destination-exists": `The Harness already contains a folder under this name. To import it under another name, select ${IMPORT_SKILL}.`,
   "not-found": "The folder was moved or deleted before Maestro could copy it.",
   "not-a-directory": "This is no longer a folder, so Maestro did not copy it.",
   "source-changed": `The folder changed during the import. Let the change finish, ${AGAIN}`,
-  "unsafe-link": `The folder holds a symbolic link. Replace the link with a real file, ${AGAIN}`,
-  "hard-linked-file": `The folder holds a file shared with another place on disk. Replace that file with a plain copy, ${AGAIN}`,
-  "special-file": `The folder holds a special file. Take it out, ${AGAIN}`,
-  "too-many-files": `The folder holds over 1,000 files. Remove the files the skill does not need, ${AGAIN}`,
+  "unsafe-link": `The folder contains a symbolic link. Replace the link with a real file, ${AGAIN}`,
+  "hard-linked-file": `The folder contains a file shared with another place on disk. Replace that file with a plain copy, ${AGAIN}`,
+  "special-file": `The folder contains a special file. Take it out, ${AGAIN}`,
+  "too-many-files": `The folder contains over 1,000 files. Remove the files the skill does not need, ${AGAIN}`,
   "too-large": `The folder is over 50 MiB. Remove the files the skill does not need, ${AGAIN}`,
   "copy-failed": `The copy failed. Free up disk space, ${AGAIN}`,
   "destination-unsafe": `The skills folder in the Harness clone links outside the clone. Make it a real folder, ${AGAIN}`,
@@ -86,7 +86,7 @@ const ERRORS: NoticeTable<ImportSkillsError> = {
 
 const NOT_READ: NoticeCopy = {
   label: "Folder not read",
-  message: `The Maestro server did not answer. Select ${IMPORT_SKILLS} to read the folder again.`,
+  message: `The Maestro server did not respond. Select ${IMPORT_SKILLS} to read the folder again.`,
 };
 
 export const importSkillsScanNotice = (error: unknown): NoticeContent | null =>

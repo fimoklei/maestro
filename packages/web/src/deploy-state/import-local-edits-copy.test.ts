@@ -103,7 +103,7 @@ describe("Import local edits copy", () => {
       "No skill on …/me/project changed after deployment.",
     );
     expect(IMPORTED_NEXT_STEP).toBe(
-      "Each is now a Pending proposal on the Harness screen. Select Propose change there.",
+      "The imported items are now Pending proposals. On the Harness screen, check the rows, then select Propose changes.",
     );
   });
 
@@ -158,7 +158,7 @@ describe("Import local edits copy", () => {
       {
         label: "Import not confirmed",
         message:
-          "The Maestro server did not answer, so some skills may have landed. Select Close, then check the Harness screen.",
+          "The Maestro server did not respond, so some skills may have landed. Select Close, then check the Harness screen.",
       },
     );
   });

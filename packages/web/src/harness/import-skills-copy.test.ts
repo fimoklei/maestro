@@ -3,6 +3,8 @@ import { HttpError } from "../api/http";
 import {
   importSkillsNotice,
   importSkillsScanNotice,
+  NO_SKILL_FOLDERS,
+  SKILLS_FOLDER_MISSING,
   skillFolderRefusal,
 } from "./import-skills-copy";
 
@@ -19,7 +21,27 @@ describe("Import skills copy", () => {
     ],
     [
       "name-taken",
-      "The Harness now holds a skill with this name. To replace it, select Import skills again. Choose the folder, then check it under Already in the Harness.",
+      "The Harness already contains a skill with this name. To replace it, select Import skills again. Choose the folder, then check it under Already in the Harness.",
+    ],
+    [
+      "destination-exists",
+      "The Harness already contains a folder under this name. To import it under another name, select Import skill.",
+    ],
+    [
+      "unsafe-link",
+      "The folder contains a symbolic link. Replace the link with a real file, then select Import skills again.",
+    ],
+    [
+      "hard-linked-file",
+      "The folder contains a file shared with another place on disk. Replace that file with a plain copy, then select Import skills again.",
+    ],
+    [
+      "special-file",
+      "The folder contains a special file. Take it out, then select Import skills again.",
+    ],
+    [
+      "too-many-files",
+      "The folder contains over 1,000 files. Remove the files the skill does not need, then select Import skills again.",
     ],
     [
       "source-changed",
@@ -52,7 +74,17 @@ describe("Import skills copy", () => {
     expect(importSkillsScanNotice(new TypeError("offline"))).toMatchObject({
       label: "Folder not read",
       message:
-        "The Maestro server did not answer. Select Import skills to read the folder again.",
+        "The Maestro server did not respond. Select Import skills to read the folder again.",
+    });
+  });
+
+  it("asks for the folder that contains the skills", () => {
+    expect(SKILLS_FOLDER_MISSING).toBe(
+      "Enter the absolute path of the folder that contains your skills.",
+    );
+    expect(NO_SKILL_FOLDERS).toEqual({
+      label: "No skill folders",
+      message: "Choose the folder that contains your skill folders.",
     });
   });
 });
