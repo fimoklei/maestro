@@ -7,7 +7,7 @@ paths:
 # Copy (project-specific for Maestro)
 
 Applies to every word the cockpit shows, and to the server's request-shape
-messages.
+messages, not their `detail`.
 
 Write simple English for a developer who knows git and a terminal but not APM.
 Use short sentences, familiar words and direct instructions, guided by
@@ -157,4 +157,4 @@ Instruction: a filler word that reads stilted aloud
 | Dialog | Title and confirm button share a verb. A dialog that acts on a subject the reader already chose titles `{Verb} {name}`, or `{Verb} {object} for {name}` where the verb carries its own object; where the control label ends in a phrase, wrap the name inside it: `Withdraw {name} from release`. A dialog that asks the reader to choose the subject titles `{Verb} a {thing}`. Confirm button `{Verb} {thing}`. The body states what changes, then what stays | `Delete {skill}` / `Delete skill`; `Withdraw proposal for {skill}` / `Withdraw proposal`; `Withdraw {skill} from release` / `Withdraw from release`; `Update a skill` / `Update skill`; `Your targets keep the skill until you update them.` |
 | Field | Visible label naming the value; a hint adds what a label cannot | `Folder path` |
 | Accessible name | Visible words first, in the same order (`design.md`) | `Skills table` |
-| Request-shape message | `Nothing was {done}. Reload the page, then {do it} again.` plus a `detail` naming the expected shape | see `packages/server/src/app.ts` |
+| Request-shape message | `Nothing was {done}. Reload the page, then {do it} again.` Its `detail` names the expected shape for a developer; never show it in the cockpit | see `packages/server/src/request-bodies.ts` |
