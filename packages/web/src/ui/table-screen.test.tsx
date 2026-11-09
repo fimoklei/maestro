@@ -123,6 +123,66 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// Harness's drop rules: Branch first, then Origin, then Released.
+const ORCHARD: Band = {
+  facts: [
+    {
+      label: "Origin",
+      value: "orchard/fruit",
+      icon: <GitHubMark />,
+      machine: true,
+      drop: { rank: 2, belowRem: 36 },
+    },
+    {
+      label: "Release",
+      value: "v1.4.0",
+      icon: <Icon of={Tag} />,
+      machine: true,
+      drop: { rank: 3, belowRem: 24 },
+    },
+    {
+      label: "Branch",
+      value: "main",
+      icon: <Icon of={GitBranch} />,
+      machine: true,
+      drop: { rank: 1, belowRem: 44 },
+    },
+    {
+      label: "Trees",
+      value: "12",
+      icon: <Icon of={Trees} />,
+      machine: false,
+    },
+  ],
+  summary: {
+    freshness: { readAt: [Date.now() - 4 * 60_000], outcome: "fetched" },
+    healthy: "Ripe",
+    counts: [],
+  },
+  labelsBelowRem: 0,
+  countsBelowRem: 0,
+};
+
+const SEARCH = "Search the fruit";
+
+function SearchedFruit({ iconBelowRem = 18 }: { iconBelowRem?: number }) {
+  const [value, setValue] = useState("");
+  return (
+    <FruitScreen
+      band={{
+        ...ORCHARD,
+        search: {
+          label: SEARCH,
+          value,
+          onChange: setValue,
+          iconBelowRem,
+        },
+      }}
+      shown={(row) => row.name.includes(value)}
+    />
+  );
+}
+
 describe("TableScreen", () => {
   it("heads the panel with the screen name and its primary action, Re-read in band 2", async () => {
     const onReread = vi.fn();
@@ -145,45 +205,6 @@ describe("TableScreen", () => {
   });
 
   describe("band 2", () => {
-    // Harness's drop rules: Branch first, then Origin, then Released.
-    const ORCHARD: Band = {
-      facts: [
-        {
-          label: "Origin",
-          value: "orchard/fruit",
-          icon: <GitHubMark />,
-          machine: true,
-          drop: { rank: 2, belowRem: 36 },
-        },
-        {
-          label: "Release",
-          value: "v1.4.0",
-          icon: <Icon of={Tag} />,
-          machine: true,
-          drop: { rank: 3, belowRem: 24 },
-        },
-        {
-          label: "Branch",
-          value: "main",
-          icon: <Icon of={GitBranch} />,
-          machine: true,
-          drop: { rank: 1, belowRem: 44 },
-        },
-        {
-          label: "Trees",
-          value: "12",
-          icon: <Icon of={Trees} />,
-          machine: false,
-        },
-      ],
-      summary: {
-        freshness: { readAt: [Date.now() - 4 * 60_000], outcome: "fetched" },
-        healthy: "Ripe",
-        counts: [],
-      },
-      labelsBelowRem: 0,
-      countsBelowRem: 0,
-    };
     const band2 = () => htmlElement(reread().closest("[data-band='2']"));
     // The label of each fact shown, in reading order, then Read where it
     // follows them.
@@ -297,24 +318,6 @@ describe("TableScreen", () => {
     });
 
     describe("search", () => {
-      const SEARCH = "Search the fruit";
-      function SearchedFruit({ iconBelowRem = 18 }: { iconBelowRem?: number }) {
-        const [value, setValue] = useState("");
-        return (
-          <FruitScreen
-            band={{
-              ...ORCHARD,
-              search: {
-                label: SEARCH,
-                value,
-                onChange: setValue,
-                iconBelowRem,
-              },
-            }}
-            shown={(row) => row.name.includes(value)}
-          />
-        );
-      }
       // Hidden fields too, so `toBeVisible` can say which.
       const field = () =>
         screen.getByRole("searchbox", { name: SEARCH, hidden: true });
