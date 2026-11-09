@@ -195,7 +195,7 @@ describe("Harness import prompt flow", () => {
     await waitFor(() => expect(first).toHaveFocus());
     await user.keyboard("{ArrowDown}");
     expect(
-      screen.getByRole("menuitem", { name: "Import prompt" }),
+      screen.getByRole("menuitem", { name: "Import skills" }),
     ).toHaveFocus();
   });
 

@@ -147,7 +147,7 @@ describe("Deploy-state — Import local edits where Global copies differ", () =>
     );
 
     const refused = await within(dialog).findByRole("region", {
-      name: "Not imported 1",
+      name: "Not imported · 1",
     });
     expect(
       within(refused).getByText(

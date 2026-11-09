@@ -10,11 +10,6 @@ import { promptReadNotice } from "../harness/import-prompt-copy";
 import { ImportPromptDialog } from "../harness/import-prompt-dialog";
 import { useEditPromptFlow } from "../harness/use-edit-prompt-flow";
 import {
-  hiddenStagedCount,
-  setStagedMany,
-  toggleStaged,
-} from "../inventory/bulk-selection";
-import {
   type CloneReading,
   deleteItem,
   inClone,
@@ -28,6 +23,11 @@ import {
   RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
+import {
+  hiddenStagedCount,
+  setStagedMany,
+  toggleStaged,
+} from "../ui/bulk-selection";
 import type { ActionKey } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import {

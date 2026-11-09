@@ -14,6 +14,7 @@ import { DiscardDialog } from "./discard-dialog";
 import { ImportDialog } from "./import-dialog";
 import { importNotice } from "./import-notice-copy";
 import { ImportPromptDialog } from "./import-prompt-dialog";
+import { ImportPromptsDialog } from "./import-prompts-dialog";
 import type { ImportCheckLoad } from "./import-view-model";
 import {
   deletionCheckNotice,
@@ -34,6 +35,7 @@ import {
 import type { useHarnessPresses } from "./use-harness-presses";
 import type { useImportFlow } from "./use-import-flow";
 import type { ImportPromptFlow } from "./use-import-prompt-flow";
+import type { ImportPromptsFlow } from "./use-import-prompts-flow";
 import { WithdrawDialogHost } from "./withdraw-dialog-host";
 
 // Frozen when the press was made: a later read moves the rows underneath, it
@@ -82,6 +84,7 @@ export type HarnessDialogsProps = {
   origin: string;
   importFlow: ReturnType<typeof useImportFlow>;
   promptImportFlow: ImportPromptFlow;
+  promptsImportFlow: ImportPromptsFlow;
   editPromptFlow: EditPromptFlow;
   deletionRow: HarnessStageRow | null;
   deletion: Presses["deletionWrite"];
@@ -131,6 +134,9 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           outcome={props.importFlow.outcome}
           category={props.importFlow.category.field}
         />
+      ) : null}
+      {props.promptsImportFlow.open ? (
+        <ImportPromptsDialog {...props.promptsImportFlow} />
       ) : null}
       {props.promptImportFlow.open ? (
         <ImportPromptDialog {...props.promptImportFlow} />

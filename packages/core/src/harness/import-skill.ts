@@ -136,17 +136,59 @@ export class ImportSkill {
   }
 
   async execute(input: ImportSkillInput): Promise<ImportSkillResult> {
+    return await this.land(input, "single");
+  }
+
+  /** As `execute`, but refuses a folder that would replace a held skill. */
+  async add(input: ImportSkillInput): Promise<ImportSkillResult> {
+    return await this.land(input, "add");
+  }
+
+  /** As `execute`, but also replaces a skill of any origin the Harness holds. */
+  async replace(input: ImportSkillInput): Promise<ImportSkillResult> {
+    return await this.land(input, "replace");
+  }
+
+  /** What `replace` would do: the name it lands under, whether it replaces, and why not. */
+  async judgeReplace(input: ImportSkillInput): Promise<
+    | {
+        ok: true;
+        verdict: {
+          name: string;
+          replaces: boolean;
+          refusal: ImportSkillError | null;
+        };
+      }
+    | { ok: false; error: "not-configured" }
+  > {
+    const root = await this.deps.resolveRoot();
+    if (root === undefined) {
+      return { ok: false, error: "not-configured" };
+    }
+    const { check, source } = await this.inspect(root, input);
+    return {
+      ok: true,
+      verdict: {
+        name: check.name,
+        replaces: replacesHeld(check),
+        refusal: await this.blocker(root, check, source, "replace"),
+      },
+    };
+  }
+
+  private async land(
+    input: ImportSkillInput,
+    policy: LandPolicy,
+  ): Promise<ImportSkillResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
     // Judged again: never trust the check the browser saw.
     const { check, source } = await this.inspect(root, input);
-    if (check.sourceBlocker !== null) {
-      return { ok: false, error: check.sourceBlocker };
-    }
-    if (check.nameBlocker !== null) {
-      return { ok: false, error: check.nameBlocker };
+    const blocker = await this.blocker(root, check, source, policy);
+    if (blocker !== null) {
+      return { ok: false, error: blocker };
     }
     if (source === null) {
       return { ok: false, error: "source-unreadable" };
@@ -161,8 +203,10 @@ export class ImportSkill {
       source,
       destinationParent,
       name: check.name,
-      // Only where provenance proved it is the harness's own skill (#732).
-      replaceExisting: check.mode === "update",
+      // A single import replaces only where provenance proved it is the
+      // harness's own skill (#732).
+      replaceExisting:
+        policy === "replace" ? replacesHeld(check) : check.mode === "update",
       finalize: (payload) => this.stampName(payload, check.name),
     });
     if (!copied.ok) {
@@ -175,6 +219,27 @@ export class ImportSkill {
       name: check.name,
       skipped: copied.skipped,
     };
+  }
+
+  // A replaced skill of another origin passes the guards an update passes.
+  private async blocker(
+    root: string,
+    check: ImportCheck,
+    source: string | null,
+    policy: LandPolicy,
+  ): Promise<ImportSkillError | null> {
+    if (policy === "add") {
+      return addBlocker(check);
+    }
+    if (check.sourceBlocker !== null) {
+      return check.sourceBlocker;
+    }
+    if (policy === "replace" && check.nameBlocker === "name-taken") {
+      return source === null
+        ? "source-unreadable"
+        : await this.judgeUpdate(root, source, check.name);
+    }
+    return check.nameBlocker;
   }
 
   // Null where a symlinked `.apm` resolves outside the harness.
@@ -433,6 +498,21 @@ export class ImportSkill {
     }
   }
 }
+
+// Why a folder cannot be added as a new skill; an update counts as a taken name.
+const addBlocker = (
+  check: ImportCheck,
+): ImportSourceBlocker | ImportNameBlocker | null =>
+  check.mode === "update"
+    ? "name-taken"
+    : (check.sourceBlocker ?? check.nameBlocker);
+
+// `single` replaces only an own deployed copy, `add` nothing, `replace` any held skill.
+type LandPolicy = "single" | "add" | "replace";
+
+// An own deployed copy holds its name by definition.
+const replacesHeld = (check: ImportCheck): boolean =>
+  check.mode === "update" || check.nameBlocker === "name-taken";
 
 type CopyRequest = Pick<
   CopySkillFolderInput,

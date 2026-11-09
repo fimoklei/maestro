@@ -10,7 +10,9 @@ import type {
   HarnessReviewRead,
   NewReviewRequest,
   RequestedReviewer,
+  ReviewCreateOutcome,
   ReviewDecision,
+  ReviewFailure,
   ReviewRequest,
   ReviewWriteOutcome,
   ViewerRead,
@@ -65,6 +67,21 @@ const STATES = {
 
 // Becomes a pressable link, so it is bounded to the only host queried.
 const urlSchema = z.string().regex(/^https:\/\/github\.com\/[^\s"'<>]+$/);
+
+// A new request's page; the number crosses, read from the URL itself.
+const createdUrlSchema = z
+  .string()
+  .regex(
+    /^https:\/\/github\.com\/[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+\/pull\/[1-9][0-9]*$/,
+  )
+  .transform((url) => {
+    const [, , , owner, repo, , number] = url.split("/");
+    return { url, ownerRepo: `${owner}/${repo}`, number: Number(number) };
+  });
+
+// GitHub answers with its own spelling of the owner and repository.
+const sameRepository = (ownerRepo: string, origin: GitOrigin): boolean =>
+  ownerRepo.toLowerCase() === origin.ownerRepo.toLowerCase();
 
 const commitSchema = z.string().regex(/^[0-9a-f]{40}$/);
 
@@ -208,8 +225,8 @@ export class GhCliAdapter implements HarnessReviewPort {
   async createRequest(
     origin: GitOrigin,
     request: NewReviewRequest,
-  ): Promise<ReviewWriteOutcome> {
-    return await this.write(origin, [
+  ): Promise<ReviewCreateOutcome> {
+    const written = await this.invoke(origin, [
       "pr",
       "create",
       "--repo",
@@ -223,6 +240,15 @@ export class GhCliAdapter implements HarnessReviewPort {
       "--body",
       request.body,
     ]);
+    if (!written.ok) {
+      return written;
+    }
+    // gh prints the new request's URL and nothing else on stdout.
+    const created = createdUrlSchema.safeParse(written.stdout.trim());
+    if (!created.success || !sameRepository(created.data.ownerRepo, origin)) {
+      return { ok: false, error: "failed" };
+    }
+    return { ok: true, number: created.data.number, url: created.data.url };
   }
 
   async reopenRequest(
@@ -269,19 +295,28 @@ export class GhCliAdapter implements HarnessReviewPort {
     ]);
   }
 
+  // Its stdout is never read.
   private async write(
     origin: GitOrigin,
     args: string[],
   ): Promise<ReviewWriteOutcome> {
+    const written = await this.invoke(origin, args);
+    return written.ok ? { ok: true } : written;
+  }
+
+  private async invoke(
+    origin: GitOrigin,
+    args: string[],
+  ): Promise<{ ok: true; stdout: string } | ReviewFailure> {
     if (origin.host !== "github.com") {
       return { ok: false, error: "unavailable" };
     }
     try {
-      await this.run("gh", args, {
+      const { stdout } = await this.run("gh", args, {
         env: { ...process.env, ...NON_INTERACTIVE },
         timeout: GH_TIMEOUT_MS,
       });
-      return { ok: true };
+      return { ok: true, stdout };
     } catch (error) {
       return {
         ok: false,

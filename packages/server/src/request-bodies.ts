@@ -1,6 +1,11 @@
 // Every POST body the server accepts, and the request-shape refusals for a wrong one.
 
-import { HARNESS_PRIMITIVE_TYPES } from "@maestro/core";
+import {
+  type BatchRequest,
+  HARNESS_PRIMITIVE_TYPES,
+  type ImportSkillsInput,
+  type PromptImportDraft,
+} from "@maestro/core";
 import {
   type PromptFields,
   type PromptFile,
@@ -31,6 +36,21 @@ export const importBodySchema = z.object({
   name: z.string().optional(),
 });
 
+export const importSkillsCheckBodySchema = z.object({ source: z.string() });
+
+// An entry names a folder directly inside `source`: never a path.
+const folderEntry = z
+  .string()
+  .min(1)
+  .refine((entry) => !/[/\\\0]/.test(entry) && entry !== "." && entry !== "..");
+
+export const importSkillsBodySchema = z.object({
+  source: z.string(),
+  entries: z
+    .array(z.object({ entry: folderEntry, replace: z.boolean() }))
+    .min(1),
+}) satisfies z.ZodType<ImportSkillsInput>;
+
 // The edge applies the prompt field rules; core applies them again.
 const fieldsHold = (fields: PromptFields) =>
   promptFieldProblems(fields).length === 0;
@@ -46,6 +66,22 @@ const promptFileSchema = z.object({
 export const importPromptBodySchema = promptFileSchema
   .extend({ name: z.string(), frontmatter: z.string() })
   .refine(fieldsHold);
+
+// Strings plus a replace flag: core judges each file's fields, and a broken one is data.
+export const importPromptsBodySchema = z.object({
+  prompts: z
+    .array(
+      z.object({
+        name: z.string(),
+        frontmatter: z.string(),
+        description: z.string(),
+        text: z.string(),
+        example: z.string(),
+        replace: z.boolean(),
+      }),
+    )
+    .min(1),
+}) satisfies z.ZodType<{ prompts: PromptImportDraft[] }>;
 
 export const promptCheckBodySchema = z.object({ name: z.string() });
 
@@ -193,6 +229,19 @@ const primitiveRefShape = {
 
 export const primitiveRefBodySchema = z.object(primitiveRefShape);
 
+// Each item proposed in order; core re-reads every one before its push. An
+// item with a seenRemoteTree is a deletion, confirmed against that tree (#580).
+export const proposeBatchBodySchema = z.object({
+  items: z
+    .array(
+      z.object({
+        ...primitiveRefShape,
+        seenRemoteTree: z.string().optional(),
+      }),
+    )
+    .min(1),
+}) satisfies z.ZodType<{ items: BatchRequest[] }>;
+
 // The number is a claim, never an authorisation: it is rechecked against a fresh read (#827).
 export const proposalBodySchema = z.object({
   ...primitiveRefShape,
@@ -249,6 +298,13 @@ export const PROMOTE_BODY: RequestShape = {
     "Nothing was proposed. Reload the page, then propose the change again.",
   detail:
     'The request carries a type and a name: { type: "skill" | "prompt", name: string }.',
+};
+
+export const PROPOSE_BATCH_BODY: RequestShape = {
+  message:
+    "Nothing was proposed. Reload the page, then propose the changes again.",
+  detail:
+    'The request carries a non-empty items array, each item a type and a name, and a seenRemoteTree for a deletion: { items: { type: "skill" | "prompt", name: string, seenRemoteTree?: string }[] }.',
 };
 
 export const PROPOSAL_CREATE_BODY: RequestShape = {
@@ -364,11 +420,30 @@ export const IMPORT_BODY: RequestShape = {
     "The request carries a source folder and an optional name: { source: string, name?: string }.",
 };
 
+export const IMPORT_SKILLS_CHECK_BODY: RequestShape = {
+  message: "Nothing was read. Reload the page, then choose the folder again.",
+  detail: "The request carries a folder: { source: string }.",
+};
+
+export const IMPORT_SKILLS_BODY: RequestShape = {
+  message:
+    "Nothing was imported. Reload the page, then import the skills again.",
+  detail:
+    "The request carries a folder and the folders directly inside it to import: { source: string, entries: { entry: string, replace: boolean }[] }, at least one entry.",
+};
+
 export const IMPORT_PROMPT_BODY: RequestShape = {
   message:
     "Nothing was imported. Reload the page, then import the prompt again.",
   detail:
     "The page must send these strings: { name, frontmatter, description, text, example }.",
+};
+
+export const IMPORT_PROMPTS_BODY: RequestShape = {
+  message:
+    "Nothing was imported. Reload the page, then import the prompts again.",
+  detail:
+    "The page must send at least one prompt: { prompts: { name, frontmatter, description, text, example, replace }[] }, with replace a boolean.",
 };
 
 export const PROMPT_CHECK_BODY: RequestShape = {

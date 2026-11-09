@@ -2,6 +2,10 @@
 // that reaches the remote and replaces it.
 
 import type {
+  BatchItemOutcome,
+  BatchLine,
+  BatchReport,
+  BatchRequest,
   HarnessChange,
   HarnessPrimitiveType,
   HarnessState,
@@ -9,16 +13,27 @@ import type {
   ImportMode,
   ImportPromptCheck,
   ImportPromptSuccess,
+  ImportPromptsAnswer,
+  ImportSkillsInput,
   PrimitiveDeletionCheck,
   PrimitiveRef,
   PromptEdit,
+  PromptImportDraft,
   ReleaseBlock,
   ReleasePlan,
   SemverStep,
+  SkillFolder,
+  SkillFolderScan,
 } from "@maestro/core";
 import type { PromptDraft, PromptFile } from "@maestro/core/prompt-file";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { HttpError, requestJson } from "../api/http";
+import {
+  queryOptions,
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { HttpError, requestJson, requestJsonLines } from "../api/http";
 import {
   fetchInventoryPrimitives,
   INVENTORY_KEY,
@@ -243,19 +258,59 @@ export function useImportSkill() {
   });
 }
 
-// Asked once the name is left, not per keystroke; null asks nothing.
-export function useImportPromptCheck(name: string | null) {
+const skillFolderScanQuery = (source: string | null) =>
+  queryOptions({
+    queryKey: ["harness", "import-skills-check", source] as const,
+    queryFn: () =>
+      requestJson<SkillFolderScan>("/api/harness/import/skills/check", {
+        method: "POST",
+        body: JSON.stringify({ source }),
+      }),
+    // The disk is the author's to change while the dialog is open.
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+/** The skill folders inside one chosen folder, each with its verdict; null asks nothing. */
+export function useSkillFolderScan(source: string | null) {
   return useQuery({
+    ...skillFolderScanQuery(source),
+    enabled: source !== null,
+  });
+}
+
+// Invalidated whatever the answer: a partial run changed the Harness too.
+export function useImportSkills() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (request: ImportSkillsInput) =>
+      requestJson<{ outcomes: SkillFolder[] }>("/api/harness/import/skills", {
+        method: "POST",
+        body: JSON.stringify(request),
+      }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+  });
+}
+
+// Shared by the single import's name check and the batch's per-name checks.
+const importPromptCheckQuery = (name: string | null) =>
+  queryOptions({
     queryKey: ["harness", "prompt-check", name] as const,
     queryFn: () =>
       requestJson<ImportPromptCheck>("/api/harness/prompt/check", {
         method: "POST",
         body: JSON.stringify({ name }),
       }),
-    enabled: name !== null,
     // The disk is the author's to change while the dialog is open.
     staleTime: 0,
     gcTime: 0,
+  });
+
+// Asked once the name is left, not per keystroke; null asks nothing.
+export function useImportPromptCheck(name: string | null) {
+  return useQuery({
+    ...importPromptCheckQuery(name),
+    enabled: name !== null,
   });
 }
 
@@ -269,6 +324,27 @@ export function useImportPrompt() {
         body: JSON.stringify(request),
       }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
+  });
+}
+
+/** Each chosen name's check, as the single import's name check reads it. */
+export function useImportPromptChecks(names: readonly string[]) {
+  return useQueries({
+    queries: names.map((name) => importPromptCheckQuery(name)),
+  });
+}
+
+// One call for the batch; the read places the rows it wrote. Invalidated
+// whatever the answer: a broken answer may follow a partial write.
+export function useImportPrompts() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (prompts: PromptImportDraft[]) =>
+      requestJson<ImportPromptsAnswer>("/api/harness/prompts/import", {
+        method: "POST",
+        body: JSON.stringify({ prompts }),
+      }),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
   });
 }
 
@@ -313,6 +389,34 @@ export function usePromotePrimitive() {
         body: JSON.stringify(request),
       }),
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
+    },
+  });
+}
+
+/** The stream broke off before its report: which items landed is unknown. */
+export class BatchReportMissing extends Error {}
+
+// One request for the whole batch. Each item's outcome reaches `onItem` as it
+// finishes; the report closes the stream.
+export function useProposeBatch(onItem: (outcome: BatchItemOutcome) => void) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (items: BatchRequest[]): Promise<BatchReport> => {
+      const ended: { report?: BatchReport } = {};
+      await requestJsonLines<BatchLine>(
+        "/api/harness/promote/batch",
+        { method: "POST", body: JSON.stringify({ items }) },
+        (line) => {
+          if ("report" in line) ended.report = line.report;
+          else onItem(line.item);
+        },
+      );
+      if (ended.report === undefined) throw new BatchReportMissing();
+      return ended.report;
+    },
+    // A batch that broke off may still have pushed some items.
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: HARNESS_KEY });
     },
   });

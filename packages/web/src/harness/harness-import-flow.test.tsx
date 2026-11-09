@@ -300,13 +300,13 @@ describe("Harness import flow", () => {
 
     const field = await screen.findByLabelText("Name");
     expect(field).toHaveAccessibleDescription(
-      /already holds a skill under it/i,
+      /already contains a skill under it/i,
     );
     await user.click(dialogImport());
 
     expect(imports).toEqual([]);
     expect(field).toHaveAccessibleDescription(
-      /already holds a skill under it/i,
+      /already contains a skill under it/i,
     );
   });
 

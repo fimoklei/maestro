@@ -81,4 +81,29 @@ export const Grouped: Story = {
   },
 };
 
+// Only one group's rows carry a box; its header picks them, and a blocked row
+// keeps an unticked box whose tooltip says why.
+export const GroupSelection: Story = {
+  args: {
+    groups: {
+      key: (row: Row) => (row.release === "v1.4.0" ? "Latest" : "Older"),
+      order: ["Latest", "Older"],
+      collapsed: new Set(),
+      onToggle: () => {},
+    },
+    selection: {
+      label: "Select",
+      rowLabel: (row: Row) => `Select ${row.name}`,
+      selected: new Set(["tdd"]),
+      onToggle: () => {},
+      onSetSelected: () => {},
+      selectable: (row: Row) => row.release === "v1.4.0",
+      blocked: (row: Row) =>
+        row.name === "diagnose" ? "Another contributor has it open." : null,
+      groupLabel: (key: string) =>
+        key === "Latest" ? "Select all under Latest" : null,
+    },
+  },
+};
+
 export const Loading: Story = { args: { loading: true, skeletonRows: 6 } };

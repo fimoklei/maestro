@@ -85,7 +85,11 @@ function buildDeletion(
       readViewer: async () => ({ outcome: "read", login: "fimoklei" }),
       createRequest: async (_origin, made) => {
         overrides?.onCreate?.(made);
-        return { ok: true };
+        return {
+          ok: true,
+          number: 52,
+          url: "https://github.com/fimoklei/agent-harness/pull/52",
+        };
       },
       reopenRequest: async () => ({ ok: true }),
       closeRequest: async () => ({ ok: true }),

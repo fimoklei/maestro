@@ -335,7 +335,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     );
 
     const refused = await within(dialog).findByRole("region", {
-      name: "Not imported 1",
+      name: "Not imported · 1",
     });
     expect(
       within(refused).getByText(
@@ -343,12 +343,12 @@ describe("Deploy-state — Import local edits on a repository", () => {
       ),
     ).toBeInTheDocument();
     const imported = within(dialog).getByRole("region", {
-      name: "Imported 1",
+      name: "Imported · 1",
     });
     expect(within(imported).getByText("code-review")).toBeInTheDocument();
     expect(
       within(imported).getByText(
-        "Each is now a Pending proposal on the Harness screen. Select Propose change there.",
+        "The imported items are now Pending proposals. On the Harness screen, check the rows, then select Propose changes.",
       ),
     ).toBeInTheDocument();
     expect(

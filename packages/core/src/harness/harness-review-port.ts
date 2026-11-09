@@ -51,10 +51,17 @@ export type ViewerRead =
   | { outcome: "failed" }
   | { outcome: "unavailable" };
 
+/** A pull request as a link names it. */
+export type PullRequestRef = { number: number; url: string };
+
 // `failed` is GitHub refusing. Nothing GitHub said crosses.
-export type ReviewWriteOutcome =
-  | { ok: true }
-  | { ok: false; error: "unavailable" | "failed" };
+export type ReviewFailure = { ok: false; error: "unavailable" | "failed" };
+
+export type ReviewWriteOutcome = { ok: true } | ReviewFailure;
+
+export type ReviewCreateOutcome =
+  | ({ ok: true } & PullRequestRef)
+  | ReviewFailure;
 
 // `head` is already on the remote: no push happens here.
 export type NewReviewRequest = {
@@ -71,7 +78,7 @@ export interface HarnessReviewPort {
   createRequest(
     origin: GitOrigin,
     request: NewReviewRequest,
-  ): Promise<ReviewWriteOutcome>;
+  ): Promise<ReviewCreateOutcome>;
   reopenRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
   closeRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
   // Sets the title only: a body may hold a teammate's or the Curator's words.

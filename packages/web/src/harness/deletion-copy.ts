@@ -43,8 +43,7 @@ export const DELETION_COPY: Record<HarnessPrimitiveType, DeletionWording> = {
       phrase`${DELETE_LABEL.prompt} removes the file from disk. No other copy of ${named(name)} exists.`,
     proposes: (origin) =>
       phrase`${DELETE_LABEL.prompt} proposes this deletion to ${named(origin)} for review.`,
-    keeps: (name) =>
-      phrase`The Prompts screen keeps ${named(name)} until the next release.`,
+    keeps: (name) => phrase`${named(name)} is kept until the next release.`,
     uncommittedDetail: (origin) =>
       phrase`The prompt file in your clone of ${named(origin)} differs from its last commit.`,
   },

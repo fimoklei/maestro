@@ -1,6 +1,10 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ReleasePlan, UpdatePreview } from "@maestro/core";
+import type {
+  ReleasePlan,
+  SkillFolderScan,
+  UpdatePreview,
+} from "@maestro/core";
 import {
   act,
   fireEvent,
@@ -24,6 +28,9 @@ import {
   PROMPT_TAKEN_NOTICE,
 } from "./harness/import-prompt-copy";
 import { ImportPromptDialog } from "./harness/import-prompt-dialog";
+import { ImportPromptsDialog } from "./harness/import-prompts-dialog";
+import { ImportSkillsDialog } from "./harness/import-skills-dialog";
+import { ProposeBatchDialog } from "./harness/propose-batch-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import {
   type ReleaseWithdrawalCheck,
@@ -323,6 +330,51 @@ const importLocalEditsDialog = (
   />
 );
 
+const SKILL_FOLDERS: SkillFolderScan = {
+  folderBlocker: null,
+  folders: [{ entry: "tdd", name: "tdd", refusal: null, replaces: false }],
+};
+
+const importSkillsDialog = (
+  props: Partial<ComponentProps<typeof ImportSkillsDialog>>,
+) => (
+  <ImportSkillsDialog
+    source={null}
+    sourceText=""
+    sourceError={undefined}
+    onSourceChange={vi.fn()}
+    onSourceCommit={vi.fn()}
+    chooser={NO_CHOOSER}
+    load={{ kind: "idle" }}
+    checked={new Set(["tdd"])}
+    onToggle={vi.fn()}
+    isRunning={false}
+    outcomes={null}
+    failure={null}
+    onClose={vi.fn()}
+    onImport={vi.fn()}
+    {...props}
+  />
+);
+
+// Opened, before any file is chosen.
+const importPromptsDialog = (
+  props: Partial<ComponentProps<typeof ImportPromptsDialog>>,
+) => (
+  <ImportPromptsDialog
+    rows={null}
+    checked={new Set()}
+    running={false}
+    report={null}
+    error={null}
+    chooseFiles={vi.fn()}
+    toggle={vi.fn()}
+    submit={vi.fn()}
+    close={vi.fn()}
+    {...props}
+  />
+);
+
 const registerDialog = (
   path: string,
   { running = false, onClose = vi.fn(), onRun = vi.fn() }: Options = {},
@@ -554,6 +606,37 @@ const ON_DIALOG: Row[] = [
         onConfirm={vi.fn()}
         discarding={running}
         discardError={null}
+      />
+    ),
+    changed: null,
+    emptyForm: null,
+    loading: null,
+    loadFailed: null,
+    notices: [],
+  },
+  {
+    file: "harness/propose-batch-dialog.tsx",
+    heading: "Propose 2 changes",
+    render: ({ running, onClose }) => (
+      <ProposeBatchDialog
+        items={[
+          { type: "skill", name: "tdd", change: "edit", seenRemoteTree: null },
+          {
+            type: "prompt",
+            name: "pr-review",
+            change: "deletion",
+            seenRemoteTree: "9f2c1b7a3d4e5f60718293a4b5c6d7e8f9012345",
+          },
+        ]}
+        origin="fimoklei/agent-harness"
+        // A deletion asks first; once running, the confirmation is past.
+        confirming={!running}
+        outcomes={[]}
+        running={running}
+        report={null}
+        failure={null}
+        onConfirm={() => {}}
+        onClose={onClose}
       />
     ),
     changed: null,
@@ -993,6 +1076,69 @@ const ON_DIALOG: Row[] = [
       render: () => importLocalEditsDialog({ skills: null }),
     },
     loadFailed: () => importLocalEditsDialog({ skills: null, failure: FAILED }),
+    notices: [],
+  },
+  {
+    file: "harness/import-skills-dialog.tsx",
+    heading: "Import skills",
+    render: ({ running, onClose }) =>
+      importSkillsDialog({
+        sourceText: "/home/me/.claude/skills",
+        load: { kind: "ready", scan: SKILL_FOLDERS },
+        isRunning: running,
+        onClose,
+      }),
+    changed: async (onClose) => {
+      render(
+        importSkillsDialog({ sourceText: "/home/me/.claude/skills", onClose }),
+      );
+    },
+    emptyForm: {
+      submit: "Import skills",
+      render: (onRun) => importSkillsDialog({ onImport: onRun }),
+    },
+    // The scan checks the field, as Import skill's check does: its failure
+    // stands beside Folder path and the press asks again.
+    loading: {
+      line: "Reading the folder…",
+      render: () =>
+        importSkillsDialog({
+          sourceText: "/home/me/.claude/skills",
+          load: { kind: "loading" },
+        }),
+    },
+    loadFailed: null,
+    notices: [
+      {
+        label: "No skill folders",
+        render: () =>
+          importSkillsDialog({
+            sourceText: "/home/me/empty",
+            load: { kind: "ready", scan: { folderBlocker: null, folders: [] } },
+          }),
+      },
+    ],
+  },
+  {
+    file: "harness/import-prompts-dialog.tsx",
+    heading: "Import prompts",
+    render: ({ running, onClose }) =>
+      importPromptsDialog({ running, close: onClose }),
+    // Chosen files are the dialog's input: a click outside keeps them.
+    changed: async (onClose) => {
+      render(
+        importPromptsDialog({
+          rows: [
+            { key: "0", label: "release-notes", refusal: null, held: false },
+          ],
+          checked: new Set(["0"]),
+          close: onClose,
+        }),
+      );
+    },
+    emptyForm: null,
+    loading: null,
+    loadFailed: null,
     notices: [],
   },
 ];

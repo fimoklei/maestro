@@ -36,7 +36,7 @@ Never take design values (colour, size, spacing) from a flow screen; build from 
 **Reuse.** Before building an element, look in `packages/web/src/ui/` and
 its stories; build from the module that fits. Done when every element in the
 change comes from `ui/`, or the handoff names the new one and why no existing
-module fits. When none fits, measure what Vercel, Linear and Circle do; add
+module fits. When none fits, measure what Vercel and Linear do; add
 the new pattern to this section before building it.
 
 **Meaning and emphasis.**
@@ -153,6 +153,9 @@ Pick the form from this table. Add no other form, and no banner.
   release, Publish release, Restore and Discard change; confirm each with a
   danger button. Propose change, Deploy and Update run without one. A dialog that collects input is a
   form.
+- Treat proposing a deletion as Delete: confirm it, alone or in a batch. A
+  batch without a deletion runs at once. Open a batch confirmation at 640px,
+  since its Report follows in the same dialog.
 - Build every dialog on `Dialog`. Use two dialog widths, 480 and 640,
   top-aligned at 96px. Give it a 48px header with the title and a close
   control, and a footer with the leave control leading and the action

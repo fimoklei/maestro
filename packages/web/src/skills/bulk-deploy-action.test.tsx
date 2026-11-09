@@ -170,7 +170,7 @@ describe("BulkDeployAction", () => {
       within(dialog)
         .getAllByRole("heading", { level: 4 })
         .map((group) => group.textContent),
-    ).toEqual(["Already up to date1", "✓Deployed2"]);
+    ).toEqual(["Already up to date · 1", "✓Deployed · 2"]);
     const rows = within(dialog)
       .getAllByRole("listitem")
       .map((row) => row.textContent);
@@ -371,7 +371,7 @@ describe("BulkDeployAction", () => {
     );
 
     const deployed = await within(dialog).findByRole("region", {
-      name: "Deployed 2",
+      name: "Deployed · 2",
     });
     expect(within(deployed).getByText("review")).toBeVisible();
     expect(
@@ -958,10 +958,10 @@ describe("BulkDeployAction", () => {
     ).toHaveTextContent("Deployed 2 of 5 skills to Global");
     const groups = within(dialog).getAllByRole("heading", { level: 4 });
     expect(groups.map((group) => group.textContent)).toEqual([
-      "✕Failed2",
-      "⚠Attention1",
-      "Already up to date1",
-      "✓Deployed1",
+      "✕Failed · 2",
+      "⚠Attention · 1",
+      "Already up to date · 1",
+      "✓Deployed · 1",
     ]);
     expect(within(dialog).getByText("tdd, caveman")).toBeVisible();
   });
