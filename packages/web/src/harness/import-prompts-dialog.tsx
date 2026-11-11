@@ -41,7 +41,7 @@ export function ImportPromptsDialog({
   toggle,
   submit,
   close,
-}: Omit<ImportPromptsFlow, "open" | "start">) {
+}: ImportPromptsFlow) {
   const labelId = useId();
   const hintId = useId();
   const fileInput = useRef<HTMLInputElement>(null);

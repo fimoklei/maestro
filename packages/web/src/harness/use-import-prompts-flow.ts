@@ -38,8 +38,8 @@ async function readChosen(file: File, index: number): Promise<ChosenPrompt> {
 export type ImportPromptsFlow = ReturnType<typeof useImportPromptsFlow>;
 
 // Import prompts' UI-state: the chosen files, which are checked, and the run.
-export function useImportPromptsFlow() {
-  const [open, setOpen] = useState(false);
+// It lives only while the dialog stands, so closing forgets it.
+export function useImportPromptsFlow(onClose: () => void) {
   const [chosen, setChosen] = useState<readonly ChosenPrompt[] | null>(null);
   // A new file starts checked and a held one unchecked, so each set holds
   // what the reader changed.
@@ -89,22 +89,12 @@ export function useImportPromptsFlow() {
     return isChecked(row) && draft ? [{ ...draft, replace: row.held }] : [];
   });
 
-  const close = () => {
-    setOpen(false);
-    setChosen(null);
-    setUnchecked(new Set());
-    setReplacing(new Set());
-    importPrompts.reset();
-  };
-
   return {
-    open,
     rows: chosen === null ? null : rows,
     checked: new Set(rows.filter(isChecked).map((row) => row.key)),
     running: importPrompts.isPending,
     report: importPrompts.data?.outcomes ?? null,
     error: importPrompts.error,
-    start: () => setOpen(true),
     // A new pick replaces the list the last one gave.
     chooseFiles: async (files: readonly File[]) => {
       const read = await Promise.all(files.map(readChosen));
@@ -122,6 +112,6 @@ export function useImportPromptsFlow() {
     submit: () => {
       if (toSend.length > 0) importPrompts.mutate(toSend);
     },
-    close,
+    close: onClose,
   };
 }

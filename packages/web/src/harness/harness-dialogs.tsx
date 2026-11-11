@@ -10,7 +10,6 @@ import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { DiscardDialog } from "./discard-dialog";
 import { ImportPromptDialog } from "./import-prompt-dialog";
-import { ImportPromptsDialog } from "./import-prompts-dialog";
 import {
   deletionCheckNotice,
   type LocalDeletionContext,
@@ -28,7 +27,6 @@ import {
 } from "./use-harness";
 import type { useHarnessPresses } from "./use-harness-presses";
 import type { ImportPromptFlow } from "./use-import-prompt-flow";
-import type { ImportPromptsFlow } from "./use-import-prompts-flow";
 import { WithdrawDialogHost } from "./withdraw-dialog-host";
 
 // Frozen when the press was made: a later read moves the rows underneath, it
@@ -76,7 +74,6 @@ type Presses = ReturnType<typeof useHarnessPresses>;
 export type HarnessDialogsProps = {
   origin: string;
   promptImportFlow: ImportPromptFlow;
-  promptsImportFlow: ImportPromptsFlow;
   editPromptFlow: EditPromptFlow;
   deletionRow: HarnessStageRow | null;
   deletion: Presses["deletionWrite"];
@@ -109,9 +106,6 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
   const mode = deletionMode(deletionRow, props.origin);
   return (
     <>
-      {props.promptsImportFlow.open ? (
-        <ImportPromptsDialog {...props.promptsImportFlow} />
-      ) : null}
       {props.promptImportFlow.open ? (
         <ImportPromptDialog {...props.promptImportFlow} />
       ) : null}
