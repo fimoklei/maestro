@@ -2,36 +2,21 @@ import type { CategoryList } from "@maestro/core";
 import { type ReactNode, useState } from "react";
 import {
   DELETE_CATEGORY,
-  notDeleted,
-  notRenamed,
   RENAME_CATEGORY,
 } from "../categories/categories-copy";
-import {
-  categoryEditFailure,
-  categoryNameError,
-  refusedForName,
-} from "../categories/category-refusals";
-import {
-  type CategoryDeletion,
-  useDeleteCategory,
-  useRenameCategory,
-} from "../categories/use-categories";
-import {
-  useHeldCategoryAdd,
-  useSubmitAfterAdd,
-} from "../categories/use-held-category-add";
-import { named, phrase } from "../ui/phrase";
 import type { RowMenuItem } from "../ui/row-menu";
-import { useWriteAction } from "../ui/use-write-action";
-import { DeleteCategoryDialog } from "./delete-category-dialog";
-import { RenameCategoryDialog } from "./rename-category-dialog";
+import { DeleteCategoryAction } from "./delete-category-action";
+import { RenameCategoryAction } from "./rename-category-action";
 
 type Category = CategoryList["categories"][number];
 
+/** The one edit a row's ⋮ opened, on the category it was opened from. */
+type Editing = { kind: "rename" | "delete"; category: Category };
+
 /**
  * Rename category and Delete category from a row's ⋮ (#1721): the items and
- * the open dialog. A rename stays in view, so its row says it; a delete takes
- * the row away, so a toast does.
+ * the open dialog. Each dialog lives only while it stands, so closing forgets
+ * its fields.
  */
 export function useCategoryEdits({
   list,
@@ -47,124 +32,41 @@ export function useCategoryEdits({
   items: (category: Category) => RowMenuItem[];
   dialog: ReactNode;
 } {
-  const renameMutation = useRenameCategory();
-  const deleteMutation = useDeleteCategory();
-  const [renaming, setRenaming] = useState<Category | null>(null);
-  const [name, setName] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [deleting, setDeleting] = useState<Category | null>(null);
-  const [moveTo, setMoveTo] = useState<string | null>(null);
-
-  const rename = useWriteAction(renameMutation, {
-    report,
-    show: "region",
-    action: "rename",
-    subject: (_list, { to }) => ({
-      name: phrase`${named(to.trim())}`,
-      row: to.trim(),
-    }),
-    failure: (error) =>
-      refusedForName(error) ? null : categoryEditFailure(error, notRenamed),
-  });
-  const remove = useWriteAction(deleteMutation, {
-    report,
-    show: "toast",
-    action: "delete",
-    subject: (_list, deletion: CategoryDeletion) => ({
-      name: phrase`${named(deletion.name)}`,
-      row: null,
-    }),
-    failure: (error) => categoryEditFailure(error, notDeleted),
-  });
-
-  const runRename = () => {
-    if (renaming === null) return;
-    setSubmitted(true);
-    renameMutation.reset();
-    if (categoryNameError(name, list, null, renaming.name) !== undefined) {
-      return;
-    }
-    rename.run(
-      { from: renaming.name, to: name },
-      {
-        onSuccess: (_list, { to }) => {
-          setRenaming(null);
-          onRenamed(to.trim());
-        },
-      },
-    );
-  };
-
-  const moveToAdd = useHeldCategoryAdd(setMoveTo);
-  const runDelete = useSubmitAfterAdd(moveToAdd, () => {
-    if (deleting === null) return;
-    remove.run(
-      { name: deleting.name, moveTo },
-      { onSuccess: () => setDeleting(null) },
-    );
-  });
+  const [editing, setEditing] = useState<Editing | null>(null);
+  const close = () => setEditing(null);
 
   const items = (category: Category): RowMenuItem[] => [
     {
       label: RENAME_CATEGORY,
       movesFocus: true,
-      onSelect: () => {
-        setName(category.name);
-        setSubmitted(false);
-        renameMutation.reset();
-        setRenaming(category);
-      },
+      onSelect: () => setEditing({ kind: "rename", category }),
     },
     {
       label: DELETE_CATEGORY,
       danger: true,
       movesFocus: true,
-      onSelect: () => {
-        setMoveTo(null);
-        moveToAdd.reset();
-        deleteMutation.reset();
-        setDeleting(category);
-      },
+      onSelect: () => setEditing({ kind: "delete", category }),
     },
   ];
 
   const dialog =
-    renaming !== null ? (
-      <RenameCategoryDialog
-        category={renaming}
-        name={name}
-        onNameChange={(next) => {
-          setName(next);
-          renameMutation.reset();
-        }}
-        error={
-          submitted
-            ? categoryNameError(name, list, renameMutation.error, renaming.name)
-            : undefined
-        }
-        failure={rename.failure}
-        busy={rename.phase === "running"}
-        onRename={runRename}
-        onClose={() => {
-          if (rename.phase !== "running") setRenaming(null);
-        }}
+    editing === null ? null : editing.kind === "rename" ? (
+      <RenameCategoryAction
+        key={editing.category.name}
+        category={editing.category}
+        list={list}
+        report={report}
+        onRenamed={onRenamed}
+        onClose={close}
       />
-    ) : deleting !== null ? (
-      <DeleteCategoryDialog
-        category={deleting}
-        moveTo={moveTo}
-        onMoveToChange={setMoveTo}
-        moveToAdd={moveToAdd}
-        failure={remove.failure}
-        busy={remove.phase === "running" || runDelete.waiting}
-        onDelete={runDelete.submit}
-        onClose={() => {
-          if (remove.phase !== "running" && !runDelete.waiting) {
-            setDeleting(null);
-          }
-        }}
+    ) : (
+      <DeleteCategoryAction
+        key={editing.category.name}
+        category={editing.category}
+        report={report}
+        onClose={close}
       />
-    ) : null;
+    );
 
   return { items, dialog };
 }
