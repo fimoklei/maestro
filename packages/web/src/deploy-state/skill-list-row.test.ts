@@ -43,6 +43,7 @@ describe("skill list rows", () => {
       copy("show-me"),
       copy("ship"),
       copy("commit", "local-edits"),
+      copy("held", "edits-in-harness"),
     ];
     const folders = [
       folder("~/.claude/skills", { primitives: skills }),
@@ -70,12 +71,13 @@ describe("skill list rows", () => {
         row.clean,
       ]),
     ).toEqual([
-      ["tdd", "Up to date", 7, true],
-      ["jobs", "Behind", 6, false],
+      ["tdd", "Up to date", 8, true],
+      ["jobs", "Behind", 7, false],
       ["grill", "Unverified", 3, false],
       ["show-me", "Missing", 1, false],
       ["ship", "Not updated", 2, false],
       ["commit", "Local edits", 0, false],
+      ["held", "Edits in the Harness", 6, false],
     ]);
   });
 
@@ -86,7 +88,7 @@ describe("skill list rows", () => {
     );
 
     expect(row?.mark).toBeNull();
-    expect(row?.rank).toBe(8);
+    expect(row?.rank).toBe(9);
     expect(row?.clean).toBe(false);
   });
 });

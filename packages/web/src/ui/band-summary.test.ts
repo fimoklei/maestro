@@ -7,6 +7,11 @@ const hoursAgo = (hours: number) => NOW.getTime() - hours * 3_600_000;
 const READ: Freshness = { readAt: [hoursAgo(2)], outcome: "fetched" };
 const UNKNOWN: BandCount = { word: "Unknown", count: 1, family: "failed" };
 const BEHIND: BandCount = { word: "Behind", count: 4, family: "attention" };
+const HELD: BandCount = {
+  word: "Edits in the Harness",
+  count: 2,
+  family: "neutral",
+};
 const zero = (count: BandCount): BandCount => ({ ...count, count: 0 });
 
 const summary = (freshness: Freshness, counts: readonly BandCount[] = []) =>
@@ -86,6 +91,19 @@ describe("bandSummary", () => {
       counts: [BEHIND],
       age: "2 h ago",
     });
+  });
+
+  it("reads grey with the counts when only a neutral count is above 0", () => {
+    expect(summary(READ, [zero(BEHIND), HELD])).toEqual({
+      family: "neutral",
+      word: null,
+      counts: [HELD],
+      age: "2 h ago",
+    });
+  });
+
+  it("lets an attention count outrank a neutral one", () => {
+    expect(summary(READ, [HELD, BEHIND]).family).toBe("attention");
   });
 
   it("reads green and the healthy word when every count is 0", () => {

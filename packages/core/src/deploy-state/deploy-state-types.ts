@@ -6,7 +6,7 @@ export type DeployedPrimitive = {
   name: string;
   version: string;
   // Absent means "clean", never "not checked": an unread copy carries no key.
-  copy?: "local-edits" | "unverified";
+  copy?: "local-edits" | "edits-in-harness" | "unverified";
   // The skill's folder in the connected Harness at this release; absent where
   // nothing links (#1181).
   github?: GitHubPage;

@@ -87,7 +87,7 @@ export const skillsColumns = ({
         sortFn: (a, b) =>
           (a.original.status ? readingRank(a.original.status) : unranked) -
           (b.original.status ? readingRank(b.original.status) : unranked),
-        meta: { width: 33 },
+        meta: { width: 41 },
       }),
       card: reachCard,
     },

@@ -12,7 +12,8 @@ import type { StatusFamily } from "./status-family";
 export type BandCount = {
   word: string;
   count: number;
-  family: "failed" | "attention";
+  /** Neutral counts a state that asks nothing of the reader. */
+  family: "failed" | "attention" | "neutral";
   /** Present only where the screen has a status filter. */
   filter?: { pressed: boolean; onToggle: () => void };
   /** Its 0 blocks a band 1 action: it shows at 0 until every count is 0. */
@@ -90,10 +91,12 @@ export function bandSummary(
       age: since,
     };
   }
-  const family = shown.some(
-    (each) => each.count > 0 && each.family === "failed",
-  )
+  const counted = (family: BandCount["family"]) =>
+    shown.some((each) => each.count > 0 && each.family === family);
+  const family = counted("failed")
     ? "failed"
-    : "attention";
+    : counted("attention")
+      ? "attention"
+      : "neutral";
   return { family, word: null, counts: shown, age: since };
 }

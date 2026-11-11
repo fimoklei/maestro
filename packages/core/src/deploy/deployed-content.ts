@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { basename, join } from "node:path";
 import { isRootPackage } from "../deploy-state/root-package-skills";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
+import { harnessSkillSubpath } from "../inventory/harness-layout";
 import {
   type LockfileReading,
   parseLockfile,
@@ -40,6 +41,9 @@ export class DeployedContentAdapter
     location: Pick<DeployedLocation, "treeRoot" | "lockfilePath">;
     // Absent, a copy is only measured against its recorded baseline.
     inventoryGit?: Pick<InventoryGitPort, "readSkillFilesAtTag">;
+    // The Working harness's folder; absent or unresolved, no Local edits copy
+    // reads Edits in the Harness.
+    workingHarness?: () => Promise<string | undefined>;
     // Walks, reads and hashes the copy; an in-memory tree in tests.
     fs: CopyTreeFsPort;
   };
@@ -122,6 +126,15 @@ export class DeployedContentAdapter
       const tree = await releasedTree(tag, name);
       return tree !== null && classifyDeployedDrift(tree, copy) === "clean";
     };
+    const working = new Map<string, Promise<DeployedFileHashes | null>>();
+    const workingTree = (name: string) => {
+      let tree = working.get(name);
+      if (tree === undefined) {
+        tree = this.readWorkingSkill(name);
+        working.set(name, tree);
+      }
+      return tree;
+    };
     const { older, latest } = releasesAround(input.release, input.tags);
     const root = this.deps.location.treeRoot(input.target);
     // Null where the copy cannot be read.
@@ -183,8 +196,11 @@ export class DeployedContentAdapter
         if (baseline.kind !== "hashes") return { kind: "unverified" };
         const recorded = stripSubtree(baseline.hashes, subtree);
         if (classifyDeployedDrift(recorded, copy) !== "clean") {
-          return (await holds(latest, name, copy))
-            ? { kind: "at-release" }
+          if (await holds(latest, name, copy)) return { kind: "at-release" };
+          const harness = await workingTree(name);
+          return harness !== null &&
+            classifyDeployedDrift(harness, copy) === "clean"
+            ? { kind: "edits-in-harness" }
             : { kind: "local-edits" };
         }
         // Equal to its record, but the Target release could not be read:
@@ -201,6 +217,53 @@ export class DeployedContentAdapter
         };
       },
     };
+  }
+
+  async harnessHolds(
+    input: Parameters<CopyReadingPort["harnessHolds"]>[0],
+  ): Promise<boolean> {
+    const subtrees = deployTargetSubtrees(input.name);
+    const baseline = this.baseline(input.lockfile, input.name, subtrees);
+    if (baseline.kind !== "hashes") return false;
+    const harness = await this.readWorkingSkill(input.name);
+    if (harness === null) return false;
+    const root = this.deps.location.treeRoot(input.target);
+    const scan = await this.scanSubtrees(root, subtrees, { hash: true }).catch(
+      () => null,
+    );
+    if (scan === null) return false;
+    let held = false;
+    for (const subtree of subtrees) {
+      const deployed = stripSubtree(scan.hashes, subtree);
+      if (
+        Object.keys(deployed).length === 0 ||
+        classifyDeployedDrift(
+          stripSubtree(baseline.hashes, subtree),
+          deployed,
+        ) === "clean"
+      ) {
+        continue;
+      }
+      if (classifyDeployedDrift(harness, deployed) !== "clean") return false;
+      held = true;
+    }
+    return held;
+  }
+
+  // Null where no Harness is connected or its skill folder is empty or unreadable.
+  private async readWorkingSkill(
+    name: string,
+  ): Promise<DeployedFileHashes | null> {
+    const root = await this.deps.workingHarness?.().catch(() => undefined);
+    if (root === undefined) return null;
+    const subtree = harnessSkillSubpath(name);
+    // Any failure leaves the copy Local edits, never unread.
+    const scan = await this.scanSubtrees(root, [subtree], {
+      hash: true,
+    }).catch(() => null);
+    return scan === null || scan.fileCount === 0
+      ? null
+      : stripSubtree(scan.hashes, subtree);
   }
 
   async contentDigest(input: {

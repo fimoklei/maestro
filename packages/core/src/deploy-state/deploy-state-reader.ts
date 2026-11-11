@@ -73,7 +73,8 @@ type GlobalDeployStateResult =
 // Omitting any of these leaves an unknown reading, never an unmeasured claim.
 export type DeployStateExtras = {
   releaseHead?: Pick<ReleaseHeadReader, "read">;
-  content?: Pick<DeployedContentPort, "classify">;
+  content?: Pick<DeployedContentPort, "classify"> &
+    Pick<CopyReadingPort, "harnessHolds">;
   // Without it a per-skill pin gets no reading: attributing one would be a guess.
   harnessOrigin?: () => Promise<GitOrigin | null>;
   operations?: {
@@ -255,7 +256,11 @@ export class DeployStateReader {
           })
           .catch(() => null);
         if (state === "diverged") {
-          primitive.copy = "local-edits";
+          primitive.copy = (await content
+            .harnessHolds({ target, name: primitive.name, lockfile })
+            .catch(() => false))
+            ? "edits-in-harness"
+            : "local-edits";
         } else if (state === "unverifiable") {
           primitive.copy = "unverified";
         }
@@ -421,7 +426,11 @@ export class GlobalDeployStateReader extends DeployStateReader {
         if (reading?.kind !== "missing") {
           written.add(primitive.name);
         }
-        if (reading?.kind === "local-edits" || reading?.kind === "unverified") {
+        if (
+          reading?.kind === "local-edits" ||
+          reading?.kind === "edits-in-harness" ||
+          reading?.kind === "unverified"
+        ) {
           primitive.copy = reading.kind;
         } else if (reading?.kind === "not-updated") {
           notUpdated.push({ name: primitive.name, stillAt: reading.stillAt });
