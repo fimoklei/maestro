@@ -44,6 +44,7 @@ import {
   type StageSection,
   stageSections,
 } from "./harness-view-model";
+import { ImportPromptAction } from "./import-prompt-action";
 import { harnessPromptReadNotice } from "./import-prompt-copy";
 import { ImportPromptsAction } from "./import-prompts-action";
 import { ImportSkillAction } from "./import-skill-action";
@@ -80,7 +81,6 @@ import {
   useReleasePlan,
 } from "./use-harness";
 import { useHarnessPresses } from "./use-harness-presses";
-import { useImportPromptFlow } from "./use-import-prompt-flow";
 
 // Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
 // counts; the dot and Read never drop.
@@ -164,7 +164,7 @@ export function HarnessView({
 
   const [importingSkill, setImportingSkill] = useState(false);
   const [importingSkills, setImportingSkills] = useState(false);
-  const promptImportFlow = useImportPromptFlow(table, open);
+  const [importingPrompt, setImportingPrompt] = useState(false);
   const [importingPrompts, setImportingPrompts] = useState(false);
   const presses = useHarnessPresses(state, table);
   // The edited row's pane opens here; a row the edit removed leaves none.
@@ -370,7 +370,10 @@ export function HarnessView({
                   label: IMPORT_SKILLS,
                   onSelect: () => setImportingSkills(true),
                 },
-                { label: IMPORT_PROMPT, onSelect: promptImportFlow.start },
+                {
+                  label: IMPORT_PROMPT,
+                  onSelect: () => setImportingPrompt(true),
+                },
                 {
                   label: IMPORT_PROMPTS,
                   onSelect: () => setImportingPrompts(true),
@@ -536,6 +539,13 @@ export function HarnessView({
           onClose={() => setImportingSkill(false)}
         />
       ) : null}
+      {state !== undefined && importingPrompt ? (
+        <ImportPromptAction
+          screen={table}
+          onImported={open}
+          onClose={() => setImportingPrompt(false)}
+        />
+      ) : null}
       {state !== undefined && importingPrompts ? (
         <ImportPromptsAction onClose={() => setImportingPrompts(false)} />
       ) : null}
@@ -548,7 +558,6 @@ export function HarnessView({
       {state === undefined ? null : (
         <HarnessDialogs
           origin={state.origin}
-          promptImportFlow={promptImportFlow}
           editPromptFlow={editFlow}
           deletionRow={presses.pendingDeletion}
           deletion={presses.deletionWrite}

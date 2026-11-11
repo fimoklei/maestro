@@ -822,6 +822,28 @@ describe("Harness import prompt flow — Example", () => {
     expect(field(dialog, "Example")).toHaveValue("Review #12.");
   });
 
+  it("opens empty again after Cancel, on Prompt text with no field error", async () => {
+    stubPromptServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    const first = await openImportPrompt(user);
+    await user.click(
+      within(first).getByRole("button", { name: "Import prompt" }),
+    );
+    await user.type(field(first, "Name"), "review-pr");
+    await showPart(user, first, "Example");
+    await user.click(within(first).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const again = await openImportPrompt(user);
+    expect(field(again, "Name")).toHaveValue("");
+    expect(
+      toggleOf(again).getByRole("button", { name: "Prompt text" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(field(again, "Prompt text")).toBeValid();
+  });
+
   it("selects Prompt text on a refused submit, showing its error", async () => {
     const { calls } = stubPromptServer({});
     const user = userEvent.setup();

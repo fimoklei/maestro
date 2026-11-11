@@ -26,7 +26,6 @@ import {
   type useReleasePlan,
 } from "./use-harness";
 import type { useHarnessPresses } from "./use-harness-presses";
-import type { ImportPromptFlow } from "./use-import-prompt-flow";
 import { WithdrawDialogHost } from "./withdraw-dialog-host";
 
 // Frozen when the press was made: a later read moves the rows underneath, it
@@ -73,7 +72,6 @@ type Presses = ReturnType<typeof useHarnessPresses>;
 
 export type HarnessDialogsProps = {
   origin: string;
-  promptImportFlow: ImportPromptFlow;
   editPromptFlow: EditPromptFlow;
   deletionRow: HarnessStageRow | null;
   deletion: Presses["deletionWrite"];
@@ -106,9 +104,6 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
   const mode = deletionMode(deletionRow, props.origin);
   return (
     <>
-      {props.promptImportFlow.open ? (
-        <ImportPromptDialog {...props.promptImportFlow} />
-      ) : null}
       {props.editPromptFlow.open ? (
         <ImportPromptDialog mode="edit" {...props.editPromptFlow} />
       ) : null}
