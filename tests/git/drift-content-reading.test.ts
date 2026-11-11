@@ -114,7 +114,7 @@ describe("the content reading beside apm's Behind", () => {
         }),
       },
       fs: new NodeFileSystem(),
-      location: new DeployedLocation({}),
+      location: new DeployedLocation({}, (path) => path),
       resolveRoot: async () => root,
       git: harnessGit,
       fetchHarness: (harnessRoot) => gate.fetchFresh(harnessRoot),

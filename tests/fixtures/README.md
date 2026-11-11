@@ -145,6 +145,8 @@ which drops comments, not by the raw-text greps the section above is about.
 | `apm.lock.tag-pinned-v0.5.1.yaml` | `apm install <ref>#v0.5.1 -t claude` (per-repo) |
 | `apm.lock.global-two-tool.yaml` | `apm install <ref>#v0.5.1 -g -t claude,codex` |
 | `apm.lock.global-single-tool.yaml` | `apm install <ref>#v0.5.1 -g -t claude` |
+| `apm.lock.global-claude-config-dir-inside-home.yaml` | `CLAUDE_CONFIG_DIR=$HOME/.claude-work apm install github.com/fimoklei/agent-harness/.apm/skills/tdd#v0.6.0 -g -t claude,codex` (apm 0.32.0) |
+| `apm.lock.global-claude-config-dir-outside-home.yaml` | the same with `CLAUDE_CONFIG_DIR` outside `$HOME`; the captured folder is replaced by `/claude-config-dir` |
 | `apm.lock.spike-941-step3-kept-edited.yaml` | step 3 narrow over an edited `delta` copy (per-repo) — the kept file stays owned |
 | `apm.lock.spike-941-step3d-phantom.yaml` | step 3d narrow (per-repo) — `.agents/skills/delta` rows with no file on disk |
 | `apm.lock.spike-941-step4b-fail.yaml` | step 4b narrow with `.claude/skills` read-only (per-repo) — the dir row retained |

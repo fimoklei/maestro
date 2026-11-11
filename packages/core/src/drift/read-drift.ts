@@ -6,8 +6,8 @@ import type { DeployedLocation } from "../deploy/deployed-location";
 import type { GitOrigin } from "../deploy/git-origin";
 import {
   attributeRootPackageFiles,
-  DEPLOY_SKILL_PREFIXES,
   isRootPackage,
+  skillPrefixes,
 } from "../deploy-state/root-package-skills";
 import { RELEASE_TAG_PATTERN } from "../harness/release-tag";
 import type { HarnessSkillTree } from "../harness/released-content";
@@ -109,7 +109,11 @@ export class ReadDrift {
 
     const entries = await this.readLockEntries(target);
     const pins = pinsFrom(entries);
-    const rootPackage = rootPackageFrom(entries, origin);
+    const rootPackage = rootPackageFrom(
+      entries,
+      origin,
+      skillPrefixes(this.deps.location.toolRoots(target)),
+    );
     const treesAt = (tag: string) =>
       this.deps.git
         .readSkillTreesAtTag(root, tag)
@@ -206,6 +210,7 @@ function contentReading(
 function rootPackageFrom(
   entries: readonly LockfileEntry[],
   origin: GitOrigin,
+  prefixes: readonly string[],
 ): { name: string; selection: string[] } | undefined {
   const roots = entries.filter(
     (entry) =>
@@ -221,9 +226,7 @@ function rootPackageFrom(
     name: lastSegment(origin.ownerRepo),
     selection: [
       ...new Set(
-        attributeRootPackageFiles(root, DEPLOY_SKILL_PREFIXES).map(
-          (skill) => skill.name,
-        ),
+        attributeRootPackageFiles(root, prefixes).map((skill) => skill.name),
       ),
     ],
   };

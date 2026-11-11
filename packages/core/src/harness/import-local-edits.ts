@@ -1,10 +1,13 @@
 // Carries a target's Local edits skills back through ImportSkill's update judgement (#1249).
-import { join, relative } from "node:path";
+import { relative, resolve } from "node:path";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import {
   deployTargetSubtrees,
+  type GlobalLayout,
+  REPO_TOOL_ROOTS,
   SUPPORTED_TOOLS,
   type SupportedTool,
+  type ToolRoots,
 } from "../deploy/deploy-tools";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { GlobalDeployStateReader } from "../deploy-state/deploy-state-reader";
@@ -77,6 +80,7 @@ type Reading = {
   target: DeployTarget;
   // What the deployed folders are relative to.
   tree: string;
+  roots: ToolRoots;
   // Skills reading Local edits or Unverified, in Deploy-state's order.
   copies: Map<string, Copy>;
 };
@@ -102,6 +106,8 @@ export class ImportLocalEdits {
     // The global lockfile's folder; the global tree is `home`.
     globalRoot: () => string;
     home: () => string;
+    // Where Global writes; Claude Code's folder follows CLAUDE_CONFIG_DIR.
+    globalLayout: () => GlobalLayout;
     importSkill: Pick<ImportSkill, "check" | "execute">;
     git: Pick<ReleaseHeadGitPort, "readSkillTreesAtTag"> &
       Pick<HarnessGitPort, "readMovementTrees">;
@@ -213,6 +219,7 @@ export class ImportLocalEdits {
     return {
       target: { kind: "repo", repoPath: registered.path },
       tree: registered.path,
+      roots: REPO_TOOL_ROOTS,
       copies,
     };
   }
@@ -254,7 +261,12 @@ export class ImportLocalEdits {
         copies.set(name, { copy, version, tools });
       }
     }
-    return { target: { kind: "global" }, tree: this.deps.home(), copies };
+    return {
+      target: { kind: "global" },
+      tree: this.deps.home(),
+      roots: this.deps.globalLayout().roots,
+      copies,
+    };
   }
 
   private async judge(
@@ -385,11 +397,11 @@ export class ImportLocalEdits {
           lockfile,
         })
         .catch(() => null);
-      const [subtree] = deployTargetSubtrees(name, [tool]);
+      const [subtree] = deployTargetSubtrees(name, reading.roots, [tool]);
       if (subtree === undefined || state === null || state === "not-deployed") {
         continue;
       }
-      const folder = join(reading.tree, subtree);
+      const folder = resolve(reading.tree, subtree);
       present.push(folder);
       if (state === "diverged") {
         edited.push(folder);
@@ -398,12 +410,14 @@ export class ImportLocalEdits {
     return edited.length > 0 ? edited : present;
   }
 
-  // `~/…` under home, else relative to the target: never absolute.
+  // `~/…` under home, else relative to a repo; a Global folder outside home
+  // stays absolute.
   private shown(reading: Reading, folder: string): string {
     const fromHome = relative(this.deps.home(), folder);
-    return fromHome.startsWith("..")
-      ? relative(reading.tree, folder)
-      : `~/${fromHome}`;
+    if (!fromHome.startsWith("..")) return `~/${fromHome}`;
+    return reading.target.kind === "global"
+      ? folder
+      : relative(reading.tree, folder);
   }
 }
 

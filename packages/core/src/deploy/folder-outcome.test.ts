@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import { DeployedContentAdapter } from "./deployed-content";
 import { FolderOutcomeReader } from "./folder-outcome";
+import { DEFAULT_GLOBAL_LAYOUT } from "./global-layout.fake";
 
 const HOME = "/home";
 const LOCKFILE = `${HOME}/.apm/apm.lock.yaml`;
@@ -40,7 +41,11 @@ function written(
     }
   }
   const content = new DeployedContentAdapter({
-    location: { treeRoot: () => HOME, lockfilePath: () => LOCKFILE },
+    location: {
+      treeRoot: () => HOME,
+      lockfilePath: () => LOCKFILE,
+      toolRoots: () => DEFAULT_GLOBAL_LAYOUT.roots,
+    },
     fs: tree,
     inventoryGit: {
       readSkillFilesAtTag: async (tag, name) => {
@@ -54,6 +59,7 @@ function written(
   return new FolderOutcomeReader({
     content,
     releaseTags: async () => TAGS,
+    globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
   });
 }
 

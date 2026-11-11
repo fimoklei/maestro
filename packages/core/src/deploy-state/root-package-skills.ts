@@ -1,6 +1,6 @@
 // Which skills a root package deployed is read from its recorded files, never
 // from `skill_subset` or `skills:`: both keep names the last narrow dropped.
-import { DEPLOY_TOOLS } from "../deploy/deploy-tools";
+import type { ToolRoots } from "../deploy/deploy-tools";
 import { classifyPackageType, type LockfileEntry } from "../lockfile/lockfile";
 
 // `files` are lockfile paths, relative to the target's tree root.
@@ -10,9 +10,9 @@ export type RootPackageSkill = {
   files: string[];
 };
 
-export const DEPLOY_SKILL_PREFIXES = DEPLOY_TOOLS.map(
-  (tool) => tool.skillsDirPrefix,
-);
+/** The folder prefixes a target's lockfile records its skills under. */
+export const skillPrefixes = (roots: ToolRoots): string[] =>
+  Object.values(roots);
 
 export function isRootPackage(entry: LockfileEntry): boolean {
   return classifyPackageType(entry.package_type) === "package";

@@ -44,7 +44,7 @@ export type ApplySelectionDeps = {
   fs: Pick<FileSystemPort, "readFile" | "writeFile" | "isFileEntry">;
   location: Pick<
     DeployedLocation,
-    "lockfilePath" | "manifestPath" | "treeRoot"
+    "lockfilePath" | "manifestPath" | "treeRoot" | "toolRoots"
   >;
   apm: Pick<ApmDriverPort, "deploySkill" | "removeSkill">;
   operations: Pick<TargetOperationStore, "begin" | "clear" | "read">;

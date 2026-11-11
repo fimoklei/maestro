@@ -24,11 +24,12 @@ const ORIGIN_URL = `git@github.com:${HARNESS}.git`;
 const skillManifest = (name: string) =>
   `---\nname: ${name}\ndescription: ${name} skill\n---\n`;
 
-const location = new DeployedLocation({ HOME });
-const treeRoot = (target: DeployTarget) => location.treeRoot(target);
+// Lockfile and manifest never move with CLAUDE_CONFIG_DIR.
+const homeLocation = new DeployedLocation({ HOME }, (path) => path);
 export const lockfilePath = (target: DeployTarget) =>
-  location.lockfilePath(target);
-const manifestPath = (target: DeployTarget) => location.manifestPath(target);
+  homeLocation.lockfilePath(target);
+const manifestPath = (target: DeployTarget) =>
+  homeLocation.manifestPath(target);
 
 // The apm.yml an install writes for a Selection.
 export const consumerManifest = (skills: readonly string[]) => `name: consumer
@@ -81,8 +82,21 @@ export function deployWorld(
     // Released skills; with none, no Harness is connected at all.
     released?: readonly string[];
     detectedTools?: readonly SupportedTool[];
+    // The server's CLAUDE_CONFIG_DIR, which apm follows on Global.
+    claudeConfigDir?: string;
   } = {},
 ) {
+  const env = {
+    HOME,
+    ...(options.claudeConfigDir === undefined
+      ? {}
+      : { CLAUDE_CONFIG_DIR: options.claudeConfigDir }),
+  };
+  const location = new DeployedLocation(env, (path) => path);
+  const treeRoot = (target: DeployTarget) => location.treeRoot(target);
+  // A folder outside HOME is recorded absolute, as apm records it.
+  const onDisk = (target: DeployTarget, file: string) =>
+    file.startsWith("/") ? file : `${treeRoot(target)}/${file}`;
   const disk = new InMemoryCopyTree();
   const installs: Install[] = [];
   const uninstalls: { target: DeployTarget; ref: string }[] = [];
@@ -100,6 +114,7 @@ export function deployWorld(
   };
 
   const copies = (
+    target: DeployTarget,
     skills: readonly string[],
     tools: readonly SupportedTool[] | undefined,
   ) =>
@@ -107,7 +122,9 @@ export function deployWorld(
       state
         .lands(skills, tool)
         .flatMap((skill) =>
-          deployTargetSubtrees(skill, [tool]).map((dir) => `${dir}/SKILL.md`),
+          deployTargetSubtrees(skill, location.toolRoots(target), [tool]).map(
+            (dir) => `${dir}/SKILL.md`,
+          ),
         ),
     );
 
@@ -121,7 +138,7 @@ export function deployWorld(
 
   const lockfile = (target: DeployTarget, release: string, files: string[]) => {
     const hashes = files.flatMap((file) => {
-      const bytes = disk.read(`${treeRoot(target)}/${file}`);
+      const bytes = disk.read(onDisk(target, file));
       return bytes === undefined
         ? []
         : [`    ${file}: sha256:${sha256(bytes)}`];
@@ -161,13 +178,15 @@ export function deployWorld(
       if (state.installRefusal !== null) {
         return state.installRefusal;
       }
-      const root = treeRoot(input.target);
       for (const dir of recorded(input.target)) {
-        disk.remove(`${root}/${dir}`);
+        disk.remove(onDisk(input.target, dir));
       }
-      const files = copies(input.skills ?? [], input.tools);
+      const files = copies(input.target, input.skills ?? [], input.tools);
       for (const file of files) {
-        disk.write(`${root}/${file}`, skillManifest(file.split("/")[2] ?? ""));
+        disk.write(
+          onDisk(input.target, file),
+          skillManifest(file.split("/").at(-2) ?? ""),
+        );
       }
       disk.write(
         lockfilePath(input.target),
@@ -190,8 +209,9 @@ export function deployWorld(
         return { ok: false };
       }
       const name = input.ref.match(/\/skills\/([^/#]+)#/)?.[1] ?? "";
-      for (const dir of deployTargetSubtrees(name)) {
-        disk.remove(`${treeRoot(input.target)}/${dir}`);
+      const roots = location.toolRoots(input.target);
+      for (const dir of deployTargetSubtrees(name, roots)) {
+        disk.remove(onDisk(input.target, dir));
       }
       return { ok: true };
     },
@@ -214,7 +234,7 @@ export function deployWorld(
 
   const app = inMemoryApp({
     env: {
-      HOME,
+      ...env,
       MAESTRO_HOME: "/maestro-home",
       ...(released.length > 0 ? { MAESTRO_INVENTORY_PATH: HARNESS_ROOT } : {}),
     },
@@ -224,8 +244,9 @@ export function deployWorld(
     toolPresence: { detectGlobalTools: async () => [...state.detectedTools] },
     deployedCleanup: {
       removeSkillTargets: async ({ target, name, tools }) => {
-        for (const dir of deployTargetSubtrees(name, tools)) {
-          disk.remove(`${treeRoot(target)}/${dir}`);
+        const roots = location.toolRoots(target);
+        for (const dir of deployTargetSubtrees(name, roots, tools)) {
+          disk.remove(onDisk(target, dir));
         }
       },
     },

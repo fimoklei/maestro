@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_GLOBAL_LAYOUT } from "../deploy/global-layout.fake";
 import { readGlobalTarget } from "./global-target";
 
 type LockfileEntry = Parameters<typeof readGlobalTarget>[0][number];
 
 // Per-skill entries are never probed on disk; a root-package one is (#941).
-const ALL_ON_DISK = { fileExists: async () => true };
+const ALL_ON_DISK = {
+  layout: DEFAULT_GLOBAL_LAYOUT,
+  fileExists: async () => true,
+};
 
 // deployed_files prefixes decide which folder the copy sits in.
 function skillEntry(

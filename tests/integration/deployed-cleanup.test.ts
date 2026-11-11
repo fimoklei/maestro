@@ -27,7 +27,7 @@ describe("DeployedCleanupAdapter — global target", () => {
   const adapter = () => {
     const env = { HOME: home } as NodeJS.ProcessEnv;
     return new DeployedCleanupAdapter({
-      location: new DeployedLocation(env),
+      location: new DeployedLocation(env, (path) => path),
     });
   };
 
@@ -97,5 +97,33 @@ describe("DeployedCleanupAdapter — global target", () => {
     ).rejects.toThrow();
 
     expect(await exists(join(home, ".agents/keep/SKILL.md"))).toBe(true);
+  });
+
+  it("removes Claude Code's copy from a CLAUDE_CONFIG_DIR folder outside HOME (#1796)", async () => {
+    const outside = await mkdtemp(join(tmpdir(), "maestro-claude-config-"));
+    try {
+      await mkdir(join(outside, "skills", "tdd"), { recursive: true });
+      await writeFile(join(outside, "skills", "tdd", "SKILL.md"), "claude\n");
+      await writeDeployed(".claude/skills/tdd/SKILL.md", "old claude\n");
+      const moved = new DeployedCleanupAdapter({
+        location: new DeployedLocation(
+          { HOME: home, CLAUDE_CONFIG_DIR: outside },
+          (path) => path,
+        ),
+      });
+
+      await moved.removeSkillTargets({
+        target,
+        name: "tdd",
+        tools: ["claude"],
+      });
+
+      expect(await exists(join(outside, "skills", "tdd"))).toBe(false);
+      expect(await exists(join(home, ".claude/skills/tdd/SKILL.md"))).toBe(
+        true,
+      );
+    } finally {
+      await rm(outside, { recursive: true, force: true });
+    }
   });
 });

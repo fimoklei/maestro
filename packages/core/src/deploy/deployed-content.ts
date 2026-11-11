@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { basename, join } from "node:path";
+import { basename, resolve } from "node:path";
 import { isRootPackage } from "../deploy-state/root-package-skills";
 import type { CopyTreeFsPort } from "../filesystem/copy-tree-fs";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
@@ -38,7 +38,7 @@ export class DeployedContentAdapter
   implements DeployedContentPort, CopyReadingPort
 {
   private readonly deps: {
-    location: Pick<DeployedLocation, "treeRoot" | "lockfilePath">;
+    location: Pick<DeployedLocation, "treeRoot" | "lockfilePath" | "toolRoots">;
     // Absent, a copy is only measured against its recorded baseline.
     inventoryGit?: Pick<InventoryGitPort, "readSkillFilesAtTag">;
     // The Working harness's folder; absent or unresolved, no Local edits copy
@@ -59,7 +59,7 @@ export class DeployedContentAdapter
     release?: string;
     lockfile: LockfileReading;
   }): Promise<DeployedContentState> {
-    const subtrees = deployTargetSubtrees(input.name, input.tools);
+    const subtrees = this.subtrees(input.target, input.name, input.tools);
     // Baseline first: with no recorded hashes the scan skips hashing (#63).
     const baseline = this.baseline(input.lockfile, input.name, subtrees);
     const root = this.deps.location.treeRoot(input.target);
@@ -139,7 +139,7 @@ export class DeployedContentAdapter
     const root = this.deps.location.treeRoot(input.target);
     // Null where the copy cannot be read.
     const scanCopy = async (name: string, tool: SupportedTool) => {
-      const subtree = deployTargetSubtrees(name, [tool])[0] ?? "";
+      const subtree = this.subtrees(input.target, name, [tool])[0] ?? "";
       try {
         const scan = await this.scanSubtrees(root, [subtree], { hash: true });
         return {
@@ -222,7 +222,7 @@ export class DeployedContentAdapter
   async harnessHolds(
     input: Parameters<CopyReadingPort["harnessHolds"]>[0],
   ): Promise<boolean> {
-    const subtrees = deployTargetSubtrees(input.name);
+    const subtrees = this.subtrees(input.target, input.name);
     const baseline = this.baseline(input.lockfile, input.name, subtrees);
     if (baseline.kind !== "hashes") return false;
     const harness = await this.readWorkingSkill(input.name);
@@ -272,7 +272,7 @@ export class DeployedContentAdapter
     tools?: readonly SupportedTool[];
   }): Promise<string | null> {
     const root = this.deps.location.treeRoot(input.target);
-    const subtrees = deployTargetSubtrees(input.name, input.tools);
+    const subtrees = this.subtrees(input.target, input.name, input.tools);
     const scan = await this.scanSubtrees(root, subtrees, { hash: true }).catch(
       () => null,
     );
@@ -329,14 +329,31 @@ export class DeployedContentAdapter
     tools?: readonly SupportedTool[];
   }): Promise<string | null> {
     const root = this.deps.location.treeRoot(input.target);
-    for (const subtree of deployTargetSubtrees(input.name, input.tools)) {
-      const abs = join(root, subtree);
+    for (const subtree of this.subtrees(
+      input.target,
+      input.name,
+      input.tools,
+    )) {
+      const abs = resolve(root, subtree);
       const facts = await this.deps.fs.describe(abs);
       if (facts?.kind === "symlink") {
         return abs;
       }
     }
     return null;
+  }
+
+  // A Global folder outside HOME is absolute; resolve keeps it whole.
+  private subtrees(
+    target: DeployTarget,
+    name: string,
+    tools?: readonly SupportedTool[],
+  ): string[] {
+    return deployTargetSubtrees(
+      name,
+      this.deps.location.toolRoots(target),
+      tools,
+    );
   }
 
   async readLockfile(target: DeployTarget): Promise<LockfileReading> {
@@ -409,7 +426,7 @@ export class DeployedContentAdapter
     const hashes: DeployedFileHashes = {};
     let fileCount = 0;
     const walk = async (rel: string): Promise<void> => {
-      const abs = join(root, rel);
+      const abs = resolve(root, rel);
       const names = await fs.listNames(abs);
       if (names === null) {
         // Missing reads as empty; present but unlistable is unreadable (#59).
@@ -420,7 +437,7 @@ export class DeployedContentAdapter
       }
       for (const name of names) {
         const childRel = `${rel}/${name}`;
-        const childAbs = join(root, childRel);
+        const childAbs = resolve(root, childRel);
         // describe never follows a link, so a linked dir counts as one file.
         if ((await fs.describe(childAbs))?.kind === "directory") {
           await walk(childRel);

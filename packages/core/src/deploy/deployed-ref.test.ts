@@ -6,7 +6,7 @@ import { DeployedLocation } from "./deployed-location";
 import { DeployedRefAdapter } from "./deployed-ref";
 
 const target = { kind: "repo", repoPath: "/repo" } as const;
-const location = new DeployedLocation({});
+const location = new DeployedLocation({}, (path) => path);
 
 const resolve = (entries: LockfileEntry[], name: string) =>
   new DeployedRefAdapter({

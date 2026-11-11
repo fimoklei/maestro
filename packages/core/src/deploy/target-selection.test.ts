@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { REPO_TOOL_ROOTS } from "./deploy-tools";
 import { readTargetSelection } from "./target-selection";
 
 const origin = { host: "github.com", ownerRepo: "fimoklei/agent-harness" };
@@ -24,6 +25,7 @@ const reader = (lock: string | null, present: string[] = []) => ({
   location: {
     lockfilePath: () => "/repo/apm.lock.yaml",
     treeRoot: () => "/repo",
+    toolRoots: () => REPO_TOOL_ROOTS,
   },
   target: { kind: "repo", repoPath: "/repo" } as const,
   origin,

@@ -369,8 +369,11 @@ const manifest = (name: string, body = "") =>
   `---\nname: ${name}\ndescription: ${name} skill\n---\n${body}`;
 
 // Global follows v0.5.1, deployed through the real bulk route; v0.6.0 changes tdd.
-async function globalPriced() {
-  const w = deployWorld({ released: ["tdd", "grill"] });
+async function globalPriced(claudeConfigDir?: string) {
+  const w = deployWorld({
+    released: ["tdd", "grill"],
+    ...(claudeConfigDir === undefined ? {} : { claudeConfigDir }),
+  });
   w.answers.releasedFiles = "as-installed";
   const grill = manifest("grill");
   w.harness.tags = [
@@ -458,6 +461,35 @@ describe("update HTTP journey on Global", () => {
       [
         { name: "tdd", outcome: "missing" },
         { name: "grill", outcome: "written" },
+      ],
+    ]);
+  });
+
+  it("names a CLAUDE_CONFIG_DIR folder outside HOME in full (#1796)", async () => {
+    const w = await globalPriced("/work/claude");
+
+    const response = await w.update();
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      folders: { folders: { path: string; skills: unknown[] }[] };
+    };
+    expect(
+      body.folders.folders.map((folder) => [folder.path, folder.skills]),
+    ).toStrictEqual([
+      [
+        "/work/claude/skills",
+        [
+          { name: "tdd", outcome: "written" },
+          { name: "grill", outcome: "written" },
+        ],
+      ],
+      [
+        "~/.agents/skills",
+        [
+          { name: "tdd", outcome: "written" },
+          { name: "grill", outcome: "written" },
+        ],
       ],
     ]);
   });

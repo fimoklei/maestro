@@ -36,7 +36,7 @@ const build = (options: {
   const readDrift = new ReadDrift({
     drift: { execute: async () => options.outdated },
     fs: { readFile: async () => options.lock ?? null },
-    location: new DeployedLocation({}),
+    location: new DeployedLocation({}, (path) => path),
     resolveRoot: async () => ("root" in options ? options.root : "/harness"),
     fetchHarness: fetch,
     git: {

@@ -10,6 +10,7 @@ import type {
 import {
   DEPLOY_TOOLS,
   deployTargetSubtrees,
+  REPO_TOOL_ROOTS,
   SUPPORTED_TOOLS,
   type SupportedTool,
 } from "./deploy-tools";
@@ -224,6 +225,7 @@ ${
         lockfilePath: () => lockfilePath,
         manifestPath: () => manifestPath,
         treeRoot: () => treeRoot,
+        toolRoots: () => REPO_TOOL_ROOTS,
       },
       apm,
       operations,
@@ -233,7 +235,11 @@ ${
     files,
     cleanup: {
       removeSkillTargets: async ({ name, tools }) => {
-        for (const subtree of deployTargetSubtrees(name, tools)) {
+        for (const subtree of deployTargetSubtrees(
+          name,
+          REPO_TOOL_ROOTS,
+          tools,
+        )) {
           for (const path of [...files.keys()]) {
             if (path.startsWith(`${treeRoot}/${subtree}/`)) {
               files.delete(path);

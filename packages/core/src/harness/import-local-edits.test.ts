@@ -4,6 +4,7 @@ import {
   inMemoryDeployedContent,
   type ToolCopyState,
 } from "../deploy/deployed-content.fake";
+import { DEFAULT_GLOBAL_LAYOUT } from "../deploy/global-layout.fake";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { GlobalDeployStateReader } from "../deploy-state/deploy-state-reader";
 import { InMemoryHarnessGit } from "./harness-git.fake";
@@ -227,12 +228,15 @@ function target(
         return { ok: true, path, skipped: 0 };
       },
     },
-    deployedTargets: async () => [{ treeRoot: tree, lockfilePath }],
+    deployedTargets: async () => [
+      { treeRoot: tree, lockfilePath, roots: DEFAULT_GLOBAL_LAYOUT.roots },
+    ],
   });
 
   let rootReads = 0;
   const reader = new GlobalDeployStateReader({
     fs,
+    globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
     toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
     treeRoot: () => HOME,
     content,
@@ -251,6 +255,7 @@ function target(
 
   const locks = new InFlightLocks();
   const useCase = new ImportLocalEdits({
+    globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
     registry: {
       resolveRegistered: async (path: string) =>
         overrides.registered === false || path !== REPO

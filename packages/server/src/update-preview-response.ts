@@ -71,7 +71,8 @@ const foldersSchema = z.object({
   release: z.string().regex(RELEASE_TAG_PATTERN),
   folders: z.array(
     z.object({
-      path: z.string().startsWith("~/").max(200),
+      // `~/…` inside home; absolute where CLAUDE_CONFIG_DIR sits outside it.
+      path: z.string().regex(/^~?\//).max(200),
       tool: z.string().max(40),
       detected: z.boolean(),
       skills: z.array(

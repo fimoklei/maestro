@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { DEFAULT_GLOBAL_LAYOUT } from "../deploy/global-layout.fake";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import { DeployedContentAdapter, type SupportedTool } from "../index";
 import { GlobalDeployStateReader } from "./deploy-state-reader";
@@ -60,12 +61,17 @@ function claudeOnlyGlobal(
   }
   return new GlobalDeployStateReader({
     fs: tree.fileSystem(),
+    globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
     toolPresence: {
       detectGlobalTools: async () => options.detected ?? ["claude"],
     },
     treeRoot: () => HOME,
     content: new DeployedContentAdapter({
-      location: { treeRoot: () => HOME, lockfilePath: () => LOCKFILE },
+      location: {
+        treeRoot: () => HOME,
+        lockfilePath: () => LOCKFILE,
+        toolRoots: () => DEFAULT_GLOBAL_LAYOUT.roots,
+      },
       fs: tree,
       inventoryGit: {
         readSkillFilesAtTag: async (tag, name) => released(tag, name),

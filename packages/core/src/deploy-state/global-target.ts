@@ -1,8 +1,8 @@
 // apm writes ONE entry per skill even for a two-tool install, listing both
 // copies in deployed_files, so an entry is attributed per prefix found there.
 import {
-  DEPLOY_TOOLS,
   type GlobalFolder,
+  type GlobalLayout,
   globalFolders,
   type SupportedTool,
 } from "../deploy/deploy-tools";
@@ -54,14 +54,11 @@ export type GlobalTargetState = {
   latestReleaseGitHub?: GitHubPage;
 };
 
-const PREFIX = new Map<SupportedTool, string>(
-  DEPLOY_TOOLS.map((tool) => [tool.apmTarget, tool.skillsDirPrefix]),
-);
-
 export async function readGlobalTarget(
   entries: LockfileEntry[],
   detectedTools: readonly SupportedTool[],
   deps: {
+    layout: GlobalLayout;
     fileExists: (path: string) => Promise<boolean>;
     origin?: GitOrigin | null;
     // The connected Harness's page, read only once an entry could link to it.
@@ -74,9 +71,11 @@ export async function readGlobalTarget(
     release?: string;
   }
 > {
-  const folders: GlobalFolderState[] = globalFolders(detectedTools).map(
-    (folder) => ({ ...folder, primitives: [] }),
-  );
+  const prefixOf = (folder: GlobalFolder) => deps.layout.roots[folder.tool];
+  const folders: GlobalFolderState[] = globalFolders(
+    detectedTools,
+    deps.layout,
+  ).map((folder) => ({ ...folder, primitives: [] }));
   const written = folders.filter((folder) => folder.detected);
   const skipped: SkippedEntry[] = [];
   // Entries no detected tool claims are named by origin, never dropped (#655).
@@ -199,10 +198,6 @@ export function oneSkillList(
     }
   }
   return [...byName.values()];
-}
-
-function prefixOf(folder: GlobalFolder): string {
-  return PREFIX.get(folder.tool) ?? "";
 }
 
 // The trailing slash keeps `.claude` from matching a `.claudex` sibling.

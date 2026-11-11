@@ -1,11 +1,12 @@
 // Copies one external skill folder into the Working harness: no branch, commit or push.
-import { basename, join } from "node:path";
+import { basename, isAbsolute, join, resolve } from "node:path";
+import type { ToolRoots } from "../deploy/deploy-tools";
 import { parseGitOrigin } from "../deploy/git-origin";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import {
   attributeRootPackageFiles,
-  DEPLOY_SKILL_PREFIXES,
   isRootPackage,
+  skillPrefixes,
 } from "../deploy-state/root-package-skills";
 import type {
   CopySkillFolderError,
@@ -86,7 +87,11 @@ export type ImportSkillInput = { source: string; name?: string };
 
 // `deployed_files` are relative to `treeRoot`, which for global installs is
 // HOME, not the lockfile's folder (#667).
-export type DeployedTarget = { treeRoot: string; lockfilePath: string };
+export type DeployedTarget = {
+  treeRoot: string;
+  lockfilePath: string;
+  roots: ToolRoots;
+};
 
 type ImportFs = Pick<
   FileSystemPort,
@@ -397,8 +402,11 @@ export class ImportSkill {
     for (const target of await this.deps.deployedTargets()) {
       for (const entry of await this.readEntries(target.lockfilePath)) {
         for (const file of entry.deployed_files ?? []) {
+          if (!withinTarget(file, target.roots)) {
+            continue;
+          }
           const real = await this.deps.fs
-            .realpath(join(target.treeRoot, file))
+            .realpath(resolve(target.treeRoot, file))
             .catch(() => null);
           if (real !== source) {
             continue;
@@ -406,7 +414,7 @@ export class ImportSkill {
           if (entry.host === undefined || entry.repo_url === undefined) {
             return { kind: "unproven" };
           }
-          const name = await this.ownSkillName(root, entry, file);
+          const name = await this.ownSkillName(root, entry, file, target.roots);
           return name === null ? { kind: "foreign" } : { kind: "own", name };
         }
       }
@@ -419,8 +427,9 @@ export class ImportSkill {
     root: string,
     entry: LockfileEntry,
     file: string,
+    roots: ToolRoots,
   ): Promise<string | null> {
-    const name = recordedSkillName(entry, file);
+    const name = recordedSkillName(entry, file, roots);
     if (name === null || !isValidSkillSlug(name)) {
       return null;
     }
@@ -519,12 +528,27 @@ type CopyRequest = Pick<
   "source" | "destinationParent" | "name" | "replaceExisting" | "finalize"
 >;
 
+// The lockfile is untrusted: an absolute row counts only inside a folder apm
+// records absolute, a Global folder outside HOME.
+function withinTarget(file: string, roots: ToolRoots): boolean {
+  return (
+    !isAbsolute(file) ||
+    Object.values(roots).some(
+      (root) => isAbsolute(root) && file.startsWith(`${root}/`),
+    )
+  );
+}
+
 // A Root package names no one skill: only a deployed skill's directory row does.
-function recordedSkillName(entry: LockfileEntry, file: string): string | null {
+function recordedSkillName(
+  entry: LockfileEntry,
+  file: string,
+  roots: ToolRoots,
+): string | null {
   if (!isRootPackage(entry)) {
     return claudeSkillName(entry);
   }
-  const skill = attributeRootPackageFiles(entry, DEPLOY_SKILL_PREFIXES).find(
+  const skill = attributeRootPackageFiles(entry, skillPrefixes(roots)).find(
     (candidate) => `${candidate.prefix}/skills/${candidate.name}` === file,
   );
   return skill?.name ?? null;

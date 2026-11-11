@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { DEFAULT_GLOBAL_LAYOUT } from "../deploy/global-layout.fake";
 import type { CopySkillFolderResult } from "../filesystem/copy-skill-folder";
 import { InMemoryHarnessGit, type Skills } from "./harness-git.fake";
 import { ImportSkill } from "./import-skill";
@@ -164,7 +165,11 @@ function harness(
         return { ok: true, path, skipped: 0 };
       },
     },
-    deployedTargets: async () => overrides.deployedTargets ?? [],
+    deployedTargets: async () =>
+      (overrides.deployedTargets ?? []).map((target) => ({
+        ...target,
+        roots: DEFAULT_GLOBAL_LAYOUT.roots,
+      })),
   });
 
   return { importSkill, files, directories, copied, fs, git };
@@ -382,6 +387,28 @@ describe("ImportSkill.check", () => {
     ).resolves.toMatchObject({
       check: { mode: "update", name: "code-review", sourceBlocker: null },
     });
+  });
+
+  // Only a Global folder apm moved out of HOME is recorded absolute (#1796).
+  it("takes no provenance from an absolute row outside the target's folders", async () => {
+    const deployed = "/elsewhere/skills/code-review";
+    const { importSkill } = harness({
+      files: {
+        [`${deployed}/SKILL.md`]: MANIFEST,
+        "/home/.apm/apm.lock.yaml": rootPackageLockfile(
+          FROM_THIS_HARNESS,
+          "/elsewhere",
+        ),
+      },
+      directories: [deployed, `${ROOT}/.apm/skills/code-review`],
+      deployedTargets: [
+        { treeRoot: "/home", lockfilePath: "/home/.apm/apm.lock.yaml" },
+      ],
+    });
+
+    await expect(
+      importSkill.check({ source: deployed }),
+    ).resolves.toMatchObject({ check: { mode: "add", sourceBlocker: null } });
   });
 
   it("refuses a copy a Root package from another repository deployed", async () => {
