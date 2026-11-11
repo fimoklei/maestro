@@ -33,6 +33,7 @@ import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
 import { useWriteAction, type WriteResult } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
+import { EditPromptAction } from "./edit-prompt-action";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
 import { HarnessDialogs } from "./harness-dialogs";
 import { type OpenPrimitive, proposalRow } from "./harness-route";
@@ -72,7 +73,7 @@ import {
   statusReading,
 } from "./stage-copy";
 import { StageDetailPane } from "./stage-detail-pane";
-import { useEditPromptFlow } from "./use-edit-prompt-flow";
+import { useEditPromptOpening } from "./use-edit-prompt-flow";
 import {
   useDiscardReleasePlan,
   useHarness,
@@ -167,21 +168,13 @@ export function HarnessView({
   const [importingPrompt, setImportingPrompt] = useState(false);
   const [importingPrompts, setImportingPrompts] = useState(false);
   const presses = useHarnessPresses(state, table);
-  // The edited row's pane opens here; a row the edit removed leaves none.
-  const editFlow = useEditPromptFlow({
-    screen: "harness",
-    writes: table,
-    onEdited: (name, written) => {
-      table.settle(written);
-      open(proposalRow({ type: "prompt", name }));
-    },
-  });
+  const editing = useEditPromptOpening();
   const handlers: RowActionHandlers = {
     ...presses.handlers,
     // A read that finds nothing opens no dialog; the row's pane says why.
-    edit: (row) => editFlow.start(row.name, () => open(rowId(row))),
+    edit: (row) => editing.start(row.name, () => open(rowId(row))),
   };
-  const readRefusal = editFlow.readRefusal;
+  const readRefusal = editing.readRefusal;
   const readNotice = (row: HarnessTableRow) =>
     readRefusal === null ||
     row.type !== "prompt" ||
@@ -539,6 +532,20 @@ export function HarnessView({
           onClose={() => setImportingSkill(false)}
         />
       ) : null}
+      {state !== undefined && editing.opened !== null ? (
+        <EditPromptAction
+          key={editing.opened.name}
+          opened={editing.opened}
+          screen="harness"
+          writes={table}
+          // The edited row's pane opens here; a row the edit removed leaves none.
+          onEdited={(name, written) => {
+            table.settle(written);
+            open(proposalRow({ type: "prompt", name }));
+          }}
+          onClose={editing.close}
+        />
+      ) : null}
       {state !== undefined && importingPrompt ? (
         <ImportPromptAction
           screen={table}
@@ -558,7 +565,6 @@ export function HarnessView({
       {state === undefined ? null : (
         <HarnessDialogs
           origin={state.origin}
-          editPromptFlow={editFlow}
           deletionRow={presses.pendingDeletion}
           deletion={presses.deletionWrite}
           onDeletionClose={presses.closeConfirmation}

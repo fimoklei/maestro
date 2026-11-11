@@ -9,7 +9,6 @@ import { HttpError } from "../api/http";
 import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { DiscardDialog } from "./discard-dialog";
-import { ImportPromptDialog } from "./import-prompt-dialog";
 import {
   deletionCheckNotice,
   type LocalDeletionContext,
@@ -18,7 +17,6 @@ import { releasePlanNotice } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { ReleaseWithdrawalDialogHost } from "./release-withdrawal-dialog-host";
 import { RestoreDialog } from "./restore-dialog";
-import type { EditPromptFlow } from "./use-edit-prompt-flow";
 import {
   folderInClone,
   useDeletionCheck,
@@ -72,7 +70,6 @@ type Presses = ReturnType<typeof useHarnessPresses>;
 
 export type HarnessDialogsProps = {
   origin: string;
-  editPromptFlow: EditPromptFlow;
   deletionRow: HarnessStageRow | null;
   deletion: Presses["deletionWrite"];
   onDeletionClose: () => void;
@@ -104,9 +101,6 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
   const mode = deletionMode(deletionRow, props.origin);
   return (
     <>
-      {props.editPromptFlow.open ? (
-        <ImportPromptDialog mode="edit" {...props.editPromptFlow} />
-      ) : null}
       {props.localDeletion !== null ? (
         <LocalDeletionDialog
           target={props.localDeletion}

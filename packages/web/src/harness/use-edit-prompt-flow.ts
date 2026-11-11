@@ -36,7 +36,7 @@ import { promptFieldErrors } from "./prompt-field-errors";
 import { useEditPrompt, useReadPrompt } from "./use-harness";
 
 /** The prompt the dialog edits, as the Working Harness gave it. */
-type Opened = { name: string; read: PromptFile };
+export type OpenedPrompt = { name: string; read: PromptFile };
 
 /** An edit that landed in the Harness while its category did not; Close hands it over. */
 type Landed = { name: string; written: WriteResult };
@@ -46,29 +46,49 @@ const SCREEN_NAME: Record<EditScreen, string> = {
   prompts: "Prompts",
 };
 
-export type EditPromptFlow = ReturnType<typeof useEditPromptFlow>;
+// The screen's half of Edit prompt: the read that opens the dialog, and the
+// prompt it opened on. A refused read opens nothing; the screen states it.
+export function useEditPromptOpening() {
+  const [opened, setOpened] = useState<OpenedPrompt | null>(null);
+  const reading = useReadPrompt();
+  return {
+    opened,
+    /** The prompt a refused read was for, and why; the screen states it. */
+    readRefusal:
+      reading.isError && reading.variables !== undefined
+        ? { name: reading.variables, error: reading.error }
+        : null,
+    // The dialog opens only once the Working Harness answered.
+    start: (prompt: string, onRefused: () => void) =>
+      reading.mutate(prompt, {
+        onError: onRefused,
+        onSuccess: (read) => setOpened({ name: prompt, read }),
+      }),
+    close: () => setOpened(null),
+  };
+}
 
-// Edit prompt's UI-state: the read that opened it, the fields, and whether a
-// submit has judged them. A change of the category alone never writes the
-// Harness: it goes to the assign route only.
+// Edit prompt's UI-state: the fields, and whether a submit has judged them.
+// It lives only while the dialog stands, so closing forgets it. A change of
+// the category alone never writes the Harness: it goes to the assign route
+// only.
 export function useEditPromptFlow({
+  opened,
   screen,
   writes,
   onEdited,
+  onClose,
 }: {
+  opened: OpenedPrompt;
   /** The screen the edit starts on. */
   screen: EditScreen;
   /** Its table screen's writes. */
   writes: ScreenWrites;
   /** Takes the result to the Harness view, where the edited row is. */
   onEdited: (name: string, written: WriteResult) => void;
+  onClose: () => void;
 }) {
-  const [opened, setOpened] = useState<Opened | null>(null);
-  const [fields, setFields] = useState<PromptFile>({
-    description: "",
-    text: "",
-    example: "",
-  });
+  const [fields, setFields] = useState<PromptFile>(() => asTyped(opened.read));
   // Undefined until the reader picks: the field shows the saved category.
   const [chosen, setChosen] = useState<string | null | undefined>(undefined);
   const [landed, setLanded] = useState<Landed | null>(null);
@@ -76,10 +96,9 @@ export function useEditPromptFlow({
   const [part, setPart] = useState<PromptPart>("text");
   // Errors show from the first submit on, and each clears once its field holds.
   const [submitted, setSubmitted] = useState(false);
-  const reading = useReadPrompt();
   const editing = useEditPrompt();
   // Read once the dialog opens, never by the screen behind it.
-  const categories = useCategoriesWhile(opened !== null);
+  const categories = useCategoriesWhile(true);
   const assigning = useAssignCategory();
   const reread = rereadLabel(SCREEN_NAME[screen]);
   const pickCategory = (next: string | null) => {
@@ -88,28 +107,15 @@ export function useEditPromptFlow({
   };
   const categoryAdd = useHeldCategoryAdd(pickCategory);
 
-  const name = opened?.name ?? "";
+  const name = opened.name;
   const saved =
-    opened === null
-      ? null
-      : (sharedCategory(categories.data?.assignments ?? [], [
-          { type: "prompt", name },
-        ]) ?? null);
+    sharedCategory(categories.data?.assignments ?? [], [
+      { type: "prompt", name },
+    ]) ?? null;
   const category = chosen === undefined ? saved : chosen;
   const categoryChanged = chosen !== undefined && chosen !== saved;
   // Both sides are compared as the text field shows them.
-  const fieldsChanged =
-    opened !== null && !samePrompt(asTyped(fields), asTyped(opened.read));
-
-  const close = () => {
-    setOpened(null);
-    setSubmitted(false);
-    setChosen(undefined);
-    setLanded(null);
-    editing.reset();
-    assigning.reset();
-    categoryAdd.reset();
-  };
+  const fieldsChanged = !samePrompt(asTyped(fields), asTyped(opened.read));
 
   const assignTo = (prompt: string): CategoryAssignment => ({
     items: [{ type: "prompt", name: prompt }],
@@ -120,7 +126,7 @@ export function useEditPromptFlow({
   const handOver = (written: WriteResult, edited: string) => {
     const done = () => {
       onEdited(edited, written);
-      close();
+      onClose();
     };
     const renamed = edited !== name;
     if (!categoryChanged && !(renamed && category !== null)) {
@@ -163,16 +169,14 @@ export function useEditPromptFlow({
         : (write.failure ?? categoryWrite.failure);
   const changed = fieldsChanged || categoryChanged;
   const afterAdd = useSubmitAfterAdd(categoryAdd, () => {
-    if (opened === null) return;
     if (!fieldsChanged) {
-      categoryWrite.run(assignTo(name), { onSuccess: () => close() });
+      categoryWrite.run(assignTo(name), { onSuccess: onClose });
       return;
     }
     write.run({ ...draft, read: opened.read });
   });
 
   return {
-    open: opened !== null,
     name,
     draft,
     /** Undefined until the categories are read. */
@@ -187,26 +191,6 @@ export function useEditPromptFlow({
     outcome: landed !== null,
     changed,
     unavailable: changed ? null : NOTHING_CHANGED,
-    /** The prompt a refused read was for, and why; the screen states it. */
-    readRefusal:
-      reading.isError && reading.variables !== undefined
-        ? { name: reading.variables, error: reading.error }
-        : null,
-    // The dialog opens only once the Working Harness answered.
-    start: (prompt: string, onRefused: () => void) =>
-      reading.mutate(prompt, {
-        onError: onRefused,
-        onSuccess: (read) => {
-          setOpened({ name: prompt, read });
-          setFields(asTyped(read));
-          setChosen(undefined);
-          setLanded(null);
-          setPart("text");
-          setSubmitted(false);
-          editing.reset();
-          assigning.reset();
-        },
-      }),
     edit: (change: Partial<PromptFile>) => {
       editing.reset();
       setFields((current) => ({ ...current, ...change }));
@@ -217,7 +201,6 @@ export function useEditPromptFlow({
     categoryAdd,
     // The box's only field error is the prompt text's: a refusal shows it.
     submit: () => {
-      if (opened === null) return;
       setSubmitted(true);
       if (problems.length > 0) {
         setPart("text");
@@ -227,7 +210,7 @@ export function useEditPromptFlow({
     },
     close: () => {
       if (landed !== null) onEdited(landed.name, landed.written);
-      close();
+      onClose();
     },
   };
 }

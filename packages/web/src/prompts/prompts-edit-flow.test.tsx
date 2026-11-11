@@ -357,6 +357,39 @@ describe("Prompts — Edit prompt", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("opens again on the Working Harness's fields after Cancel, on Prompt text with no field error", async () => {
+    stubServer({});
+    renderPrompts();
+    const first = await editFromMenu();
+    await userEvent.clear(
+      within(first).getByRole("textbox", { name: /^Description/ }),
+    );
+    await userEvent.click(confirmOf(first));
+    await within(first).findByText("Enter a description.");
+    const toggle = within(
+      within(first).getByRole("group", { name: "Prompt text or example" }),
+    );
+    await userEvent.click(toggle.getByRole("button", { name: "Example" }));
+    await userEvent.click(
+      within(first).getByRole("button", { name: "Cancel" }),
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const again = await editFromMenu();
+    const description = within(again).getByRole("textbox", {
+      name: /^Description/,
+    });
+    expect(description).toHaveValue(WORKING.description);
+    expect(
+      within(
+        within(again).getByRole("group", { name: "Prompt text or example" }),
+      ).getByRole("button", { name: "Prompt text" }),
+    ).toHaveAttribute("aria-pressed", "true");
+    // A field error waits for this opening's own submit.
+    await userEvent.clear(description);
+    expect(within(again).queryByText("Enter a description.")).toBeNull();
+  });
+
   it("writes nothing on Cancel, and works by keyboard alone", async () => {
     const { edits } = stubServer({});
     renderPrompts();
