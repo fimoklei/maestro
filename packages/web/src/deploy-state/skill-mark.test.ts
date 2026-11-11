@@ -46,6 +46,29 @@ describe("skillMark", () => {
     );
   });
 
+  it("puts Edits in the Harness ahead of Behind and Up to date, in the neutral family", () => {
+    for (const drift of [
+      "behind",
+      "up-to-date",
+      "older-tag",
+      "pending",
+    ] as const) {
+      const mark = skillMark("edits-in-harness", drift);
+      expect(words(mark)).toBe("– Edits in the Harness");
+      expect(mark?.family).toBe("neutral");
+    }
+  });
+
+  it("puts No longer released and a check that could not run ahead of Edits in the Harness", () => {
+    expect(words(skillMark("edits-in-harness", "no-longer-released"))).toBe(
+      "⚠ No longer released",
+    );
+    expect(words(skillMark("edits-in-harness", "unverified"))).toBe(
+      "? Unverified",
+    );
+    expect(words(skillMark("edits-in-harness", "unknown"))).toBe("? Unknown");
+  });
+
   it("marks nothing while the check is still running", () => {
     expect(skillMark(undefined, "pending")).toBeNull();
   });

@@ -69,6 +69,23 @@ describe("statusCard", () => {
     });
   });
 
+  it("states that the target's edits await a release where the Harness holds them", () => {
+    expect(
+      readCard(
+        statusCard(
+          row({
+            head: ON_LATEST,
+            status: reading("Edits in the Harness", "neutral"),
+          }),
+          COMPARED,
+        ),
+      ),
+    ).toEqual({
+      reason: "These edits are in the Harness but not in a release yet.",
+      readAge: "Read just now",
+    });
+  });
+
   it("counts the changed skills in the newer release on a behind target", () => {
     const head = { ...ON_LATEST, release: "v0.3.2", changed: 1, selected: 3 };
     expect(readCard(statusCard(row({ head, behind: true }), COMPARED))).toEqual(
@@ -426,6 +443,68 @@ describe("local edits on a target", () => {
       ["~/.claude/skills", "⚠ Local edits"],
       ["~/.agents/skills", "✓ In sync"],
     ]);
+  });
+});
+
+describe("edits the Harness holds on a target", () => {
+  it("reads a repository whose edits the Harness holds as Edits in the Harness", () => {
+    const read = (primitives: DeployedPrimitive[]) => ({
+      data: { primitives, skipped: [], releaseHead: ON_LATEST },
+      isError: false,
+    });
+    expect(
+      words(
+        repoRow(
+          "/me/a",
+          [],
+          read([skill("tdd", "edits-in-harness"), skill("grill")]),
+          syncedDrift,
+        ),
+      ),
+    ).toBe("– Edits in the Harness");
+    expect(
+      words(
+        repoRow(
+          "/me/a",
+          [],
+          read([
+            skill("tdd", "edits-in-harness"),
+            skill("grill", "local-edits"),
+          ]),
+          syncedDrift,
+        ),
+      ),
+    ).toBe("⚠ Local edits");
+  });
+
+  it("reads each Global folder on its own, and Global takes the worse reading", () => {
+    const [held] = globalRows(
+      globalRead([
+        claude([skill("tdd", "edits-in-harness")]),
+        agents([skill("tdd")]),
+      ]),
+      syncedDrift,
+      false,
+    );
+    expect(folderMarks(held)).toEqual([
+      ["~/.claude/skills", "– Edits in the Harness"],
+      ["~/.agents/skills", "✓ In sync"],
+    ]);
+    expect(held && words(held)).toBe("– Edits in the Harness");
+
+    const [mixed] = globalRows(
+      globalRead([
+        claude([skill("tdd", "local-edits")]),
+        agents([skill("tdd", "edits-in-harness")]),
+      ]),
+      syncedDrift,
+      false,
+    );
+    expect(folderMarks(mixed)).toEqual([
+      ["~/.claude/skills", "⚠ Local edits"],
+      ["~/.agents/skills", "– Edits in the Harness"],
+    ]);
+    expect(mixed && words(mixed)).toBe("⚠ Local edits");
   });
 });
 

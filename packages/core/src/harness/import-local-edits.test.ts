@@ -54,6 +54,8 @@ function target(
     global?: boolean;
     // The newest release Deploy-state's row measures the repo against.
     latestRelease?: string;
+    // Skills whose edited copy the Working harness already holds.
+    imported?: string[];
   } = {},
 ) {
   const copies = overrides.copies ?? {
@@ -170,7 +172,13 @@ function target(
       codex: toolCopy(reading, "codex"),
     };
   };
-  const deployed = inMemoryDeployedContent();
+  const deployed = inMemoryDeployedContent({ workingHarness: ROOT });
+  for (const name of overrides.imported ?? []) {
+    deployed.tree.write(
+      `${ROOT}/.apm/skills/${name}/SKILL.md`,
+      `${name}, edited\n`,
+    );
+  }
   const contentTarget = overrides.global === true ? GLOBAL_TARGET : REPO_TARGET;
   for (const name of Object.keys(copies)) {
     deployed.setCopy(contentTarget, name, statesOf(name));
@@ -310,6 +318,34 @@ function differingGlobalCopies() {
 }
 
 describe("ImportLocalEdits.check", () => {
+  it("leaves out a skill whose edits the Working harness already holds", async () => {
+    const { useCase } = target({
+      copies: {
+        "code-review": { claude: "diverged" },
+        tdd: { codex: "diverged" },
+      },
+      lockfile: [
+        ...entry("code-review", FROM_THIS_HARNESS),
+        ...entry("tdd", FROM_THIS_HARNESS),
+      ],
+      imported: ["code-review"],
+    });
+
+    await expect(useCase.check(REPO_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [{ name: "tdd", refusal: null }],
+    });
+  });
+
+  it("leaves out such a skill on Global too", async () => {
+    const { useCase } = target({ global: true, imported: ["code-review"] });
+
+    await expect(useCase.check(GLOBAL_TARGET)).resolves.toEqual({
+      ok: true,
+      skills: [],
+    });
+  });
+
   it("lists every Local edits skill from this Harness as eligible", async () => {
     const { useCase } = target({
       copies: {

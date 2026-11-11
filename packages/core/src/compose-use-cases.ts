@@ -174,6 +174,7 @@ export function composeUseCases(ports: UseCasePorts) {
   const releaseAwareContent = new DeployedContentAdapter({
     location: deployedLocation,
     inventoryGit,
+    workingHarness: harnessRoot,
     fs: copyTreeFs,
   });
   const deployedContent = new DeployedContentAdapter({

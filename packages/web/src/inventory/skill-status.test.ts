@@ -16,6 +16,7 @@ const rollup = (over: Partial<DeployedRollup>): DeployedRollup => ({
   behindCount: 0,
   unknownCount: 0,
   localEditsCount: 0,
+  editsInHarnessCount: 0,
   ...over,
 });
 
@@ -70,6 +71,27 @@ describe("skillStatus", () => {
     expect(word(rollup({ targetCount: 1, localEditsCount: 1 }))).toBe(
       "Local edits",
     );
+  });
+
+  it("reads Edits in the Harness, neutral, below Local edits and above Behind, Unknown and Up to date", () => {
+    expect(
+      skillStatus(rollup({ targetCount: 2, editsInHarnessCount: 1 })),
+    ).toEqual({ word: "Edits in the Harness", family: "neutral", glyph: "–" });
+    expect(
+      word(
+        rollup({
+          targetCount: 3,
+          behindCount: 1,
+          unknownCount: 1,
+          editsInHarnessCount: 1,
+        }),
+      ),
+    ).toBe("Edits in the Harness");
+    expect(
+      word(
+        rollup({ targetCount: 2, localEditsCount: 1, editsInHarnessCount: 1 }),
+      ),
+    ).toBe("Local edits");
   });
 
   it("shows nothing while a deploy-state read is still in flight", () => {
@@ -194,6 +216,23 @@ describe("skillState", () => {
     expect(state?.kind === "behind" && state.from).toBe("v1.3.2");
   });
 
+  it("states Edits in the Harness below Local edits and above Behind", () => {
+    expect(
+      skillState(
+        rollup({ targetCount: 3, behindCount: 1, editsInHarnessCount: 1 }),
+        [dep("a", "v1.3.2")],
+        "v1.4.0",
+      ),
+    ).toEqual({ kind: "edits-in-harness", count: 1, total: 3 });
+    expect(
+      skillState(
+        rollup({ targetCount: 2, localEditsCount: 1, editsInHarnessCount: 1 }),
+        [],
+        "v1.4.0",
+      )?.kind,
+    ).toBe("local-edits");
+  });
+
   it("states nothing while a read runs, or where nothing is deployed", () => {
     expect(skillState(rollup({ pending: true }), [], "v1.4.0")).toBeNull();
     expect(skillState(rollup({}), [], "v1.4.0")).toBeNull();
@@ -211,6 +250,11 @@ describe("SKILL_CHIPS", () => {
     expect(SKILL_CHIPS).toEqual([
       { word: "Unknown", family: "failed", covers: ["Unknown"] },
       { word: "Local edits", family: "attention", covers: ["Local edits"] },
+      {
+        word: "Edits in the Harness",
+        family: "neutral",
+        covers: ["Edits in the Harness"],
+      },
       { word: "Behind", family: "attention", covers: ["Behind"] },
     ]);
     expect(UP_TO_DATE.word).toBe("Up to date");

@@ -66,6 +66,21 @@ function guardOver(
 }
 
 describe("LocalCopyGuard", () => {
+  it("blocks a copy whose edits the Working harness holds, as Local edits, on every write", async () => {
+    const fake = inMemoryDeployedContent({ workingHarness: "/harness" });
+    fake.setCopy(repo, "tdd", "diverged");
+    fake.tree.write("/harness/.apm/skills/tdd/SKILL.md", "tdd, edited\n");
+    const guard = new LocalCopyGuard({ content: fake.content });
+
+    for (const write of ["deploy", "update", "remove"] as const) {
+      const scope = { write, target: repo };
+      const check = await guard.check({ ...scope, names: ["tdd"] });
+      const refused = guard.admits(scope, check);
+
+      expect(refused.ok || refused.blocked).toBe("local-edits");
+    }
+  });
+
   it("admits a write over copies that are all clean", async () => {
     const { guard } = guardOver({});
     const scope = { write: "deploy", target: repo } as const;

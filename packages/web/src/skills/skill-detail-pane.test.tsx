@@ -67,6 +67,7 @@ function renderPane(overrides: {
         behindCount: overrides.behindCount ?? 0,
         unknownCount: overrides.unknownCount ?? 0,
         localEditsCount: overrides.localEditsCount ?? 0,
+        editsInHarnessCount: 0,
         pending: overrides.pending ?? targetCount === null,
         unreadable: overrides.unreadable ?? false,
       }}

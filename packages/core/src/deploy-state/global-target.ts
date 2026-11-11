@@ -170,9 +170,18 @@ export async function readGlobalTarget(
   };
 }
 
+// Worst first; a clean copy ranks below all of them.
+const COPY_RANK: readonly (DeployedPrimitive["copy"] & string)[] = [
+  "local-edits",
+  "unverified",
+  "edits-in-harness",
+];
+const copyRank = (copy: DeployedPrimitive["copy"]) =>
+  copy === undefined ? COPY_RANK.length : COPY_RANK.indexOf(copy);
+
 /**
- * Global's one skill list: each skill once, in folder order. A skill reads
- * Local edits where any folder's copy does, else Unverified where any does.
+ * Global's one skill list: each skill once, in folder order, carrying the
+ * worst copy reading of any folder.
  */
 export function oneSkillList(
   folders: readonly GlobalFolderState[],
@@ -183,8 +192,7 @@ export function oneSkillList(
       const held = byName.get(primitive.name);
       if (
         held === undefined ||
-        (primitive.copy === "local-edits" && held.copy !== "local-edits") ||
-        (primitive.copy === "unverified" && held.copy === undefined)
+        copyRank(primitive.copy) < copyRank(held.copy)
       ) {
         byName.set(primitive.name, { ...primitive });
       }

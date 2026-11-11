@@ -135,3 +135,12 @@ describe("a release in these sentences", () => {
     ]);
   });
 });
+
+describe("copyChipText", () => {
+  it("names Edits in the Harness and says the edits await a release", () => {
+    expect(releaseHeadCopy.copyChipText("edits-in-harness")).toEqual({
+      label: "Edits in the Harness",
+      hint: "These edits are in the Harness but not in a release yet.",
+    });
+  });
+});

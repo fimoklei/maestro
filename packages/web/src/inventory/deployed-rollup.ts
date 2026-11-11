@@ -71,6 +71,8 @@ export type DeployedRollup = {
   unknownCount: number;
   // Counted apart from behind and unknown: an edited copy holds work.
   localEditsCount: number;
+  // Edited copies the Working harness already holds, counted apart as well.
+  editsInHarnessCount: number;
   // True while any read is in flight — zero is then "unconfirmed", not
   // "deployed nowhere". Absent treated as resolved.
   pending?: boolean;
@@ -88,6 +90,7 @@ export function rollUpDeployment(
   let behindCount = 0;
   let unknownCount = 0;
   let localEditsCount = 0;
+  let editsInHarnessCount = 0;
   let pending = false;
   let unreadable = false;
   let checking = false;
@@ -115,6 +118,10 @@ export function rollUpDeployment(
       localEditsCount++;
       continue;
     }
+    if (copy === "edits-in-harness") {
+      editsInHarnessCount++;
+      continue;
+    }
     const status = skillReading(target, skillName);
     if (status === "behind") {
       behindCount++;
@@ -134,6 +141,7 @@ export function rollUpDeployment(
     behindCount,
     unknownCount,
     localEditsCount,
+    editsInHarnessCount,
     pending,
     unreadable,
     checking,

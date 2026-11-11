@@ -14,7 +14,7 @@ import type { SubListValue } from "../ui/sub-list-row";
 import { FOLDER_READINGS, type FolderSkillReading } from "./folder-reading";
 import type { GlobalSkillReadings } from "./global-skill-readings";
 import { skillMark } from "./skill-mark";
-import { LOCAL_EDITS, NOT_UPDATED } from "./target-status";
+import { EDITS_IN_HARNESS, LOCAL_EDITS, NOT_UPDATED } from "./target-status";
 
 /** A Global skill row that has no copy in one of the written folders. */
 const MISSING = reading("Missing", "attention", WARNING_GLYPH);
@@ -49,6 +49,7 @@ const RANKED = [
   UNVERIFIED,
   UNKNOWN,
   NO_LONGER_RELEASED,
+  EDITS_IN_HARNESS,
   BEHIND,
   UP_TO_DATE,
 ].map((each) => each.word);

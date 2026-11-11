@@ -64,10 +64,12 @@ export type CopyStates =
 const TOOLS: SupportedTool[] = ["claude", "codex"];
 
 // `release` answers the chosen release's file hashes per skill, as the git
-// reader does; null stands for an unreadable release.
+// reader does; null stands for an unreadable release. `workingHarness` is the
+// Working harness's folder in the same tree.
 export function inMemoryDeployedContent(
   options: {
     release?: (tag: string, name: string) => Record<string, string> | null;
+    workingHarness?: string;
   } = {},
 ) {
   const tree = new InMemoryCopyTree();
@@ -82,6 +84,9 @@ export function inMemoryDeployedContent(
   const content = new DeployedContentAdapter({
     location,
     fs: tree,
+    ...(options.workingHarness === undefined
+      ? {}
+      : { workingHarness: async () => options.workingHarness }),
     ...(options.release === undefined
       ? {}
       : {
@@ -275,6 +280,8 @@ export function copiesIn(states: CopyStates | ((name: string) => CopyStates)) {
       linkedSkillPath: (
         input: Parameters<typeof fake.content.linkedSkillPath>[0],
       ) => fake.content.linkedSkillPath(input),
+      harnessHolds: (input: Parameters<typeof fake.content.harnessHolds>[0]) =>
+        fake.content.harnessHolds(input),
     },
   };
 }

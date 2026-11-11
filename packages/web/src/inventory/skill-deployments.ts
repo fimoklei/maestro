@@ -90,7 +90,8 @@ export function skillDeployments(
       release: target.releaseHead?.release ?? deployed.version,
       version: deployed.version,
       status,
-      edited: deployed.copy === "local-edits",
+      edited:
+        deployed.copy === "local-edits" || deployed.copy === "edits-in-harness",
       mark: target.pending
         ? {
             ...unfinishedReading(target.pending),

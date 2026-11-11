@@ -1,12 +1,8 @@
-import { LOCAL_EDITS } from "../deploy-state/target-status";
+import { EDITS_IN_HARNESS, LOCAL_EDITS } from "../deploy-state/target-status";
 import type { DriftStatus } from "../drift/drift-view-model";
 import type { StatusChip } from "../ui/band-summary";
 import { WARNING_GLYPH } from "../ui/status-family";
-import {
-  reading,
-  type StatusReading,
-  worstReading,
-} from "../ui/status-reading";
+import { reading, type StatusReading } from "../ui/status-reading";
 import type { DeployedRollup } from "./deployed-rollup";
 import type { SkillDeployment } from "./skill-deployments";
 
@@ -20,24 +16,37 @@ export const NOT_DEPLOYED = reading("Not deployed", "neutral");
 export const SKILL_CHIPS: readonly StatusChip[] = [
   { word: UNKNOWN.word, family: "failed", covers: [UNKNOWN.word] },
   { word: LOCAL_EDITS.word, family: "attention", covers: [LOCAL_EDITS.word] },
+  {
+    word: EDITS_IN_HARNESS.word,
+    family: "neutral",
+    covers: [EDITS_IN_HARNESS.word],
+  },
   { word: BEHIND.word, family: "attention", covers: [BEHIND.word] },
 ];
 
 // Null until every read and check has answered: zero reach is not yet "nowhere".
 export function skillStatus(rollup: DeployedRollup): StatusReading | null {
-  const { targetCount, behindCount, unknownCount, localEditsCount } = rollup;
+  const {
+    targetCount,
+    behindCount,
+    unknownCount,
+    localEditsCount,
+    editsInHarnessCount,
+  } = rollup;
   if (rollup.pending || rollup.checking) {
     return null;
   }
-  const readings: StatusReading[] = [];
-  // Pushed before Behind: of two Attention readings the first one wins.
-  if (localEditsCount > 0) readings.push(LOCAL_EDITS);
-  if (behindCount > 0) readings.push(BEHIND);
-  if (unknownCount > 0 || rollup.unreadable) readings.push(UNKNOWN);
-  if (targetCount > behindCount + unknownCount + localEditsCount) {
-    readings.push(UP_TO_DATE);
+  if (localEditsCount > 0) return LOCAL_EDITS;
+  if (editsInHarnessCount > 0) return EDITS_IN_HARNESS;
+  if (behindCount > 0) return BEHIND;
+  if (unknownCount > 0 || rollup.unreadable) return UNKNOWN;
+  if (
+    targetCount >
+    behindCount + unknownCount + localEditsCount + editsInHarnessCount
+  ) {
+    return UP_TO_DATE;
   }
-  return worstReading(readings) ?? NOT_DEPLOYED;
+  return NOT_DEPLOYED;
 }
 
 export const UNVERIFIED = reading("Unverified", "unknown");
@@ -69,6 +78,7 @@ export function targetReading(status: DriftStatus): StatusReading | null {
 
 export type SkillState =
   | { kind: "local-edits"; count: number; total: number }
+  | { kind: "edits-in-harness"; count: number; total: number }
   | {
       kind: "behind";
       count: number;
@@ -93,6 +103,13 @@ export function skillState(
   if (skillStatus(rollup) === null || total === 0) return null;
   if (rollup.localEditsCount > 0) {
     return { kind: "local-edits", count: rollup.localEditsCount, total };
+  }
+  if (rollup.editsInHarnessCount > 0) {
+    return {
+      kind: "edits-in-harness",
+      count: rollup.editsInHarnessCount,
+      total,
+    };
   }
   if (rollup.behindCount > 0) {
     // The roll-up counts an edited copy as Local edits, never as behind.
