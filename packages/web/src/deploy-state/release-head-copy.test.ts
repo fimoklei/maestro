@@ -83,6 +83,15 @@ describe("an unfinished operation", () => {
     }
     expect(new Set(Object.values(UNFINISHED_REASONS)).size).toBe(KINDS.length);
   });
+
+  it("names what a deploy and a removal left in the target", () => {
+    expect(UNFINISHED_REASONS.deploy).toBe(
+      "Some deployed skills are missing from the target.",
+    );
+    expect(UNFINISHED_REASONS.remove).toBe(
+      "The skill's files are still in the target.",
+    );
+  });
 });
 
 describe("the pane's facts", () => {

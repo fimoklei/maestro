@@ -595,6 +595,49 @@ describe("restoredNotice", () => {
   });
 });
 
+describe("a folder that changed or holds a link", () => {
+  it("asks the reader to wait for an edit before proposing again", () => {
+    expect(
+      readNotice(promoteNotice(refusal("source-changed"), "skill")),
+    ).toEqual({
+      level: "error",
+      label: "Files changed during the check",
+      message:
+        "Nothing was pushed. Wait for the change to finish, then select Propose change again.",
+    });
+  });
+
+  it("asks the reader to wait for a folder change before importing again", () => {
+    expect(readNotice(importNotice(refusal("source-changed")))).toEqual({
+      level: "error",
+      label: "Folder changed during import",
+      message:
+        "The skill was not imported. Wait for the folder change to finish, then select Import skill again.",
+    });
+  });
+
+  it("names a hard-linked file inside the folder", () => {
+    expect(readNotice(importNotice(refusal("hard-linked-file")))).toEqual({
+      level: "error",
+      label: "Hard-linked file inside",
+      message:
+        "Nothing was copied. Replace it with a plain copy, then select Import skill again.",
+      detail: "Copying it would tie the Harness to a file it does not own.",
+    });
+  });
+
+  it("states which links Maestro does not follow", () => {
+    expect(readNotice(importNotice(refusal("unsafe-link")))).toEqual({
+      level: "error",
+      label: "Symbolic link inside",
+      message:
+        "Nothing was copied. Replace the link with a real file, then select Import skill again.",
+      detail:
+        "Maestro does not follow a link that points outside the folder or creates a loop.",
+    });
+  });
+});
+
 describe("localEditsRefusal", () => {
   const REFUSALS = codes<LocalEditsRefusal>({
     "not-configured": true,
@@ -651,6 +694,15 @@ describe("localEditsRefusal", () => {
     );
     expect(localEditsRefusal({ refusal: "copy-not-offered" })).toBe(
       "The copies changed after the check, so this skill was not imported. Select Import local edits again to check them.",
+    );
+  });
+
+  it("names a hard-linked file and a folder change in the copy", () => {
+    expect(localEditsRefusal({ refusal: "hard-linked-file" })).toBe(
+      "Nothing was copied. Replace the hard-linked file in the skill folder with a plain copy, then select Import local edits again.",
+    );
+    expect(localEditsRefusal({ refusal: "source-changed" })).toBe(
+      "The skill was not imported. Wait for the folder change to finish, then select Import local edits again.",
     );
   });
 });

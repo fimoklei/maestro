@@ -9,6 +9,7 @@ import {
   registerMessage,
   repositoriesCounts,
   STATUS_READINGS,
+  UNREGISTER_WHAT_STAYS,
   unregisterNotice,
   WRITE_PROMISE,
 } from "./repositories-copy";
@@ -117,6 +118,12 @@ describe("the screen's own words", () => {
 
   it("states the field's one rule before the pick", () => {
     expect(FOLDER_HINT).toBe("Must be a Git repository.");
+  });
+
+  it("says unregistering leaves the folder and its deployed skills alone", () => {
+    expect(UNREGISTER_WHAT_STAYS).toBe(
+      "Maestro does not change this folder or anything deployed in it.",
+    );
   });
 });
 
