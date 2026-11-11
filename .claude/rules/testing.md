@@ -27,7 +27,7 @@ Runner: **Vitest**, all lanes.
 
 ## The four lanes
 
-- **Pure (unit)** (`pnpm test:core`) — sibling file next to source, no fs/git/network; a test with no source sibling (a route, a script) goes in `tests/unit/`. Default in the `/tdd` loop; most tests live here.
+- **Pure (unit)** (`pnpm test:core`) — sibling file next to source, no fs/git/network; a test with no source sibling (a route, a script) goes in `tests/unit/`. Default in the `/tdd` loop; most tests live here. It may read a committed file under `tests/fixtures/` as input; the code under test still reads through an in-memory port.
 - **Web component** (`pnpm test:web`) — sibling `.test.tsx` in `packages/web`, **happy-dom** + Testing Library (own `packages/web/vitest.config.ts`); `fetch` stubbed. Browser end-to-end (Playwright) stays deferred.
 - **Integration** (`pnpm test:integration`) — `tests/integration/`, a journey across modules with real I/O; a test without real I/O leaves it. Anything that drives APM or reads real lockfiles is integration.
 - **Git** (`pnpm test:git`) — `tests/git/`. Choose it on one checkable fact: does this test create a real repository? If yes, it lands here and stays out of the coding loop.
