@@ -368,6 +368,35 @@ describe("SkillsView — band 2", () => {
     expect(dataRowNames()).toEqual(["tdd"]);
   });
 
+  it("filters by Edits in the Harness, the reading a copy the Harness holds gives its row", async () => {
+    stubPendingFetch();
+    const held = deployedTo(["tdd", "caveman"]);
+    held.primitives = [
+      {
+        type: "skill",
+        name: "tdd",
+        version: "v1.0.0",
+        copy: "edits-in-harness",
+      },
+      {
+        type: "skill",
+        name: "caveman",
+        version: "v1.0.0",
+      },
+    ];
+    renderView({ targets: [held] });
+
+    await userEvent.click(screen.getByRole("button", { name: "Filter" }));
+    await userEvent.click(
+      await screen.findByRole("menuitemcheckbox", {
+        name: "Edits in the Harness",
+      }),
+    );
+    await userEvent.keyboard("{Escape}");
+
+    expect(dataRowNames()).toEqual(["tdd"]);
+  });
+
   it("says why no row shows when the filters hide every skill", async () => {
     stubPendingFetch();
     renderView({ targets: [deployedTo(["tdd"])] });

@@ -1,4 +1,5 @@
 import { GLOBAL } from "../deploy-state/deploy-state-copy";
+import { copyChipText } from "../deploy-state/release-head-copy";
 import { targetCount } from "../inventory/inventory-copy";
 import type { SkillState } from "../inventory/skill-status";
 import {
@@ -112,6 +113,8 @@ export function skillStateLine(state: SkillState): Copy {
   switch (state.kind) {
     case "local-edits":
       return `${ofTargets(state.count, state.total)} ${state.count === 1 ? "has" : "have"} local edits. Select ${IMPORT_LOCAL_EDITS} on Deploy-state to keep them.`;
+    case "edits-in-harness":
+      return copyChipText("edits-in-harness").hint;
     case "behind": {
       const subject = `${ofTargets(state.count, state.total)} ${state.count === 1 ? "follows" : "follow"}`;
       const lag =

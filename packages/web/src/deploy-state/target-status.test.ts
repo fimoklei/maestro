@@ -112,6 +112,71 @@ describe("targetStatus", () => {
     }
   });
 
+  it("reads a target whose edits the Harness holds as Edits in the Harness, in the neutral family, over Behind, In sync and Pinned per skill", () => {
+    for (const status of [
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        editsInHarness: true,
+      }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        behind: true,
+        editsInHarness: true,
+      }),
+      targetStatus({
+        pending: undefined,
+        indicator: "drift",
+        editsInHarness: true,
+      }),
+      targetStatus({
+        pending: undefined,
+        indicator: "ok",
+        pinnedPerSkill: true,
+        editsInHarness: true,
+      }),
+    ]) {
+      expect(words(status)).toBe("– Edits in the Harness");
+      expect(status?.family).toBe("neutral");
+    }
+  });
+
+  it("ranks Edits in the Harness below Local edits, Skills missing, Not updated and Attention", () => {
+    for (const [flag, word] of [
+      ["localEdits", "⚠ Local edits"],
+      ["missing", "⚠ Skills missing"],
+      ["notUpdated", "⚠ Not updated"],
+    ] as const) {
+      expect(
+        words(
+          targetStatus({
+            pending: undefined,
+            indicator: "ok",
+            editsInHarness: true,
+            [flag]: true,
+          }),
+        ),
+      ).toBe(word);
+    }
+    expect(
+      words(
+        targetStatus({
+          pending: undefined,
+          indicator: "attention",
+          editsInHarness: true,
+        }),
+      ),
+    ).toBe("⚠ Attention");
+    expect(
+      targetStatus({
+        pending: undefined,
+        indicator: "pending",
+        editsInHarness: true,
+      }),
+    ).toBeNull();
+  });
+
   it("lets Attention outrank Local edits", () => {
     expect(
       words(
@@ -256,6 +321,7 @@ describe("targetStatus", () => {
       "Local edits",
       "Skills missing",
       "Not updated",
+      "Edits in the Harness",
       "Behind",
       "Unknown",
       "In sync",
@@ -287,6 +353,11 @@ describe("TARGET_CHIPS", () => {
         covers: ["Skills missing"],
       },
       { word: "Not updated", family: "attention", covers: ["Not updated"] },
+      {
+        word: "Edits in the Harness",
+        family: "neutral",
+        covers: ["Edits in the Harness"],
+      },
       { word: "Behind", family: "attention", covers: ["Behind"] },
     ]);
     expect(IN_SYNC.word).toBe("In sync");

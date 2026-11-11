@@ -18,6 +18,7 @@ export const SKILLS_MISSING = reading(
 export const NOT_UPDATED = reading("Not updated", "attention", WARNING_GLYPH);
 export const LOCAL_EDITS = reading("Local edits", "attention", WARNING_GLYPH);
 export const BEHIND = reading("Behind", "attention");
+export const EDITS_IN_HARNESS = reading("Edits in the Harness", "neutral");
 const UNKNOWN = reading("Unknown", "unknown");
 export const IN_SYNC = reading("In sync", "good");
 const PINNED = reading("Pinned per skill", "neutral");
@@ -38,6 +39,7 @@ export const TARGET_STATUS_WORDS = [
   ...[
     ATTENTION,
     ...DEVIATIONS,
+    EDITS_IN_HARNESS,
     BEHIND,
     UNKNOWN,
     IN_SYNC,
@@ -68,6 +70,12 @@ export function worstFolderReading(
   return worst;
 }
 
+const attentionChip = (each: StatusReading): StatusChip => ({
+  word: each.word,
+  family: "attention",
+  covers: [each.word],
+});
+
 /** Band 2's count chips, worst first; the unfinished operations roll into Attention. */
 export const TARGET_CHIPS: readonly StatusChip[] = [
   { word: UNKNOWN.word, family: "failed", covers: [UNKNOWN.word] },
@@ -76,13 +84,13 @@ export const TARGET_CHIPS: readonly StatusChip[] = [
     family: "attention",
     covers: [ATTENTION.word, ...Object.values(UNFINISHED_HEADINGS)],
   },
-  ...[...DEVIATIONS, BEHIND].map(
-    (each): StatusChip => ({
-      word: each.word,
-      family: "attention",
-      covers: [each.word],
-    }),
-  ),
+  ...DEVIATIONS.map(attentionChip),
+  {
+    word: EDITS_IN_HARNESS.word,
+    family: "neutral",
+    covers: [EDITS_IN_HARNESS.word],
+  },
+  attentionChip(BEHIND),
 ];
 
 // How a target was built outranks what the drift check made of it; nothing
@@ -93,6 +101,7 @@ export function targetStatus({
   behind = false,
   pending,
   localEdits = false,
+  editsInHarness = false,
   notUpdated = false,
   missing = false,
 }: {
@@ -103,6 +112,8 @@ export function targetStatus({
   pending: PendingOperation["kind"] | undefined;
   // A deployed skill's files changed after deployment: it blocks the next step.
   localEdits?: boolean;
+  // A deployed skill's edits are in the Working harness, not yet in a release.
+  editsInHarness?: boolean;
   // A Global folder holds an unedited copy at another release than the Target release.
   notUpdated?: boolean;
   // A Global folder lacks skills of Global's one skill list.
@@ -118,6 +129,9 @@ export function targetStatus({
   if (worst !== undefined && indicator === "attention") return ATTENTION;
   if (worst !== undefined && indicator !== "pending") {
     return FOLDER_ROLLUP[worst];
+  }
+  if (editsInHarness && indicator !== "pending") {
+    return indicator === "attention" ? ATTENTION : EDITS_IN_HARNESS;
   }
   if (pinnedPerSkill) return PINNED;
   switch (indicator) {

@@ -159,6 +159,10 @@ const COPY_CHIPS = {
     label: "Local edits",
     hint: "Files changed after deployment.",
   },
+  "edits-in-harness": {
+    label: "Edits in the Harness",
+    hint: "These edits are in the Harness but not in a release yet.",
+  },
   unverified: {
     label: "Unverified",
     hint: "The deployment record cannot check this copy.",

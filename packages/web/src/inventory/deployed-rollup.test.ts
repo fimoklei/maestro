@@ -301,3 +301,24 @@ describe("rollUpDeployment — local edits", () => {
     expect(rollup.targetCount).toBe(2);
   });
 });
+
+describe("rollUpDeployment — edits in the Harness", () => {
+  it("counts a copy the Harness holds apart, never as Local edits or behind", () => {
+    const held: DeploymentTarget = {
+      ...onRelease(["tdd"], ["tdd"]),
+      primitives: [
+        {
+          type: "skill",
+          name: "tdd",
+          version: "v0.3.2",
+          copy: "edits-in-harness",
+        },
+      ],
+    };
+    const rollup = rollUpDeployment("tdd", [held, onRelease(["tdd"], [])]);
+    expect(rollup.editsInHarnessCount).toBe(1);
+    expect(rollup.localEditsCount).toBe(0);
+    expect(rollup.behindCount).toBe(0);
+    expect(rollup.targetCount).toBe(2);
+  });
+});

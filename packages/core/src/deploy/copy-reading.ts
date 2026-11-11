@@ -11,12 +11,15 @@ import type { SupportedTool } from "./deploy-tools";
  * `at-release` also covers a copy whose changes the latest release holds
  * (#1213). `not-updated`: unedited, but not the Target release; `stillAt` is
  * the newest older release it equals, or null where none matches.
+ * `edits-in-harness`: Local edits whose files equal the skill in the Working
+ * harness; every guard still treats it as `local-edits`.
  */
 export type CopyReading =
   | { kind: "missing" }
   | { kind: "at-release" }
   | { kind: "not-updated"; stillAt: string | null }
   | { kind: "local-edits" }
+  | { kind: "edits-in-harness" }
   | { kind: "unverified" }
   | { kind: "unreadable" };
 
@@ -54,6 +57,15 @@ export type CopyReadingPort = {
     tags: readonly string[];
     lockfile: LockfileReading;
   }): CopyReadingSession;
+  /**
+   * Whether every tool copy that differs from its record equals the skill in
+   * the Working harness; false where none differs or nothing could be read.
+   */
+  harnessHolds(input: {
+    target: DeployTarget;
+    name: string;
+    lockfile: LockfileReading;
+  }): Promise<boolean>;
 };
 
 // Numeric collation: v0.10.0 is newer than v0.9.0.

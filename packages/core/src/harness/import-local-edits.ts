@@ -8,6 +8,7 @@ import {
 } from "../deploy/deploy-tools";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { GlobalDeployStateReader } from "../deploy-state/deploy-state-reader";
+import type { DeployedPrimitive } from "../deploy-state/deploy-state-types";
 import type { ReleaseHeadGitPort } from "../deploy-state/release-head";
 import { type SameTreeFs, sameTree } from "../filesystem/same-tree";
 import type { Registry } from "../registry/registry";
@@ -201,7 +202,7 @@ export class ImportLocalEdits {
     const release = state.releaseHead?.latestRelease ?? undefined;
     const copies = new Map<string, Copy>();
     for (const primitive of state.primitives) {
-      if (primitive.copy !== undefined) {
+      if (holdsWork(primitive.copy)) {
         copies.set(primitive.name, {
           copy: primitive.copy,
           version: primitive.version,
@@ -239,7 +240,7 @@ export class ImportLocalEdits {
           version: primitive.version,
         };
         skill.tools.push({ tool: folder.tool, release });
-        if (primitive.copy !== undefined && skill.copy !== "local-edits") {
+        if (holdsWork(primitive.copy) && skill.copy !== "local-edits") {
           skill.copy = primitive.copy;
           // The copy that is imported names the release it came from.
           skill.version = primitive.version;
@@ -405,6 +406,10 @@ export class ImportLocalEdits {
       : `~/${fromHome}`;
   }
 }
+
+// A copy whose edits the Working harness already holds has nothing to import.
+const holdsWork = (copy: DeployedPrimitive["copy"]): copy is Copy["copy"] =>
+  copy === "local-edits" || copy === "unverified";
 
 function outcome(name: string, judged: Judged): LocalEditsSkill {
   if (!("folder" in judged)) {

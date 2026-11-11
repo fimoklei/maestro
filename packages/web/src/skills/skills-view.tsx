@@ -4,7 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { categoryView } from "../categories/category-view";
 import { SetCategoryBarAction } from "../categories/set-category-bar-action";
 import { usePaneCategory } from "../categories/use-pane-category";
-import { LOCAL_EDITS } from "../deploy-state/target-status";
+import { EDITS_IN_HARNESS, LOCAL_EDITS } from "../deploy-state/target-status";
 import {
   type CloneReading,
   deleteItem,
@@ -121,6 +121,7 @@ const rowDialog = (
 // Worst first, as the Status sort orders them (#992).
 const STATUS_WORDS = [
   LOCAL_EDITS,
+  EDITS_IN_HARNESS,
   BEHIND,
   UNKNOWN,
   UP_TO_DATE,

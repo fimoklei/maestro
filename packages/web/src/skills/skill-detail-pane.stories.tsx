@@ -29,6 +29,7 @@ const rollup = (counts: Partial<DeployedRollup>): DeployedRollup => ({
   behindCount: 0,
   unknownCount: 0,
   localEditsCount: 0,
+  editsInHarnessCount: 0,
   ...counts,
 });
 

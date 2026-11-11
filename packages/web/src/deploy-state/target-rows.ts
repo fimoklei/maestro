@@ -41,6 +41,7 @@ import {
 } from "./global-skill-readings";
 import {
   behindLine,
+  copyChipText,
   globalAlsoBehindLine,
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
@@ -61,6 +62,7 @@ import {
 } from "./skipped-entry-text";
 import {
   BEHIND,
+  EDITS_IN_HARNESS,
   IN_SYNC,
   LOCAL_EDITS,
   NOT_UPDATED,
@@ -211,6 +213,9 @@ function strayDiffers(
       );
 }
 
+const holdsHarnessEdits = (primitives: readonly DeployedPrimitive[]) =>
+  primitives.some((primitive) => primitive.copy === "edits-in-harness");
+
 export const editedSkills = (primitives: readonly DeployedPrimitive[]) =>
   primitives
     .filter((primitive) => primitive.copy === "local-edits")
@@ -279,6 +284,7 @@ export function globalRows(
       // A failed read's stale record never outranks its Unknown.
       pending: readFailed ? undefined : pending?.kind,
       localEdits: counts.localEdits > 0,
+      editsInHarness: !readFailed && holdsHarnessEdits(folder.primitives),
       notUpdated: counts.notUpdated > 0,
       missing: counts.missing > 0,
     });
@@ -412,6 +418,8 @@ export function repoRow(
       pending: read.isError ? undefined : pending?.kind,
       localEdits:
         !read.isError && editedSkills(data?.primitives ?? []).length > 0,
+      editsInHarness:
+        !read.isError && holdsHarnessEdits(data?.primitives ?? []),
     }),
     skills: data === undefined ? null : data.primitives.length,
     ...(head ? { head } : {}),
@@ -480,6 +488,9 @@ function statusReason(row: TargetRow): Copy | null {
   const [notUpdated] = notUpdatedLines(row);
   if (notUpdated !== undefined && row.status?.word === NOT_UPDATED.word) {
     return notUpdated;
+  }
+  if (row.status?.word === EDITS_IN_HARNESS.word) {
+    return copyChipText("edits-in-harness").hint;
   }
   if (row.pinned) return pinnedTagsLine(row.pinned);
   if (row.readFailed) return REPO_NOT_READ;
