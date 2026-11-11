@@ -50,13 +50,14 @@ export type PasteTarget = {
 
 export type ImportPromptFlow = ReturnType<typeof useImportPromptFlow>;
 
-// Import prompt's UI-state: the three fields, and whether a submit has judged them.
+// Import prompt's UI-state: the three fields, and whether a submit has judged
+// them. It lives only while the dialog stands, so closing forgets it.
 export function useImportPromptFlow(
   screen: ScreenWrites,
   /** Opens the imported row's pane. */
   onImported: (row: string) => void,
+  onClose: () => void,
 ) {
-  const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PromptDraft>(EMPTY);
   const [source, setSource] = useState<PromptSource>("paste");
   // Which text the one box holds; the dialog opens on the prompt text.
@@ -78,7 +79,7 @@ export function useImportPromptFlow(
     name: draft.name,
     mode,
     fromFile: promptCategory(draft.frontmatter),
-    open,
+    open: true,
   });
   const importPrompt = useImportPrompt();
   const write = useWriteAction(importPrompt, {
@@ -98,23 +99,11 @@ export function useImportPromptFlow(
     write.run(draft, {
       onSuccess: (outcome) =>
         category.save(outcome, () => {
-          close();
+          onClose();
           onImported(importedRow(outcome));
         }),
     });
   });
-
-  const close = () => {
-    setOpen(false);
-    setDraft(EMPTY);
-    setSource("paste");
-    setPart("text");
-    setChosenFile(null);
-    setSubmitted(false);
-    setCheckedName(null);
-    importPrompt.reset();
-    category.reset();
-  };
 
   // A pasted front matter block lives only as long as the text it came with.
   const edit = (change: Partial<PromptDraft>) => {
@@ -127,7 +116,6 @@ export function useImportPromptFlow(
   };
 
   return {
-    open,
     draft,
     fieldErrors,
     failure,
@@ -140,7 +128,6 @@ export function useImportPromptFlow(
     /** The import landed and its category did not: only Close is left. */
     outcome: category.failure !== null,
     changed: draft.name !== "" || !samePrompt(asTyped(draft), EMPTY),
-    start: () => setOpen(true),
     edit,
     source,
     setSource,
@@ -205,6 +192,6 @@ export function useImportPromptFlow(
       afterAdd.submit();
     },
     /** After a failure, Close hands the import over as a clean one would. */
-    close: () => (category.failure === null ? close() : category.leave()),
+    close: () => (category.failure === null ? onClose() : category.leave()),
   };
 }
