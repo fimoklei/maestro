@@ -302,6 +302,22 @@ describe("Harness import prompts flow", () => {
     ]);
   });
 
+  it("opens empty again after Cancel, with no chosen file left", async () => {
+    stubServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+    const first = await openImportPrompts(user);
+    await chooseFiles(user, first, [RELEASE_NOTES, STANDUP]);
+    await user.click(
+      within(first).getByRole("checkbox", { name: "standup-notes" }),
+    );
+    await user.click(within(first).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const again = await openImportPrompts(user);
+    expect(within(again).queryAllByRole("checkbox")).toEqual([]);
+  });
+
   it("blocks the import until a file is chosen and checked", async () => {
     stubServer({});
     const user = userEvent.setup();
