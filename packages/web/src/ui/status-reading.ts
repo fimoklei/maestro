@@ -33,3 +33,6 @@ export function reading(
 /** Sort key: a lower number is a worse reading. */
 export const readingRank = (value: StatusReading): number =>
   RANK.indexOf(value.family);
+
+/** A Status column's width, in spacing steps, that fits "Edits in the Harness". */
+export const STATUS_COLUMN_WIDTH = 41;

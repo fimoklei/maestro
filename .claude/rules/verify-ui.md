@@ -26,6 +26,8 @@ Mandatory for any change that alters what `packages/web` renders:
    in each theme. Repeat it through a function, `ab(){ agent-browser --session
    maestro-<worktree folder> "$@"; }`, never a variable. Read a region as text with
    `pnpm cockpit:snapshot "<selector>" [path]`, never a bare `agent-browser snapshot`.
+   Open a hover card with `ab mouse move <x> <y>` on the badge's pixel position,
+   read from a screenshot; take screen paths from `packages/web/src/shell/screens.tsx`.
 3. Screenshot every state the change touches (loading, empty, failure,
    disabled, selected, the longest realistic name) in the changed component's
    stories, in each theme. Add a missing state as a story (`frontend.md` →
