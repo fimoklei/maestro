@@ -210,7 +210,7 @@ describe("Harness import of several skills", () => {
     expect(within(failed).getByText("tdd")).toBeInTheDocument();
     expect(
       within(failed).getByText(
-        "The folder changed during the import. Let the change finish, then select Import skills again.",
+        "The folder changed during the import. Wait for the change to finish, then select Import skills again.",
       ),
     ).toBeInTheDocument();
     const landed = within(dialog).getByRole("region", { name: "Imported · 1" });

@@ -74,13 +74,16 @@ const MANIFEST_OTHER_SHAPE =
 
 const FILES_MISSING = "apm reported success, but some files are missing.";
 
+const FILES_REMAIN = "apm reported success, but some files remain.";
+
 // Must match the server's timeout on an apm write.
 const STOPPED_AFTER = "stopped after 5 minutes.";
 
-const FILES_MAY_REMAIN = "Some of the skill's files may still be on disk.";
+const FILES_MAY_REMAIN =
+  "Some of the skill's files may still be in the target.";
 
 const LINK_TARGET_SURVIVES =
-  "This removes the link only. The folder it points at remains on disk.";
+  "Deleting the link does not delete the folder it points to.";
 
 type Body = { message: string; detail?: string };
 
@@ -185,7 +188,7 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
     detail: "An earlier change on this target did not finish.",
   },
   "deploy-incomplete": {
-    message: `Part of the selection is not on disk. Open the target on the Deploy-state screen and select ${RETRY_DEPLOY}.`,
+    message: `Some deployed skills are missing from the target. Open the target on the Deploy-state screen and select ${RETRY_DEPLOY}.`,
     detail: FILES_MISSING,
   },
   "no-supported-tool": {
@@ -209,11 +212,11 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
   },
   "deploy-timed-out": {
     message: `The deploy ${STOPPED_AFTER} On the Deploy-state screen, select ${RETRY_DEPLOY}.`,
-    detail: "Part of the selection may not be on disk.",
+    detail: "Some deployed skills may be missing from the target.",
   },
   "deploy-failed": {
     message: `The deploy did not finish. On the Deploy-state screen, select ${RETRY_DEPLOY}.`,
-    detail: "Some of the skill's files may be on disk.",
+    detail: "Some of the skill's files may be in the target.",
   },
   "deploy-not-started": {
     message: `Nothing was deployed. Select ${DEPLOY_SKILL} on the Skills screen to try again.`,
@@ -223,7 +226,7 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
 const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   "unsupported-primitive-type": {
     message:
-      "Maestro removes skills; hooks and MCP servers stay where they are. Remove a skill instead.",
+      "Nothing was removed. Maestro removes skills only. Select a skill, then remove again.",
   },
   "invalid-name": {
     message:
@@ -279,8 +282,8 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
       "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then remove the skill again.",
   },
   "remove-incomplete": {
-    message: `The skill's files are still on disk. Select ${RETRY_REMOVAL} to run the same removal again.`,
-    detail: FILES_MISSING,
+    message: `The skill's files are still in the target. Select ${RETRY_REMOVAL} to run the same removal again.`,
+    detail: FILES_REMAIN,
   },
   "remove-timed-out": {
     message: `The removal ${STOPPED_AFTER} On the Deploy-state screen, select ${RETRY_REMOVAL}.`,

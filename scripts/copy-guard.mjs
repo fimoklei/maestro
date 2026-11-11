@@ -72,6 +72,8 @@ const RETIRED = [
   /\bDiffering copies\b/i,
   // A change reads Added, Changed, Renamed or Deleted on every screen (#1603).
   /\bAddition\b/i,
+  // A screen names the place a file is in, never "on disk" (#1788).
+  /\bon disk\b/i,
   // Copy is level: no promotional words, no chat phrases, no exclamation.
   /\b(?:seamless|effortless|supercharge|powerful|magic|unlock|leverage|AI-powered|intelligent|smartly|empower|robust|Oops|Whoops|Let's)/i,
   /!(?=\s|$)/,

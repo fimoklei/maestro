@@ -379,6 +379,38 @@ describe("a code deploy and removal share", () => {
   });
 });
 
+describe("an apm write that left the target unfinished", () => {
+  it("names the skills a deploy left missing", () => {
+    expect(readNotice(deployNotice(refusal("deploy-incomplete")))).toEqual({
+      label: "Deploy incomplete",
+      message:
+        "Some deployed skills are missing from the target. Open the target on the Deploy-state screen and select Retry deploy.",
+      detail: "apm reported success, but some files are missing.",
+    });
+  });
+
+  it("names the files a removal left in the target", () => {
+    expect(readNotice(removeNotice(refusal("remove-incomplete")))).toEqual({
+      label: "Removal incomplete",
+      message:
+        "The skill's files are still in the target. Select Retry removal to run the same removal again.",
+      detail: "apm reported success, but some files remain.",
+    });
+  });
+});
+
+describe("a removal of something other than a skill", () => {
+  it("states that nothing was removed and asks for a skill", () => {
+    expect(
+      readNotice(removeNotice(refusal("unsupported-primitive-type"))),
+    ).toEqual({
+      label: "Skills only",
+      message:
+        "Nothing was removed. Maestro removes skills only. Select a skill, then remove again.",
+    });
+  });
+});
+
 describe("a removal refused over local edits", () => {
   it("names only the way back the dialog can offer", () => {
     expect(removeNotice(refusal("deployed-diverged-from-lock")).detail).toBe(
@@ -444,6 +476,9 @@ describe("a linked skill folder", () => {
     expect(machineValues(notice(withPath).message)).toEqual([`rm ${LINKED}`]);
     expect(machineValues(notice(withoutPath).message)).toEqual([]);
     expect(notice(withPath).detail).toEqual(notice(withoutPath).detail);
+    expect(notice(withPath).detail).toBe(
+      "Deleting the link does not delete the folder it points to.",
+    );
   });
 
   it("sets apart the rm for the path a bulk run carries", () => {
@@ -509,7 +544,7 @@ describe("a deploy that failed", () => {
       label: "Deploy did not finish",
       message:
         "The deploy did not finish. On the Deploy-state screen, select Retry deploy.",
-      detail: "Some of the skill's files may be on disk.",
+      detail: "Some of the skill's files may be in the target.",
     });
   });
 
@@ -537,7 +572,7 @@ describe("a timed-out apm call", () => {
       label: "Deploy timed out",
       message:
         "The deploy stopped after 5 minutes. On the Deploy-state screen, select Retry deploy.",
-      detail: "Part of the selection may not be on disk.",
+      detail: "Some deployed skills may be missing from the target.",
     });
   });
 
@@ -546,7 +581,7 @@ describe("a timed-out apm call", () => {
       label: "Removal timed out",
       message:
         "The removal stopped after 5 minutes. On the Deploy-state screen, select Retry removal.",
-      detail: "Some of the skill's files may still be on disk.",
+      detail: "Some of the skill's files may still be in the target.",
     });
   });
 
@@ -557,7 +592,7 @@ describe("a timed-out apm call", () => {
       label: "Removal timed out",
       message:
         "The removal stopped after 5 minutes. Select Remove skill to start it again.",
-      detail: "Some of the skill's files may still be on disk.",
+      detail: "Some of the skill's files may still be in the target.",
     });
   });
 

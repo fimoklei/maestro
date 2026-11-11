@@ -150,7 +150,7 @@ describe("statusCard", () => {
         ),
       ),
     ).toEqual({
-      reason: "Part of the selection is not on disk.",
+      reason: "Some deployed skills are missing from the target.",
       readAge: "Read just now",
     });
     expect(

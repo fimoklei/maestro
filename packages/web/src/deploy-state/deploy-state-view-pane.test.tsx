@@ -901,7 +901,7 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "Part of the selection is not on disk. Select Retry deploy to deploy release v0.3.4 again.",
+          "Some deployed skills are missing from the target. Select Retry deploy to deploy release v0.3.4 again.",
         ),
       ),
     ).toBeInTheDocument();
@@ -915,7 +915,7 @@ describe("Deploy-state pane — an unfinished operation", () => {
     expect(within(pane).getByText("Removal incomplete")).toBeInTheDocument();
     expect(
       within(pane).getByText(
-        "The skill's files are still on disk. Select Retry removal to run the same removal again.",
+        "The skill's files are still in the target. Select Retry removal to run the same removal again.",
       ),
     ).toBeInTheDocument();
     expect(

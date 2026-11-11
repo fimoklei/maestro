@@ -201,7 +201,7 @@ describe("Global deploy Report: Written to", () => {
       "Select Retry deploy to deploy it again.",
     );
     expect(dialog).not.toHaveTextContent(
-      "Part of the selection is not on disk.",
+      "Some deployed skills are missing from the target.",
     );
     expect(
       within(dialog)

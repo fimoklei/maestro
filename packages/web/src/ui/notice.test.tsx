@@ -396,7 +396,7 @@ describe("Notice", () => {
         notice={{
           level: "warning",
           label: "Deploy incomplete",
-          message: "Part of the selection is not on disk.",
+          message: "Some deployed skills are missing from the target.",
           action: { label: "Retry deploy", onClick: vi.fn(), primary: true },
         }}
       />,
