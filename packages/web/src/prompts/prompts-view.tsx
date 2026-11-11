@@ -6,9 +6,9 @@ import { useMemo, useRef, useState } from "react";
 import { categoryView } from "../categories/category-view";
 import { SetCategoryBarAction } from "../categories/set-category-bar-action";
 import { usePaneCategory } from "../categories/use-pane-category";
+import { EditPromptAction } from "../harness/edit-prompt-action";
 import { promptReadNotice } from "../harness/import-prompt-copy";
-import { ImportPromptDialog } from "../harness/import-prompt-dialog";
-import { useEditPromptFlow } from "../harness/use-edit-prompt-flow";
+import { useEditPromptOpening } from "../harness/use-edit-prompt-flow";
 import {
   type CloneReading,
   deleteItem,
@@ -188,14 +188,10 @@ export function PromptsView({
   });
   // The last copy the browser refused; its prompt's pane says so.
   const copyRefused = copying.isError ? (copying.variables ?? null) : null;
-  const editFlow = useEditPromptFlow({
-    screen: "prompts",
-    writes: screen,
-    onEdited,
-  });
+  const editing = useEditPromptOpening();
   // A read that found nothing opens no dialog; the row's pane says why.
-  const edit = (name: string) => editFlow.start(name, () => state.open(name));
-  const readRefusal = editFlow.readRefusal;
+  const edit = (name: string) => editing.start(name, () => state.open(name));
+  const readRefusal = editing.readRefusal;
   const readNotice = (name: string) =>
     readRefusal === null || readRefusal.name !== name
       ? null
@@ -455,7 +451,16 @@ export function PromptsView({
           </>
         )}
       />
-      {editFlow.open ? <ImportPromptDialog mode="edit" {...editFlow} /> : null}
+      {editing.opened === null ? null : (
+        <EditPromptAction
+          key={editing.opened.name}
+          opened={editing.opened}
+          screen="prompts"
+          writes={screen}
+          onEdited={onEdited}
+          onClose={editing.close}
+        />
+      )}
     </>
   );
 }
