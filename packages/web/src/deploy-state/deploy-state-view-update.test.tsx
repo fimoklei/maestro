@@ -245,7 +245,7 @@ describe("Deploy-state — Update target on a repository", () => {
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
       "Linked skill folder" +
         `Nothing was written. Run rm ${linkedPath} and then select Update target again.` +
-        "This removes the link only. The folder it points at remains on disk.",
+        "Deleting the link does not delete the folder it points to.",
     );
   });
 

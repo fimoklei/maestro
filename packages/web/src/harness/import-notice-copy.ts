@@ -118,11 +118,12 @@ const importHeadings: NoticeTable<ImportSkillError> = {
     level: "error",
     label: "Symbolic link inside",
     message: `Nothing was copied. Replace the link with a real file, then select ${IMPORT_SKILL} again.`,
-    detail: "Maestro will not follow one into somewhere else on disk.",
+    detail:
+      "Maestro does not follow a link that points outside the folder or creates a loop.",
   },
   "hard-linked-file": {
     level: "error",
-    label: "Shared file inside",
+    label: "Hard-linked file inside",
     message: `Nothing was copied. Replace it with a plain copy, then select ${IMPORT_SKILL} again.`,
     detail: "Copying it would tie the Harness to a file it does not own.",
   },
@@ -147,7 +148,7 @@ const importHeadings: NoticeTable<ImportSkillError> = {
   "source-changed": {
     level: "error",
     label: "Folder changed during import",
-    message: `The skill was not imported. Let the folder change finish, then select ${IMPORT_SKILL} again.`,
+    message: `The skill was not imported. Wait for the folder change to finish, then select ${IMPORT_SKILL} again.`,
   },
   "copy-failed": {
     level: "error",
@@ -210,11 +211,11 @@ const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
   "destination-exists":
     "The Harness already contains a folder under this name. Copy the changed files into the Harness clone yourself.",
   "unsafe-link": `Nothing was copied. Replace the symbolic link in the skill folder with a real file, then select ${IMPORT_LOCAL_EDITS} again.`,
-  "hard-linked-file": `Nothing was copied. Replace the shared file in the skill folder with a plain copy, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "hard-linked-file": `Nothing was copied. Replace the hard-linked file in the skill folder with a plain copy, then select ${IMPORT_LOCAL_EDITS} again.`,
   "special-file": `Nothing was copied. Take the special file out of the skill folder, then select ${IMPORT_LOCAL_EDITS} again.`,
   "too-many-files": `Nothing was copied. This copy contains over 1,000 files. Remove the files the skill does not need, then select ${IMPORT_LOCAL_EDITS} again.`,
   "too-large": `Nothing was copied. This copy is over 50 MiB. Remove the files the skill does not need, then select ${IMPORT_LOCAL_EDITS} again.`,
-  "source-changed": `The skill was not imported. Let the folder change finish, then select ${IMPORT_LOCAL_EDITS} again.`,
+  "source-changed": `The skill was not imported. Wait for the folder change to finish, then select ${IMPORT_LOCAL_EDITS} again.`,
   "copy-failed": `The skill was not imported. Free up disk space, then select ${IMPORT_LOCAL_EDITS} again.`,
   // A record may name this Harness and still not list the folder.
   "not-an-update":

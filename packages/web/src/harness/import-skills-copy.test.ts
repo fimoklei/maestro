@@ -33,7 +33,7 @@ describe("Import skills copy", () => {
     ],
     [
       "hard-linked-file",
-      "The folder contains a file shared with another place on disk. Replace that file with a plain copy, then select Import skills again.",
+      "The folder contains a hard-linked file. Replace that file with a plain copy, then select Import skills again.",
     ],
     [
       "special-file",
@@ -45,7 +45,7 @@ describe("Import skills copy", () => {
     ],
     [
       "source-changed",
-      "The folder changed during the import. Let the change finish, then select Import skills again.",
+      "The folder changed during the import. Wait for the change to finish, then select Import skills again.",
     ],
     [
       "not-found",

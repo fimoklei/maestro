@@ -249,7 +249,7 @@ describe("BulkDeployAction", () => {
     expect(row("tdd")).toHaveTextContent(
       "Linked skill folder" +
         "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again." +
-        "This removes the link only. The folder it points at remains on disk.",
+        "Deleting the link does not delete the folder it points to.",
     );
   });
 

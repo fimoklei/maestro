@@ -118,4 +118,4 @@ export const UNREGISTER_REPOSITORY = "Unregister repository";
 export const UNREGISTER_WHAT_STOPS =
   "Maestro stops tracking this folder and no longer shows it on Deploy-state.";
 export const UNREGISTER_WHAT_STAYS =
-  "The folder stays on disk, and everything deployed in it stays where it is.";
+  "Maestro does not change this folder or anything deployed in it.";

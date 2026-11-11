@@ -35,6 +35,7 @@ describe("copy guard", () => {
         'export const e = "Fix the skill, then deploy again.";',
         'export const f = "Deploy tdd again";',
         'export const g = "Remove from target";',
+        'export const h = "Free up disk space, then deploy again.";',
         "",
       ].join("\n"),
     );
@@ -85,6 +86,7 @@ describe("copy guard", () => {
     ["Select Update targets to move them.", "Update targets"],
     ["Remove from Claude Code and Codex", "Remove from Claude Code"],
     ["Remove from Codex", "Remove from Codex"],
+    ["The skill's files are still on disk.", "on disk"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",
@@ -264,6 +266,7 @@ describe("copy guard", () => {
       "packages/web/src/e.ts",
       [
         "// The drift view refreshed the symlink picker.",
+        "/** The files that stay on disk. */",
         "const refreshDrift = (primitive: string) => primitive;",
         'export const route = "/api/harness/refresh";',
         'export const code = "destination-symlinked";',

@@ -168,7 +168,7 @@ export const promoteHeadings = (w: ItemWords): NoticeTable<PromoteError> => ({
   "source-changed": {
     level: "error",
     label: "Files changed during the check",
-    message: `Nothing was pushed. Let the edit on disk finish, then select ${PROPOSE_CHANGE} again.`,
+    message: `Nothing was pushed. Wait for the change to finish, then select ${PROPOSE_CHANGE} again.`,
   },
   "concurrent-change": {
     level: "error",

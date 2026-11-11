@@ -75,8 +75,8 @@ export const UNFINISHED_HEADINGS: Record<PendingOperation["kind"], string> = {
 
 /** What an unfinished operation left, without its retry. */
 export const UNFINISHED_REASONS: Record<PendingOperation["kind"], string> = {
-  deploy: "Part of the selection is not on disk.",
-  remove: "The skill's files are still on disk.",
+  deploy: "Some deployed skills are missing from the target.",
+  remove: "The skill's files are still in the target.",
   update: UPDATE_INCOMPLETE_REASON,
 };
 
