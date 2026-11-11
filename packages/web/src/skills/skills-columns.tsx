@@ -11,7 +11,11 @@ import { RowMenu } from "../ui/row-menu";
 import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { ACTIONS_COLUMN_LABEL, rowActionsLabel } from "../ui/row-menu-copy";
 import { StatusBadge } from "../ui/status-badge";
-import { readingRank, type StatusReading } from "../ui/status-reading";
+import {
+  readingRank,
+  STATUS_COLUMN_WIDTH,
+  type StatusReading,
+} from "../ui/status-reading";
 import { StatusSkeleton } from "../ui/status-skeleton";
 import { ReachCard } from "./reach-card";
 
@@ -87,7 +91,7 @@ export const skillsColumns = ({
         sortFn: (a, b) =>
           (a.original.status ? readingRank(a.original.status) : unranked) -
           (b.original.status ? readingRank(b.original.status) : unranked),
-        meta: { width: 41 },
+        meta: { width: STATUS_COLUMN_WIDTH },
       }),
       card: reachCard,
     },

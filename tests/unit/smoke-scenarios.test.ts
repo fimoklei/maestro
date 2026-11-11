@@ -46,9 +46,10 @@ describe("parseScenarioArg", () => {
 
   it("expands all to every scenario", () => {
     expect(parseScenarioArg(["--scenario", "all"])).toEqual(SCENARIO_NAMES);
-    expect(SCENARIO_NAMES).toHaveLength(13);
+    expect(SCENARIO_NAMES).toHaveLength(14);
     expect(SCENARIO_NAMES).toEqual(
       expect.arrayContaining([
+        "edits-in-harness",
         "harness-outcomes",
         "import-edits",
         "deploy-again",
@@ -183,6 +184,31 @@ describe("scenarioMismatch", () => {
         observed,
       ),
     ).toMatch(/notice expected "Deploy incomplete", got none/);
+  });
+
+  it("reads a copy the Harness holds as Edits in the Harness, below Local edits", () => {
+    const read = (primitives: ReturnType<typeof skill>[]) =>
+      readCockpit({
+        deployState: {
+          primitives,
+          skipped: [],
+          releaseHead: head("v2.0.0", "v2.0.0"),
+        },
+        drift: { behind: [] },
+      });
+
+    expect(
+      read([skill("test-plan", { copy: "edits-in-harness" })]),
+    ).toMatchObject({
+      status: "Edits in the Harness",
+      skills: { "test-plan": "Edits in the Harness" },
+    });
+    expect(
+      read([
+        skill("test-plan", { copy: "edits-in-harness" }),
+        skill("code-review", { copy: "local-edits" }),
+      ]).status,
+    ).toBe("Local edits");
   });
 
   it("reads a refused deploy-state as the screen's failure notice", () => {
