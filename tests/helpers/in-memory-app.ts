@@ -36,6 +36,7 @@ export const inMemoryPorts = ({
 }: Overrides): UseCasePorts => ({
   env: { HOME: "/home", MAESTRO_HOME: "/maestro-home" },
   home: () => "/home",
+  lenientRealpath: (path) => path,
   fs: new InMemoryFileSystem(),
   copyTree: new InMemoryCopyTree(),
   toolPresence: { detectGlobalTools: async () => [] },

@@ -4,7 +4,11 @@ import {
   type WrittenReading,
 } from "./copy-reading";
 import type { DeployedContentPort } from "./deploy-skill";
-import { globalFolders, type SupportedTool } from "./deploy-tools";
+import {
+  type GlobalLayout,
+  globalFolders,
+  type SupportedTool,
+} from "./deploy-tools";
 
 /** What a Global write left of one skill in one Global folder. */
 export type SkillOutcome =
@@ -12,7 +16,7 @@ export type SkillOutcome =
   | { name: string; outcome: "not-updated"; stillAt: string | null };
 
 export type FolderOutcome = {
-  /** Home-relative, starting with `~/`, as the screen names it. */
+  /** Starting with `~/` inside home, absolute outside it, as the screen names it. */
   path: string;
   tool: SupportedTool;
   /** Global writes this folder only while its tool is detected. */
@@ -41,6 +45,8 @@ export class FolderOutcomeReader {
     content: CopyReadingPort & Pick<DeployedContentPort, "readLockfile">;
     // Newest first; null or a failure names no older release.
     releaseTags: () => Promise<readonly string[] | null>;
+    // Where Global writes, so each folder is read and named as apm wrote it.
+    globalLayout: () => GlobalLayout;
   };
 
   constructor(deps: FolderOutcomeReader["deps"]) {
@@ -68,7 +74,10 @@ export class FolderOutcomeReader {
       lockfile,
     });
     const folders: FolderOutcome[] = [];
-    for (const folder of globalFolders(input.written)) {
+    for (const folder of globalFolders(
+      input.written,
+      this.deps.globalLayout(),
+    )) {
       const readings = folder.detected
         ? await readEach(input.names, (name) =>
             session.readWritten(name, folder.tool),

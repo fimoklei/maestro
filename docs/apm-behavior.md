@@ -291,11 +291,15 @@ deployments:                    # one row per deployed file per deploy root
   `agent-skills` — still read `.agents`, so reconciliation never reclaims it.
   Since ADR-0011's #1557 amendment it never reclaims `.claude` either:
   Cursor, OpenCode and Devin Desktop read that folder too.
-- **`claude` honours `CLAUDE_CONFIG_DIR` at user scope (source,
-  `for_scope`).** With it set, `-g` deploys under that directory instead of
-  `~/.claude` and records the path home-relative (or absolute, outside
-  `$HOME`). Maestro reads `~/.claude/skills/` unconditionally and has not
-  measured this case ("Unobserved" below).
+- **`claude` honours `CLAUDE_CONFIG_DIR` at user scope (measured 2026-11-11,
+  #1796).** With it set, `-g` writes `$CLAUDE_CONFIG_DIR/skills/<name>`, not
+  `~/.claude/skills`. apm trims the value (blank = unset), expands `~`,
+  resolves a relative value against its cwd and resolves symlinks on both the
+  value and `$HOME`. `deployed_files` and `deployed_file_hashes` record the
+  folder home-relative inside `$HOME` (`.claude-work/skills/tdd/SKILL.md`)
+  and absolute outside it (`/Volumes/work/claude/skills/tdd/SKILL.md`); long
+  absolute hash keys use YAML's `? ` key form. `.agents` never moves.
+  Fixtures: `apm.lock.global-claude-config-dir-{inside,outside}-home.yaml`.
 
 ## Drift — `apm outdated`
 
@@ -769,8 +773,6 @@ against apm 0.26.0 and re-checked on 0.29.0 as noted per bullet.
   grammar).
 - The `--trust-bin` warning and whether it prompts: no skill under test
   carries a `bin/` payload.
-- `CLAUDE_CONFIG_DIR` at user scope: read from source only; Maestro's
-  global reader assumes `~/.claude/skills/`.
 - Uninstall over a copy with no `deployed_file_hashes` (a pre-tracking
   lockfile): whether apm retains or deletes an edited file there.
 - Prompts on the copilot-app (SQLite) and copilot-cowork targets (source:

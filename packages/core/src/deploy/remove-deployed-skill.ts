@@ -8,6 +8,7 @@ import type {
   DeployTarget,
 } from "./deploy-skill";
 import {
+  type GlobalLayout,
   globalFolderPath,
   SUPPORTED_TOOLS,
   type SupportedTool,
@@ -120,14 +121,14 @@ type EditedFolders = { folders?: string[]; notWritten?: string[] };
 function editedFolders(
   findings: readonly CopyFinding[],
   detected: readonly SupportedTool[],
+  layout: GlobalLayout,
 ): EditedFolders {
   const tools = editedTools(findings);
   const notWritten = tools.filter((tool) => !detected.includes(tool));
+  const pathOf = (tool: SupportedTool) => globalFolderPath(tool, layout);
   return {
-    ...(tools.length === 0 ? {} : { folders: tools.map(globalFolderPath) }),
-    ...(notWritten.length === 0
-      ? {}
-      : { notWritten: notWritten.map(globalFolderPath) }),
+    ...(tools.length === 0 ? {} : { folders: tools.map(pathOf) }),
+    ...(notWritten.length === 0 ? {} : { notWritten: notWritten.map(pathOf) }),
   };
 }
 
@@ -255,6 +256,8 @@ export class RemoveDeployedSkill {
     >;
     apm: Pick<ApmDriverPort, "removeSkill">;
     toolPresence: ToolPresencePort;
+    // Where Global writes, so folder names follow CLAUDE_CONFIG_DIR.
+    globalLayout: () => GlobalLayout;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
     // Shared with the deploy use-case: both rewrite the same apm.lock.yaml.
@@ -335,6 +338,7 @@ export class RemoveDeployedSkill {
         ...editedFolders(
           copies.findings,
           scope.scope === "global" ? scope.detected : SUPPORTED_TOOLS,
+          this.deps.globalLayout(),
         ),
       };
     }
@@ -372,7 +376,7 @@ export class RemoveDeployedSkill {
       }
       checks.push({
         tool: finding.tool,
-        path: globalFolderPath(finding.tool),
+        path: globalFolderPath(finding.tool, this.deps.globalLayout()),
         detected: isDetected,
         warning: GUARD_WARNINGS[finding.verdict] ?? null,
       });
@@ -733,7 +737,7 @@ export class RemoveDeployedSkill {
     for (const tool of folders) {
       tools.push({
         tool,
-        path: globalFolderPath(tool),
+        path: globalFolderPath(tool, this.deps.globalLayout()),
         state: await this.probeTarget(target, lockfile, name, [tool]),
       });
     }

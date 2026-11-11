@@ -8,7 +8,7 @@ import type {
   InventoryGitPort,
   RecordedPackagePort,
 } from "./deploy-ports";
-import type { SupportedTool } from "./deploy-tools";
+import type { GlobalLayout, SupportedTool } from "./deploy-tools";
 import type { FolderOutcomeReader, FolderOutcomes } from "./folder-outcome";
 import type { GitOrigin } from "./git-origin";
 import { type BlockingCopy, blockingCopies, heldByCopies } from "./held-copies";
@@ -173,6 +173,8 @@ export class DeploySkill {
     recordedPackage: RecordedPackagePort;
     // Global path only.
     toolPresence: ToolPresencePort;
+    // Where Global writes, so a held copy names its folder as apm wrote it.
+    globalLayout: () => GlobalLayout;
     harnessOrigin: () => Promise<GitOrigin | null>;
     // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
@@ -608,7 +610,10 @@ export class DeploySkill {
             ? {}
             : {
                 copyReceipt: decision.receipt,
-                blockingCopies: blockingCopies(findings.filter(isBlocking)),
+                blockingCopies: blockingCopies(
+                  findings.filter(isBlocking),
+                  this.deps.globalLayout(),
+                ),
               }),
         });
       }

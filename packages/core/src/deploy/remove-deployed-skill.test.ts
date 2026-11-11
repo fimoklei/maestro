@@ -8,6 +8,7 @@ import {
   type ToolCopyState,
 } from "./deployed-content.fake";
 import type { DeployedRefLookup } from "./deployed-ref";
+import { DEFAULT_GLOBAL_LAYOUT } from "./global-layout.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
 import {
@@ -131,6 +132,7 @@ function buildUseCase(overrides: Overrides = {}) {
         return (overrides.removed ?? true) ? { ok: true } : { ok: false };
       },
     },
+    globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
     toolPresence: {
       detectGlobalTools:
         overrides.detectTools ??
@@ -455,6 +457,7 @@ describe("RemoveDeployedSkill", () => {
           throw new Error("apm exploded");
         },
       },
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
       locks: new InFlightLocks(),
@@ -966,6 +969,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       copyGuard: new LocalCopyGuard({ content: watched }),
       deployedContent: watched,
       apm: { removeSkill: async () => ({ ok: true }) },
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
       locks: new InFlightLocks(),
@@ -1019,6 +1023,7 @@ describe("RemoveDeployedSkill.preflight", () => {
         linkedSkillPath: async () => null,
       },
       apm: { removeSkill: async () => ({ ok: true }) },
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => ["claude"] },
       canonicalPath: async (path) => path,
       locks: new InFlightLocks(),

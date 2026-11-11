@@ -2,10 +2,12 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { SupportedTool } from "../deploy/deploy-tools";
+import { REPO_TOOL_ROOTS } from "../deploy/deploy-tools";
 import {
   copiesIn,
   inMemoryDeployedContent,
 } from "../deploy/deployed-content.fake";
+import { DEFAULT_GLOBAL_LAYOUT } from "../deploy/global-layout.fake";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import { DeployedContentAdapter, type DeployTarget } from "../index";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
@@ -261,6 +263,7 @@ describe("GlobalDeployStateReader.readGlobal", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude", "codex"]),
     });
     const tdd = { type: "skill", name: "tdd", version: "v0.5.0" };
@@ -280,6 +283,7 @@ describe("GlobalDeployStateReader.readGlobal", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude"]),
     });
     const tdd = { type: "skill", name: "tdd", version: "v0.5.0" };
@@ -301,6 +305,7 @@ describe("GlobalDeployStateReader.readGlobal", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude", "codex"]),
     });
 
@@ -321,6 +326,7 @@ describe("GlobalDeployStateReader.readGlobal", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude", "codex"]),
     });
 
@@ -338,6 +344,7 @@ describe("GlobalDeployStateReader.readGlobal", () => {
     const fs = new InMemoryFileSystem();
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude"]),
     });
 
@@ -356,6 +363,7 @@ describe("GlobalDeployStateReader.readGlobal", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude"]),
     });
 
@@ -648,6 +656,7 @@ describe("GlobalDeployStateReader on a root-package target", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude", "codex"]),
       treeRoot: () => "/home",
     });
@@ -679,6 +688,7 @@ describe("GlobalDeployStateReader on a root-package target", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude", "codex"]),
       treeRoot: () => "/home",
       releaseHead: {
@@ -715,6 +725,7 @@ describe("GlobalDeployStateReader on a root-package target", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude"]),
       treeRoot: () => "/home",
       harnessOrigin: HARNESS_ORIGIN,
@@ -749,6 +760,7 @@ describe("GlobalDeployStateReader on a root-package target", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude", "codex"]),
       treeRoot: () => "/home",
     });
@@ -798,7 +810,11 @@ describe("DeployStateReader copy chips", () => {
         },
       },
       content: new DeployedContentAdapter({
-        location: { treeRoot: () => REPO, lockfilePath: () => LOCKFILE },
+        location: {
+          treeRoot: () => REPO,
+          lockfilePath: () => LOCKFILE,
+          toolRoots: () => REPO_TOOL_ROOTS,
+        },
         fs: tree,
       }),
     });
@@ -932,6 +948,7 @@ describe("DeployStateReader copy chips", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude", "codex"]),
       treeRoot: () => "/home",
       content: released.content,
@@ -967,6 +984,7 @@ describe("DeployStateReader copy chips", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude"]),
       treeRoot: () => "/home",
       content: released.content,
@@ -1142,6 +1160,7 @@ describe("GlobalDeployStateReader on a target pinned per skill", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude", "codex"]),
       treeRoot: () => "/home",
       harnessOrigin: HARNESS_ORIGIN,
@@ -1169,6 +1188,7 @@ describe("GlobalDeployStateReader on a target pinned per skill", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude", "codex"]),
       treeRoot: () => "/home",
     });
@@ -1417,6 +1437,7 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
       fs: new InMemoryFileSystem({
         files: { [GLOBAL_LOCKFILE]: lockfile(legacyAt("v0.2.0")) },
       }),
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude"]),
       treeRoot: () => "/home",
       harnessPage: async () => ({ kind: "link", url: HARNESS }),
@@ -1443,6 +1464,7 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
     });
     const reader = new GlobalDeployStateReader({
       fs,
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: fakePresence(["claude"]),
       treeRoot: () => "/home",
       harnessPage: async () => ({ kind: "link", url: HARNESS }),

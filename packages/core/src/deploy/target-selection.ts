@@ -1,17 +1,18 @@
 // Read from `deployed_files` plus file existence, never from `skill_subset` or
 // `skills:`: both keep names apm already dropped (#941).
 
+import { resolve } from "node:path";
 import { harnessSkillPin } from "../deploy-state/pinned-per-skill";
 import {
-  DEPLOY_SKILL_PREFIXES,
   deployedRootPackageSkills,
   isRootPackage,
+  skillPrefixes,
 } from "../deploy-state/root-package-skills";
 import { RELEASE_TAG_PATTERN } from "../harness/release-tag";
 import { parseLockfile } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
 import type { DeployTarget } from "./deploy-skill";
-import { DEPLOY_TOOLS, type SupportedTool } from "./deploy-tools";
+import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
 import type { DeployedLocation } from "./deployed-location";
 import type { GitOrigin } from "./git-origin";
 import { buildHarnessPackageRef } from "./package-ref";
@@ -37,7 +38,7 @@ export type TargetSelection =
 
 export async function readTargetSelection(deps: {
   fs: Pick<FileSystemPort, "readFile" | "isFileEntry">;
-  location: Pick<DeployedLocation, "lockfilePath" | "treeRoot">;
+  location: Pick<DeployedLocation, "lockfilePath" | "treeRoot" | "toolRoots">;
   target: DeployTarget;
   origin: GitOrigin;
 }): Promise<TargetSelection> {
@@ -75,10 +76,12 @@ export async function readTargetSelection(deps: {
     return { kind: "unreadable", reason: "ref-unresolvable" };
   }
   const treeRoot = deps.location.treeRoot(deps.target);
+  const toolRoots = deps.location.toolRoots(deps.target);
+  // A Global folder outside HOME is recorded absolute; resolve keeps it whole.
   const skills = await deployedRootPackageSkills(
     root,
-    DEPLOY_SKILL_PREFIXES,
-    (file) => deps.fs.isFileEntry(`${treeRoot}/${file}`),
+    skillPrefixes(toolRoots),
+    (file) => deps.fs.isFileEntry(resolve(treeRoot, file)),
   );
   return {
     kind: "root",
@@ -90,8 +93,8 @@ export async function readTargetSelection(deps: {
     }),
     deployed: [...new Set(skills.map((skill) => skill.name))],
     copies: skills.flatMap((skill) =>
-      DEPLOY_TOOLS.filter((tool) => tool.skillsDirPrefix === skill.prefix).map(
-        (tool) => ({ name: skill.name, tool: tool.apmTarget }),
+      SUPPORTED_TOOLS.filter((tool) => toolRoots[tool] === skill.prefix).map(
+        (tool) => ({ name: skill.name, tool }),
       ),
     ),
   };

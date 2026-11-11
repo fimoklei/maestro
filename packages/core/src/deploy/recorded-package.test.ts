@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
+import { REPO_TOOL_ROOTS } from "./deploy-tools";
 import { DeployedContentAdapter } from "./deployed-content";
 import { RecordedPackageAdapter } from "./recorded-package";
 
@@ -18,7 +19,11 @@ async function recordedTdd(raw: string | null) {
     tree.write(LOCKFILE, raw);
   }
   const lockfile = await new DeployedContentAdapter({
-    location: { treeRoot: () => REPO, lockfilePath: () => LOCKFILE },
+    location: {
+      treeRoot: () => REPO,
+      lockfilePath: () => LOCKFILE,
+      toolRoots: () => REPO_TOOL_ROOTS,
+    },
     fs: tree,
   }).readLockfile(target);
   return new RecordedPackageAdapter().read({ lockfile, name: "tdd" });

@@ -6,6 +6,7 @@ import { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 import { DeployedLocation } from "./deploy/deployed-location";
 import { InventoryGitAdapter } from "./deploy/inventory-git";
 import { NodeCopyTreeFs } from "./filesystem/copy-tree-fs";
+import { lenientRealpath } from "./filesystem/lenient-realpath";
 import { platformFolderChooser } from "./folder-chooser/platform-folder-chooser";
 import { readConfiguredGitOriginUrl } from "./git/configured-origin";
 import { readGitHubPage } from "./git/github-page";
@@ -24,15 +25,15 @@ import { ToolPresenceAdapter } from "./tools/tool-presence";
 export function nodeUseCasePorts(env: NodeJS.ProcessEnv): UseCasePorts {
   const fs = new NodeFileSystem();
   const released = new ReleasedContentReader();
+  const location = new DeployedLocation(env, lenientRealpath);
   return {
     env,
     home: () => homedir(),
+    lenientRealpath,
     fs,
     copyTree: new NodeCopyTreeFs(),
-    toolPresence: new ToolPresenceAdapter(),
-    deployedCleanup: new DeployedCleanupAdapter({
-      location: new DeployedLocation(env),
-    }),
+    toolPresence: new ToolPresenceAdapter({ location }),
+    deployedCleanup: new DeployedCleanupAdapter({ location }),
     // A scratch dir under MAESTRO_HOME, so apm's .gitignore edit never lands in
     // a real repo. The driver passes apm only the ambient env.
     apm: new ApmCliDriver({

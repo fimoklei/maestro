@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DeployedContentAdapter, NodeCopyTreeFs } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { REPO_TOOL_ROOTS } from "../../packages/core/src/deploy/deploy-tools";
 
 const sha = (contents: Buffer | string) =>
   `sha256:${createHash("sha256").update(contents).digest("hex")}`;
@@ -46,6 +47,7 @@ describe("DeployedContentAdapter, on the real filesystem", () => {
       location: {
         treeRoot: () => root,
         lockfilePath: () => join(root, "apm.lock.yaml"),
+        toolRoots: () => REPO_TOOL_ROOTS,
       },
     });
     await expect(
@@ -68,6 +70,7 @@ describe("DeployedContentAdapter, on the real filesystem", () => {
       location: {
         treeRoot: () => root,
         lockfilePath: () => join(root, "apm.lock.yaml"),
+        toolRoots: () => REPO_TOOL_ROOTS,
       },
     });
     await expect(

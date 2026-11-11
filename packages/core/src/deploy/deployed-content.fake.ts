@@ -77,7 +77,7 @@ export function inMemoryDeployedContent(
   const lockfiles = new Map<string, Map<string, Record<string, string>>>();
   const malformed = new Set<string>();
 
-  const location = new DeployedLocation({ HOME: FAKE_HOME });
+  const location = new DeployedLocation({ HOME: FAKE_HOME }, (path) => path);
   const treeRoot = (target: DeployTarget) => location.treeRoot(target);
   const lockfilePath = (target: DeployTarget) => location.lockfilePath(target);
 
@@ -142,7 +142,7 @@ export function inMemoryDeployedContent(
     lockfiles.set(lockPath, entries);
     malformed.delete(lockPath);
     const folder = (tool: SupportedTool) =>
-      `${root}/${deployTargetSubtrees(name, [tool])[0]}`;
+      `${root}/${deployTargetSubtrees(name, location.toolRoots(target), [tool])[0]}`;
     for (const tool of TOOLS) {
       tree.remove(folder(tool));
     }

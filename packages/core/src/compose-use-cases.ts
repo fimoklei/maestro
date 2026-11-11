@@ -10,6 +10,7 @@ import type {
   InventoryGitPort,
 } from "./deploy/deploy-skill";
 import { DeploySkill } from "./deploy/deploy-skill";
+import { REPO_TOOL_ROOTS } from "./deploy/deploy-tools";
 import { DeployedContentAdapter } from "./deploy/deployed-content";
 import { DeployedLocation } from "./deploy/deployed-location";
 import { DeployedRefAdapter } from "./deploy/deployed-ref";
@@ -78,6 +79,8 @@ export type UseCasePorts = {
   // Read per access, so a MAESTRO_HOME or HOME set after startup is honoured.
   env: NodeJS.ProcessEnv;
   home: () => string;
+  // Resolves the symlinks of a path's longest existing prefix, as apm does.
+  lenientRealpath: (path: string) => string;
   fs: FileSystemPort;
   copyTree: CopyTreeFsPort;
   toolPresence: ToolPresencePort;
@@ -154,7 +157,8 @@ export function composeUseCases(ports: UseCasePorts) {
   };
   const inventoryGit = git.inventory(harnessRoot);
   // Shared instance, so guard and cleanup agree on a global deploy's lockfile root and tree.
-  const deployedLocation = new DeployedLocation(env);
+  const deployedLocation = new DeployedLocation(env, ports.lenientRealpath);
+  const globalLayout = () => deployedLocation.globalLayout();
   const canonicalPath = (path: string) => fs.realpath(path);
   // Every use case drives apm through this one, so each write drops its answer.
   const apm = new ReusedOutdated({
@@ -200,6 +204,7 @@ export function composeUseCases(ports: UseCasePorts) {
     fs,
     toolPresence,
     treeRoot: () => deployedLocation.treeRoot({ kind: "global" }),
+    globalLayout,
     releaseHead,
     releaseTags: () => releaseHead.releaseTags(),
     harnessOrigin,
@@ -269,6 +274,7 @@ export function composeUseCases(ports: UseCasePorts) {
   const outcomes = new FolderOutcomeReader({
     content: releaseAwareContent,
     releaseTags: () => releaseHead.releaseTags(),
+    globalLayout,
   });
   const deploy = new DeploySkill({
     outcomes,
@@ -285,6 +291,7 @@ export function composeUseCases(ports: UseCasePorts) {
     recordedPackage: new RecordedPackageAdapter(),
     // Probed per deploy, so a global install targets only tools the machine has.
     toolPresence,
+    globalLayout,
     harnessOrigin,
     canonicalPath,
     locks: apmWriteLocks,
@@ -297,6 +304,7 @@ export function composeUseCases(ports: UseCasePorts) {
     deployedContent,
     apm,
     toolPresence,
+    globalLayout,
     canonicalPath,
     locks: apmWriteLocks,
     selection,
@@ -346,9 +354,11 @@ export function composeUseCases(ports: UseCasePorts) {
       {
         treeRoot: deployedLocation.treeRoot({ kind: "global" }),
         lockfilePath: deployedLocation.lockfilePath({ kind: "global" }),
+        roots: deployedLocation.toolRoots({ kind: "global" }),
       },
       ...(await registry.list()).map((repo) => ({
         treeRoot: repo.path,
+        roots: REPO_TOOL_ROOTS,
         lockfilePath: deployedLocation.lockfilePath({
           kind: "repo",
           repoPath: repo.path,
@@ -398,6 +408,7 @@ export function composeUseCases(ports: UseCasePorts) {
       },
       globalRoot: () => resolveApmGlobalRoot(env),
       home: () => deployedLocation.treeRoot({ kind: "global" }),
+      globalLayout,
       importSkill,
       git: harnessGit,
       resolveRoot: harnessRoot,

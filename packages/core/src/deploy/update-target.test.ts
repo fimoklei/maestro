@@ -4,6 +4,7 @@ import type { HarnessSkillTree } from "../index";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
 import {
   deployTargetSubtrees,
+  REPO_TOOL_ROOTS,
   SUPPORTED_TOOLS,
   type SupportedTool,
 } from "./deploy-tools";
@@ -110,7 +111,7 @@ function subject(options: Options = {}) {
   if (options.linked !== undefined) {
     const { name, tool } = options.linked;
     place(name);
-    const folder = `${copies.treeRoot(copyTarget)}/${deployTargetSubtrees(name, [tool])[0]}`;
+    const folder = `${copies.treeRoot(copyTarget)}/${deployTargetSubtrees(name, REPO_TOOL_ROOTS, [tool])[0]}`;
     copies.tree.remove(folder);
     copies.tree.symlink(folder, `/elsewhere/${name}`);
   }

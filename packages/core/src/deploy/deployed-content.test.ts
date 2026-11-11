@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import type { DeployTarget } from "./deploy-skill";
+import { REPO_TOOL_ROOTS } from "./deploy-tools";
 import { DeployedContentAdapter } from "./deployed-content";
 import { DeployedLocation } from "./deployed-location";
 
@@ -17,7 +18,11 @@ function adapterOn(options: { release?: Record<string, string> | null } = {}) {
   const lockfilePath = `${FAKE_REPO}/apm.lock.yaml`;
   const releaseReads: string[] = [];
   const content = new DeployedContentAdapter({
-    location: { treeRoot: () => FAKE_REPO, lockfilePath: () => lockfilePath },
+    location: {
+      treeRoot: () => FAKE_REPO,
+      lockfilePath: () => lockfilePath,
+      toolRoots: () => REPO_TOOL_ROOTS,
+    },
     fs: tree,
     ...(options.release === undefined
       ? {}
@@ -547,9 +552,10 @@ describe("DeployedContentAdapter, global target", () => {
   it("is clean when the HOME copy matches the hash its ~/.apm lockfile records", async () => {
     const tree = new InMemoryCopyTree();
     const content = new DeployedContentAdapter({
-      location: new DeployedLocation({
-        HOME: "/home/fake",
-      } as NodeJS.ProcessEnv),
+      location: new DeployedLocation(
+        { HOME: "/home/fake" } as NodeJS.ProcessEnv,
+        (path) => path,
+      ),
       fs: tree,
     });
     tree.write("/home/fake/.claude/skills/tdd/SKILL.md", "skill\n");
@@ -574,5 +580,51 @@ describe("DeployedContentAdapter, global target", () => {
         lockfile: await content.readLockfile({ kind: "global" }),
       }),
     ).resolves.toBe("clean");
+  });
+
+  // apm 0.32.0 keys a folder outside HOME absolute (#1796).
+  describe("with CLAUDE_CONFIG_DIR outside HOME", () => {
+    const moved = () => {
+      const tree = new InMemoryCopyTree();
+      const content = new DeployedContentAdapter({
+        location: new DeployedLocation(
+          { HOME: "/home/fake", CLAUDE_CONFIG_DIR: "/work/claude" },
+          (path) => path,
+        ),
+        fs: tree,
+      });
+      tree.write("/work/claude/skills/tdd/SKILL.md", "skill\n");
+      tree.write(
+        "/home/fake/.apm/apm.lock.yaml",
+        [
+          "dependencies:",
+          "  - virtual_path: .apm/skills/tdd",
+          "    package_type: claude_skill",
+          "    resolved_ref: v0.5.1",
+          "    deployed_file_hashes:",
+          `      /work/claude/skills/tdd/SKILL.md: ${sha(Buffer.from("skill\n"))}`,
+          "    content_hash: sha256:opaque",
+          "",
+        ].join("\n"),
+      );
+      const classify = async () =>
+        content.classify({
+          target: { kind: "global" },
+          name: "tdd",
+          tools: ["claude"],
+          lockfile: await content.readLockfile({ kind: "global" }),
+        });
+      return { tree, classify };
+    };
+
+    it("reads the moved copy clean against its absolute record", async () => {
+      await expect(moved().classify()).resolves.toBe("clean");
+    });
+
+    it("guards an edit in the moved copy", async () => {
+      const { tree, classify } = moved();
+      tree.write("/work/claude/skills/tdd/SKILL.md", "edited\n");
+      await expect(classify()).resolves.toBe("diverged");
+    });
   });
 });

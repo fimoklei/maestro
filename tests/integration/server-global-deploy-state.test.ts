@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { ToolPresenceAdapter } from "@maestro/core";
+import { DeployedLocation, ToolPresenceAdapter } from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { lenientRealpath } from "../../packages/core/src/filesystem/lenient-realpath";
 import { nodeApp } from "../helpers/node-app";
 
 // The server resolves the user-scope location itself, so the route takes
@@ -15,6 +16,15 @@ const SINGLE_TOOL_LOCKFILE = readFileSync(
 const TWO_TOOL_LOCKFILE = readFileSync(
   new URL("../fixtures/apm.lock.global-two-tool.yaml", import.meta.url),
   "utf8",
+);
+
+const fixture = (name: string) =>
+  readFileSync(new URL(`../fixtures/${name}`, import.meta.url), "utf8");
+const INSIDE_HOME_LOCKFILE = fixture(
+  "apm.lock.global-claude-config-dir-inside-home.yaml",
+);
+const OUTSIDE_HOME_LOCKFILE = fixture(
+  "apm.lock.global-claude-config-dir-outside-home.yaml",
 );
 
 const TDD = { type: "skill", name: "tdd", version: "v0.5.1" };
@@ -54,11 +64,13 @@ describe("global deploy-state HTTP route (one target with its folders)", () => {
   }
 
   // Tool presence is read from the sandbox HOME, as installClaude/installCodex left it.
-  function makeApp() {
-    return nodeApp(
-      { HOME: home, MAESTRO_HOME: home },
-      { toolPresence: new ToolPresenceAdapter({ homeRoot: () => home }) },
-    );
+  function makeApp(extra: NodeJS.ProcessEnv = {}) {
+    const env = { HOME: home, MAESTRO_HOME: home, ...extra };
+    return nodeApp(env, {
+      toolPresence: new ToolPresenceAdapter({
+        location: new DeployedLocation(env, lenientRealpath),
+      }),
+    });
   }
 
   it("reads a single-tool install as one target, the other folder not written", async () => {
@@ -199,6 +211,76 @@ describe("global deploy-state HTTP route (one target with its folders)", () => {
       folders: [claudeFolder([TDD]), agentsFolder([], false)],
       skipped: [],
       otherOrigins: [],
+    });
+  });
+
+  describe("with CLAUDE_CONFIG_DIR set, as apm 0.32.0 records it (#1796)", () => {
+    const V060 = { type: "skill", name: "tdd", version: "v0.6.0" };
+
+    it("reads Claude Code's skills from a folder inside HOME, named from ~/", async () => {
+      const dir = join(home, ".claude-work");
+      await mkdir(dir, { recursive: true });
+      await writeFile(join(dir, ".claude.json"), "{}", "utf8");
+      await installCodex();
+      await writeFile(
+        join(apmRoot, "apm.lock.yaml"),
+        INSIDE_HOME_LOCKFILE,
+        "utf8",
+      );
+
+      const res = await makeApp({ CLAUDE_CONFIG_DIR: dir }).request(
+        "/api/deploy-state/global",
+      );
+
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        primitives: unknown[];
+        folders: { path: string; tool: string; detected: boolean }[];
+      };
+      expect(body.primitives).toEqual([V060]);
+      expect(body.folders).toMatchObject([
+        {
+          path: "~/.claude-work/skills",
+          tool: "claude",
+          detected: true,
+          primitives: [V060],
+        },
+        {
+          path: "~/.agents/skills",
+          tool: "codex",
+          detected: true,
+          primitives: [V060],
+        },
+      ]);
+    });
+
+    it("reads a folder outside HOME by its absolute path", async () => {
+      const outside = await realpath(
+        await mkdtemp(join(tmpdir(), "maestro-claude-config-")),
+      );
+      try {
+        await writeFile(join(outside, ".claude.json"), "{}", "utf8");
+        await writeFile(
+          join(apmRoot, "apm.lock.yaml"),
+          OUTSIDE_HOME_LOCKFILE.replaceAll("/claude-config-dir", outside),
+          "utf8",
+        );
+
+        const res = await makeApp({ CLAUDE_CONFIG_DIR: outside }).request(
+          "/api/deploy-state/global",
+        );
+
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as {
+          folders: { path: string; detected: boolean; primitives: unknown[] }[];
+        };
+        expect(body.folders).toMatchObject([
+          { path: `${outside}/skills`, detected: true, primitives: [V060] },
+          { path: "~/.agents/skills", detected: false, primitives: [] },
+        ]);
+      } finally {
+        await rm(outside, { recursive: true, force: true });
+      }
     });
   });
 });

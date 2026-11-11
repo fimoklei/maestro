@@ -1,9 +1,13 @@
 // Reads a target's apm.lock.yaml plus what is on disk under it, keeping absent,
 // skipped, phantom and malformed apart.
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { type CopyReadingPort, readEach } from "../deploy/copy-reading";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
-import { globalFolders } from "../deploy/deploy-tools";
+import {
+  type GlobalLayout,
+  globalFolders,
+  REPO_TOOL_ROOTS,
+} from "../deploy/deploy-tools";
 import type { GitOrigin } from "../deploy/git-origin";
 import type { PendingOperation } from "../deploy/retry-target-operation";
 import { type GitHubPage, UNKNOWN_PAGE } from "../git/github-page";
@@ -37,8 +41,8 @@ import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
 import type { ReleaseHeadReader } from "./release-head";
 import {
   countExtraRootPackageFiles,
-  DEPLOY_SKILL_PREFIXES,
   deployedRootPackageSkills,
+  skillPrefixes,
 } from "./root-package-skills";
 
 type DeployStateResult =
@@ -175,7 +179,7 @@ export class DeployStateReader {
     if (root !== undefined) {
       const deployed = await deployedRootPackageSkills(
         root,
-        DEPLOY_SKILL_PREFIXES,
+        skillPrefixes(REPO_TOOL_ROOTS),
         (file) => this.fs.isFileEntry(join(repoPath, file)),
       );
       for (const name of new Set(deployed.map((skill) => skill.name))) {
@@ -206,7 +210,7 @@ export class DeployStateReader {
     const extraFiles =
       root === undefined
         ? 0
-        : countExtraRootPackageFiles(root, DEPLOY_SKILL_PREFIXES);
+        : countExtraRootPackageFiles(root, skillPrefixes(REPO_TOOL_ROOTS));
     const pendingOperation = await this.readPending(target);
     // Spread, never a null key: a missing reading must not reach JSON (#416).
     return {
@@ -302,6 +306,7 @@ function unreadableAsSkipped(
 export class GlobalDeployStateReader extends DeployStateReader {
   private readonly toolPresence: ToolPresencePort;
   private readonly treeRoot: () => string;
+  private readonly globalLayout: () => GlobalLayout;
   private readonly copies: CopyReadingPort | undefined;
   private readonly releaseTags:
     | (() => Promise<readonly string[] | null>)
@@ -314,6 +319,8 @@ export class GlobalDeployStateReader extends DeployStateReader {
       // What deployed_files are relative to: a global install writes the
       // lockfile under ~/.apm and the files under HOME.
       treeRoot?: () => string;
+      // Where Global writes; Claude Code's folder follows CLAUDE_CONFIG_DIR.
+      globalLayout: () => GlobalLayout;
       // Each Global copy is read against the Target release through it.
       content?: Pick<DeployedContentPort, "classify"> & CopyReadingPort;
       // The release tags the Behind check reads, newest first; null unread.
@@ -324,6 +331,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
     this.toolPresence = deps.toolPresence;
     this.copies = deps.content;
     this.releaseTags = deps.releaseTags;
+    this.globalLayout = deps.globalLayout;
     this.treeRoot = deps.treeRoot ?? (() => resolveHomeDirectory(process.env));
   }
 
@@ -337,7 +345,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
       return {
         ok: true,
         primitives: [],
-        folders: globalFolders(detected).map((folder) => ({
+        folders: globalFolders(detected, this.globalLayout()).map((folder) => ({
           ...folder,
           primitives: [],
         })),
@@ -356,7 +364,9 @@ export class GlobalDeployStateReader extends DeployStateReader {
       parsed.entries,
       detected,
       {
-        fileExists: (file) => this.fs.isFileEntry(join(tree, file)),
+        layout: this.globalLayout(),
+        // A folder outside HOME is recorded absolute; resolve keeps it whole.
+        fileExists: (file) => this.fs.isFileEntry(resolve(tree, file)),
         origin: await this.connectedOrigin(),
         harnessPage: this.connectedPage(),
       },

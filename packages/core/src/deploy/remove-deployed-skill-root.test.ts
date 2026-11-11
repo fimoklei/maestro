@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DeployTarget } from "./deploy-skill";
 import { type CopyStates, copiesIn } from "./deployed-content.fake";
+import { DEFAULT_GLOBAL_LAYOUT } from "./global-layout.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { RemoveDeployedSkill } from "./remove-deployed-skill";
 import { selectionWorld } from "./selection-writer-fake";
@@ -23,6 +24,7 @@ function buildUseCase(copy: CopyStates = "clean") {
       ...copiesIn(copy).content,
     },
     apm: { removeSkill: async () => ({ ok: true as const }) },
+    globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
     toolPresence: { detectGlobalTools: async () => ["claude" as const] },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),

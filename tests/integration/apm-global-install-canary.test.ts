@@ -14,8 +14,15 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { promisify } from "node:util";
-import { ApmCliDriver, DEPLOY_TOOLS, ToolPresenceAdapter } from "@maestro/core";
+import {
+  ApmCliDriver,
+  DEPLOY_TOOLS,
+  DeployedLocation,
+  ToolPresenceAdapter,
+} from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { lenientRealpath } from "../../packages/core/src/filesystem/lenient-realpath";
+import { nodeApp } from "../helpers/node-app";
 
 const run = promisify(execFile);
 
@@ -55,7 +62,7 @@ describe.runIf(enabled)("real apm global install canary", () => {
       await writeFile(marker, "");
     }
     const detected = await new ToolPresenceAdapter({
-      homeRoot: () => home,
+      location: new DeployedLocation({ HOME: home }, lenientRealpath),
     }).detectGlobalTools();
     expect(detected).toEqual(DEPLOY_TOOLS.map((tool) => tool.apmTarget));
 
@@ -105,6 +112,82 @@ describe.runIf(enabled)("real apm global install canary", () => {
     expect(lock).toContain("deployed_file_hashes:");
   });
 });
+
+describe.runIf(enabled)(
+  "real apm global install under CLAUDE_CONFIG_DIR (#1796)",
+  () => {
+    let home: string;
+
+    beforeEach(async () => {
+      home = await realpath(
+        await mkdtemp(join(tmpdir(), "maestro-claude-config-canary-")),
+      );
+    });
+
+    afterEach(async () => {
+      await rm(home, { recursive: true, force: true });
+    });
+
+    it("reads back the skill apm wrote into the variable's folder", {
+      timeout: 120_000,
+    }, async () => {
+      const { stdout: tokenOut } = await run("gh", ["auth", "token"]);
+      const env = {
+        HOME: home,
+        MAESTRO_HOME: join(home, ".maestro"),
+        CLAUDE_CONFIG_DIR: join(home, ".claude-work"),
+      };
+      const location = new DeployedLocation(env, lenientRealpath);
+      for (const marker of Object.values(location.presenceMarkers())) {
+        await mkdir(dirname(marker), { recursive: true });
+        await writeFile(marker, "");
+      }
+      const toolPresence = new ToolPresenceAdapter({ location });
+      const detected = await toolPresence.detectGlobalTools();
+      expect(detected).toEqual(["claude", "codex"]);
+
+      const scratchCwd = join(home, ".apm-scratch");
+      const driver = new ApmCliDriver({
+        run: (file, args, options) =>
+          run(file, args, {
+            ...options,
+            env: { ...process.env, ...env, GITHUB_TOKEN: tokenOut.trim() },
+          }),
+        prepareGlobalCwd: async () => {
+          await mkdir(scratchCwd, { recursive: true });
+          return scratchCwd;
+        },
+      });
+      const resolved = await driver.resolveLatestTag(HARNESS);
+      if (!resolved.ok) {
+        throw new Error(`expected a resolved tag, got ${resolved.reason}`);
+      }
+      const installed = await driver.deploySkill({
+        target: { kind: "global" },
+        ref: `github.com/${HARNESS}/${SUBPATH}/${SKILL}#${resolved.tag}`,
+        tools: detected,
+      });
+      expect(installed).toEqual({ ok: true });
+      await expect(
+        access(join(home, ".claude-work", "skills", SKILL, "SKILL.md")),
+      ).resolves.toBeUndefined();
+
+      const res = await nodeApp(env, { toolPresence }).request(
+        "/api/deploy-state/global",
+      );
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        folders: { path: string; primitives: { name: string }[] }[];
+      };
+      expect(
+        body.folders.map((f) => [f.path, f.primitives.map((p) => p.name)]),
+      ).toEqual([
+        ["~/.claude-work/skills", [SKILL]],
+        ["~/.agents/skills", [SKILL]],
+      ]);
+    });
+  },
+);
 
 describe.runIf(!enabled)("real apm global install canary (skipped)", () => {
   it("is disabled without MAESTRO_REAL_APM=1", () => {

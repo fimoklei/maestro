@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { ConfigStore } from "../registry/config-store";
 import { type SelectionWrite, SelectionWriter } from "./apply-selection";
-import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
+import {
+  REPO_TOOL_ROOTS,
+  SUPPORTED_TOOLS,
+  type SupportedTool,
+} from "./deploy-tools";
 import { copyPaths } from "./selection-writer-fake";
 import { TargetOperationStore } from "./target-operation";
 
@@ -125,6 +129,7 @@ function world() {
         lockfilePath: () => "/repo/apm.lock.yaml",
         manifestPath: () => "/repo/apm.yml",
         treeRoot: () => "/repo",
+        toolRoots: () => REPO_TOOL_ROOTS,
       },
       apm,
       operations,

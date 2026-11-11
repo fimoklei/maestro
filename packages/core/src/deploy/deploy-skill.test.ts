@@ -11,6 +11,7 @@ import {
 import type { SupportedTool } from "./deploy-tools";
 import { deployedCopies } from "./deployed-content.fake";
 import type { FolderOutcomes } from "./folder-outcome";
+import { DEFAULT_GLOBAL_LAYOUT } from "./global-layout.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
 import { selectionWorld } from "./selection-writer-fake";
@@ -118,6 +119,7 @@ const buildDeps = (
       }) => noCopies.contentDigest(input),
       linkedSkillPath: async () => null,
     },
+    globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
     toolPresence: {
       detectGlobalTools: async (): Promise<SupportedTool[]> => [
         "claude",
@@ -165,6 +167,7 @@ describe("DeploySkill", () => {
 
   it("completes a global deploy while an undetected tool's folder keeps its copies", async () => {
     const { deps, world } = buildDeps({
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => ["claude"] },
     });
     world.seed({ release: "v0.5.1", skills: ["review"] });
@@ -529,6 +532,7 @@ describe("DeploySkill", () => {
   it("targets only the detected tool on a single-tool machine", async () => {
     // Anything wider makes apm write a copy for a tool the user lacks (#131).
     const { deps, deployed } = buildDeps({
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => ["claude"] },
     });
     const result = await new DeploySkill(deps).execute({
@@ -553,6 +557,7 @@ describe("DeploySkill", () => {
     // A leftover .agents copy from a two-tool install must not force a false
     // refusal (#136).
     const { deps, classified } = buildDeps({
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => ["claude"] },
     });
     await new DeploySkill(deps).execute({
@@ -594,6 +599,7 @@ describe("DeploySkill", () => {
   it("refuses a global deploy when no supported tool is detected, before apm", async () => {
     // Both apm methods throw, proving apm is never invoked (#131).
     const { deps, deployed } = buildDeps({
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => [] },
       apm: {
         resolveLatestTag: async () => {
@@ -616,6 +622,7 @@ describe("DeploySkill", () => {
 
   it("never consults tool presence for a repo deploy", async () => {
     const { deps, deployed } = buildDeps({
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: {
         detectGlobalTools: async () => {
           throw new Error("presence must not be probed for a repo deploy");

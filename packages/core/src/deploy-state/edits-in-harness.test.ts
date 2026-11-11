@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { inMemoryDeployedContent } from "../deploy/deployed-content.fake";
+import { DEFAULT_GLOBAL_LAYOUT } from "../deploy/global-layout.fake";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import { DeployedContentAdapter } from "../index";
 import {
@@ -72,10 +73,15 @@ function globalWith(options: {
   const tags = options.tags ?? ["v2.0.0", "v1.1.0", "v1.0.0"];
   const reader = new GlobalDeployStateReader({
     fs: tree.fileSystem(),
+    globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
     toolPresence: { detectGlobalTools: async () => ["claude", "codex"] },
     treeRoot: () => HOME,
     content: new DeployedContentAdapter({
-      location: { treeRoot: () => HOME, lockfilePath: () => LOCKFILE },
+      location: {
+        treeRoot: () => HOME,
+        lockfilePath: () => LOCKFILE,
+        toolRoots: () => DEFAULT_GLOBAL_LAYOUT.roots,
+      },
       fs: tree,
       inventoryGit: {
         readSkillFilesAtTag: async (tag, name) =>
