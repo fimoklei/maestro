@@ -56,6 +56,8 @@ Run from the repo root.
 ## What a test proves
 
 - Test behaviour through the public interface. A test must survive a refactor that keeps behaviour.
+- A test written to guard a refactor passes before it, so prove it RED
+  another way: remove each line it guards, see it fail, restore the line.
 - A component's callback props are its public interface; asserting that `onClose` was called is fine.
 - Never: mock your own modules, test a private function, assert call counts or order of internal calls, or verify through a side channel instead of the interface.
 - Never test a trivial function (one-liner, simple mapping, string concatenation) whose test only restates the code.
