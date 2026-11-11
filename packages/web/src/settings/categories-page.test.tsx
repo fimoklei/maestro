@@ -510,6 +510,37 @@ describe("Settings › Categories, rename and delete", () => {
       expect(screen.getByRole("status")).toHaveTextContent("Renamed Assets.");
     });
 
+    it("opens again on the category's own name, with no field error until its own submit", async () => {
+      stubServer({
+        categories: [category("Planning", 3, 2), category("Writing", 1)],
+      });
+      renderPage();
+
+      const first = await openRename("Planning");
+      const field = within(first).getByRole("textbox", { name: "Name" });
+      await userEvent.clear(field);
+      await userEvent.type(field, "writing{Enter}");
+      expect(
+        within(first).getByText("Writing already exists."),
+      ).toBeInTheDocument();
+      await userEvent.click(
+        within(first).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+
+      const again = await openRename("Planning");
+      expect(within(again).getByRole("textbox", { name: "Name" })).toHaveValue(
+        "Planning",
+      );
+      expect(within(again).queryByText("Writing already exists.")).toBeNull();
+      // A field error waits for this opening's own submit.
+      const name = within(again).getByRole("textbox", { name: "Name" });
+      await userEvent.clear(name);
+      expect(name).toBeValid();
+    });
+
     it("allows a change of case only", async () => {
       const { posts } = stubServer({ categories: [category("release notes")] });
       renderPage();
@@ -636,6 +667,34 @@ describe("Settings › Categories, rename and delete", () => {
           screen.getByRole("button", { name: "Actions for Writing" }),
         ).toHaveFocus(),
       );
+    });
+
+    it("opens again on No category after Cancel", async () => {
+      stubServer({
+        categories: [category("Planning", 3, 2), category("Writing", 1)],
+      });
+      renderPage();
+
+      const first = await openDelete("Planning");
+      await userEvent.click(
+        within(first).getByRole("button", { name: /^Move to/ }),
+      );
+      await userEvent.click(
+        within(
+          within(first).getByRole("listbox", { name: "Move to" }),
+        ).getByRole("option", { name: "Writing" }),
+      );
+      await userEvent.click(
+        within(first).getByRole("button", { name: "Cancel" }),
+      );
+      await waitFor(() =>
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      );
+
+      const again = await openDelete("Planning");
+      expect(
+        within(again).getByRole("button", { name: /^Move to/ }),
+      ).toHaveTextContent("No category");
     });
 
     it("moves the items to No category unless another is chosen", async () => {
