@@ -37,6 +37,9 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui**. The layer boundary live
 - A shape a second feature needs moves to `ui/` with its story, before the
   second feature uses it.
 - Custom hooks hold data and logic; components stay mostly presentational.
+- A dialog's fields, checks and writes live in a component mounted only while
+  the dialog stands, so closing it forgets them. The screen holds only which
+  dialog stands, as one value: `null` or a union.
 - Before writing a `useEffect`, rule out: deriving the value during render,
   resetting state with a `key`, doing the work in the event handler, and
   `useSyncExternalStore` for a subscription. An Effect only syncs with a
