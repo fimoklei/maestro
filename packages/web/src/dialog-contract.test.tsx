@@ -22,10 +22,7 @@ import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog, type DeletionMode } from "./harness/deletion-dialog";
 import { DiscardDialog } from "./harness/discard-dialog";
 import { EditPromptDialog } from "./harness/edit-prompt-dialog";
-import {
-  type ImportRow,
-  importChecklistGroups,
-} from "./harness/import-checklist-groups";
+import type { ImportRow } from "./harness/import-checklist-groups";
 import type { PromptFileRefusal } from "./harness/import-prompts-copy";
 import { ImportPromptsDialog } from "./harness/import-prompts-dialog";
 import {
@@ -309,8 +306,7 @@ const listedChecklist = <Refusal,>(
     checked: new Set(keys),
     toggle: vi.fn(),
     picked: keys.map((key) => ({ key, replace: false })),
-    groups: (refusalSentence) =>
-      importChecklistGroups(rows ?? [], refusalSentence, () => ({})),
+    rowCategory: () => null,
     categoryAdd: idleCategoryAdd,
     saveCategories: async () => [],
   };

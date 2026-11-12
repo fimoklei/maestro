@@ -1,8 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { CATEGORY_FIELD } from "../categories/categories-copy";
-import { RowCategoryControl } from "../categories/row-category-control";
-import { importChecklistGroups } from "./import-checklist-groups";
 import { ImportPromptsDialog } from "./import-prompts-dialog";
+
+const IDLE_ADD = {
+  run: async () => null,
+  pending: false,
+  failed: false,
+  reset: () => {},
+};
 
 const ROWS = [
   {
@@ -68,25 +73,22 @@ const meta = {
         { key: "1", replace: false },
       ],
       // Each row shows the category its file names.
-      groups: (refusalSentence, isRunning) =>
-        importChecklistGroups(ROWS, refusalSentence, (row) => ({
-          control: (
-            <RowCategoryControl
-              name={row.name}
-              value={row.fileCategory}
-              open={false}
-              disabled={isRunning}
-              buttonRef={undefined}
-              onToggle={() => {}}
-            />
-          ),
-        })),
-      categoryAdd: {
-        run: async () => null,
-        pending: false,
-        failed: false,
-        reset: () => {},
-      },
+      rowCategory: (row) =>
+        row.refusal === null
+          ? {
+              name: row.name,
+              value: row.fileCategory,
+              suggested: null,
+              open: false,
+              addFailed: false,
+              add: IDLE_ADD,
+              buttonRef: undefined,
+              toggleMenu: () => {},
+              pick: () => {},
+              closeMenu: () => {},
+            }
+          : null,
+      categoryAdd: IDLE_ADD,
       saveCategories: async () => [],
     },
     running: false,

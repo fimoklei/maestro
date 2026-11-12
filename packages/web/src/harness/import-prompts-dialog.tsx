@@ -11,6 +11,7 @@ import { GroupedList } from "../ui/grouped-list";
 import { Report } from "../ui/report";
 import { SegmentedControl } from "../ui/segmented-control";
 import { CHANGE_WORD } from "./change-words";
+import { importChecklistRows } from "./import-checklist-rows";
 import {
   CHOOSE_FILES,
   CHOOSE_FILES_FIRST,
@@ -46,13 +47,14 @@ export function ImportPromptsDialog({
   const labelId = useId();
   const hintId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
-  const { rows, checked, toggle, groups } = checklist;
+  const { rows, checked, toggle } = checklist;
   const ready = (rows ?? []).filter((row) => row.refusal === null);
   // A pasted prompt lists only once the Harness holds its name; its Category
   // is the field's, so its row takes no menu.
   const listed =
     source === "paste" ? rows?.some((row) => row.held) === true : rows !== null;
-  const listGroups = groups(
+  const listGroups = importChecklistRows(
+    checklist,
     (refusal) => PROMPT_FILE_REFUSALS[refusal],
     running,
   ).map((group) =>

@@ -22,6 +22,7 @@ import { StatusLine } from "../ui/status-line";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 import { CHANGE_WORD } from "./change-words";
 import type { ImportRow } from "./import-checklist-groups";
+import { importChecklistRows } from "./import-checklist-rows";
 import {
   folderBlockerNotice,
   IMPORT_SKILLS_HINT,
@@ -30,7 +31,6 @@ import {
   READING_FOLDER,
   skillFolderRefusal,
 } from "./import-skills-copy";
-
 import type { ImportChecklist } from "./use-import-checklist";
 
 // A folder whose name yields no skill name still needs a row name.
@@ -211,7 +211,11 @@ export function ImportSkillsDialog({
           ) : null}
           {rows.length === 0 ? null : (
             <GroupedList
-              groups={checklist.groups(skillFolderRefusal, isRunning)}
+              groups={importChecklistRows(
+                checklist,
+                skillFolderRefusal,
+                isRunning,
+              )}
               checklist={{
                 checked: checklist.checked,
                 onToggle: checklist.toggle,

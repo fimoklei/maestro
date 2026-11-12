@@ -1,16 +1,12 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
 import { sameCategoryName } from "@maestro/core/category-name";
-import { type ReactNode, useRef, useState } from "react";
+import { type RefObject, useRef, useState } from "react";
 import {
   CATEGORY_FIELD,
-  CATEGORY_NOT_ADDED,
   CATEGORY_NOT_SET,
   categoryNotSetAfterImport,
-  setCategoryFor,
 } from "../categories/categories-copy";
 import type { CategoryFieldState } from "../categories/category-field";
-import { CategoryPicker } from "../categories/category-picker";
-import { RowCategoryControl } from "../categories/row-category-control";
 import {
   useAssignCategory,
   useCategoriesWhile,
@@ -20,16 +16,28 @@ import {
   useHeldCategoryAdd,
 } from "../categories/use-held-category-add";
 import { toggleStaged } from "../ui/bulk-selection";
-import type { GroupedListGroup } from "../ui/grouped-list";
-import { Notice } from "../ui/notice";
+import type { MenuClosedBy } from "../ui/category-menu";
 import type { ReportGroup } from "../ui/report";
-import {
-  type ImportRow,
-  importChecklistGroups,
-} from "./import-checklist-groups";
+import type { ImportRow } from "./import-checklist-groups";
 
 /** A row the import landed: its key in the checklist and the name it landed under. */
 type LandedRow = { key: string; name: string };
+
+/** One checklist row's Category control and the menu it opens under the row. */
+export type ImportRowCategory = {
+  name: string;
+  /** Null for No category. */
+  value: string | null;
+  /** A category the file names that the list lacks: the menu's search. */
+  suggested: string | null;
+  open: boolean;
+  addFailed: boolean;
+  add: HeldCategoryAdd;
+  buttonRef: RefObject<HTMLButtonElement | null> | undefined;
+  toggleMenu: () => void;
+  pick: (category: string | null) => void;
+  closeMenu: (via: MenuClosedBy) => void;
+};
 
 export type ImportChecklist<Refusal> = {
   /** Null until a source lists rows. */
@@ -38,11 +46,8 @@ export type ImportChecklist<Refusal> = {
   toggle: (key: string) => void;
   /** The checked rows, each marked where it replaces a held item. */
   picked: readonly { key: string; replace: boolean }[];
-  /** The rows as the checklist groups them: new, Already in the Harness, refused. */
-  groups: (
-    refusalSentence: (refusal: Refusal) => ReactNode,
-    isRunning: boolean,
-  ) => GroupedListGroup[];
+  /** A row's Category in the list; null where the row takes none. */
+  rowCategory: (row: ImportRow<Refusal>) => ImportRowCategory | null;
   /** The category add a row's menu runs; a submit waits for it. */
   categoryAdd: HeldCategoryAdd;
   /**
@@ -63,7 +68,7 @@ type Marks<Source> = {
   menu: string | null;
 };
 
-const blank = <Source,>(source: Source): Marks<Source> => ({
+const blank = <Source>(source: Source): Marks<Source> => ({
   source,
   unchecked: new Set(),
   replacing: new Set(),
@@ -152,49 +157,27 @@ export function useImportChecklist<Source, Refusal>(
     },
   });
 
-  const categoryParts = (row: ImportRow<Refusal>, isRunning: boolean) => {
-    if (type === null || row.refusal !== null) return {};
-    const { value, suggested } = categoryOf(row);
+  const rowCategory = (row: ImportRow<Refusal>): ImportRowCategory | null => {
+    if (type === null || row.refusal !== null) return null;
     const open = marks.menu === row.key;
-    const add = addFor(row.key);
-    // In the flow under the row: the list clips what floats out of it.
-    const choice = open ? (
-      <CategoryPicker
-        label={setCategoryFor(row.name)}
-        current={value}
-        initialQuery={suggested ?? undefined}
-        failure={null}
-        add={add}
-        onPick={(category) => {
-          pick(row.key, category);
-          opener.current?.focus();
-        }}
-        onClose={(via) => closeMenu(via !== "press")}
-      />
-    ) : categoryAdd.failed && addingFor.current === row.key ? (
-      // An add refused after a press closed the menu.
-      <Notice
-        trigger="user-action"
-        notice={{ level: "error", ...CATEGORY_NOT_ADDED }}
-      />
-    ) : undefined;
     return {
-      control: (
-        <RowCategoryControl
-          name={row.name}
-          value={value}
-          open={open}
-          disabled={isRunning}
-          buttonRef={open ? opener : undefined}
-          onToggle={() =>
-            update((base) => ({
-              ...base,
-              menu: base.menu === row.key ? null : row.key,
-            }))
-          }
-        />
-      ),
-      ...(choice === undefined ? {} : { choice }),
+      name: row.name,
+      ...categoryOf(row),
+      open,
+      // An add refused after a press closed the menu.
+      addFailed: categoryAdd.failed && addingFor.current === row.key,
+      add: addFor(row.key),
+      buttonRef: open ? opener : undefined,
+      toggleMenu: () =>
+        update((base) => ({
+          ...base,
+          menu: base.menu === row.key ? null : row.key,
+        })),
+      pick: (category) => {
+        pick(row.key, category);
+        opener.current?.focus();
+      },
+      closeMenu: (via) => closeMenu(via !== "press"),
     };
   };
 
@@ -211,10 +194,7 @@ export function useImportChecklist<Source, Refusal>(
       );
     },
     picked,
-    groups: (refusalSentence, isRunning) =>
-      importChecklistGroups(rows ?? [], refusalSentence, (row) =>
-        categoryParts(row, isRunning),
-      ),
+    rowCategory,
     categoryField: (key) => {
       const row = rows?.find((candidate) => candidate.key === key);
       if (type === null || row === undefined) return null;

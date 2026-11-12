@@ -1,10 +1,6 @@
 import type { SkillFolderScan } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { RowCategoryControl } from "../categories/row-category-control";
-import {
-  type ImportRow,
-  importChecklistGroups,
-} from "./import-checklist-groups";
+import type { ImportRow } from "./import-checklist-groups";
 import { ImportSkillsDialog, skillFolderRow } from "./import-skills-dialog";
 import type { ImportChecklist } from "./use-import-checklist";
 
@@ -45,6 +41,13 @@ const SCAN = {
 
 type Refusal = NonNullable<SkillFolderScan["folders"][number]["refusal"]>;
 
+const IDLE_ADD = {
+  run: async () => null,
+  pending: false,
+  failed: false,
+  reset: () => {},
+};
+
 // A checklist frozen as listed: each row shows the category its file names.
 const listed = (
   rows: readonly ImportRow<Refusal>[] | null,
@@ -54,25 +57,22 @@ const listed = (
   checked: new Set(checked),
   toggle: () => {},
   picked: checked.map((key) => ({ key, replace: false })),
-  groups: (refusalSentence, isRunning) =>
-    importChecklistGroups(rows ?? [], refusalSentence, (row) => ({
-      control: (
-        <RowCategoryControl
-          name={row.name}
-          value={row.fileCategory}
-          open={false}
-          disabled={isRunning}
-          buttonRef={undefined}
-          onToggle={() => {}}
-        />
-      ),
-    })),
-  categoryAdd: {
-    run: async () => null,
-    pending: false,
-    failed: false,
-    reset: () => {},
-  },
+  rowCategory: (row) =>
+    row.refusal === null
+      ? {
+          name: row.name,
+          value: row.fileCategory,
+          suggested: null,
+          open: false,
+          addFailed: false,
+          add: IDLE_ADD,
+          buttonRef: undefined,
+          toggleMenu: () => {},
+          pick: () => {},
+          closeMenu: () => {},
+        }
+      : null,
+  categoryAdd: IDLE_ADD,
   saveCategories: async () => [],
 });
 
