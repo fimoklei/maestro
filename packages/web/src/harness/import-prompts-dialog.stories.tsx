@@ -5,23 +5,29 @@ const meta = {
   title: "Harness/ImportPromptsDialog",
   component: ImportPromptsDialog,
   args: {
-    rows: [
-      { key: "0", label: "release-notes", refusal: null, held: false },
-      { key: "1", label: "standup-notes", refusal: null, held: false },
-      { key: "2", label: "commit-tips", refusal: null, held: true },
-      {
-        key: "3",
-        label: "onboarding",
-        refusal: "empty-description",
-        held: false,
-      },
-    ],
-    checked: new Set(["0", "1"]),
+    checklist: {
+      rows: [
+        { key: "0", name: "release-notes", refusal: null, held: false },
+        { key: "1", name: "standup-notes", refusal: null, held: false },
+        { key: "2", name: "commit-tips", refusal: null, held: true },
+        {
+          key: "3",
+          name: "onboarding",
+          refusal: "empty-description",
+          held: false,
+        },
+      ],
+      checked: new Set(["0", "1"]),
+      toggle: () => {},
+      picked: [
+        { key: "0", replace: false },
+        { key: "1", replace: false },
+      ],
+    },
     running: false,
     report: null,
     error: null,
     chooseFiles: async () => {},
-    toggle: () => {},
     submit: () => {},
     close: () => {},
   },

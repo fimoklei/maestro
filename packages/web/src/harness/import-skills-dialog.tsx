@@ -1,8 +1,5 @@
 import type { SkillFolder, SkillFolderScan } from "@maestro/core";
 import {
-  alreadyInHarnessLegend,
-  canBeImportedLegend,
-  cannotBeImportedLegend,
   IMPORTED,
   IMPORTED_NEXT_STEP,
   importConfirmLabel,
@@ -10,7 +7,6 @@ import {
   NO_SKILL_QUALIFIES,
   NOT_IMPORTED,
   NOTHING_CHECKED,
-  REPLACES_LINE,
 } from "../deploy-state/import-local-edits-copy";
 import { IMPORT_SKILLS } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
@@ -29,10 +25,26 @@ import {
   skillFolderRefusal,
 } from "./import-skills-copy";
 import { sourceBlockerNotice } from "./import-view-model";
+import {
+  type ImportChecklist,
+  type ImportRow,
+  importChecklistGroups,
+} from "./use-import-checklist";
 
 // A folder whose name yields no skill name still needs a row name.
 const shownName = ({ entry, name }: SkillFolder): string =>
   name === "" ? entry : name;
+
+type SkillFolderRefusal = NonNullable<SkillFolder["refusal"]>;
+
+export const skillFolderRow = (
+  folder: SkillFolder,
+): ImportRow<SkillFolderRefusal> => ({
+  key: folder.entry,
+  name: shownName(folder),
+  refusal: folder.refusal,
+  held: folder.replaces,
+});
 
 /** The scan as the dialog shows it: none asked, under way, failed, or in hand. */
 export type SkillFolderLoad =
@@ -52,8 +64,7 @@ export function ImportSkillsDialog({
   onSourceCommit,
   chooser,
   load,
-  checked,
-  onToggle,
+  checklist,
   isRunning,
   outcomes,
   failure,
@@ -70,9 +81,7 @@ export function ImportSkillsDialog({
   onSourceCommit: (path: string) => void;
   chooser: FolderChooser;
   load: SkillFolderLoad;
-  /** The entries ticked to import. */
-  checked: ReadonlySet<string>;
-  onToggle: (entry: string) => void;
+  checklist: ImportChecklist<SkillFolderRefusal>;
   isRunning: boolean;
   /** Null until the import answers. */
   outcomes: readonly SkillFolder[] | null;
@@ -80,28 +89,15 @@ export function ImportSkillsDialog({
   onClose: () => void;
   onImport: () => void;
 }) {
-  const folders = load.kind === "ready" ? load.scan.folders : [];
-  const ready = folders.filter((folder) => folder.refusal === null);
-  const fresh = ready.filter((folder) => !folder.replaces);
-  const held = ready.filter((folder) => folder.replaces);
-  const refused = folders.flatMap((folder) =>
-    folder.refusal === null
-      ? []
-      : [
-          {
-            entry: folder.entry,
-            name: shownName(folder),
-            refusal: folder.refusal,
-          },
-        ],
-  );
-  const count = ready.filter((folder) => checked.has(folder.entry)).length;
+  const rows = checklist.rows ?? [];
+  const ready = rows.filter((row) => row.refusal === null);
+  const count = checklist.checked.size;
   const folderProblem =
     load.kind === "error"
       ? load.notice
       : load.kind === "ready"
         ? (sourceBlockerNotice(load.scan.folderBlocker) ??
-          (folders.length === 0
+          (rows.length === 0
             ? { level: "info" as const, ...NO_SKILL_FOLDERS }
             : null))
         : null;
@@ -118,7 +114,7 @@ export function ImportSkillsDialog({
                 ? READING_FOLDER
                 : load.kind !== "ready"
                   ? null
-                  : folders.length === 0
+                  : rows.length === 0
                     ? (folderProblem?.label ?? null)
                     : ready.length === 0
                       ? NO_SKILL_QUALIFIES
@@ -202,34 +198,15 @@ export function ImportSkillsDialog({
           {load.kind === "loading" ? (
             <StatusLine>{READING_FOLDER}</StatusLine>
           ) : null}
-          {folders.length === 0 ? null : (
+          {rows.length === 0 ? null : (
             <GroupedList
-              groups={[
-                {
-                  tone: "neutral",
-                  legend: canBeImportedLegend(fresh.length),
-                  rows: fresh.map(({ entry, name }) => ({ key: entry, name })),
-                },
-                {
-                  tone: "attention",
-                  legend: alreadyInHarnessLegend(held.length),
-                  rows: held.map(({ entry, name }) => ({
-                    key: entry,
-                    name,
-                    sentence: REPLACES_LINE,
-                  })),
-                },
-                {
-                  tone: "failed",
-                  legend: cannotBeImportedLegend(refused.length),
-                  rows: refused.map(({ entry, name, refusal }) => ({
-                    key: entry,
-                    name,
-                    sentence: skillFolderRefusal(refusal),
-                  })),
-                },
-              ]}
-              checklist={{ checked, onToggle, isRunning, firstBox: null }}
+              groups={importChecklistGroups(rows, skillFolderRefusal)}
+              checklist={{
+                checked: checklist.checked,
+                onToggle: checklist.toggle,
+                isRunning,
+                firstBox: null,
+              }}
               live={null}
             />
           )}
