@@ -402,7 +402,7 @@ export const PATH_BODY: RequestShape = {
 };
 
 export const IMPORT_SKILLS_CHECK_BODY: RequestShape = {
-  message: "Nothing was read. Reload the page, then choose the folder again.",
+  message: "Nothing was read. Reload the page, then select the folder again.",
   detail: "The request carries a folder: { source: string }.",
 };
 
