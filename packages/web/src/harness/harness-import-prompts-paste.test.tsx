@@ -391,6 +391,31 @@ describe("Import prompts — Paste text", () => {
     expect(imports).toEqual([]);
   });
 
+  it("drops the over-100 KB notice once the held pasted row is unchecked", async () => {
+    stubServer({ taken: ["review-pr"] });
+    const user = userEvent.setup();
+    const dialog = await openPasteText(user);
+    await user.type(field(dialog, "Name"), "review-pr");
+    await user.type(field(dialog, "Description"), "Review");
+    await user.click(field(dialog, "Prompt text"));
+    await user.paste("é".repeat(60_000));
+    const box = await within(dialog).findByRole("checkbox", {
+      name: "review-pr",
+    });
+    await user.click(box);
+    await user.click(importOne(dialog));
+    expect(
+      await within(dialog).findByText("Prompt over 100 KB"),
+    ).toBeInTheDocument();
+
+    await user.click(box);
+
+    expect(
+      within(dialog).getByRole("button", { name: "Import prompts" }),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText("Prompt over 100 KB")).toBeNull();
+  });
+
   it("imports pasted CRLF text with LF line endings", async () => {
     const { imports } = stubServer();
     const user = userEvent.setup();

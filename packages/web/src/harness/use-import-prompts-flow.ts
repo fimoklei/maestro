@@ -193,8 +193,12 @@ export function useImportPromptsFlow(onClose: () => void) {
         pasted.edit(change);
       },
       category: categoryField(PASTED_KEY),
-      // Over 100 KB is stated once, as the notice above the fields.
-      failure: pasted.tooLong ? longTextNotice(importPromptsConfirm(1)) : null,
+      // Over 100 KB is stated once, as the notice above the fields, and only
+      // while the pasted row is checked: unchecked, it is not imported.
+      failure:
+        pasted.tooLong && toSend.length > 0
+          ? longTextNotice(importPromptsConfirm(1))
+          : null,
     },
     running: importPrompts.isPending || savingCategories || afterAdd.waiting,
     report,
