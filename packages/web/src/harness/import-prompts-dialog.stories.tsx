@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { RowCategoryControl } from "../categories/row-category-control";
 import { importChecklistGroups } from "./import-checklist-groups";
 import { ImportPromptsDialog } from "./import-prompts-dialog";
 
@@ -8,7 +9,7 @@ const ROWS = [
     name: "release-notes",
     refusal: null,
     held: false,
-    fileCategory: null,
+    fileCategory: "Docs",
   },
   {
     key: "1",
@@ -45,8 +46,20 @@ const meta = {
         { key: "0", replace: false },
         { key: "1", replace: false },
       ],
-      groups: (refusalSentence) =>
-        importChecklistGroups(ROWS, refusalSentence, () => ({})),
+      // Each row shows the category its file names.
+      groups: (refusalSentence, isRunning) =>
+        importChecklistGroups(ROWS, refusalSentence, (row) => ({
+          control: (
+            <RowCategoryControl
+              name={row.name}
+              value={row.fileCategory}
+              open={false}
+              disabled={isRunning}
+              buttonRef={undefined}
+              onToggle={() => {}}
+            />
+          ),
+        })),
       categoryAdd: {
         run: async () => null,
         pending: false,
@@ -71,10 +84,13 @@ export const Checklist: Story = {};
 
 export const Report: Story = {
   args: {
-    report: [
-      { name: "release-notes", imported: true, mode: "add" },
-      { name: "commit-tips", imported: true, mode: "update" },
-      { name: "standup-notes", imported: false, refusal: "prompt-taken" },
-    ],
+    report: {
+      outcomes: [
+        { name: "release-notes", imported: true, mode: "add" },
+        { name: "commit-tips", imported: true, mode: "update" },
+        { name: "standup-notes", imported: false, refusal: "prompt-taken" },
+      ],
+      unsavedCategories: [],
+    },
   },
 };

@@ -1,9 +1,13 @@
+import type { PromptImportOutcome } from "@maestro/core";
 import {
   draftPrompt,
   type PromptDraft,
+  promptCategory,
   promptDraftProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
+import { useSubmitAfterAdd } from "../categories/use-held-category-add";
+import type { ReportGroup } from "../ui/report";
 import type { ImportRow } from "./import-checklist-groups";
 import type { PromptFileRefusal } from "./import-prompts-copy";
 import { useImportPromptChecks, useImportPrompts } from "./use-harness";
@@ -31,11 +35,24 @@ async function readChosen(file: File, index: number): Promise<ChosenPrompt> {
 
 export type ImportPromptsFlow = ReturnType<typeof useImportPromptsFlow>;
 
+/** What the import did, with the categories it could not save. */
+type PromptsImportReport = {
+  outcomes: readonly PromptImportOutcome[];
+  unsavedCategories: readonly ReportGroup[];
+};
+
 // Import prompts' UI-state: the chosen files, which are checked, and the run.
 // It lives only while the dialog stands, so closing forgets it.
 export function useImportPromptsFlow(onClose: () => void) {
   const [chosen, setChosen] = useState<readonly ChosenPrompt[] | null>(null);
   const importPrompts = useImportPrompts();
+  // Set once the landed rows' categories are saved too.
+  const [report, setReport] = useState<PromptsImportReport | null>(null);
+  const [savingCategories, setSavingCategories] = useState(false);
+  const clearRun = () => {
+    importPrompts.reset();
+    setReport(null);
+  };
 
   // The single import's field rules, first broken rule only, in field order.
   const judged = (chosen ?? []).map((file) => ({
@@ -70,40 +87,67 @@ export function useImportPromptsFlow(onClose: () => void) {
         name: file.label,
         refusal,
         held: refusal === null && taken.has(name),
-        fileCategory: null,
+        fileCategory:
+          file.draft === null ? null : promptCategory(file.draft.frontmatter),
       };
     },
   );
   const checklist = useImportChecklist(
     chosen,
     chosen === null ? null : rows,
-    null,
+    "prompt",
   );
   const toSend = checklist.picked.flatMap(({ key, replace }) => {
     const draft = chosen?.find((file) => file.key === key)?.draft;
-    return draft ? [{ ...draft, replace }] : [];
+    return draft ? [{ key, draft: { ...draft, replace } }] : [];
   });
+
+  const submit = () => {
+    if (toSend.length === 0) return;
+    importPrompts.mutate(
+      toSend.map(({ draft }) => draft),
+      {
+        onSuccess: ({ outcomes }) => {
+          setSavingCategories(true);
+          void checklist
+            .saveCategories(
+              outcomes.flatMap((outcome) => {
+                const sent = toSend.find(
+                  ({ draft }) => draft.name === outcome.name,
+                );
+                return outcome.imported && sent !== undefined
+                  ? [{ key: sent.key, name: outcome.name }]
+                  : [];
+              }),
+            )
+            .then((unsavedCategories) => {
+              setReport({ outcomes, unsavedCategories });
+              setSavingCategories(false);
+            });
+        },
+      },
+    );
+  };
+  const afterAdd = useSubmitAfterAdd(checklist.categoryAdd, submit);
 
   return {
     checklist: {
       ...checklist,
       toggle: (key: string) => {
-        importPrompts.reset();
+        clearRun();
         checklist.toggle(key);
       },
     },
-    running: importPrompts.isPending,
-    report: importPrompts.data?.outcomes ?? null,
+    running: importPrompts.isPending || savingCategories || afterAdd.waiting,
+    report,
     error: importPrompts.error,
     // A new pick replaces the list the last one gave.
     chooseFiles: async (files: readonly File[]) => {
       const read = await Promise.all(files.map(readChosen));
-      importPrompts.reset();
+      clearRun();
       setChosen(read);
     },
-    submit: () => {
-      if (toSend.length > 0) importPrompts.mutate(toSend);
-    },
+    submit: afterAdd.submit,
     close: onClose,
   };
 }

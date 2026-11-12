@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   expectTooltipCause,
   jsonResponse,
+  noCategories,
   renderWithQuery,
 } from "../test-utils";
 import { HarnessView } from "./harness-view";
@@ -41,6 +42,8 @@ function stubServer(options: {
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      const categories = noCategories(input);
+      if (categories !== null) return categories;
       if (url === "/api/harness/prompt/check") {
         const { name } = JSON.parse(String(init?.body)) as { name: string };
         return jsonResponse({

@@ -76,14 +76,15 @@ export function ImportPromptsDialog({
       {report !== null ? (
         <Report
           heading={importPromptsReportHeading(
-            report.filter((outcome) => outcome.imported).length,
-            report.length,
+            report.outcomes.filter((outcome) => outcome.imported).length,
+            report.outcomes.length,
           )}
           groups={[
+            ...report.unsavedCategories,
             {
               tone: "failed",
               label: NOT_IMPORTED,
-              rows: report.flatMap((outcome) =>
+              rows: report.outcomes.flatMap((outcome) =>
                 outcome.imported
                   ? []
                   : [
@@ -98,7 +99,7 @@ export function ImportPromptsDialog({
               tone: "good",
               label: IMPORTED,
               note: IMPORTED_NEXT_STEP,
-              rows: report.flatMap((outcome) =>
+              rows: report.outcomes.flatMap((outcome) =>
                 outcome.imported
                   ? [
                       {
