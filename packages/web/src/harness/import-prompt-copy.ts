@@ -117,6 +117,13 @@ export const PROMPT_IMPORT_MODES = {
   { title: string; confirm: PromptConfirm; verb: ActionKey }
 >;
 
+/** The text over 100 KB, refused before any request; `confirm` names the button. */
+export const longTextNotice = (confirm: string) => ({
+  level: "error" as const,
+  label: "Prompt over 100 KB",
+  message: `Shorten the text to 100 KB or less. Then select ${confirm}.`,
+});
+
 const importPromptHeadings = (
   confirm: PromptConfirm,
 ): NoticeTable<NoticeCode> => {
@@ -126,11 +133,7 @@ const importPromptHeadings = (
       ...harnessHeadings["not-configured"],
       message: `${CHANGE_LOCATION_STEP}, then select ${confirm} again.`,
     },
-    "long-text": {
-      level: "error",
-      label: "Prompt over 100 KB",
-      message: `Shorten the text to 100 KB or less. Then select ${confirm}.`,
-    },
+    "long-text": longTextNotice(confirm),
     "destination-unsafe": {
       level: "error",
       label: "Link in the Harness",
@@ -155,10 +158,6 @@ const importPromptHeadings = (
     },
   };
 };
-
-/** The text over 100 KB, refused before any request. */
-export const longTextNotice = (confirm: PromptConfirm): NoticeContent =>
-  importPromptHeadings(confirm)["long-text"];
 
 /** Under Name once the name check finds the prompt in the Harness. */
 export const PROMPT_TAKEN_NOTICE: NoticeContent = {

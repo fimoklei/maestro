@@ -117,9 +117,12 @@ async function chooseFiles(
   if (!(input instanceof HTMLInputElement)) throw new Error("no file input");
   expect(input).toHaveAttribute("multiple");
   expect(input).toHaveAttribute("accept", ".md,.txt");
-  await user.click(
-    within(dialog).getByRole("button", { name: /^Choose files/ }),
-  );
+  // The source switch has a Choose files segment too; it carries aria-pressed.
+  const button = within(dialog)
+    .getAllByRole("button", { name: "Choose files" })
+    .find((each) => !each.hasAttribute("aria-pressed"));
+  if (button === undefined) throw new Error("no Choose files button");
+  await user.click(button);
   await user.upload(input, files);
 }
 
@@ -184,6 +187,37 @@ describe("Harness import prompts flow", () => {
       within(dialog).getAllByRole("button", { name: "Close" }).at(-1) ?? dialog,
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("imports one chosen file as the file holds it, CRLF and example included, and shows the Report", async () => {
+    const server = stubServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+    const dialog = await openImportPrompts(user);
+
+    await chooseFiles(user, dialog, [
+      new File(
+        [
+          "---\r\ndescription: Review\r\nexample: |\r\n  Review #12.\r\n---\r\nRead the diff.\r\nBe brief.\r\n",
+        ],
+        "review-pr.md",
+      ),
+    ]);
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import 1 prompt" }),
+    );
+
+    await within(dialog).findByRole("heading", {
+      name: "Imported 1 of 1 prompt",
+    });
+    expect(server.imports[0]?.prompts).toMatchObject([
+      {
+        name: "review-pr",
+        description: "Review",
+        text: "Read the diff.\r\nBe brief.\r\n",
+        example: "Review #12.\n",
+      },
+    ]);
   });
 
   it("lists each file that cannot be imported with one reason", async () => {

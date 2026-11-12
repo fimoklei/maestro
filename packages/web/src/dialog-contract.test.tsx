@@ -401,6 +401,26 @@ const importPromptsDialog = (
   props: Partial<ComponentProps<typeof ImportPromptsDialog>>,
 ) => (
   <ImportPromptsDialog
+    source="files"
+    switchSource={vi.fn()}
+    pasted={{
+      draft: {
+        name: "",
+        frontmatter: "",
+        description: "",
+        text: "",
+        example: "",
+      },
+      fieldErrors: {},
+      part: "text",
+      showPart: vi.fn(),
+      changed: false,
+      leaveName: vi.fn(),
+      paste: () => false,
+      edit: vi.fn(),
+      category: null,
+      failure: null,
+    }}
     checklist={listedChecklist(null)}
     running={false}
     report={null}
