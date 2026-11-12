@@ -1,6 +1,6 @@
-// Imports the skill folders directly inside one chosen folder, each through
-// ImportSkill's own judgement and copy: no branch, commit or push.
-import { join } from "node:path";
+// Imports one chosen skill folder, or the skill folders directly inside it,
+// each through ImportSkill's own judgement and copy: no branch, commit or push.
+import { basename, dirname, join, resolve } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { FileSystemPort } from "../registry/file-system";
 import type {
@@ -11,25 +11,44 @@ import type {
 import { proposeSkillSlug } from "./skill-slug";
 
 /**
- * One folder inside the chosen one: its directory entry, its skill name, why
- * it cannot land, and whether landing replaces the skill the Harness holds
- * under that name.
+ * What one folder inside the chosen one did on import: its directory entry,
+ * its skill name, why it did not land, and whether it replaced a held skill.
  */
-export type SkillFolder = {
+export type SkillFolderOutcome = {
   entry: string;
   name: string;
   refusal: ImportSkillError | null;
   replaces: boolean;
 };
 
+/** One folder as the scan judges it, with its SKILL.md `metadata.category`. */
+export type SkillFolder = SkillFolderOutcome & { category: string | null };
+
 // A folder to import; only `replace` lets it take the place of a held skill.
 type SkillFolderPick = { entry: string; replace: boolean };
 
-/** What the chosen folder holds; `folderBlocker` refuses the folder itself and lists nothing. */
+/**
+ * What the chosen folder holds; `folderBlocker` refuses the folder itself and
+ * lists nothing. `folder` is the folder the entries sit in, to import from:
+ * the chosen one, or the one around it where the chosen folder is a skill.
+ */
 export type SkillFolderScan = {
-  folderBlocker: ImportSourceBlocker | null;
+  folderBlocker: SkillsFolderBlocker | null;
+  folder: string | null;
   folders: SkillFolder[];
 };
+
+// The chosen folder answers to the single import's source rules only; it
+// need not be a skill itself.
+const FOLDER_BLOCKERS = [
+  "source-unreadable",
+  "outside-root",
+  "deployed-copy",
+  "origin-unproven",
+] as const satisfies readonly ImportSourceBlocker[];
+
+/** Why the chosen folder itself cannot be read for skills. */
+export type SkillsFolderBlocker = (typeof FOLDER_BLOCKERS)[number];
 
 export type ImportSkillsInput = {
   source: string;
@@ -43,26 +62,25 @@ export type ScanSkillFoldersResult =
   | { ok: false; error: "not-configured" };
 
 export type ImportSkillsResult =
-  | { ok: true; outcomes: SkillFolder[] }
+  | { ok: true; outcomes: SkillFolderOutcome[] }
   | { ok: false; error: ImportSkillsError };
 
-// The chosen folder answers to the single import's source rules only; it
-// need not be a skill itself.
-const FOLDER_BLOCKERS = new Set<ImportSourceBlocker>([
-  "source-unreadable",
-  "outside-root",
-  "deployed-copy",
-  "origin-unproven",
-]);
+const isFolderBlocker = (
+  blocker: ImportSourceBlocker,
+): blocker is SkillsFolderBlocker =>
+  FOLDER_BLOCKERS.some((folderBlocker) => folderBlocker === blocker);
 
 type Listing =
   | { ok: true; folder: string; entries: string[] }
-  | { ok: false; blocker: ImportSourceBlocker };
+  | { ok: false; blocker: SkillsFolderBlocker };
 
 export class ImportSkills {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: Pick<FileSystemPort, "realpath" | "isDirectory" | "listRawEntries">;
+    fs: Pick<
+      FileSystemPort,
+      "realpath" | "isDirectory" | "exists" | "listRawEntries"
+    >;
     importSkill: Pick<
       ImportSkill,
       "check" | "judgeReplace" | "add" | "replace"
@@ -80,14 +98,14 @@ export class ImportSkills {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
-    const listing = await this.list(source);
+    const listing = await this.listForScan(source);
     if (listing === null) {
       return { ok: false, error: "not-configured" };
     }
     if (!listing.ok) {
       return {
         ok: true,
-        scan: { folderBlocker: listing.blocker, folders: [] },
+        scan: { folderBlocker: listing.blocker, folder: null, folders: [] },
       };
     }
     const folders: SkillFolder[] = [];
@@ -101,7 +119,10 @@ export class ImportSkills {
       }
       folders.push({ entry, ...judged.verdict });
     }
-    return { ok: true, scan: { folderBlocker: null, folders } };
+    return {
+      ok: true,
+      scan: { folderBlocker: null, folder: listing.folder, folders },
+    };
   }
 
   // Judged again from scratch, folder by folder: the scan the browser saw
@@ -116,11 +137,11 @@ export class ImportSkills {
   }
 
   private async land(input: ImportSkillsInput): Promise<ImportSkillsResult> {
-    const listing = await this.list(input.source);
+    const listing = await this.listForImport(input.source);
     if (listing === null) {
       return { ok: false, error: "not-configured" };
     }
-    const outcomes: SkillFolder[] = [];
+    const outcomes: SkillFolderOutcome[] = [];
     // A skill this batch landed is never replaced by a later folder.
     const landedNames = new Set<string>();
     for (const { entry, replace } of input.entries) {
@@ -161,26 +182,67 @@ export class ImportSkills {
     return { ok: true, outcomes };
   }
 
-  // Null where no Harness is connected. Hidden entries, such as `.git`, are
-  // never skills.
-  private async list(source: string): Promise<Listing | null> {
+  // A folder with its own SKILL.md is one skill, whatever its subfolders
+  // hold. It is listed under its own name inside the folder around it, so
+  // a link keeps the name it was chosen by. Hidden entries, such as `.git`,
+  // are left out of a listing of several.
+  private async listForScan(source: string): Promise<Listing | null> {
+    const opened = await this.open(source);
+    if (opened === null || !opened.ok) {
+      return opened;
+    }
+    if (!(await this.deps.fs.exists(join(opened.folder, "SKILL.md")))) {
+      const entries = await this.subfolders(opened.folder);
+      return {
+        ...opened,
+        entries: entries.filter((entry) => !entry.startsWith(".")),
+      };
+    }
+    const chosen = resolve(source);
+    try {
+      const folder = await this.deps.fs.realpath(dirname(chosen));
+      return { ok: true, folder, entries: [basename(chosen)] };
+    } catch {
+      return { ok: false, blocker: "source-unreadable" };
+    }
+  }
+
+  // An import names any folder directly inside the source, the ones a scan
+  // lists included; ImportSkill judges each one.
+  private async listForImport(source: string): Promise<Listing | null> {
+    const opened = await this.open(source);
+    if (opened === null || !opened.ok) {
+      return opened;
+    }
+    return { ...opened, entries: await this.subfolders(opened.folder) };
+  }
+
+  // Null where no Harness is connected.
+  private async open(
+    source: string,
+  ): Promise<
+    | { ok: true; folder: string }
+    | { ok: false; blocker: SkillsFolderBlocker }
+    | null
+  > {
     const checked = await this.deps.importSkill.check({ source });
     if (!checked.ok) {
       return null;
     }
     const blocker = checked.check.sourceBlocker;
-    if (blocker !== null && FOLDER_BLOCKERS.has(blocker)) {
+    if (blocker !== null && isFolderBlocker(blocker)) {
       return { ok: false, blocker };
     }
-    let folder: string;
     try {
-      folder = await this.deps.fs.realpath(source);
+      return { ok: true, folder: await this.deps.fs.realpath(source) };
     } catch {
       return { ok: false, blocker: "source-unreadable" };
     }
+  }
+
+  private async subfolders(folder: string): Promise<string[]> {
     const entries: string[] = [];
     for (const entry of await this.deps.fs.listRawEntries(folder)) {
-      if (entry.name.startsWith(".")) continue;
       if (
         entry.isDirectory ||
         (entry.isSymlink &&
@@ -189,7 +251,6 @@ export class ImportSkills {
         entries.push(entry.name);
       }
     }
-    entries.sort();
-    return { ok: true, folder, entries };
+    return entries.sort();
   }
 }

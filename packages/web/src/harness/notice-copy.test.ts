@@ -3,7 +3,6 @@ import type {
   DiscardChangeError,
   HarnessPrimitiveType,
   HarnessStateError,
-  ImportSkillError,
   LocalEditsRefusal,
   PromoteDeletionError,
   PromoteError,
@@ -19,7 +18,7 @@ import { HttpError } from "../api/http";
 import { machineValues, readNotice, unselectedControls } from "../test-utils";
 import type { NoticeContent } from "../ui/notice";
 import { plainText } from "../ui/phrase";
-import { importNotice, localEditsRefusal } from "./import-notice-copy";
+import { localEditsRefusal } from "./import-notice-copy";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
   CONCURRENT_CHANGE_NOTICE,
@@ -180,37 +179,6 @@ const SURFACES: Surface[] = [
       "delete-in-progress": true,
     }),
   })),
-  {
-    name: "importNotice",
-    read: importNotice,
-    codes: codes<ImportSkillError>({
-      "not-configured": true,
-      "source-unreadable": true,
-      "outside-root": true,
-      "deployed-copy": true,
-      "origin-unproven": true,
-      "missing-manifest": true,
-      "invalid-frontmatter": true,
-      "empty-description": true,
-      "invalid-name": true,
-      "name-taken": true,
-      "not-found": true,
-      "not-a-directory": true,
-      "destination-exists": true,
-      "unsafe-link": true,
-      "hard-linked-file": true,
-      "special-file": true,
-      "too-many-files": true,
-      "too-large": true,
-      "source-changed": true,
-      "copy-failed": true,
-      "destination-unsafe": true,
-      "harness-copy-uncommitted": true,
-      "harness-unreadable": true,
-      "nothing-to-carry-back": true,
-    }),
-    info: ["nothing-to-carry-back"],
-  },
   {
     name: "proposalNotice",
     read: proposalNotice,
@@ -604,36 +572,6 @@ describe("a folder that changed or holds a link", () => {
       label: "Files changed during the check",
       message:
         "Nothing was pushed. Wait for the change to finish, then select Propose change again.",
-    });
-  });
-
-  it("asks the reader to wait for a folder change before importing again", () => {
-    expect(readNotice(importNotice(refusal("source-changed")))).toEqual({
-      level: "error",
-      label: "Folder changed during import",
-      message:
-        "The skill was not imported. Wait for the folder change to finish, then select Import skill again.",
-    });
-  });
-
-  it("names a hard-linked file inside the folder", () => {
-    expect(readNotice(importNotice(refusal("hard-linked-file")))).toEqual({
-      level: "error",
-      label: "Hard-linked file inside",
-      message:
-        "Nothing was copied. Replace it with a plain copy, then select Import skill again.",
-      detail: "Copying it would tie the Harness to a file it does not own.",
-    });
-  });
-
-  it("states which links Maestro does not follow", () => {
-    expect(readNotice(importNotice(refusal("unsafe-link")))).toEqual({
-      level: "error",
-      label: "Symbolic link inside",
-      message:
-        "Nothing was copied. Replace the link with a real file, then select Import skill again.",
-      detail:
-        "Maestro does not follow a link that points outside the folder or creates a loop.",
     });
   });
 });

@@ -18,7 +18,7 @@ import {
   NO_SKILL_QUALIFIES,
   NOTHING_CHECKED,
   noLocalEditsLine,
-  replacesLine,
+  REPLACES_LINE,
   SELECT_A_COPY,
   UNSELECTED_COPIES_LINE,
   undoesNewerLegend,
@@ -28,9 +28,7 @@ import {
 describe("Import local edits copy", () => {
   it("names the group of rows that replace what the Harness holds", () => {
     expect(alreadyInHarnessLegend(1)).toBe("⚠ Already in the Harness · 1");
-    expect(plainText(replacesLine("review"))).toBe(
-      "Replaces review in the Harness.",
-    );
+    expect(REPLACES_LINE).toBe("Replaces the one in the Harness");
   });
 
   it("states the differing copies block and its radio group", () => {

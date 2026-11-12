@@ -7,7 +7,7 @@ const meta = {
   component: GroupedList,
   decorators: [
     (Story) => (
-      <div className="flex w-[608px] flex-col gap-cell">
+      <div className="flex w-full max-w-[608px] flex-col gap-cell">
         <Story />
       </div>
     ),
@@ -56,6 +56,93 @@ export const Checklist: Story = {
     ],
     checklist: {
       checked: new Set(["tdd", "jobs"]),
+      onToggle: () => {},
+      isRunning: false,
+      firstBox: null,
+    },
+  },
+};
+
+const rowControl = (name: string) => (
+  <button
+    type="button"
+    aria-label={`Set category for ${name}`}
+    className="h-6 rounded-control border border-gray-7 px-tight text-gray-11 text-meta"
+  >
+    No category
+  </button>
+);
+
+// Each row ends in its own control; a refused row has none, its reason wraps.
+export const ChecklistWithControls: Story = {
+  args: {
+    live: null,
+    groups: [
+      {
+        tone: "neutral",
+        legend: "Can be imported · 1",
+        rows: [{ key: "tdd", name: "tdd", control: rowControl("tdd") }],
+      },
+      {
+        tone: "attention",
+        legend: "⚠ Already in the Harness · 1",
+        rows: [
+          {
+            key: "review",
+            name: "review",
+            sentence: "Replaces the one in the Harness",
+            control: rowControl("review"),
+          },
+        ],
+      },
+      {
+        tone: "failed",
+        legend: "✕ Cannot be imported · 1",
+        rows: [
+          {
+            key: "brief",
+            name: "brief",
+            sentence:
+              "The skill folder ~/Projects/acme/.claude/skills/brief holds no SKILL.md. Add one, then select Import skills again.",
+            control: rowControl("brief"),
+          },
+        ],
+      },
+    ],
+    checklist: {
+      checked: new Set(["tdd"]),
+      onToggle: () => {},
+      isRunning: false,
+      firstBox: null,
+    },
+  },
+};
+
+// A long name beside a long sentence: both wrap, neither is cut off.
+export const ChecklistLongName: Story = {
+  args: {
+    live: null,
+    groups: [
+      {
+        tone: "attention",
+        legend: null,
+        rows: [
+          {
+            key: "tdd",
+            name: "Discard local edits for tdd in ~/.claude/skills",
+            sentence:
+              "tdd has local edits. This update replaces them with release v0.3.4.",
+          },
+          {
+            key: "jobs",
+            name: "Overwrite unverified copy for jobs in ~/.agents/skills",
+            sentence: "jobs could not be verified. This update overwrites it.",
+          },
+        ],
+      },
+    ],
+    checklist: {
+      checked: new Set(),
       onToggle: () => {},
       isRunning: false,
       firstBox: null,

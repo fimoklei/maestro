@@ -22,7 +22,6 @@ import {
   notRenamed,
   renameHint,
   setCategoryFor,
-  TAKEN_FROM_FILE,
 } from "./categories-copy";
 
 // Approved sentences, as exact strings.
@@ -148,13 +147,6 @@ describe("Categories copy", () => {
       label: "Category not set",
       message:
         "The prompt was edited. Select Close, then select Set category on Prompts.",
-    });
-  });
-
-  it("says where a category the imported file named came from", () => {
-    expect(TAKEN_FROM_FILE).toEqual({
-      skill: "Taken from SKILL.md.",
-      prompt: "Taken from the front matter.",
     });
   });
 

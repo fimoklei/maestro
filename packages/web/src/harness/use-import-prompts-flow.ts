@@ -1,25 +1,29 @@
+import type { PromptImportOutcome } from "@maestro/core";
 import {
   draftPrompt,
   type PromptDraft,
+  promptCategory,
   promptDraftProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
-import { toggleStaged } from "../ui/bulk-selection";
-import type { PromptFileRefusal } from "./import-prompts-copy";
+import { useSubmitAfterAdd } from "../categories/use-held-category-add";
+import type { ReportGroup } from "../ui/report";
+import type { ImportRow } from "./import-checklist-groups";
+import {
+  importPromptsConfirm,
+  type PromptFileRefusal,
+  type PromptSource,
+} from "./import-prompts-copy";
+import { longTextNotice } from "./prompt-copy";
 import { useImportPromptChecks, useImportPrompts } from "./use-harness";
+import { useImportChecklist } from "./use-import-checklist";
+import { usePastedPrompt } from "./use-pasted-prompt";
 
-/** One chosen file: its fields, or null where it is not UTF-8 text. */
+/**
+ * One chosen file: its fields, or null where it is not UTF-8 text. The label
+ * is the prompt name, or the file name where none survives.
+ */
 type ChosenPrompt = { key: string; label: string; draft: PromptDraft | null };
-
-/** A chosen file as the checklist lists it. */
-type PromptFileRow = {
-  key: string;
-  /** The prompt name, or the file name where none survives. */
-  label: string;
-  refusal: PromptFileRefusal | null;
-  /** The Harness holds a prompt under this name, which the import replaces. */
-  held: boolean;
-};
 
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
@@ -37,15 +41,32 @@ async function readChosen(file: File, index: number): Promise<ChosenPrompt> {
 
 export type ImportPromptsFlow = ReturnType<typeof useImportPromptsFlow>;
 
-// Import prompts' UI-state: the chosen files, which are checked, and the run.
-// It lives only while the dialog stands, so closing forgets it.
+/** What the import did, with the categories it could not save. */
+type PromptsImportReport = {
+  outcomes: readonly PromptImportOutcome[];
+  unsavedCategories: readonly ReportGroup[];
+};
+
+/** The pasted prompt's one row. */
+const PASTED_KEY = "pasted";
+
+// Import prompts' UI-state: the source, the chosen files or the pasted
+// prompt, which rows are checked, and the run. It lives only while the
+// dialog stands, so closing forgets it.
 export function useImportPromptsFlow(onClose: () => void) {
+  const [source, setSource] = useState<PromptSource>("files");
   const [chosen, setChosen] = useState<readonly ChosenPrompt[] | null>(null);
-  // A new file starts checked and a held one unchecked, so each set holds
-  // what the reader changed.
-  const [unchecked, setUnchecked] = useState<ReadonlySet<string>>(new Set());
-  const [replacing, setReplacing] = useState<ReadonlySet<string>>(new Set());
+  const pasted = usePastedPrompt();
+  // A new object each time Paste text opens, so its checks start afresh.
+  const [pasteRun, setPasteRun] = useState(() => ({}));
   const importPrompts = useImportPrompts();
+  // Set once the landed rows' categories are saved too.
+  const [report, setReport] = useState<PromptsImportReport | null>(null);
+  const [savingCategories, setSavingCategories] = useState(false);
+  const clearRun = () => {
+    importPrompts.reset();
+    setReport(null);
+  };
 
   // The single import's field rules, first broken rule only, in field order.
   const judged = (chosen ?? []).map((file) => ({
@@ -55,13 +76,18 @@ export function useImportPromptsFlow(onClose: () => void) {
         ? ("not-text" as const)
         : (promptDraftProblems(file.draft)[0] ?? null),
   }));
-  const names = [
-    ...new Set(
-      judged.flatMap(({ file, problem }) =>
-        problem === null && file.draft !== null ? [file.draft.name] : [],
-      ),
-    ),
-  ];
+  const names =
+    source === "paste"
+      ? pasted.checkedName === null
+        ? []
+        : [pasted.checkedName]
+      : [
+          ...new Set(
+            judged.flatMap(({ file, problem }) =>
+              problem === null && file.draft !== null ? [file.draft.name] : [],
+            ),
+          ),
+        ];
   // A check not yet answered, or failed, reads as free: the import judges
   // the name again.
   const checks = useImportPromptChecks(names);
@@ -69,49 +95,121 @@ export function useImportPromptsFlow(onClose: () => void) {
     names.filter((_, index) => checks[index]?.data?.mode === "update"),
   );
   const seen = new Set<string>();
-  const rows: PromptFileRow[] = judged.map(({ file, problem }) => {
-    let refusal: PromptFileRefusal | null = problem;
-    const name = file.draft?.name ?? "";
-    if (refusal === null && seen.has(name)) refusal = "same-name";
-    if (refusal === null) seen.add(name);
-    return {
-      key: file.key,
-      label: file.label,
-      refusal,
-      held: refusal === null && taken.has(name),
-    };
-  });
-  const isChecked = (row: PromptFileRow) =>
-    row.refusal === null &&
-    (row.held ? replacing.has(row.key) : !unchecked.has(row.key));
-  const toSend = rows.flatMap((row) => {
-    const draft = chosen?.find((file) => file.key === row.key)?.draft;
-    return isChecked(row) && draft ? [{ ...draft, replace: row.held }] : [];
+  const fileRows: ImportRow<PromptFileRefusal>[] = judged.map(
+    ({ file, problem }) => {
+      let refusal: PromptFileRefusal | null = problem;
+      const name = file.draft?.name ?? "";
+      if (refusal === null && seen.has(name)) refusal = "same-name";
+      if (refusal === null) seen.add(name);
+      return {
+        key: file.key,
+        name: file.label,
+        refusal,
+        held: refusal === null && taken.has(name),
+        fileCategory:
+          file.draft === null ? null : promptCategory(file.draft.frontmatter),
+      };
+    },
+  );
+  // The fields judge a pasted prompt on submit, so its row is never refused.
+  const pastedRow: ImportRow<PromptFileRefusal> = {
+    key: PASTED_KEY,
+    name: pasted.draft.name,
+    refusal: null,
+    held: taken.has(pasted.draft.name),
+    fileCategory: promptCategory(pasted.draft.frontmatter),
+  };
+  const { categoryField, ...checklist } = useImportChecklist(
+    source === "paste" ? pasteRun : chosen,
+    source === "paste" ? [pastedRow] : chosen === null ? null : fileRows,
+    "prompt",
+  );
+  const draftOf = (key: string) =>
+    source === "paste"
+      ? pasted.draft
+      : chosen?.find((file) => file.key === key)?.draft;
+  const toSend = checklist.picked.flatMap(({ key, replace }) => {
+    const draft = draftOf(key);
+    return draft ? [{ key, draft: { ...draft, replace } }] : [];
   });
 
+  const submit = () => {
+    if (source === "paste" && !pasted.judge()) return;
+    if (toSend.length === 0) return;
+    importPrompts.mutate(
+      toSend.map(({ draft }) => draft),
+      {
+        onSuccess: ({ outcomes }) => {
+          setSavingCategories(true);
+          void checklist
+            .saveCategories(
+              outcomes.flatMap((outcome) => {
+                const sent = toSend.find(
+                  ({ draft }) => draft.name === outcome.name,
+                );
+                return outcome.imported && sent !== undefined
+                  ? [{ key: sent.key, name: outcome.name }]
+                  : [];
+              }),
+            )
+            .then((unsavedCategories) => {
+              setReport({ outcomes, unsavedCategories });
+              setSavingCategories(false);
+            });
+        },
+      },
+    );
+  };
+  const afterAdd = useSubmitAfterAdd(checklist.categoryAdd, submit);
+
   return {
-    rows: chosen === null ? null : rows,
-    checked: new Set(rows.filter(isChecked).map((row) => row.key)),
-    running: importPrompts.isPending,
-    report: importPrompts.data?.outcomes ?? null,
+    source,
+    // One import never mixes sources: a switch clears the list.
+    switchSource: (next: PromptSource) => {
+      if (next === source) return;
+      clearRun();
+      setChosen(null);
+      pasted.clear();
+      setPasteRun({});
+      setSource(next);
+    },
+    checklist: {
+      ...checklist,
+      toggle: (key: string) => {
+        clearRun();
+        checklist.toggle(key);
+      },
+    },
+    pasted: {
+      draft: pasted.draft,
+      fieldErrors: pasted.fieldErrors,
+      part: pasted.part,
+      showPart: pasted.showPart,
+      changed: pasted.changed,
+      leaveName: pasted.leaveName,
+      paste: pasted.paste,
+      edit: (change: Partial<PromptDraft>) => {
+        clearRun();
+        pasted.edit(change);
+      },
+      category: categoryField(PASTED_KEY),
+      // Over 100 KB is stated once, as the notice above the fields, and only
+      // while the pasted row is checked: unchecked, it is not imported.
+      failure:
+        pasted.tooLong && toSend.length > 0
+          ? longTextNotice(importPromptsConfirm(1))
+          : null,
+    },
+    running: importPrompts.isPending || savingCategories || afterAdd.waiting,
+    report,
     error: importPrompts.error,
     // A new pick replaces the list the last one gave.
     chooseFiles: async (files: readonly File[]) => {
       const read = await Promise.all(files.map(readChosen));
-      importPrompts.reset();
-      setUnchecked(new Set());
-      setReplacing(new Set());
+      clearRun();
       setChosen(read);
     },
-    toggle: (key: string) => {
-      importPrompts.reset();
-      const flip = (current: ReadonlySet<string>) => toggleStaged(current, key);
-      if (rows.find((row) => row.key === key)?.held) setReplacing(flip);
-      else setUnchecked(flip);
-    },
-    submit: () => {
-      if (toSend.length > 0) importPrompts.mutate(toSend);
-    },
+    submit: afterAdd.submit,
     close: onClose,
   };
 }

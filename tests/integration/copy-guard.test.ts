@@ -36,6 +36,9 @@ describe("copy guard", () => {
         'export const f = "Deploy tdd again";',
         'export const g = "Remove from target";',
         'export const h = "Free up disk space, then deploy again.";',
+        'export const i = "Import skills";',
+        'export const j = "Import prompts…";',
+        'export const k = "Edit prompt";',
         "",
       ].join("\n"),
     );
@@ -87,6 +90,11 @@ describe("copy guard", () => {
     ["Remove from Claude Code and Codex", "Remove from Claude Code"],
     ["Remove from Codex", "Remove from Codex"],
     ["The skill's files are still on disk.", "on disk"],
+    ["Select Import skill to add it.", "Import skill"],
+    ["Import skill…", "Import skill"],
+    ["Select Import prompt to add it.", "Import prompt"],
+    ["Update skill", "Update skill"],
+    ["Select Update prompt to change it.", "Update prompt"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",

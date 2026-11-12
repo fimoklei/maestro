@@ -8,7 +8,7 @@ const idleAdd = {
   reset: () => {},
 };
 
-// The Category field of Import skill, Import prompt and Edit prompt, closed.
+// The Category field of Import prompts and Edit prompt, closed.
 // The open menu is `Core/CategoryMenu`; the field reads the categories when
 // it opens.
 const meta = {

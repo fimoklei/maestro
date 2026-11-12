@@ -1,6 +1,5 @@
-import type { SkillFolder } from "@maestro/core";
 import { useState } from "react";
-import { toggleStaged } from "../ui/bulk-selection";
+import { useSubmitAfterAdd } from "../categories/use-held-category-add";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import {
@@ -11,8 +10,11 @@ import {
 import {
   ImportSkillsDialog,
   type SkillFolderLoad,
+  type SkillsImportReport,
+  skillFolderRow,
 } from "./import-skills-dialog";
 import { useImportSkills, useSkillFolderScan } from "./use-harness";
+import { useImportChecklist } from "./use-import-checklist";
 
 // Import skills from one chosen folder. The Report stays in the dialog, so
 // the screen announces nothing beyond the busy label.
@@ -29,10 +31,6 @@ export function ImportSkillsAction({
   const [source, setSource] = useState<string | null>(null);
   // Set by a submit with no folder; any edit of the field clears it.
   const [folderMissing, setFolderMissing] = useState(false);
-  // The new entries the reader unticked, and the held ones they ticked: a
-  // folder that replaces a held skill starts unticked.
-  const [unticked, setUnticked] = useState<ReadonlySet<string>>(new Set());
-  const [replacing, setReplacing] = useState<ReadonlySet<string>>(new Set());
   const scan = useSkillFolderScan(source);
   const run = useImportSkills();
   const importWrite = useWriteAction(run, {
@@ -50,14 +48,14 @@ export function ImportSkillsAction({
         : scan.data === undefined
           ? { kind: "loading" }
           : { kind: "ready", scan: scan.data };
-  const ready =
-    load.kind === "ready"
-      ? load.scan.folders.filter((folder) => folder.refusal === null)
-      : [];
-  const isChecked = ({ entry, replaces }: SkillFolder) =>
-    replaces ? replacing.has(entry) : !unticked.has(entry);
-  const picked = ready.filter(isChecked);
-  const checked = new Set(picked.map((folder) => folder.entry));
+  const checklist = useImportChecklist(
+    source,
+    load.kind === "ready" ? load.scan.folders.map(skillFolderRow) : null,
+    "skill",
+  );
+  // Set once the landed rows' categories are saved too.
+  const [report, setReport] = useState<SkillsImportReport | null>(null);
+  const [savingCategories, setSavingCategories] = useState(false);
 
   // The same folder chosen again lists it anew: its rows may have changed.
   const commitSource = (path: string) => {
@@ -66,8 +64,6 @@ export function ImportSkillsAction({
       return;
     }
     setSource(path);
-    setUnticked(new Set());
-    setReplacing(new Set());
   };
 
   // A press before any list scans what the field holds; a failed scan is
@@ -86,14 +82,35 @@ export function ImportSkillsAction({
       void scan.refetch();
       return;
     }
-    importWrite.run({
-      source: typed,
-      entries: picked.map(({ entry, replaces }) => ({
-        entry,
-        replace: replaces,
-      })),
-    });
+    // A refused folder lists nothing to import.
+    if (load.scan.folder === null) return;
+    importWrite.run(
+      {
+        // The rows' own folder: the one around a chosen skill folder.
+        source: load.scan.folder,
+        entries: checklist.picked.map(({ key, replace }) => ({
+          entry: key,
+          replace,
+        })),
+      },
+      {
+        onSuccess: ({ outcomes }) => {
+          setSavingCategories(true);
+          void checklist
+            .saveCategories(
+              outcomes.flatMap(({ entry, name, refusal }) =>
+                refusal === null ? [{ key: entry, name }] : [],
+              ),
+            )
+            .then((unsavedCategories) => {
+              setReport({ outcomes, unsavedCategories });
+              setSavingCategories(false);
+            });
+        },
+      },
+    );
   };
+  const afterAdd = useSubmitAfterAdd(checklist.categoryAdd, submit);
 
   return (
     <ImportSkillsDialog
@@ -107,17 +124,14 @@ export function ImportSkillsAction({
       onSourceCommit={commitSource}
       chooser={chooser}
       load={load}
-      checked={checked}
-      onToggle={(entry) =>
-        ready.find((folder) => folder.entry === entry)?.replaces
-          ? setReplacing((current) => toggleStaged(current, entry))
-          : setUnticked((current) => toggleStaged(current, entry))
+      checklist={checklist}
+      isRunning={
+        importWrite.phase === "running" || savingCategories || afterAdd.waiting
       }
-      isRunning={importWrite.phase === "running"}
-      outcomes={run.data?.outcomes ?? null}
+      report={report}
       failure={importWrite.failure}
       onClose={onClose}
-      onImport={submit}
+      onImport={afterAdd.submit}
     />
   );
 }

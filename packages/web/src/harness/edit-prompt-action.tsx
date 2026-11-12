@@ -1,6 +1,6 @@
 import type { ScreenWrites, WriteResult } from "../ui/use-write-action";
-import type { EditScreen } from "./import-prompt-copy";
-import { ImportPromptDialog } from "./import-prompt-dialog";
+import { EditPromptDialog } from "./edit-prompt-dialog";
+import type { EditScreen } from "./prompt-copy";
 import { type OpenedPrompt, useEditPromptFlow } from "./use-edit-prompt-flow";
 
 // Edit prompt, mounted only while its dialog stands, on the prompt the
@@ -15,5 +15,5 @@ export function EditPromptAction(props: {
   onEdited: (name: string, written: WriteResult) => void;
   onClose: () => void;
 }) {
-  return <ImportPromptDialog mode="edit" {...useEditPromptFlow(props)} />;
+  return <EditPromptDialog {...useEditPromptFlow(props)} />;
 }

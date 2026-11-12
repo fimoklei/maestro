@@ -1,6 +1,6 @@
 // A batch import replaces a held skill or prompt only where the Contributor
 // ticked it, and the replaced item then reads as a Changed proposal.
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { git, rowsOf, useHarnessStages } from "../helpers/harness-stages";
@@ -49,13 +49,21 @@ describe("batch import over a held item", { timeout: 40_000 }, () => {
 
     expect(await response.json()).toEqual({
       folderBlocker: null,
+      folder: await realpath(source),
       folders: [
-        { entry: "tdd", name: "tdd", refusal: null, replaces: true },
+        {
+          entry: "tdd",
+          name: "tdd",
+          refusal: null,
+          replaces: true,
+          category: null,
+        },
         {
           entry: "write-spec",
           name: "write-spec",
           refusal: null,
           replaces: false,
+          category: null,
         },
       ],
     });

@@ -1,8 +1,4 @@
-import type {
-  ImportPromptSuccess,
-  ImportPromptsAnswer,
-  PrimitiveRef,
-} from "@maestro/core";
+import type { ImportPromptsAnswer, PrimitiveRef } from "@maestro/core";
 import type { PromptFile } from "@maestro/core/prompt-file";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
@@ -12,14 +8,12 @@ import {
   discardErrorResponses,
   type ErrorTable,
   editPromptErrorResponses,
-  importErrorResponses,
-  importPromptErrorResponses,
   importPromptsErrorResponses,
   importSkillsErrorResponses,
   isEditPromptRefusal,
-  isImportPromptRefusal,
   localDeletionErrorResponses,
   promoteErrorResponses,
+  promptWriteErrorResponses,
   proposalErrorResponses,
   readPromptErrorResponses,
   releaseWithdrawalErrorResponses,
@@ -33,13 +27,9 @@ import {
   DISCARD_BODY,
   deletionBodySchema,
   discardBodySchema,
-  IMPORT_BODY,
-  IMPORT_PROMPT_BODY,
   IMPORT_PROMPTS_BODY,
   IMPORT_SKILLS_BODY,
   IMPORT_SKILLS_CHECK_BODY,
-  importBodySchema,
-  importPromptBodySchema,
   importPromptsBodySchema,
   importSkillsBodySchema,
   importSkillsCheckBodySchema,
@@ -78,7 +68,6 @@ type Deps = Pick<
   | "discard"
   | "withdrawFromRelease"
   | "proposals"
-  | "importSkill"
   | "importSkills"
   | "importPrompt"
   | "scaffold"
@@ -300,40 +289,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ files: result.files });
   });
 
-  // A refusal is data here, not a failure; only an unconnected harness is a status.
-  app.post("/api/harness/import/check", async (c) => {
-    const body = await parseBody(c, importBodySchema, IMPORT_BODY);
-    if (!body.ok) {
-      return body.response;
-    }
-
-    const result = await deps.importSkill.check(body.data);
-    if (!result.ok) {
-      const { status } = importErrorResponses[result.error];
-      return c.json({ error: result.error }, status);
-    }
-    return c.json(result.check);
-  });
-
-  // Re-judges everything the check judged, so a source or harness that moved is refused.
-  app.post("/api/harness/import", async (c) => {
-    const body = await parseBody(c, importBodySchema, IMPORT_BODY);
-    if (!body.ok) {
-      return body.response;
-    }
-
-    const result = await deps.importSkill.execute(body.data);
-    if (!result.ok) {
-      const { status } = importErrorResponses[result.error];
-      return c.json({ error: result.error }, status);
-    }
-    return c.json({
-      mode: result.mode,
-      name: result.name,
-      skipped: result.skipped,
-    });
-  });
-
   // Each folder's refusal is data; only an unconnected harness is a status.
   app.post("/api/harness/import/skills/check", async (c) => {
     const body = await parseBody(
@@ -374,34 +329,14 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     const result = await deps.importPrompt.check(body.data.name);
     if (!result.ok) {
-      const { status } = importPromptErrorResponses[result.error];
+      const { status } = promptWriteErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
     return c.json(result.check);
   });
 
-  // Writes into the Working Harness the server resolves; the browser names no path.
-  app.post("/api/harness/prompt/import", async (c) => {
-    const body = await parseBody(c, importPromptBodySchema, IMPORT_PROMPT_BODY);
-    if (!body.ok) {
-      return body.response;
-    }
-    const result = await deps.importPrompt.execute(body.data);
-    if (!result.ok) {
-      // Core judges the fields again; the schema owns their HTTP refusal.
-      if (!isImportPromptRefusal(result.error)) {
-        return c.json({ error: "invalid-body", ...IMPORT_PROMPT_BODY }, 400);
-      }
-      const { status } = importPromptErrorResponses[result.error];
-      return c.json({ error: result.error }, status);
-    }
-    return c.json({
-      mode: result.mode,
-      name: result.name,
-    } satisfies ImportPromptSuccess);
-  });
-
-  // One outcome per file, in the order sent; a refused file is data.
+  // Writes into the Working Harness the server resolves; the browser names no
+  // path. One outcome per file, in the order sent; a refused file is data.
   app.post("/api/harness/prompts/import", async (c) => {
     const body = await parseBody(
       c,

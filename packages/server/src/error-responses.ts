@@ -7,9 +7,7 @@ import type {
   DiscardChangeError,
   EditPromptError,
   HarnessStateError,
-  ImportPromptError,
   ImportPromptsError,
-  ImportSkillError,
   ImportSkillsError,
   LocalEditsError,
   PromoteDeletionError,
@@ -363,44 +361,18 @@ export const releaseWithdrawalErrorResponses: ErrorTable<WithdrawFromReleaseErro
     "withdraw-failed": { status: 502 },
   };
 
-// Never a filesystem message, and never the path it read (#576).
-export const importErrorResponses: ErrorTable<ImportSkillError> = {
-  "not-configured": { status: 409 },
-  "source-unreadable": { status: 422 },
-  // 403: outside the home ceiling, and the reply names no path.
-  "outside-root": { status: 403 },
-  "deployed-copy": { status: 409 },
-  "origin-unproven": { status: 409 },
-  "missing-manifest": { status: 422 },
-  "invalid-frontmatter": { status: 422 },
-  "empty-description": { status: 422 },
-  "invalid-name": { status: 400 },
-  "name-taken": { status: 409 },
-  "not-found": { status: 422 },
-  "not-a-directory": { status: 422 },
-  "destination-exists": { status: 409 },
-  "unsafe-link": { status: 422 },
-  "hard-linked-file": { status: 422 },
-  "special-file": { status: 422 },
-  "too-many-files": { status: 422 },
-  "too-large": { status: 422 },
-  "source-changed": { status: 409 },
-  "copy-failed": { status: 500 },
-  "destination-unsafe": { status: 409 },
-  "harness-copy-uncommitted": { status: 409 },
-  "harness-unreadable": { status: 422 },
-  "nothing-to-carry-back": { status: 409 },
-};
-
-// Never a filesystem message, and never the path it wrote.
-// A broken field never gets here: the request schema refuses it first. Only
-// core sees the front matter the file keeps, so it refuses that file's size.
-type ImportPromptRefusal = Exclude<
-  ImportPromptError,
+// As on the import, a broken field never gets here. Only core sees the front
+// matter the file keeps, so it refuses that file's size.
+type EditPromptRefusal = Exclude<
+  EditPromptError,
   Exclude<PromptFieldProblem, "long-text">
 >;
 
-export const importPromptErrorResponses: ErrorTable<ImportPromptRefusal> = {
+// Never a filesystem message, and never the path it wrote. The refusals a
+// prompt write shares across check, read, edit and the batch.
+export const promptWriteErrorResponses: ErrorTable<
+  Exclude<EditPromptRefusal, "prompt-missing" | "prompt-changed">
+> = {
   "long-text": { status: 422 },
   "not-configured": { status: 409 },
   "destination-unsafe": { status: 409 },
@@ -411,35 +383,22 @@ export const importPromptErrorResponses: ErrorTable<ImportPromptRefusal> = {
 
 // A refusal of one file is data in the answer; these refuse the batch.
 export const importPromptsErrorResponses: ErrorTable<ImportPromptsError> = {
-  "not-configured": importPromptErrorResponses["not-configured"],
-  "destination-unsafe": importPromptErrorResponses["destination-unsafe"],
-  "destination-unreadable":
-    importPromptErrorResponses["destination-unreadable"],
-  "import-in-progress": importPromptErrorResponses["import-in-progress"],
+  "not-configured": promptWriteErrorResponses["not-configured"],
+  "destination-unsafe": promptWriteErrorResponses["destination-unsafe"],
+  "destination-unreadable": promptWriteErrorResponses["destination-unreadable"],
+  "import-in-progress": promptWriteErrorResponses["import-in-progress"],
 };
-
-export const isImportPromptRefusal = (
-  code: ImportPromptError,
-): code is ImportPromptRefusal =>
-  Object.hasOwn(importPromptErrorResponses, code);
 
 export const readPromptErrorResponses: ErrorTable<ReadPromptError> = {
-  "not-configured": importPromptErrorResponses["not-configured"],
+  "not-configured": promptWriteErrorResponses["not-configured"],
   "invalid-name": { status: 400 },
   "prompt-missing": { status: 404 },
-  "destination-unsafe": importPromptErrorResponses["destination-unsafe"],
-  "destination-unreadable":
-    importPromptErrorResponses["destination-unreadable"],
+  "destination-unsafe": promptWriteErrorResponses["destination-unsafe"],
+  "destination-unreadable": promptWriteErrorResponses["destination-unreadable"],
 };
 
-// As on the import, a broken field never gets here.
-type EditPromptRefusal = Exclude<
-  EditPromptError,
-  Exclude<PromptFieldProblem, "long-text">
->;
-
 export const editPromptErrorResponses: ErrorTable<EditPromptRefusal> = {
-  ...importPromptErrorResponses,
+  ...promptWriteErrorResponses,
   "prompt-missing": readPromptErrorResponses["prompt-missing"],
   "prompt-changed": { status: 409 },
 };

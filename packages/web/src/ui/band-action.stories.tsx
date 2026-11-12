@@ -8,7 +8,7 @@ const meta = {
   component: BandAction,
   args: {
     icon: FolderInput,
-    label: "Import skill",
+    label: "Import skills",
     menu: false,
     onClick: () => {},
   },

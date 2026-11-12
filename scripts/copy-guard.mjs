@@ -33,8 +33,9 @@ const RETIRED = [
   /\breload the view\b/i,
   /\bslugs?\b/i,
   /\bImport local edits…/i,
-  /\bImport skill…/i,
   /\bSelected skills\b/i,
+  // One dialog imports skills or prompts; Edit prompt changes one (#1844).
+  /\b(?:Import|Update) (?:skill|prompt)\b/,
   // A status states where a change stands; the Change column names it (#1399).
   /\bDeleted locally\b/i,
   /\bDeletion (?:in draft|waiting for review|changes requested|approved|merged)\b/i,

@@ -162,6 +162,7 @@ export class ImportSkill {
           name: string;
           replaces: boolean;
           refusal: ImportSkillError | null;
+          category: string | null;
         };
       }
     | { ok: false; error: "not-configured" }
@@ -177,6 +178,7 @@ export class ImportSkill {
         name: check.name,
         replaces: replacesHeld(check),
         refusal: await this.blocker(root, check, source, "replace"),
+        category: check.category,
       },
     };
   }
