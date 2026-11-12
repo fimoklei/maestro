@@ -1,6 +1,6 @@
 // Imports one chosen skill folder, or the skill folders directly inside it,
 // each through ImportSkill's own judgement and copy: no branch, commit or push.
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { FileSystemPort } from "../registry/file-system";
 import type {
@@ -38,11 +38,17 @@ export type SkillFolderScan = {
   folders: SkillFolder[];
 };
 
+// The chosen folder answers to the single import's source rules only; it
+// need not be a skill itself.
+const FOLDER_BLOCKERS = [
+  "source-unreadable",
+  "outside-root",
+  "deployed-copy",
+  "origin-unproven",
+] as const satisfies readonly ImportSourceBlocker[];
+
 /** Why the chosen folder itself cannot be read for skills. */
-export type SkillsFolderBlocker = Extract<
-  ImportSourceBlocker,
-  "source-unreadable" | "outside-root" | "deployed-copy" | "origin-unproven"
->;
+export type SkillsFolderBlocker = (typeof FOLDER_BLOCKERS)[number];
 
 export type ImportSkillsInput = {
   source: string;
@@ -59,18 +65,10 @@ export type ImportSkillsResult =
   | { ok: true; outcomes: SkillFolderOutcome[] }
   | { ok: false; error: ImportSkillsError };
 
-// The chosen folder answers to the single import's source rules only; it
-// need not be a skill itself.
-const FOLDER_BLOCKERS: readonly ImportSourceBlocker[] = [
-  "source-unreadable",
-  "outside-root",
-  "deployed-copy",
-  "origin-unproven",
-] satisfies SkillsFolderBlocker[];
-
 const isFolderBlocker = (
   blocker: ImportSourceBlocker,
-): blocker is SkillsFolderBlocker => FOLDER_BLOCKERS.includes(blocker);
+): blocker is SkillsFolderBlocker =>
+  FOLDER_BLOCKERS.some((folderBlocker) => folderBlocker === blocker);
 
 type Listing =
   | { ok: true; folder: string; entries: string[] }
@@ -100,7 +98,7 @@ export class ImportSkills {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
-    const listing = await this.list(source, "skill-or-skills");
+    const listing = await this.listForScan(source);
     if (listing === null) {
       return { ok: false, error: "not-configured" };
     }
@@ -139,7 +137,7 @@ export class ImportSkills {
   }
 
   private async land(input: ImportSkillsInput): Promise<ImportSkillsResult> {
-    const listing = await this.list(input.source, "skills");
+    const listing = await this.listForImport(input.source);
     if (listing === null) {
       return { ok: false, error: "not-configured" };
     }
@@ -184,13 +182,49 @@ export class ImportSkills {
     return { ok: true, outcomes };
   }
 
-  // Null where no Harness is connected. Hidden entries, such as `.git`, are
-  // never skills. A scan takes a folder with its own SKILL.md as one skill,
-  // whatever its subfolders hold; an import always names entries inside it.
-  private async list(
+  // A folder with its own SKILL.md is one skill, whatever its subfolders
+  // hold. It is listed under its own name inside the folder around it, so
+  // a link keeps the name it was chosen by. Hidden entries, such as `.git`,
+  // are left out of a listing of several.
+  private async listForScan(source: string): Promise<Listing | null> {
+    const opened = await this.open(source);
+    if (opened === null || !opened.ok) {
+      return opened;
+    }
+    if (!(await this.deps.fs.exists(join(opened.folder, "SKILL.md")))) {
+      const entries = await this.subfolders(opened.folder);
+      return {
+        ...opened,
+        entries: entries.filter((entry) => !entry.startsWith(".")),
+      };
+    }
+    const chosen = resolve(source);
+    try {
+      const folder = await this.deps.fs.realpath(dirname(chosen));
+      return { ok: true, folder, entries: [basename(chosen)] };
+    } catch {
+      return { ok: false, blocker: "source-unreadable" };
+    }
+  }
+
+  // An import names any folder directly inside the source, the ones a scan
+  // lists included; ImportSkill judges each one.
+  private async listForImport(source: string): Promise<Listing | null> {
+    const opened = await this.open(source);
+    if (opened === null || !opened.ok) {
+      return opened;
+    }
+    return { ...opened, entries: await this.subfolders(opened.folder) };
+  }
+
+  // Null where no Harness is connected.
+  private async open(
     source: string,
-    holds: "skill-or-skills" | "skills",
-  ): Promise<Listing | null> {
+  ): Promise<
+    | { ok: true; folder: string }
+    | { ok: false; blocker: SkillsFolderBlocker }
+    | null
+  > {
     const checked = await this.deps.importSkill.check({ source });
     if (!checked.ok) {
       return null;
@@ -199,21 +233,16 @@ export class ImportSkills {
     if (blocker !== null && isFolderBlocker(blocker)) {
       return { ok: false, blocker };
     }
-    let folder: string;
     try {
-      folder = await this.deps.fs.realpath(source);
+      return { ok: true, folder: await this.deps.fs.realpath(source) };
     } catch {
       return { ok: false, blocker: "source-unreadable" };
     }
-    if (
-      holds === "skill-or-skills" &&
-      (await this.deps.fs.exists(join(folder, "SKILL.md")))
-    ) {
-      return { ok: true, folder: dirname(folder), entries: [basename(folder)] };
-    }
+  }
+
+  private async subfolders(folder: string): Promise<string[]> {
     const entries: string[] = [];
     for (const entry of await this.deps.fs.listRawEntries(folder)) {
-      if (entry.name.startsWith(".")) continue;
       if (
         entry.isDirectory ||
         (entry.isSymlink &&
@@ -222,7 +251,6 @@ export class ImportSkills {
         entries.push(entry.name);
       }
     }
-    entries.sort();
-    return { ok: true, folder, entries };
+    return entries.sort();
   }
 }

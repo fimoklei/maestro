@@ -4,6 +4,7 @@ import {
   readdir,
   realpath,
   rm,
+  symlink,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -321,6 +322,62 @@ describe("harness import of several skills over HTTP", () => {
     });
     expect((await readdir(join(harnessRoot, ".apm", "skills"))).sort()).toEqual(
       ["review", "tdd"],
+    );
+  });
+
+  // Scans the chosen folder, then imports every row the scan listed.
+  const scanThenImport = async (chosen: string) => {
+    const app = makeApp();
+    const scan = await post(app, "/api/harness/import/skills/check", {
+      source: chosen,
+    });
+    const listed = (await scan.json()) as {
+      folder: string;
+      folders: { entry: string }[];
+    };
+    const response = await post(app, "/api/harness/import/skills", {
+      source: listed.folder,
+      entries: listed.folders.map(({ entry }) => ({ entry, replace: false })),
+    });
+    return response.json();
+  };
+
+  it("imports a chosen skill folder whose name starts with a dot", async () => {
+    await skill(".hidden-helper");
+
+    expect(await scanThenImport(join(folder, ".hidden-helper"))).toEqual({
+      outcomes: [
+        {
+          entry: ".hidden-helper",
+          name: "hidden-helper",
+          refusal: null,
+          replaces: false,
+        },
+      ],
+    });
+    expect((await readdir(join(harnessRoot, ".apm", "skills"))).sort()).toEqual(
+      ["hidden-helper", "review"],
+    );
+  });
+
+  it("names a chosen skill folder that is a link after the link, not its target", async () => {
+    const target = join(base, "elsewhere", "target-name");
+    await mkdir(target, { recursive: true });
+    await writeFile(join(target, "SKILL.md"), manifest());
+    await symlink(target, join(folder, "linked-skill"));
+
+    expect(await scanThenImport(join(folder, "linked-skill"))).toEqual({
+      outcomes: [
+        {
+          entry: "linked-skill",
+          name: "linked-skill",
+          refusal: null,
+          replaces: false,
+        },
+      ],
+    });
+    expect((await readdir(join(harnessRoot, ".apm", "skills"))).sort()).toEqual(
+      ["linked-skill", "review"],
     );
   });
 
