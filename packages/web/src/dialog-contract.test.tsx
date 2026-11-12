@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type {
   ReleasePlan,
   SkillFolderScan,
@@ -894,8 +894,10 @@ const ON_DIALOG: Row[] = [
         phase: running ? "running" : "idle",
         close: onClose,
       }),
+    changed: async (onClose) => {
+      render(editPromptDialog({ changed: true, close: onClose }));
+    },
     // Its fields sit in PromptBodyFields; a refusal is the dialog's own failure.
-    changed: null,
     emptyForm: null,
     loading: null,
     loadFailed: null,
@@ -1101,6 +1103,22 @@ const sourceOf = (file: string) => {
   return USES_CONFIRMATION.test(text) ? text + textOf(CONFIRMATION) : text;
 };
 
+// A dialog's source with each component it renders from outside `ui/`, followed
+// through their own imports, so a field moved into a component still counts.
+const renderedSourceOf = (file: string, seen = new Set<string>()): string => {
+  if (seen.has(file)) return "";
+  seen.add(file);
+  const text = sourceOf(file);
+  const components = [
+    ...text.matchAll(/^import (?!type )[^;]*?from "(\.[^"]+)";/gm),
+  ]
+    .map(([, path]) => join(dirname(file), `${path}.tsx`))
+    .filter((path) => !path.startsWith("ui/") && textOf(path) !== "");
+  return [text, ...components.map((path) => renderedSourceOf(path, seen))].join(
+    "\n",
+  );
+};
+
 // Only `Dialog` opens a modal layer.
 const OPENS_A_DIALOG =
   /@radix-ui\/react-dialog|role="(alert)?dialog"|aria-modal|<dialog\b/;
@@ -1178,7 +1196,7 @@ describe("every dialog", () => {
 
   it("declares a changed state for each dialog with a field", () => {
     const withField = ON_DIALOG.filter((row) =>
-      RENDERS_A_FIELD.test(sourceOf(row.file)),
+      RENDERS_A_FIELD.test(renderedSourceOf(row.file)),
     ).map((row) => row.file);
 
     expect(
