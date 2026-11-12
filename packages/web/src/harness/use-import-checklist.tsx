@@ -3,11 +3,10 @@ import {
   alreadyInHarnessLegend,
   canBeImportedLegend,
   cannotBeImportedLegend,
-  replacesLine,
+  REPLACES_LINE,
 } from "../deploy-state/import-local-edits-copy";
 import { toggleStaged } from "../ui/bulk-selection";
 import type { GroupedListGroup } from "../ui/grouped-list";
-import { PhraseText } from "../ui/phrase-text";
 
 /** One row an import source lists. */
 export type ImportRow<Refusal> = {
@@ -96,7 +95,7 @@ export function importChecklistGroups<Refusal>(
       rows: held.map(({ key, name }) => ({
         key,
         name,
-        sentence: <PhraseText copy={replacesLine(name)} />,
+        sentence: REPLACES_LINE,
       })),
     },
     {

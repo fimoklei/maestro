@@ -63,6 +63,61 @@ export const Checklist: Story = {
   },
 };
 
+const rowControl = (name: string) => (
+  <button
+    type="button"
+    aria-label={`Set category for ${name}`}
+    className="h-6 rounded-control border border-gray-7 px-tight text-gray-11 text-meta"
+  >
+    No category
+  </button>
+);
+
+// Each row ends in its own control; a refused row has none, its reason wraps.
+export const ChecklistWithControls: Story = {
+  args: {
+    live: null,
+    groups: [
+      {
+        tone: "neutral",
+        legend: "Can be imported · 1",
+        rows: [{ key: "tdd", name: "tdd", control: rowControl("tdd") }],
+      },
+      {
+        tone: "attention",
+        legend: "⚠ Already in the Harness · 1",
+        rows: [
+          {
+            key: "review",
+            name: "review",
+            sentence: "Replaces the one in the Harness",
+            control: rowControl("review"),
+          },
+        ],
+      },
+      {
+        tone: "failed",
+        legend: "✕ Cannot be imported · 1",
+        rows: [
+          {
+            key: "brief",
+            name: "brief",
+            sentence:
+              "The skill folder ~/Projects/acme/.claude/skills/brief holds no SKILL.md. Add one, then select Import skills again.",
+            control: rowControl("brief"),
+          },
+        ],
+      },
+    ],
+    checklist: {
+      checked: new Set(["tdd"]),
+      onToggle: () => {},
+      isRunning: false,
+      firstBox: null,
+    },
+  },
+};
+
 // A preflight: what the removal costs and what it refuses.
 export const ReadOnly: Story = {
   args: {

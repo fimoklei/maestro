@@ -241,9 +241,7 @@ describe("Harness import prompts flow", () => {
     const box = within(held).getByRole("checkbox", { name: "commit-tips" });
     expect(box).not.toBeChecked();
     expect(box).not.toHaveAttribute("aria-disabled");
-    expect(box).toHaveAccessibleDescription(
-      "Replaces commit-tips in the Harness.",
-    );
+    expect(box).toHaveAccessibleDescription("Replaces the one in the Harness");
     expect(
       within(dialog).getByRole("button", { name: "Import 1 prompt" }),
     ).toBeVisible();
