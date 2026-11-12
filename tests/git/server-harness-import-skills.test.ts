@@ -1,4 +1,11 @@
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  mkdtemp,
+  readdir,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -86,6 +93,7 @@ describe("harness import of several skills over HTTP", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       folderBlocker: null,
+      folder: await realpath(folder),
       folders: [
         {
           entry: "code-review",
@@ -165,6 +173,7 @@ describe("harness import of several skills over HTTP", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       folderBlocker: "outside-root",
+      folder: null,
       folders: [],
     });
   });
@@ -264,6 +273,55 @@ describe("harness import of several skills over HTTP", () => {
     expect(await readdir(join(harnessRoot, ".apm", "skills"))).toEqual([
       "review",
     ]);
+  });
+
+  it("lists a chosen folder with its own SKILL.md as the only row, relative to the folder around it", async () => {
+    const app = makeApp();
+    const chosen = join(folder, "code-review");
+    await mkdir(join(chosen, "references", "nested"), { recursive: true });
+    await writeFile(
+      join(chosen, "references", "nested", "SKILL.md"),
+      manifest(),
+    );
+
+    const response = await post(app, "/api/harness/import/skills/check", {
+      source: chosen,
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      folderBlocker: null,
+      folder: await realpath(folder),
+      folders: [
+        {
+          entry: "code-review",
+          name: "code-review",
+          refusal: null,
+          replaces: false,
+          category: null,
+        },
+      ],
+    });
+  });
+
+  it("imports the one skill a chosen skill folder lists", async () => {
+    const app = makeApp();
+    const scan = await post(app, "/api/harness/import/skills/check", {
+      source: join(folder, "tdd"),
+    });
+    const { folder: relativeTo } = (await scan.json()) as { folder: string };
+
+    const response = await post(app, "/api/harness/import/skills", {
+      source: relativeTo,
+      entries: [{ entry: "tdd", replace: false }],
+    });
+
+    expect(await response.json()).toEqual({
+      outcomes: [{ entry: "tdd", name: "tdd", refusal: null, replaces: false }],
+    });
+    expect((await readdir(join(harnessRoot, ".apm", "skills"))).sort()).toEqual(
+      ["review", "tdd"],
+    );
   });
 
   it("refuses an entry the chosen folder does not list", async () => {

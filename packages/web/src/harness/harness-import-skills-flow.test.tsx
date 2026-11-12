@@ -19,6 +19,7 @@ const FOLDER = "/home/me/.claude/skills";
 
 const SCAN = {
   folderBlocker: null,
+  folder: FOLDER,
   folders: [
     {
       entry: "code-review",
@@ -53,6 +54,7 @@ const SCAN = {
 
 // The harness read, the folder chooser, the scan and the import.
 function stubServer(options: {
+  picked?: string;
   scan?: SkillFolderScan;
   outcomes?: SkillFolderOutcome[];
   harness?: HarnessState;
@@ -66,7 +68,9 @@ function stubServer(options: {
       if (categories !== null) return categories;
       if (url === "/api/folder-chooser") {
         return jsonResponse(
-          init?.method === "POST" ? { path: FOLDER } : { available: true },
+          init?.method === "POST"
+            ? { path: options.picked ?? FOLDER }
+            : { available: true },
         );
       }
       if (url === "/api/harness/import/skills/check") {
@@ -294,5 +298,78 @@ describe("Harness import of several skills", () => {
     expect(confirm).toHaveAttribute("aria-disabled", "true");
     await user.click(confirm);
     expect(imports).toEqual([]);
+  });
+
+  it("lists one chosen skill folder as one checked row, imports it from the folder around it, and reports it", async () => {
+    const { imports } = stubServer({
+      picked: `${FOLDER}/tdd`,
+      scan: {
+        folderBlocker: null,
+        folder: FOLDER,
+        folders: [
+          {
+            entry: "tdd",
+            name: "tdd",
+            refusal: null,
+            replaces: false,
+            category: null,
+          },
+        ],
+      },
+      outcomes: [{ entry: "tdd", name: "tdd", refusal: null, replaces: false }],
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+    await user.click(await screen.findByRole("button", { name: "Import" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Import skills" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Import skills" });
+    await user.click(within(dialog).getByRole("button", { name: "Browse" }));
+
+    expect(
+      await within(dialog).findByRole("checkbox", { name: "tdd" }),
+    ).toBeChecked();
+    expect(within(dialog).getAllByRole("checkbox")).toHaveLength(1);
+    await user.click(
+      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+    );
+
+    await within(dialog).findByRole("heading", {
+      name: "Imported 1 of 1 skill",
+    });
+    expect(imports).toEqual([
+      { source: FOLDER, entries: [{ entry: "tdd", replace: false }] },
+    ]);
+    const landed = within(dialog).getByRole("region", { name: "Imported · 1" });
+    expect(within(landed).getByText("tdd")).toBeInTheDocument();
+  });
+
+  it("asks for a skill folder, or a folder of skill folders, and says so when the folder is neither", async () => {
+    stubServer({
+      scan: { folderBlocker: null, folder: FOLDER, folders: [] },
+    });
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+    await user.click(await screen.findByRole("button", { name: "Import" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Import skills" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Import skills" });
+    expectDescription(
+      within(dialog).getByRole("textbox", { name: "Folder path" }),
+      "Choose a skill folder, or a folder of skill folders.",
+    );
+
+    await user.click(within(dialog).getByRole("button", { name: "Browse" }));
+
+    expect(
+      await within(dialog).findByText("No skills in this folder"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "A skill folder holds a SKILL.md. Choose a skill folder, or a folder of skill folders.",
+      ),
+    ).toBeInTheDocument();
   });
 });

@@ -65,6 +65,7 @@ function stubServer({
       if (url === "/api/harness/import/skills/check") {
         return jsonResponse({
           folderBlocker: null,
+          folder: FOLDER,
           folders,
         } satisfies SkillFolderScan);
       }

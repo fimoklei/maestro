@@ -1,6 +1,6 @@
-// Imports the skill folders directly inside one chosen folder, each through
-// ImportSkill's own judgement and copy: no branch, commit or push.
-import { join } from "node:path";
+// Imports one chosen skill folder, or the skill folders directly inside it,
+// each through ImportSkill's own judgement and copy: no branch, commit or push.
+import { basename, dirname, join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { FileSystemPort } from "../registry/file-system";
 import type {
@@ -27,11 +27,22 @@ export type SkillFolder = SkillFolderOutcome & { category: string | null };
 // A folder to import; only `replace` lets it take the place of a held skill.
 type SkillFolderPick = { entry: string; replace: boolean };
 
-/** What the chosen folder holds; `folderBlocker` refuses the folder itself and lists nothing. */
+/**
+ * What the chosen folder holds; `folderBlocker` refuses the folder itself and
+ * lists nothing. `folder` is the folder the entries sit in, to import from:
+ * the chosen one, or the one around it where the chosen folder is a skill.
+ */
 export type SkillFolderScan = {
-  folderBlocker: ImportSourceBlocker | null;
+  folderBlocker: SkillsFolderBlocker | null;
+  folder: string | null;
   folders: SkillFolder[];
 };
+
+/** Why the chosen folder itself cannot be read for skills. */
+export type SkillsFolderBlocker = Extract<
+  ImportSourceBlocker,
+  "source-unreadable" | "outside-root" | "deployed-copy" | "origin-unproven"
+>;
 
 export type ImportSkillsInput = {
   source: string;
@@ -50,21 +61,28 @@ export type ImportSkillsResult =
 
 // The chosen folder answers to the single import's source rules only; it
 // need not be a skill itself.
-const FOLDER_BLOCKERS = new Set<ImportSourceBlocker>([
+const FOLDER_BLOCKERS: readonly ImportSourceBlocker[] = [
   "source-unreadable",
   "outside-root",
   "deployed-copy",
   "origin-unproven",
-]);
+] satisfies SkillsFolderBlocker[];
+
+const isFolderBlocker = (
+  blocker: ImportSourceBlocker,
+): blocker is SkillsFolderBlocker => FOLDER_BLOCKERS.includes(blocker);
 
 type Listing =
   | { ok: true; folder: string; entries: string[] }
-  | { ok: false; blocker: ImportSourceBlocker };
+  | { ok: false; blocker: SkillsFolderBlocker };
 
 export class ImportSkills {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
-    fs: Pick<FileSystemPort, "realpath" | "isDirectory" | "listRawEntries">;
+    fs: Pick<
+      FileSystemPort,
+      "realpath" | "isDirectory" | "exists" | "listRawEntries"
+    >;
     importSkill: Pick<
       ImportSkill,
       "check" | "judgeReplace" | "add" | "replace"
@@ -82,14 +100,14 @@ export class ImportSkills {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
-    const listing = await this.list(source);
+    const listing = await this.list(source, "skill-or-skills");
     if (listing === null) {
       return { ok: false, error: "not-configured" };
     }
     if (!listing.ok) {
       return {
         ok: true,
-        scan: { folderBlocker: listing.blocker, folders: [] },
+        scan: { folderBlocker: listing.blocker, folder: null, folders: [] },
       };
     }
     const folders: SkillFolder[] = [];
@@ -103,7 +121,10 @@ export class ImportSkills {
       }
       folders.push({ entry, ...judged.verdict });
     }
-    return { ok: true, scan: { folderBlocker: null, folders } };
+    return {
+      ok: true,
+      scan: { folderBlocker: null, folder: listing.folder, folders },
+    };
   }
 
   // Judged again from scratch, folder by folder: the scan the browser saw
@@ -118,7 +139,7 @@ export class ImportSkills {
   }
 
   private async land(input: ImportSkillsInput): Promise<ImportSkillsResult> {
-    const listing = await this.list(input.source);
+    const listing = await this.list(input.source, "skills");
     if (listing === null) {
       return { ok: false, error: "not-configured" };
     }
@@ -164,14 +185,18 @@ export class ImportSkills {
   }
 
   // Null where no Harness is connected. Hidden entries, such as `.git`, are
-  // never skills.
-  private async list(source: string): Promise<Listing | null> {
+  // never skills. A scan takes a folder with its own SKILL.md as one skill,
+  // whatever its subfolders hold; an import always names entries inside it.
+  private async list(
+    source: string,
+    holds: "skill-or-skills" | "skills",
+  ): Promise<Listing | null> {
     const checked = await this.deps.importSkill.check({ source });
     if (!checked.ok) {
       return null;
     }
     const blocker = checked.check.sourceBlocker;
-    if (blocker !== null && FOLDER_BLOCKERS.has(blocker)) {
+    if (blocker !== null && isFolderBlocker(blocker)) {
       return { ok: false, blocker };
     }
     let folder: string;
@@ -179,6 +204,12 @@ export class ImportSkills {
       folder = await this.deps.fs.realpath(source);
     } catch {
       return { ok: false, blocker: "source-unreadable" };
+    }
+    if (
+      holds === "skill-or-skills" &&
+      (await this.deps.fs.exists(join(folder, "SKILL.md")))
+    ) {
+      return { ok: true, folder: dirname(folder), entries: [basename(folder)] };
     }
     const entries: string[] = [];
     for (const entry of await this.deps.fs.listRawEntries(folder)) {

@@ -82,9 +82,12 @@ export function ImportSkillsAction({
       void scan.refetch();
       return;
     }
+    // A refused folder lists nothing to import.
+    if (load.scan.folder === null) return;
     importWrite.run(
       {
-        source: typed,
+        // The rows' own folder: the one around a chosen skill folder.
+        source: load.scan.folder,
         entries: checklist.picked.map(({ key, replace }) => ({
           entry: key,
           replace,

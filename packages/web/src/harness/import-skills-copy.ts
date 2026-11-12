@@ -13,15 +13,16 @@ import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { harnessHeadings } from "./notice-copy";
 
-export const IMPORT_SKILLS_HINT = "Maestro lists all skills inside the folder.";
+export const IMPORT_SKILLS_HINT =
+  "Choose a skill folder, or a folder of skill folders.";
 export const IMPORT_SKILLS_PLACEHOLDER = "/path/to/skills";
 export const SKILLS_FOLDER_MISSING =
   "Enter the absolute path of the folder that contains your skills.";
 export const READING_FOLDER = "Reading the folder…";
 
 export const NO_SKILL_FOLDERS: NoticeCopy = {
-  label: "No skill folders",
-  message: "Choose the folder that contains your skill folders.",
+  label: "No skills in this folder",
+  message: `A skill folder holds a SKILL.md. ${IMPORT_SKILLS_HINT}`,
 };
 
 const AGAIN = `then select ${IMPORT_SKILLS} again.`;

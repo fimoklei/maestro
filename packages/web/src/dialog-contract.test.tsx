@@ -341,6 +341,7 @@ const importLocalEditsDialog = (
 
 const SKILL_FOLDERS: SkillFolderScan = {
   folderBlocker: null,
+  folder: "/home/me/.claude/skills",
   folders: [
     {
       entry: "tdd",
@@ -1147,11 +1148,18 @@ const ON_DIALOG: Row[] = [
     loadFailed: null,
     notices: [
       {
-        label: "No skill folders",
+        label: "No skills in this folder",
         render: () =>
           importSkillsDialog({
             sourceText: "/home/me/empty",
-            load: { kind: "ready", scan: { folderBlocker: null, folders: [] } },
+            load: {
+              kind: "ready",
+              scan: {
+                folderBlocker: null,
+                folder: "/home/me/empty",
+                folders: [],
+              },
+            },
           }),
       },
     ],
