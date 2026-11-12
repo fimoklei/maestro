@@ -54,7 +54,7 @@ const REFUSAL: Record<ImportSkillError, string> = {
   // was taken after the scan.
   "name-taken": `The Harness already contains a skill with this name. To replace it, select ${IMPORT_SKILLS} again. Choose the folder, then check it under ${ALREADY_IN_HARNESS}.`,
   "destination-exists":
-    "The Harness already contains a folder under this name. Rename the folder, then choose the folder again.",
+    "The Harness already contains a folder with the same name. Rename this folder, then select the folder again.",
   "not-found": "The folder was moved or deleted before Maestro could copy it.",
   "not-a-directory": "This is no longer a folder, so Maestro did not copy it.",
   "source-changed": `The folder changed during the import. Wait for the change to finish, ${AGAIN}`,

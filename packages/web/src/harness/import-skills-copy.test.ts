@@ -26,7 +26,7 @@ describe("Import skills copy", () => {
     ],
     [
       "destination-exists",
-      "The Harness already contains a folder under this name. Rename the folder, then choose the folder again.",
+      "The Harness already contains a folder with the same name. Rename this folder, then select the folder again.",
     ],
     [
       "unsafe-link",
