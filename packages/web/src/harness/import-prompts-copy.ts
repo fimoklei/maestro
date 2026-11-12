@@ -17,6 +17,18 @@ export const PROMPT_FILES_LABEL = "Prompt files";
 export const PROMPT_FILES_HINT = "Use .md or .txt files of 100 KB or less.";
 export const CHOOSE_FILES = "Choose files";
 
+/** Where the prompts come from: the dialog's two sources. */
+export type PromptSource = "files" | "paste";
+
+/** The accessible name of the Choose files / Paste text switch. */
+export const PROMPT_SOURCE_LABEL = "Prompt source";
+
+export const PROMPT_SOURCES: readonly { value: PromptSource; label: string }[] =
+  [
+    { value: "files", label: CHOOSE_FILES },
+    { value: "paste", label: "Paste text" },
+  ];
+
 /** The confirm: the checked count, live. */
 export const importPromptsConfirm = (count: number): string =>
   count === 0

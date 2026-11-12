@@ -16,21 +16,16 @@ import {
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps, ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CategoryFieldState } from "./categories/category-field";
 import { ImportLocalEditsDialog } from "./deploy-state/import-local-edits-dialog";
 import { RemoveSkillDialog } from "./deploy-state/remove-skill-dialog";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog, type DeletionMode } from "./harness/deletion-dialog";
 import { DiscardDialog } from "./harness/discard-dialog";
+import { EditPromptDialog } from "./harness/edit-prompt-dialog";
 import {
   type ImportRow,
   importChecklistGroups,
 } from "./harness/import-checklist-groups";
-import {
-  longTextNotice,
-  PROMPT_TAKEN_NOTICE,
-} from "./harness/import-prompt-copy";
-import { ImportPromptDialog } from "./harness/import-prompt-dialog";
 import type { PromptFileRefusal } from "./harness/import-prompts-copy";
 import { ImportPromptsDialog } from "./harness/import-prompts-dialog";
 import {
@@ -62,7 +57,6 @@ import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
 import { expectTooltipCause, htmlElement, idleCategoryAdd } from "./test-utils";
-import { UPDATE_PROMPT } from "./ui/control-labels";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
 
@@ -136,14 +130,6 @@ const PREVIEW: UpdatePreview = {
   selection: { current: ["tdd"], desired: ["tdd"] },
   copyReceipt: "b".repeat(64),
   token: "a".repeat(64),
-};
-
-const NO_CATEGORY_FIELD: CategoryFieldState = {
-  value: null,
-  hint: "Only you see this category.",
-  suggested: null,
-  onChange: vi.fn(),
-  add: idleCategoryAdd,
 };
 
 type Options = {
@@ -250,18 +236,15 @@ const updateDialog = (
   />
 );
 
-// The import mode: the edit mode carries no source tabs.
-const importPromptDialog = (
-  props: Partial<
-    Extract<ComponentProps<typeof ImportPromptDialog>, { source: unknown }>
-  >,
+// Opened on review-pr, nothing changed yet.
+const editPromptDialog = (
+  props: Partial<ComponentProps<typeof EditPromptDialog>>,
 ) => (
-  <ImportPromptDialog
+  <EditPromptDialog
     draft={{
-      name: "",
-      frontmatter: "",
-      description: "",
-      text: "",
+      name: "review-pr",
+      description: "Review a pull request.",
+      text: "Review $ARGUMENTS.",
       example: "",
     }}
     fieldErrors={{}}
@@ -269,21 +252,15 @@ const importPromptDialog = (
     phase="idle"
     outcome={false}
     failure={null}
-    mode="add"
-    takenNotice={null}
-    category={{ field: NO_CATEGORY_FIELD }}
-    source="paste"
-    chosenFile={null}
-    fileNotice={null}
-    setSource={vi.fn()}
     part="text"
     showPart={vi.fn()}
-    chooseFile={vi.fn()}
-    checkName={vi.fn()}
     edit={vi.fn()}
-    paste={() => false}
     submit={vi.fn()}
     close={vi.fn()}
+    unavailable={null}
+    category={null}
+    pickCategory={vi.fn()}
+    categoryAdd={idleCategoryAdd}
     {...props}
   />
 );
@@ -371,6 +348,26 @@ const importPromptsDialog = (
   props: Partial<ComponentProps<typeof ImportPromptsDialog>>,
 ) => (
   <ImportPromptsDialog
+    source="files"
+    switchSource={vi.fn()}
+    pasted={{
+      draft: {
+        name: "",
+        frontmatter: "",
+        description: "",
+        text: "",
+        example: "",
+      },
+      fieldErrors: {},
+      part: "text",
+      showPart: vi.fn(),
+      changed: false,
+      leaveName: vi.fn(),
+      paste: () => false,
+      edit: vi.fn(),
+      category: null,
+      failure: null,
+    }}
     checklist={listedChecklist(null)}
     running={false}
     report={null}
@@ -889,57 +886,20 @@ const ON_DIALOG: Row[] = [
     notices: [],
   },
   {
-    file: "harness/import-prompt-dialog.tsx",
-    heading: "Import a prompt",
+    file: "harness/edit-prompt-dialog.tsx",
+    heading: "Edit review-pr",
     render: ({ running, onClose }) =>
-      importPromptDialog({
-        draft: {
-          name: "review-pr",
-          frontmatter: "",
-          description: "Review a pull request.",
-          text: "Review $ARGUMENTS.",
-          example: "",
-        },
+      editPromptDialog({
         changed: true,
         phase: running ? "running" : "idle",
         close: onClose,
       }),
-    // The owner reports a typed field as a change.
-    changed: async (onClose) => {
-      render(
-        importPromptDialog({
-          draft: {
-            name: "",
-            frontmatter: "",
-            description: "",
-            text: "Review.",
-            example: "",
-          },
-          changed: true,
-          close: onClose,
-        }),
-      );
-    },
-    emptyForm: {
-      submit: "Import prompt",
-      render: (onRun) => importPromptDialog({ submit: onRun }),
-    },
+    // Its fields sit in PromptBodyFields; a refusal is the dialog's own failure.
+    changed: null,
+    emptyForm: null,
     loading: null,
     loadFailed: null,
-    // The taken-name notice is information, placed under Name, the region
-    // it describes; Not a text file refuses one control, the chosen file, and
-    // sits under it. Only a refusal of the submit sits above the footer.
-    notices: [
-      {
-        label: "Prompt over 100 KB",
-        render: () =>
-          importPromptDialog({
-            mode: "update",
-            takenNotice: PROMPT_TAKEN_NOTICE,
-            failure: longTextNotice(UPDATE_PROMPT),
-          }),
-      },
-    ],
+    notices: [],
   },
   {
     file: "skills/bulk-remove-dialog.tsx",

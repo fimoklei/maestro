@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "../deploy/in-flight-locks";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import { ImportPrompt } from "./import-prompt";
-import { draftPrompt, readPromptFile } from "./prompt-file";
+import { draftPrompt, type PromptDraft, readPromptFile } from "./prompt-file";
 
 const ROOT = "/harness";
 const PROMPTS = "/harness/.maestro/prompts";
@@ -47,6 +47,24 @@ function build(overrides?: {
   return { importPrompt, fs };
 }
 
+// One prompt through the batch import, answered as that prompt's outcome; a
+// refusal of the whole batch stays as it is. It asks to replace a taken name.
+async function importOne(
+  importPrompt: ImportPrompt,
+  draft: PromptDraft,
+): Promise<
+  | { ok: true; mode: "add" | "update"; name: string }
+  | { ok: false; error: string }
+> {
+  const result = await importPrompt.importMany([{ ...draft, replace: true }]);
+  if (!result.ok) return result;
+  const [outcome] = result.outcomes;
+  if (outcome === undefined) throw new Error("no outcome");
+  return outcome.imported
+    ? { ok: true, mode: outcome.mode, name: outcome.name }
+    : { ok: false, error: outcome.refusal };
+}
+
 const VALID = {
   frontmatter: "",
   name: "review-pr",
@@ -75,14 +93,14 @@ const FIXTURES: { fileName: string; raw: string }[] = [
   },
 ];
 
-describe("ImportPrompt.execute", () => {
+describe("ImportPrompt.importMany, one prompt", () => {
   it.each(FIXTURES)(
     "writes $fileName so it reads back unchanged",
     async ({ fileName, raw }) => {
       const { importPrompt, fs } = build();
       const draft = draftPrompt(raw, fileName);
 
-      await expect(importPrompt.execute(draft)).resolves.toEqual({
+      await expect(importOne(importPrompt, draft)).resolves.toEqual({
         ok: true,
         mode: "add",
         name: draft.name,
@@ -100,7 +118,7 @@ describe("ImportPrompt.execute", () => {
   it("writes a front matter block holding only the description", async () => {
     const { importPrompt, fs } = build();
 
-    await importPrompt.execute(VALID);
+    await importOne(importPrompt, VALID);
 
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
       "---\ndescription: Review a pull request.\n---\nReview $ARGUMENTS.\n",
@@ -114,7 +132,7 @@ describe("ImportPrompt.execute", () => {
       null,
     );
 
-    await importPrompt.execute({
+    await importOne(importPrompt, {
       ...draft,
       name: "commit",
       description: "Write a commit message",
@@ -141,7 +159,7 @@ describe("ImportPrompt.execute", () => {
     );
 
     await expect(
-      importPrompt.execute({ ...draft, name: "review-pr" }),
+      importOne(importPrompt, { ...draft, name: "review-pr" }),
     ).resolves.toMatchObject({ ok: true, mode: "update" });
     expect(await fs.readFile(`${PROMPTS}/review-pr.md`)).toBe(
       "---\ndescription: Review a pull request.\nmodel: haiku\n---\nReview $ARGUMENTS.\n",
@@ -152,7 +170,7 @@ describe("ImportPrompt.execute", () => {
     const { importPrompt, fs } = build();
     const description = `Fix: the "build" #1 issue's 'tests'`;
 
-    await importPrompt.execute({ ...VALID, description });
+    await importOne(importPrompt, { ...VALID, description });
 
     const written = await fs.readFile(`${PROMPTS}/review-pr.md`);
     expect(readPromptFile(written ?? "").description).toBe(description);
@@ -166,7 +184,7 @@ describe("ImportPrompt.execute", () => {
       },
     });
 
-    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+    await expect(importOne(importPrompt, VALID)).resolves.toEqual({
       ok: true,
       mode: "update",
       name: "review-pr",
@@ -195,7 +213,7 @@ describe("ImportPrompt.execute", () => {
     });
 
     await expect(
-      importPrompt.execute({ ...VALID, example }),
+      importOne(importPrompt, { ...VALID, example }),
     ).resolves.toMatchObject({ ok: true, mode: "update" });
     expect(
       readPromptFile((await fs.readFile(`${PROMPTS}/review-pr.md`)) ?? ""),
@@ -214,7 +232,7 @@ describe("ImportPrompt.execute", () => {
       },
     });
 
-    await expect(importPrompt.execute(VALID)).resolves.toMatchObject({
+    await expect(importOne(importPrompt, VALID)).resolves.toMatchObject({
       ok: true,
       mode: "add",
     });
@@ -246,28 +264,28 @@ describe("ImportPrompt.execute", () => {
     const { importPrompt, fs } = build();
 
     await expect(
-      importPrompt.execute({ ...VALID, ...change }),
+      importOne(importPrompt, { ...VALID, ...change }),
     ).resolves.toEqual({ ok: false, error });
-    expect(await fs.exists(PROMPTS)).toBe(false);
+    expect(await fs.listRawEntries(PROMPTS)).toEqual([]);
   });
 
   it("refuses a pasted front matter and text that together pass 100 KB, and writes nothing", async () => {
     const { importPrompt, fs } = build();
 
     await expect(
-      importPrompt.execute({
+      importOne(importPrompt, {
         ...VALID,
         frontmatter: `description: Review\nnotes: ${"n".repeat(60_000)}`,
         text: "t".repeat(60_000),
       }),
     ).resolves.toEqual({ ok: false, error: "long-text" });
-    expect(await fs.exists(PROMPTS)).toBe(false);
+    expect(await fs.listRawEntries(PROMPTS)).toEqual([]);
   });
 
   it("refuses without a connected Harness", async () => {
     const { importPrompt } = build({ root: undefined });
 
-    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+    await expect(importOne(importPrompt, VALID)).resolves.toEqual({
       ok: false,
       error: "not-configured",
     });
@@ -284,7 +302,7 @@ describe("ImportPrompt.execute", () => {
       },
     });
 
-    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+    await expect(importOne(importPrompt, VALID)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });
@@ -301,7 +319,7 @@ describe("ImportPrompt.execute", () => {
       },
     });
 
-    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+    await expect(importOne(importPrompt, VALID)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });
@@ -316,7 +334,7 @@ describe("ImportPrompt.execute", () => {
       },
     });
 
-    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+    await expect(importOne(importPrompt, VALID)).resolves.toEqual({
       ok: false,
       error: "destination-unsafe",
     });
@@ -326,7 +344,7 @@ describe("ImportPrompt.execute", () => {
   it("refuses a Harness it cannot read", async () => {
     const { importPrompt, fs } = build({ seed: {} });
 
-    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+    await expect(importOne(importPrompt, VALID)).resolves.toEqual({
       ok: false,
       error: "destination-unreadable",
     });
@@ -336,7 +354,7 @@ describe("ImportPrompt.execute", () => {
   it("refuses when the write fails", async () => {
     const { importPrompt, fs } = build({ writeFails: true });
 
-    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+    await expect(importOne(importPrompt, VALID)).resolves.toEqual({
       ok: false,
       error: "write-failed",
     });
@@ -348,7 +366,7 @@ describe("ImportPrompt.execute", () => {
     locks.run(ROOT, () => new Promise<void>(() => {}));
     const { importPrompt, fs } = build({ locks });
 
-    await expect(importPrompt.execute(VALID)).resolves.toEqual({
+    await expect(importOne(importPrompt, VALID)).resolves.toEqual({
       ok: false,
       error: "import-in-progress",
     });

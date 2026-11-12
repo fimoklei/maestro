@@ -42,13 +42,6 @@ describe("POST body parsing", () => {
       'The request carries a type, a name and a pull-request number or null: { type: "skill" | "prompt", name: string, number: number | null }.',
   };
 
-  const PROMPT_SHAPE = {
-    message:
-      "Nothing was imported. Reload the page, then import the prompt again.",
-    detail:
-      "The page must send these strings: { name, frontmatter, description, text, example }.",
-  };
-
   const PROMPT_CHECK_SHAPE = {
     message:
       "Nothing was checked. Reload the page, then check the prompt name again.",
@@ -79,7 +72,6 @@ describe("POST body parsing", () => {
     { path: "/api/harness/proposal/reopen", shape: PROPOSAL_SHAPE },
     { path: "/api/harness/proposal/withdraw", shape: WITHDRAW_SHAPE },
     { path: "/api/harness/release/withdraw", shape: RELEASE_WITHDRAWAL_SHAPE },
-    { path: "/api/harness/prompt/import", shape: PROMPT_SHAPE },
     { path: "/api/harness/prompt/check", shape: PROMPT_CHECK_SHAPE },
     { path: "/api/harness/prompt/read", shape: PROMPT_READ_SHAPE },
     { path: "/api/harness/prompt/edit", shape: PROMPT_EDIT_SHAPE },
@@ -157,38 +149,6 @@ describe("POST body parsing", () => {
     expect(await res.json()).not.toMatchObject({ error: "invalid-body" });
   });
 
-  // The edge applies the prompt field rules core applies again.
-  it.each([
-    ["an uppercase name", { name: "Review-PR" }],
-    ["a name that climbs out", { name: "../x" }],
-    ["a description holding a line break", { description: "a\n---" }],
-    ["an empty text", { text: "" }],
-    ["a text over 100 KB", { text: "é".repeat(60_000) }],
-    ["a body without front matter", { frontmatter: undefined }],
-    ["an example over 100 KB", { example: "é".repeat(60_000) }],
-    ["a body without an example", { example: undefined }],
-  ])("refuses %s on the prompt import at the edge", async (_, change) => {
-    const res = await makeApp().request(
-      "/api/harness/prompt/import",
-      post(
-        JSON.stringify({
-          name: "review-pr",
-          frontmatter: "",
-          description: "Review a pull request.",
-          text: "Review $ARGUMENTS.",
-          example: "",
-          ...change,
-        }),
-      ),
-    );
-
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({
-      error: "invalid-body",
-      ...PROMPT_SHAPE,
-    });
-  });
-
   it.each([
     ["an uppercase name", { name: "Review-PR" }],
     ["a description holding a line break", { description: "a\n---" }],
@@ -250,24 +210,6 @@ describe("POST body parsing", () => {
     );
 
     expect(await res.json()).not.toMatchObject({ error: "invalid-body" });
-  });
-
-  it("refuses a front matter and text past 100 KB together as the text over 100 KB", async () => {
-    const res = await makeApp().request(
-      "/api/harness/prompt/import",
-      post(
-        JSON.stringify({
-          name: "review-pr",
-          frontmatter: `description: Review\nnotes: ${"n".repeat(60_000)}`,
-          description: "Review a pull request.",
-          text: "t".repeat(60_000),
-          example: "",
-        }),
-      ),
-    );
-
-    expect(res.status).toBe(422);
-    expect(await res.json()).toEqual({ error: "long-text" });
   });
 
   // The expected shape rides in `detail` (#681).

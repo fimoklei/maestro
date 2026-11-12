@@ -9,6 +9,7 @@ import { IMPORT_PROMPTS } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Report } from "../ui/report";
+import { SegmentedControl } from "../ui/segmented-control";
 import { CHANGE_WORD } from "./change-words";
 import {
   CHOOSE_FILES,
@@ -21,13 +22,20 @@ import {
   PROMPT_FILE_REFUSALS,
   PROMPT_FILES_HINT,
   PROMPT_FILES_LABEL,
+  PROMPT_SOURCE_LABEL,
+  PROMPT_SOURCES,
 } from "./import-prompts-copy";
+import { PastedPromptFields } from "./pasted-prompt-fields";
 import type { ImportPromptsFlow } from "./use-import-prompts-flow";
 
-// The checklist of chosen files, then the Report in the same dialog.
-// Presentational: the flow owns the reads, the checks and the request.
+// The chosen files or the pasted prompt as a checklist, then the Report in the
+// same dialog. Presentational: the flow owns the reads, the checks and the
+// request.
 export function ImportPromptsDialog({
+  source,
+  switchSource,
   checklist,
+  pasted,
   running,
   report,
   error,
@@ -40,6 +48,21 @@ export function ImportPromptsDialog({
   const fileInput = useRef<HTMLInputElement>(null);
   const { rows, checked, toggle, groups } = checklist;
   const ready = (rows ?? []).filter((row) => row.refusal === null);
+  // A pasted prompt lists only once the Harness holds its name; its Category
+  // is the field's, so its row takes no menu.
+  const listed =
+    source === "paste" ? rows?.some((row) => row.held) === true : rows !== null;
+  const listGroups = groups(
+    (refusal) => PROMPT_FILE_REFUSALS[refusal],
+    running,
+  ).map((group) =>
+    source === "paste"
+      ? {
+          ...group,
+          rows: group.rows.map(({ control: _, choice: __, ...row }) => row),
+        }
+      : group,
+  );
   const run = dialogRun({
     source:
       report === null
@@ -68,9 +91,12 @@ export function ImportPromptsDialog({
       version={null}
       width={640}
       {...run}
-      failure={report === null ? importPromptsNotice(error) : null}
+      failure={
+        report === null ? (pasted.failure ?? importPromptsNotice(error)) : null
+      }
+      // Every field states its own hint and its own refusal beside it.
       describedBy={null}
-      fieldsChanged={rows !== null}
+      fieldsChanged={source === "paste" ? pasted.changed : rows !== null}
       onClose={close}
     >
       {report !== null ? (
@@ -117,43 +143,51 @@ export function ImportPromptsDialog({
         />
       ) : (
         <>
-          <div className="flex flex-col gap-tight">
-            <span id={labelId} className="font-medium text-row">
-              {PROMPT_FILES_LABEL}
-            </span>
-            <span id={hintId} className="font-ui text-gray-11 text-meta">
-              {PROMPT_FILES_HINT}
-            </span>
-            <input
-              ref={fileInput}
-              type="file"
-              accept=".md,.txt"
-              multiple
-              hidden
-              onChange={(event) => {
-                const files = [...(event.currentTarget.files ?? [])];
-                // Cleared, so choosing the same files again reads them again.
-                event.currentTarget.value = "";
-                if (files.length > 0) void chooseFiles(files);
-              }}
-            />
-            <Button
-              type="button"
-              variant="quiet"
-              className="mt-tight self-start"
-              aria-describedby={`${labelId} ${hintId}`}
-              disabled={running}
-              onClick={() => fileInput.current?.click()}
-            >
-              {CHOOSE_FILES}
-            </Button>
-          </div>
-          {rows === null ? null : (
+          <SegmentedControl
+            label={PROMPT_SOURCE_LABEL}
+            segments={PROMPT_SOURCES}
+            value={source}
+            onChange={switchSource}
+            className="self-start"
+          />
+          {source === "paste" ? (
+            <PastedPromptFields pasted={pasted} disabled={running} />
+          ) : (
+            <div className="flex flex-col gap-tight">
+              <span id={labelId} className="font-medium text-row">
+                {PROMPT_FILES_LABEL}
+              </span>
+              <span id={hintId} className="font-ui text-gray-11 text-meta">
+                {PROMPT_FILES_HINT}
+              </span>
+              <input
+                ref={fileInput}
+                type="file"
+                accept=".md,.txt"
+                multiple
+                hidden
+                onChange={(event) => {
+                  const files = [...(event.currentTarget.files ?? [])];
+                  // Cleared, so choosing the same files again reads them again.
+                  event.currentTarget.value = "";
+                  if (files.length > 0) void chooseFiles(files);
+                }}
+              />
+              <Button
+                type="button"
+                variant="quiet"
+                className="mt-tight self-start"
+                aria-describedby={`${labelId} ${hintId}`}
+                disabled={running}
+                onClick={() => fileInput.current?.click()}
+              >
+                {CHOOSE_FILES}
+              </Button>
+            </div>
+          )}
+          {listed ? (
             <GroupedList
-              groups={groups(
-                (refusal) => PROMPT_FILE_REFUSALS[refusal],
-                running,
-              )}
+              groups={listGroups}
               checklist={{
                 checked,
                 onToggle: toggle,
@@ -162,7 +196,7 @@ export function ImportPromptsDialog({
               }}
               live={null}
             />
-          )}
+          ) : null}
         </>
       )}
     </Dialog>

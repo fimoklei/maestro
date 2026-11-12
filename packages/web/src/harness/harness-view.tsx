@@ -14,7 +14,6 @@ import { Button } from "../ui/button";
 import {
   CREATE_RELEASE,
   IMPORT,
-  IMPORT_PROMPT,
   IMPORT_PROMPTS,
   IMPORT_SKILLS,
 } from "../ui/control-labels";
@@ -44,8 +43,6 @@ import {
   type StageSection,
   stageSections,
 } from "./harness-view-model";
-import { ImportPromptAction } from "./import-prompt-action";
-import { harnessPromptReadNotice } from "./import-prompt-copy";
 import { ImportPromptsAction } from "./import-prompts-action";
 import { ImportSkillsAction } from "./import-skills-action";
 import {
@@ -57,6 +54,7 @@ import {
   stageReadNotice,
   staleStatusNotice,
 } from "./notice-copy";
+import { harnessPromptReadNotice } from "./prompt-copy";
 import { ProposeBatchAction } from "./propose-batch-action";
 import { type RowActionHandlers, rowItems } from "./row-actions";
 import {
@@ -162,7 +160,6 @@ export function HarnessView({
   };
 
   const [importingSkills, setImportingSkills] = useState(false);
-  const [importingPrompt, setImportingPrompt] = useState(false);
   const [importingPrompts, setImportingPrompts] = useState(false);
   const presses = useHarnessPresses(state, table);
   const editing = useEditPromptOpening();
@@ -357,10 +354,6 @@ export function HarnessView({
                   onSelect: () => setImportingSkills(true),
                 },
                 {
-                  label: IMPORT_PROMPT,
-                  onSelect: () => setImportingPrompt(true),
-                },
-                {
                   label: IMPORT_PROMPTS,
                   onSelect: () => setImportingPrompts(true),
                 },
@@ -530,13 +523,6 @@ export function HarnessView({
             open(proposalRow({ type: "prompt", name }));
           }}
           onClose={editing.close}
-        />
-      ) : null}
-      {state !== undefined && importingPrompt ? (
-        <ImportPromptAction
-          screen={table}
-          onImported={open}
-          onClose={() => setImportingPrompt(false)}
         />
       ) : null}
       {state !== undefined && importingPrompts ? (

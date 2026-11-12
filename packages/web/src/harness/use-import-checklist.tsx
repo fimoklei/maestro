@@ -2,11 +2,13 @@ import type { HarnessPrimitiveType } from "@maestro/core";
 import { sameCategoryName } from "@maestro/core/category-name";
 import { type ReactNode, useRef, useState } from "react";
 import {
+  CATEGORY_FIELD,
   CATEGORY_NOT_ADDED,
   CATEGORY_NOT_SET,
   categoryNotSetAfterImport,
   setCategoryFor,
 } from "../categories/categories-copy";
+import type { CategoryFieldState } from "../categories/category-field";
 import { CategoryPicker } from "../categories/category-picker";
 import { RowCategoryControl } from "../categories/row-category-control";
 import {
@@ -78,7 +80,13 @@ export function useImportChecklist<Source, Refusal>(
   source: Source,
   rows: readonly ImportRow<Refusal>[] | null,
   type: HarnessPrimitiveType | null,
-): ImportChecklist<Refusal> {
+): ImportChecklist<Refusal> & {
+  /**
+   * One row's Category as a dialog field shows it, for a row set outside the
+   * list; null where the rows take no Category or no such row is listed.
+   */
+  categoryField: (key: string) => CategoryFieldState | null;
+} {
   const [stored, setStored] = useState(() => blank(source));
   const marks = Object.is(stored.source, source) ? stored : blank(source);
   const update = (change: (base: Marks<Source>) => Marks<Source>) =>
@@ -135,17 +143,20 @@ export function useImportChecklist<Source, Refusal>(
     if (refocus) opener.current?.focus();
   };
 
+  // The add as one row's menu runs it: the added category lands on that row.
+  const addFor = (key: string): HeldCategoryAdd => ({
+    ...categoryAdd,
+    run: (typed) => {
+      addingFor.current = key;
+      return categoryAdd.run(typed);
+    },
+  });
+
   const categoryParts = (row: ImportRow<Refusal>, isRunning: boolean) => {
     if (type === null || row.refusal !== null) return {};
     const { value, suggested } = categoryOf(row);
     const open = marks.menu === row.key;
-    const add: HeldCategoryAdd = {
-      ...categoryAdd,
-      run: (typed) => {
-        addingFor.current = row.key;
-        return categoryAdd.run(typed);
-      },
-    };
+    const add = addFor(row.key);
     // In the flow under the row: the list clips what floats out of it.
     const choice = open ? (
       <CategoryPicker
@@ -204,6 +215,16 @@ export function useImportChecklist<Source, Refusal>(
       importChecklistGroups(rows ?? [], refusalSentence, (row) =>
         categoryParts(row, isRunning),
       ),
+    categoryField: (key) => {
+      const row = rows?.find((candidate) => candidate.key === key);
+      if (type === null || row === undefined) return null;
+      return {
+        ...categoryOf(row),
+        hint: CATEGORY_FIELD.hint,
+        onChange: (category) => pick(key, category),
+        add: addFor(key),
+      };
+    },
     categoryAdd,
     saveCategories: async (landed) => {
       if (type === null) return [];

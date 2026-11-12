@@ -121,12 +121,6 @@ export const categoryNotSet = (
         : "Choose the category again.",
 });
 
-/** The hint once the field holds the category the imported file names. */
-export const TAKEN_FROM_FILE: Record<HarnessPrimitiveType, string> = {
-  skill: "Taken from SKILL.md.",
-  prompt: "Taken from the front matter.",
-};
-
 const SCREEN_OF: Record<HarnessPrimitiveType, string> = {
   skill: "Skills",
   prompt: "Prompts",
