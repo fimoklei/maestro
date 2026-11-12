@@ -1,6 +1,10 @@
-// Every word Import skills shows that the single import does not already say.
+// Every word Import skills shows.
 
-import type { ImportSkillError, ImportSkillsError } from "@maestro/core";
+import type {
+  ImportSkillError,
+  ImportSkillsError,
+  SkillsFolderBlocker,
+} from "@maestro/core";
 import { HttpError } from "../api/http";
 import {
   ALREADY_IN_HARNESS,
@@ -8,20 +12,21 @@ import {
 } from "../deploy-state/import-local-edits-copy";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
-import { IMPORT_SKILL, IMPORT_SKILLS } from "../ui/control-labels";
+import { IMPORT_SKILLS } from "../ui/control-labels";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { harnessHeadings } from "./notice-copy";
 
-export const IMPORT_SKILLS_HINT = "Maestro lists all skills inside the folder.";
+export const IMPORT_SKILLS_HINT =
+  "Choose a skill folder, or a folder of skill folders.";
 export const IMPORT_SKILLS_PLACEHOLDER = "/path/to/skills";
 export const SKILLS_FOLDER_MISSING =
   "Enter the absolute path of the folder that contains your skills.";
 export const READING_FOLDER = "Reading the folder…";
 
 export const NO_SKILL_FOLDERS: NoticeCopy = {
-  label: "No skill folders",
-  message: "Choose the folder that contains your skill folders.",
+  label: "No skills in this folder",
+  message: `A skill folder holds a SKILL.md. ${IMPORT_SKILLS_HINT}`,
 };
 
 const AGAIN = `then select ${IMPORT_SKILLS} again.`;
@@ -48,7 +53,8 @@ const REFUSAL: Record<ImportSkillError, string> = {
   // A held skill is listed apart, so this reaches only the Report: the name
   // was taken after the scan.
   "name-taken": `The Harness already contains a skill with this name. To replace it, select ${IMPORT_SKILLS} again. Choose the folder, then check it under ${ALREADY_IN_HARNESS}.`,
-  "destination-exists": `The Harness already contains a folder under this name. To import it under another name, select ${IMPORT_SKILL}.`,
+  "destination-exists":
+    "The Harness already contains a folder with the same name. Rename this folder, then select the folder again.",
   "not-found": "The folder was moved or deleted before Maestro could copy it.",
   "not-a-directory": "This is no longer a folder, so Maestro did not copy it.",
   "source-changed": `The folder changed during the import. Wait for the change to finish, ${AGAIN}`,
@@ -71,6 +77,38 @@ const REFUSAL: Record<ImportSkillError, string> = {
 /** One sentence under a folder Import skills cannot import. */
 export const skillFolderRefusal = (refusal: ImportSkillError): string =>
   REFUSAL[refusal];
+
+// Why the chosen folder itself lists nothing, beside Folder path.
+const FOLDER_BLOCKERS: Record<SkillsFolderBlocker, NoticeContent> = {
+  "source-unreadable": {
+    level: "error",
+    label: "Folder not read",
+    message:
+      "Nothing was copied. Make the folder readable, then choose it again.",
+  },
+  "outside-root": {
+    level: "error",
+    label: "Folder out of reach",
+    message: "Choose a folder inside your home folder.",
+    detail: "Maestro reads inside the home folder only.",
+  },
+  "deployed-copy": {
+    level: "error",
+    label: "Copy from another Harness",
+    message: "Choose a folder that is not a copy deployed by another Harness.",
+    detail: "Maestro can update only copies deployed by the connected Harness.",
+  },
+  "origin-unproven": {
+    level: "error",
+    label: "Origin not recorded",
+    message: "Copy the skill's files into the Harness clone yourself.",
+    detail: "The deployment record does not name this copy's Harness.",
+  },
+};
+
+export const folderBlockerNotice = (
+  blocker: SkillsFolderBlocker | null,
+): NoticeContent | null => (blocker === null ? null : FOLDER_BLOCKERS[blocker]);
 
 const ERRORS: NoticeTable<ImportSkillsError> = {
   "not-configured": {

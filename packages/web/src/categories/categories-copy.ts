@@ -82,7 +82,7 @@ export const ITEM_WORDS: Record<
   prompt: { one: "prompt", many: "prompts" },
 };
 
-/** The Category field of Import skill, Import prompt and Edit prompt. */
+/** The Category field of Import prompt and Edit prompt. */
 export const CATEGORY_FIELD = {
   label: "Category",
   hint: "Only you see this category.",
@@ -120,12 +120,6 @@ export const categoryNotSet = (
         ? `The Harness no longer contains ${count === 1 ? "the" : "a"} ${ITEM_WORDS[type].one}. Select ${reread} to update the list.`
         : "Choose the category again.",
 });
-
-/** The hint once the field holds the category the imported file names. */
-export const TAKEN_FROM_FILE: Record<HarnessPrimitiveType, string> = {
-  skill: "Taken from SKILL.md.",
-  prompt: "Taken from the front matter.",
-};
 
 const SCREEN_OF: Record<HarnessPrimitiveType, string> = {
   skill: "Skills",

@@ -8,7 +8,6 @@ import type {
   EditPromptError,
   HarnessStateError,
   ImportPromptsError,
-  ImportSkillError,
   ImportSkillsError,
   LocalEditsError,
   PromoteDeletionError,
@@ -361,35 +360,6 @@ export const releaseWithdrawalErrorResponses: ErrorTable<WithdrawFromReleaseErro
     "withdraw-in-progress": { status: 409 },
     "withdraw-failed": { status: 502 },
   };
-
-// Never a filesystem message, and never the path it read (#576).
-export const importErrorResponses: ErrorTable<ImportSkillError> = {
-  "not-configured": { status: 409 },
-  "source-unreadable": { status: 422 },
-  // 403: outside the home ceiling, and the reply names no path.
-  "outside-root": { status: 403 },
-  "deployed-copy": { status: 409 },
-  "origin-unproven": { status: 409 },
-  "missing-manifest": { status: 422 },
-  "invalid-frontmatter": { status: 422 },
-  "empty-description": { status: 422 },
-  "invalid-name": { status: 400 },
-  "name-taken": { status: 409 },
-  "not-found": { status: 422 },
-  "not-a-directory": { status: 422 },
-  "destination-exists": { status: 409 },
-  "unsafe-link": { status: 422 },
-  "hard-linked-file": { status: 422 },
-  "special-file": { status: 422 },
-  "too-many-files": { status: 422 },
-  "too-large": { status: 422 },
-  "source-changed": { status: 409 },
-  "copy-failed": { status: 500 },
-  "destination-unsafe": { status: 409 },
-  "harness-copy-uncommitted": { status: 409 },
-  "harness-unreadable": { status: 422 },
-  "nothing-to-carry-back": { status: 409 },
-};
 
 // Never a filesystem message, and never the path it wrote. The refusals a
 // prompt write shares across check, read, edit and the batch. Only core sees

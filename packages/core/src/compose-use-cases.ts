@@ -382,7 +382,6 @@ export function composeUseCases(ports: UseCasePorts) {
       held: heldItemsFrom({ git: harnessGit, fs }),
     }),
     harness,
-    importSkill,
     // Shares the lock Delete takes, as Import local edits does.
     importSkills: new ImportSkills({
       resolveRoot: harnessRoot,

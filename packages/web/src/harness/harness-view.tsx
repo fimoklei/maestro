@@ -15,7 +15,6 @@ import {
   CREATE_RELEASE,
   IMPORT,
   IMPORT_PROMPTS,
-  IMPORT_SKILL,
   IMPORT_SKILLS,
 } from "../ui/control-labels";
 import { useFreshnessLine } from "../ui/freshness";
@@ -45,7 +44,6 @@ import {
   stageSections,
 } from "./harness-view-model";
 import { ImportPromptsAction } from "./import-prompts-action";
-import { ImportSkillAction } from "./import-skill-action";
 import { ImportSkillsAction } from "./import-skills-action";
 import {
   harnessStateNotice,
@@ -161,7 +159,6 @@ export function HarnessView({
     );
   };
 
-  const [importingSkill, setImportingSkill] = useState(false);
   const [importingSkills, setImportingSkills] = useState(false);
   const [importingPrompts, setImportingPrompts] = useState(false);
   const presses = useHarnessPresses(state, table);
@@ -353,10 +350,6 @@ export function HarnessView({
               }
               items={[
                 {
-                  label: IMPORT_SKILL,
-                  onSelect: () => setImportingSkill(true),
-                },
-                {
                   label: IMPORT_SKILLS,
                   onSelect: () => setImportingSkills(true),
                 },
@@ -489,8 +482,8 @@ export function HarnessView({
         title: JOURNEY_EMPTY.title,
         description: JOURNEY_EMPTY.body,
         action: (
-          <Button variant="quiet" onClick={() => setImportingSkill(true)}>
-            {IMPORT_SKILL}
+          <Button variant="quiet" onClick={() => setImportingSkills(true)}>
+            {IMPORT_SKILLS}
           </Button>
         ),
       }}
@@ -518,13 +511,6 @@ export function HarnessView({
         />
       }
     >
-      {state !== undefined && importingSkill ? (
-        <ImportSkillAction
-          screen={table}
-          onImported={open}
-          onClose={() => setImportingSkill(false)}
-        />
-      ) : null}
       {state !== undefined && editing.opened !== null ? (
         <EditPromptAction
           key={editing.opened.name}

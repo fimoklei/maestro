@@ -8,6 +8,7 @@ import { HarnessView } from "./harness-view";
 
 const SCAN = {
   folderBlocker: null,
+  folder: "/home/me/.claude/skills",
   folders: [
     {
       entry: "code-review",

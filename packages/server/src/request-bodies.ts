@@ -29,13 +29,6 @@ export const connectBodySchema = z.object({
 // The field's current value: the folder the chooser opens on.
 export const chooseFolderBodySchema = z.object({ path: z.string() });
 
-// The destination is never sent: the connected Harness is resolved server-side.
-// `name` absent asks for Maestro's proposal (#576).
-export const importBodySchema = z.object({
-  source: z.string(),
-  name: z.string().optional(),
-});
-
 export const importSkillsCheckBodySchema = z.object({ source: z.string() });
 
 // An entry names a folder directly inside `source`: never a path.
@@ -406,13 +399,6 @@ export const PATH_BODY: RequestShape = {
   message:
     "Maestro did not receive a folder. Reload the page, then choose a folder again.",
   detail: "The request carries a path: { path: string }.",
-};
-
-export const IMPORT_BODY: RequestShape = {
-  message:
-    "Nothing was imported. Reload the page, then import the skill again.",
-  detail:
-    "The request carries a source folder and an optional name: { source: string, name?: string }.",
 };
 
 export const IMPORT_SKILLS_CHECK_BODY: RequestShape = {

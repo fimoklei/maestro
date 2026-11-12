@@ -1,7 +1,6 @@
 import type {
   HarnessChange,
   HarnessPrimitiveType,
-  ManifestAdvisory,
   StructuralProblem,
 } from "@maestro/core";
 import { NEXT_RELEASE } from "../ui/band-copy";
@@ -66,14 +65,6 @@ export const FINDING_TEXT: Record<StructuralProblem, string> = {
   "invalid-frontmatter": "has frontmatter Maestro cannot read.",
   "empty-description": "has an empty description.",
 };
-
-export const ADVISORY_TEXT: Record<ManifestAdvisory, string> = {
-  "long-manifest": "SKILL.md is over 500 lines.",
-  "long-description": "The description is over 1,024 characters.",
-};
-
-// Import skill's Folder path, submitted empty.
-export const FOLDER_MISSING = "Enter the skill folder's absolute path.";
 
 export const DELETION_CHECKING = "Checking for uncommitted changes…";
 

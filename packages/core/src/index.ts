@@ -187,6 +187,7 @@ export type {
   SkillFolder,
   SkillFolderOutcome,
   SkillFolderScan,
+  SkillsFolderBlocker,
 } from "./harness/import-skills";
 export {
   Promote,

@@ -10,6 +10,7 @@ import type { ImportChecklist } from "./use-import-checklist";
 
 const SCAN = {
   folderBlocker: null,
+  folder: "/home/me/.claude/skills",
   folders: [
     {
       entry: "code-review",

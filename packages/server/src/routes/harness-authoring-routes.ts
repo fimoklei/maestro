@@ -8,7 +8,6 @@ import {
   discardErrorResponses,
   type ErrorTable,
   editPromptErrorResponses,
-  importErrorResponses,
   importPromptErrorResponses,
   importPromptsErrorResponses,
   importSkillsErrorResponses,
@@ -28,11 +27,9 @@ import {
   DISCARD_BODY,
   deletionBodySchema,
   discardBodySchema,
-  IMPORT_BODY,
   IMPORT_PROMPTS_BODY,
   IMPORT_SKILLS_BODY,
   IMPORT_SKILLS_CHECK_BODY,
-  importBodySchema,
   importPromptsBodySchema,
   importSkillsBodySchema,
   importSkillsCheckBodySchema,
@@ -71,7 +68,6 @@ type Deps = Pick<
   | "discard"
   | "withdrawFromRelease"
   | "proposals"
-  | "importSkill"
   | "importSkills"
   | "importPrompt"
   | "scaffold"
@@ -291,40 +287,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return c.json({ error: result.error }, status);
     }
     return c.json({ files: result.files });
-  });
-
-  // A refusal is data here, not a failure; only an unconnected harness is a status.
-  app.post("/api/harness/import/check", async (c) => {
-    const body = await parseBody(c, importBodySchema, IMPORT_BODY);
-    if (!body.ok) {
-      return body.response;
-    }
-
-    const result = await deps.importSkill.check(body.data);
-    if (!result.ok) {
-      const { status } = importErrorResponses[result.error];
-      return c.json({ error: result.error }, status);
-    }
-    return c.json(result.check);
-  });
-
-  // Re-judges everything the check judged, so a source or harness that moved is refused.
-  app.post("/api/harness/import", async (c) => {
-    const body = await parseBody(c, importBodySchema, IMPORT_BODY);
-    if (!body.ok) {
-      return body.response;
-    }
-
-    const result = await deps.importSkill.execute(body.data);
-    if (!result.ok) {
-      const { status } = importErrorResponses[result.error];
-      return c.json({ error: result.error }, status);
-    }
-    return c.json({
-      mode: result.mode,
-      name: result.name,
-      skipped: result.skipped,
-    });
   });
 
   // Each folder's refusal is data; only an unconnected harness is a status.
