@@ -120,7 +120,7 @@ describe("Harness import of several skills", () => {
     const review = within(held).getByRole("checkbox", { name: "review" });
     expect(review).not.toBeChecked();
     expect(review).not.toHaveAttribute("aria-disabled");
-    expectDescription(review, "Replaces review in the Harness.");
+    expectDescription(review, "Replaces the one in the Harness");
   });
 
   it("replaces a held skill only once its folder is ticked, and reports it as Changed", async () => {

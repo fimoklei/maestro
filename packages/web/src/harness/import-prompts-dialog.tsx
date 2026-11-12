@@ -6,13 +6,12 @@ import {
   IMPORTED,
   IMPORTED_NEXT_STEP,
   NOT_IMPORTED,
-  replacesLine,
+  REPLACES_LINE,
 } from "../deploy-state/import-local-edits-copy";
 import { Button } from "../ui/button";
 import { IMPORT_PROMPTS } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
-import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { CHANGE_WORD } from "./change-words";
 import {
@@ -172,7 +171,7 @@ export function ImportPromptsDialog({
                   rows: held.map(({ key, label }) => ({
                     key,
                     name: label,
-                    sentence: <PhraseText copy={replacesLine(label)} />,
+                    sentence: REPLACES_LINE,
                   })),
                 },
                 {

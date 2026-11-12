@@ -10,14 +10,13 @@ import {
   NO_SKILL_QUALIFIES,
   NOT_IMPORTED,
   NOTHING_CHECKED,
-  replacesLine,
+  REPLACES_LINE,
 } from "../deploy-state/import-local-edits-copy";
 import { IMPORT_SKILLS } from "../ui/control-labels";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { PathField } from "../ui/path-field";
-import { PhraseText } from "../ui/phrase-text";
 import { Report } from "../ui/report";
 import { StatusLine } from "../ui/status-line";
 import type { FolderChooser } from "../ui/use-folder-chooser";
@@ -217,7 +216,7 @@ export function ImportSkillsDialog({
                   rows: held.map(({ entry, name }) => ({
                     key: entry,
                     name,
-                    sentence: <PhraseText copy={replacesLine(name)} />,
+                    sentence: REPLACES_LINE,
                   })),
                 },
                 {
