@@ -190,28 +190,13 @@ describe("Harness import prompt flow", () => {
     await user.keyboard(key);
 
     const first = await screen.findByRole("menuitem", {
-      name: "Import skill",
+      name: "Import skills",
     });
     await waitFor(() => expect(first).toHaveFocus());
     await user.keyboard("{ArrowDown}");
     expect(
-      screen.getByRole("menuitem", { name: "Import skills" }),
+      screen.getByRole("menuitem", { name: "Import prompt" }),
     ).toHaveFocus();
-  });
-
-  it("opens Import a skill from the menu", async () => {
-    stubPromptServer({});
-    const user = userEvent.setup();
-    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
-
-    await user.click(await screen.findByRole("button", { name: "Import" }));
-    await user.click(
-      await screen.findByRole("menuitem", { name: "Import skill" }),
-    );
-
-    expect(
-      await screen.findByRole("dialog", { name: "Import a skill" }),
-    ).toBeInTheDocument();
   });
 
   it.each([

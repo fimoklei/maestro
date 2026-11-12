@@ -82,7 +82,7 @@ export const ITEM_WORDS: Record<
   prompt: { one: "prompt", many: "prompts" },
 };
 
-/** The Category field of Import skill, Import prompt and Edit prompt. */
+/** The Category field of Import prompt and Edit prompt. */
 export const CATEGORY_FIELD = {
   label: "Category",
   hint: "Only you see this category.",

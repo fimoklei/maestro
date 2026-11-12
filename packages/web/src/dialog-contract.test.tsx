@@ -26,7 +26,6 @@ import {
   type ImportRow,
   importChecklistGroups,
 } from "./harness/import-checklist-groups";
-import { ImportDialog } from "./harness/import-dialog";
 import {
   longTextNotice,
   PROMPT_TAKEN_NOTICE,
@@ -139,15 +138,6 @@ const PREVIEW: UpdatePreview = {
   token: "a".repeat(64),
 };
 
-const CHECK = {
-  mode: "add" as const,
-  name: "release-notes",
-  sourceBlocker: null,
-  nameBlocker: null,
-  advisories: [],
-  category: null,
-};
-
 const NO_CATEGORY_FIELD: CategoryFieldState = {
   value: null,
   hint: "Only you see this category.",
@@ -256,27 +246,6 @@ const updateDialog = (
     isRunning={false}
     onCancel={vi.fn()}
     onConfirm={vi.fn()}
-    {...props}
-  />
-);
-
-const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
-  <ImportDialog
-    source={null}
-    sourceText=""
-    sourceError={undefined}
-    onSourceChange={vi.fn()}
-    onSourceCommit={vi.fn()}
-    chooser={NO_CHOOSER}
-    name=""
-    load={{ kind: "idle" }}
-    onNameChange={vi.fn()}
-    onClose={vi.fn()}
-    onImport={vi.fn()}
-    importing={false}
-    importError={null}
-    outcome={false}
-    category={NO_CATEGORY_FIELD}
     {...props}
   />
 );
@@ -920,49 +889,6 @@ const ON_DIALOG: Row[] = [
     notices: [],
   },
   {
-    file: "harness/import-dialog.tsx",
-    heading: "Import a skill",
-    render: ({ running, onClose }) =>
-      importDialog({
-        source: "/home/me/incoming/release-notes",
-        sourceText: "/home/me/incoming/release-notes",
-        name: "release-notes",
-        load: { kind: "loading" },
-        importing: running,
-        onClose,
-      }),
-    // A typed path is work too, not only a typed name.
-    changed: async (onClose) => {
-      render(
-        importDialog({
-          sourceText: "/home/me/incoming/release-notes",
-          onClose,
-        }),
-      );
-    },
-    emptyForm: {
-      submit: "Import skill",
-      render: (onRun) => importDialog({ onImport: onRun }),
-    },
-    loading: null,
-    loadFailed: null,
-    notices: [
-      {
-        label: "Skill checks found issues",
-        render: () =>
-          importDialog({
-            source: "/home/me/incoming/release-notes",
-            sourceText: "/home/me/incoming/release-notes",
-            name: "release-notes",
-            load: {
-              kind: "ready",
-              check: { ...CHECK, advisories: ["long-manifest"] },
-            },
-          }),
-      },
-    ],
-  },
-  {
     file: "harness/import-prompt-dialog.tsx",
     heading: "Import a prompt",
     render: ({ running, onClose }) =>
@@ -1135,7 +1061,7 @@ const ON_DIALOG: Row[] = [
       submit: "Import skills",
       render: (onRun) => importSkillsDialog({ onImport: onRun }),
     },
-    // The scan checks the field, as Import skill's check does: its failure
+    // The scan checks the field: its failure
     // stands beside Folder path and the press asks again.
     loading: {
       line: "Reading the folder…",
@@ -1460,7 +1386,7 @@ type AddsARow = {
   row: string;
 };
 
-// Import skill opens the new row's pane, which its flow test proves; a screen
+// A dialog that adds a row opens its pane; a screen
 // without a pane focuses the row itself.
 const ADDS_A_ROW: AddsARow[] = [
   {

@@ -345,6 +345,21 @@ describe("Harness import of several skills", () => {
     expect(within(landed).getByText("tdd")).toBeInTheDocument();
   });
 
+  it("offers one skills item in the Import menu", async () => {
+    stubServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    await user.click(await screen.findByRole("button", { name: "Import" }));
+
+    const items = (await screen.findAllByRole("menuitem")).map(
+      (item) => item.textContent,
+    );
+    expect(items.filter((label) => label?.includes("skill"))).toEqual([
+      "Import skills",
+    ]);
+  });
+
   it("states why the chosen folder itself cannot be read, and lists nothing", async () => {
     stubServer({
       scan: { folderBlocker: "outside-root", folder: null, folders: [] },

@@ -23,13 +23,14 @@ import type { FolderChooser } from "../ui/use-folder-chooser";
 import { CHANGE_WORD } from "./change-words";
 import type { ImportRow } from "./import-checklist-groups";
 import {
+  folderBlockerNotice,
   IMPORT_SKILLS_HINT,
   IMPORT_SKILLS_PLACEHOLDER,
   NO_SKILL_FOLDERS,
   READING_FOLDER,
   skillFolderRefusal,
 } from "./import-skills-copy";
-import { sourceBlockerNotice } from "./import-view-model";
+
 import type { ImportChecklist } from "./use-import-checklist";
 
 // A folder whose name yields no skill name still needs a row name.
@@ -105,7 +106,7 @@ export function ImportSkillsDialog({
     load.kind === "error"
       ? load.notice
       : load.kind === "ready"
-        ? (sourceBlockerNotice(load.scan.folderBlocker) ??
+        ? (folderBlockerNotice(load.scan.folderBlocker) ??
           (rows.length === 0
             ? { level: "info" as const, ...NO_SKILL_FOLDERS }
             : null))

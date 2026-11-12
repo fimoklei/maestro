@@ -503,14 +503,14 @@ describe("Harness home base", () => {
         "Skills and prompts you import or edit in your clone will appear here.",
       ),
     ).toBeInTheDocument();
-    // The empty state repeats Import skill, the first item of band 1's
+    // The empty state repeats Import skills, the first item of band 1's
     // Import menu (#994).
     expect(screen.getByRole("button", { name: "Import" })).toHaveAttribute(
       "aria-haspopup",
       "menu",
     );
     expect(
-      screen.getAllByRole("button", { name: "Import skill" }),
+      screen.getAllByRole("button", { name: "Import skills" }),
     ).toHaveLength(1);
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });

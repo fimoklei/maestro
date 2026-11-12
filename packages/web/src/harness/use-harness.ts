@@ -9,8 +9,6 @@ import type {
   HarnessChange,
   HarnessPrimitiveType,
   HarnessState,
-  ImportCheck,
-  ImportMode,
   ImportPromptCheck,
   ImportPromptSuccess,
   ImportPromptsAnswer,
@@ -213,51 +211,6 @@ const isFinding = (entry: Record<string, unknown>): boolean =>
 const fetchHarnessState = () =>
   requestJson<HarnessState>("/api/harness/refresh", { method: "POST" });
 
-// Re-asked whenever the folder or name changes: the server owns every refusal.
-/** One folder's import check, shared by the dialog's read and its submit. */
-export function importCheckQuery(source: string | null, name: string | null) {
-  return {
-    queryKey: ["harness", "import-check", source, name] as const,
-    queryFn: () =>
-      requestJson<ImportCheck>("/api/harness/import/check", {
-        method: "POST",
-        body: JSON.stringify(name === null ? { source } : { source, name }),
-      }),
-    // A check is a snapshot of the disk at one moment, and the disk is the
-    // author's to change while the dialog is open.
-    staleTime: 0,
-    gcTime: 0,
-  };
-}
-
-export function useImportCheck(source: string | null, name: string | null) {
-  return useQuery({
-    ...importCheckQuery(source, name),
-    enabled: source !== null,
-  });
-}
-
-// `skipped` counts the `.git` entries the copy did not carry.
-export type ImportOutcome = {
-  mode: ImportMode;
-  name: string;
-  skipped: number;
-};
-
-// Invalidated rather than written: only the read can say what landed (#576).
-export function useImportSkill() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (request: { source: string; name: string }) =>
-      requestJson<ImportOutcome>("/api/harness/import", {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
-    // Returned, so the dialog closes onto a read that already holds the row.
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
-  });
-}
-
 const skillFolderScanQuery = (source: string | null) =>
   queryOptions({
     queryKey: ["harness", "import-skills-check", source] as const,
@@ -317,7 +270,7 @@ export function useImportPromptCheck(name: string | null) {
   });
 }
 
-// Invalidated rather than written, like Import skill: the read places the row.
+// Invalidated rather than written: the read places the row.
 export function useImportPrompt() {
   const queryClient = useQueryClient();
   return useMutation({
