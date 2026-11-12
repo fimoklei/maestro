@@ -361,18 +361,18 @@ export const releaseWithdrawalErrorResponses: ErrorTable<WithdrawFromReleaseErro
     "withdraw-failed": { status: 502 },
   };
 
-// Never a filesystem message, and never the path it wrote. The refusals a
-// prompt write shares across check, read, edit and the batch. Only core sees
-// the front matter the file keeps, so it refuses that file's size.
-type PromptWriteRefusal =
-  | "long-text"
-  | "not-configured"
-  | "destination-unsafe"
-  | "destination-unreadable"
-  | "import-in-progress"
-  | "write-failed";
+// As on the import, a broken field never gets here. Only core sees the front
+// matter the file keeps, so it refuses that file's size.
+type EditPromptRefusal = Exclude<
+  EditPromptError,
+  Exclude<PromptFieldProblem, "long-text">
+>;
 
-export const importPromptErrorResponses: ErrorTable<PromptWriteRefusal> = {
+// Never a filesystem message, and never the path it wrote. The refusals a
+// prompt write shares across check, read, edit and the batch.
+export const promptWriteErrorResponses: ErrorTable<
+  Exclude<EditPromptRefusal, "prompt-missing" | "prompt-changed">
+> = {
   "long-text": { status: 422 },
   "not-configured": { status: 409 },
   "destination-unsafe": { status: 409 },
@@ -383,30 +383,22 @@ export const importPromptErrorResponses: ErrorTable<PromptWriteRefusal> = {
 
 // A refusal of one file is data in the answer; these refuse the batch.
 export const importPromptsErrorResponses: ErrorTable<ImportPromptsError> = {
-  "not-configured": importPromptErrorResponses["not-configured"],
-  "destination-unsafe": importPromptErrorResponses["destination-unsafe"],
-  "destination-unreadable":
-    importPromptErrorResponses["destination-unreadable"],
-  "import-in-progress": importPromptErrorResponses["import-in-progress"],
+  "not-configured": promptWriteErrorResponses["not-configured"],
+  "destination-unsafe": promptWriteErrorResponses["destination-unsafe"],
+  "destination-unreadable": promptWriteErrorResponses["destination-unreadable"],
+  "import-in-progress": promptWriteErrorResponses["import-in-progress"],
 };
 
 export const readPromptErrorResponses: ErrorTable<ReadPromptError> = {
-  "not-configured": importPromptErrorResponses["not-configured"],
+  "not-configured": promptWriteErrorResponses["not-configured"],
   "invalid-name": { status: 400 },
   "prompt-missing": { status: 404 },
-  "destination-unsafe": importPromptErrorResponses["destination-unsafe"],
-  "destination-unreadable":
-    importPromptErrorResponses["destination-unreadable"],
+  "destination-unsafe": promptWriteErrorResponses["destination-unsafe"],
+  "destination-unreadable": promptWriteErrorResponses["destination-unreadable"],
 };
 
-// As on the import, a broken field never gets here.
-type EditPromptRefusal = Exclude<
-  EditPromptError,
-  Exclude<PromptFieldProblem, "long-text">
->;
-
 export const editPromptErrorResponses: ErrorTable<EditPromptRefusal> = {
-  ...importPromptErrorResponses,
+  ...promptWriteErrorResponses,
   "prompt-missing": readPromptErrorResponses["prompt-missing"],
   "prompt-changed": { status: 409 },
 };

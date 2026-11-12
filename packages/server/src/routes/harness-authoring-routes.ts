@@ -8,12 +8,12 @@ import {
   discardErrorResponses,
   type ErrorTable,
   editPromptErrorResponses,
-  importPromptErrorResponses,
   importPromptsErrorResponses,
   importSkillsErrorResponses,
   isEditPromptRefusal,
   localDeletionErrorResponses,
   promoteErrorResponses,
+  promptWriteErrorResponses,
   proposalErrorResponses,
   readPromptErrorResponses,
   releaseWithdrawalErrorResponses,
@@ -329,7 +329,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     const result = await deps.importPrompt.check(body.data.name);
     if (!result.ok) {
-      const { status } = importPromptErrorResponses[result.error];
+      const { status } = promptWriteErrorResponses[result.error];
       return c.json({ error: result.error }, status);
     }
     return c.json(result.check);
