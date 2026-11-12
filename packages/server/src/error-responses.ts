@@ -7,7 +7,6 @@ import type {
   DiscardChangeError,
   EditPromptError,
   HarnessStateError,
-  ImportPromptError,
   ImportPromptsError,
   ImportSkillError,
   ImportSkillsError,
@@ -392,15 +391,18 @@ export const importErrorResponses: ErrorTable<ImportSkillError> = {
   "nothing-to-carry-back": { status: 409 },
 };
 
-// Never a filesystem message, and never the path it wrote.
-// A broken field never gets here: the request schema refuses it first. Only
-// core sees the front matter the file keeps, so it refuses that file's size.
-type ImportPromptRefusal = Exclude<
-  ImportPromptError,
-  Exclude<PromptFieldProblem, "long-text">
->;
+// Never a filesystem message, and never the path it wrote. The refusals a
+// prompt write shares across check, read, edit and the batch. Only core sees
+// the front matter the file keeps, so it refuses that file's size.
+type PromptWriteRefusal =
+  | "long-text"
+  | "not-configured"
+  | "destination-unsafe"
+  | "destination-unreadable"
+  | "import-in-progress"
+  | "write-failed";
 
-export const importPromptErrorResponses: ErrorTable<ImportPromptRefusal> = {
+export const importPromptErrorResponses: ErrorTable<PromptWriteRefusal> = {
   "long-text": { status: 422 },
   "not-configured": { status: 409 },
   "destination-unsafe": { status: 409 },
@@ -417,11 +419,6 @@ export const importPromptsErrorResponses: ErrorTable<ImportPromptsError> = {
     importPromptErrorResponses["destination-unreadable"],
   "import-in-progress": importPromptErrorResponses["import-in-progress"],
 };
-
-export const isImportPromptRefusal = (
-  code: ImportPromptError,
-): code is ImportPromptRefusal =>
-  Object.hasOwn(importPromptErrorResponses, code);
 
 export const readPromptErrorResponses: ErrorTable<ReadPromptError> = {
   "not-configured": importPromptErrorResponses["not-configured"],

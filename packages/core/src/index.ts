@@ -166,8 +166,6 @@ export {
   type EditPromptError,
   ImportPrompt,
   type ImportPromptCheck,
-  type ImportPromptError,
-  type ImportPromptSuccess,
   type ImportPromptsAnswer,
   type ImportPromptsError,
   type PromptEdit,

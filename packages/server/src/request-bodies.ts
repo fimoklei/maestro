@@ -62,11 +62,6 @@ const promptFileSchema = z.object({
   example: z.string().refine(withinPromptLimit),
 }) satisfies z.ZodType<PromptFile>;
 
-// "" carries no front matter, so a block with only the description is written.
-export const importPromptBodySchema = promptFileSchema
-  .extend({ name: z.string(), frontmatter: z.string() })
-  .refine(fieldsHold);
-
 // Strings plus a replace flag: core judges each file's fields, and a broken one is data.
 export const importPromptsBodySchema = z.object({
   prompts: z
@@ -430,13 +425,6 @@ export const IMPORT_SKILLS_BODY: RequestShape = {
     "Nothing was imported. Reload the page, then import the skills again.",
   detail:
     "The request carries a folder and the folders directly inside it to import: { source: string, entries: { entry: string, replace: boolean }[] }, at least one entry.",
-};
-
-export const IMPORT_PROMPT_BODY: RequestShape = {
-  message:
-    "Nothing was imported. Reload the page, then import the prompt again.",
-  detail:
-    "The page must send these strings: { name, frontmatter, description, text, example }.",
 };
 
 export const IMPORT_PROMPTS_BODY: RequestShape = {

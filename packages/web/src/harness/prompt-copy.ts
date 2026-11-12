@@ -1,4 +1,4 @@
-import type { ImportPromptError } from "@maestro/core";
+import type { EditPromptError } from "@maestro/core";
 import type { PromptFieldProblem, PromptPart } from "@maestro/core/prompt-file";
 import { HttpError } from "../api/http";
 import { CHANGE_LOCATION_STEP } from "../settings/settings-copy";
@@ -53,7 +53,10 @@ export const PROMPT_FIELD_ERRORS: Record<FieldError, string> = {
 export const isFieldError = (code: unknown): code is FieldError =>
   typeof code === "string" && Object.hasOwn(PROMPT_FIELD_ERRORS, code);
 
-type NoticeCode = Exclude<ImportPromptError, FieldError>;
+type NoticeCode = Exclude<
+  EditPromptError,
+  FieldError | "prompt-missing" | "prompt-changed"
+>;
 
 const EDIT_OUTCOME = {
   nothing: "Nothing was edited.",

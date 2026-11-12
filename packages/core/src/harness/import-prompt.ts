@@ -26,22 +26,6 @@ const entryRefusal = (
 ): "destination-unsafe" | "destination-unreadable" =>
   kind === "unsafe" ? "destination-unsafe" : "destination-unreadable";
 
-export type ImportPromptError =
-  | "not-configured"
-  | PromptFieldProblem
-  // The prompts folder resolves outside the Harness, or the file is a link.
-  | "destination-unsafe"
-  | "destination-unreadable"
-  | "import-in-progress"
-  | "write-failed";
-
-// What the import route answers on success.
-export type ImportPromptSuccess = { mode: ImportMode; name: string };
-
-export type ImportPromptResult =
-  | ({ ok: true } & ImportPromptSuccess)
-  | { ok: false; error: ImportPromptError };
-
 // Taken only while `<name>.md` is in the Working Harness: a name deleted
 // there is free again.
 export type ImportPromptCheck = {
@@ -201,23 +185,8 @@ export class ImportPrompt {
     return { ok: true, name };
   }
 
-  // A taken name is no blocker: the write replaces that prompt.
-  async execute(input: PromptDraft): Promise<ImportPromptResult> {
-    // Judged again: never trust the fields the browser checked.
-    const [problem] = promptDraftProblems(input);
-    if (problem !== undefined) {
-      return { ok: false, error: problem };
-    }
-    const root = await this.deps.resolveRoot();
-    if (root === undefined) {
-      return { ok: false, error: "not-configured" };
-    }
-    const run = await this.deps.locks.run(root, () => this.write(root, input));
-    return run.ok ? run.value : { ok: false, error: "import-in-progress" };
-  }
-
   /**
-   * Each file is judged by the single import's field rules, in field order,
+   * Each file is judged by the prompt field rules, in field order,
    * and refused where the name is taken and it does not ask to replace. One
    * refusal never stops the rest.
    */
@@ -320,23 +289,6 @@ export class ImportPrompt {
     return (await this.writeAt(entry.path, draft))
       ? { ok: true, mode: entry.taken ? "update" : "add" }
       : { ok: false, error: "write-failed" };
-  }
-
-  private async write(
-    root: string,
-    draft: PromptDraft,
-  ): Promise<ImportPromptResult> {
-    const folder = await this.ensureFolder(root);
-    if (folder !== null) {
-      return { ok: false, error: folder };
-    }
-    const entry = await this.entry(root, draft.name);
-    if (!entry.ok) return entry;
-    if (!(await this.writeAt(entry.path, draft))) {
-      return { ok: false, error: "write-failed" };
-    }
-    const mode: ImportMode = entry.taken ? "update" : "add";
-    return { ok: true, mode, name: draft.name };
   }
 
   // A link is refused before it is read: the read never follows it.
