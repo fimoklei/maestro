@@ -171,6 +171,27 @@ describe("GroupedList as a checklist", () => {
     expect(screen.getByText(reason).parentElement?.contains(box)).toBe(true);
   });
 
+  it("wraps a long name beside its sentence, cutting off no part of it", () => {
+    const name = "Discard local edits for tdd in ~/.claude/skills";
+    checklist({
+      groups: [
+        {
+          tone: "attention",
+          legend: null,
+          rows: [
+            {
+              key: "tdd",
+              name,
+              sentence: "tdd has local edits. This update replaces them.",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByText(name)).not.toHaveClass("truncate");
+  });
+
   it("keeps a row's choice under its line", () => {
     checklist({
       groups: [
