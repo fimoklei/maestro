@@ -8,7 +8,7 @@ import {
   PROMPT_BOX_PARTS,
   PROMPT_BOX_WORDS,
   PROMPT_FIELD_HINTS,
-} from "./import-prompt-copy";
+} from "./prompt-copy";
 import type { PromptFieldErrors } from "./prompt-field-errors";
 import type { PasteTarget } from "./use-pasted-prompt";
 

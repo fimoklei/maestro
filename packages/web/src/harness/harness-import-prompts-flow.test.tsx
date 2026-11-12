@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   expectTooltipCause,
+  htmlElement,
   jsonResponse,
   noCategories,
   renderWithQuery,
@@ -130,6 +131,41 @@ const group = (dialog: HTMLElement, legend: RegExp) =>
   within(dialog).getByRole("group", { name: legend });
 
 describe("Harness import prompts flow", () => {
+  it.each([
+    ["Enter", "{Enter}"],
+    ["Space", " "],
+    ["Down Arrow", "{ArrowDown}"],
+  ])("opens the Import menu with %s on its first item", async (_, key) => {
+    stubServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    const trigger = await screen.findByRole("button", { name: "Import" });
+    expect(trigger).toHaveAttribute("aria-haspopup", "menu");
+    htmlElement(trigger).focus();
+    await user.keyboard(key);
+
+    const items = await screen.findAllByRole("menuitem");
+    await waitFor(() => expect(items[0]).toHaveFocus());
+    await user.keyboard("{ArrowDown}");
+    expect(items[1]).toHaveFocus();
+  });
+
+  it("offers one Import prompts item and no single-prompt import", async () => {
+    stubServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+
+    await user.click(await screen.findByRole("button", { name: "Import" }));
+
+    expect(
+      await screen.findByRole("menuitem", { name: "Import prompts" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Import prompt" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("imports the chosen files in one call and reports each", async () => {
     const server = stubServer({});
     const user = userEvent.setup();

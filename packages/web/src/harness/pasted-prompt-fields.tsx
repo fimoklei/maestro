@@ -1,7 +1,7 @@
 import { CategoryField } from "../categories/category-field";
 import { Field } from "../ui/field";
-import { PROMPT_FIELD_HINTS } from "./import-prompt-copy";
 import { PromptBodyFields } from "./prompt-body-fields";
+import { PROMPT_FIELD_HINTS } from "./prompt-copy";
 import type { ImportPromptsFlow } from "./use-import-prompts-flow";
 
 // Paste text's fields: Name, Description, Category, then the text.

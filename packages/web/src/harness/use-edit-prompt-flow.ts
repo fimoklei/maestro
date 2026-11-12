@@ -25,13 +25,13 @@ import {
   type WriteResult,
 } from "../ui/use-write-action";
 import { proposalRow } from "./harness-route";
+import { asTyped } from "./prompt-as-typed";
 import {
   type EditScreen,
   editPromptNotice,
   longTextNotice,
   NOTHING_CHANGED,
-} from "./import-prompt-copy";
-import { asTyped } from "./prompt-as-typed";
+} from "./prompt-copy";
 import { promptFieldErrors } from "./prompt-field-errors";
 import { useEditPrompt, useReadPrompt } from "./use-harness";
 

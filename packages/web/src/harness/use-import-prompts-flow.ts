@@ -9,12 +9,12 @@ import { useState } from "react";
 import { useSubmitAfterAdd } from "../categories/use-held-category-add";
 import type { ReportGroup } from "../ui/report";
 import type { ImportRow } from "./import-checklist-groups";
-import { longTextNotice } from "./import-prompt-copy";
 import {
   importPromptsConfirm,
   type PromptFileRefusal,
   type PromptSource,
 } from "./import-prompts-copy";
+import { longTextNotice } from "./prompt-copy";
 import { useImportPromptChecks, useImportPrompts } from "./use-harness";
 import { useImportChecklist } from "./use-import-checklist";
 import { usePastedPrompt } from "./use-pasted-prompt";

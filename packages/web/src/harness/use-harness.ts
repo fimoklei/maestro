@@ -12,7 +12,6 @@ import type {
   ImportCheck,
   ImportMode,
   ImportPromptCheck,
-  ImportPromptSuccess,
   ImportPromptsAnswer,
   ImportSkillsInput,
   PrimitiveDeletionCheck,
@@ -25,7 +24,7 @@ import type {
   SkillFolderOutcome,
   SkillFolderScan,
 } from "@maestro/core";
-import type { PromptDraft, PromptFile } from "@maestro/core/prompt-file";
+import type { PromptFile } from "@maestro/core/prompt-file";
 import {
   queryOptions,
   useMutation,
@@ -295,8 +294,8 @@ export function useImportSkills() {
   });
 }
 
-// Shared by the single import's name check and the batch's per-name checks.
-const importPromptCheckQuery = (name: string | null) =>
+// One name check of Import prompts.
+const importPromptCheckQuery = (name: string) =>
   queryOptions({
     queryKey: ["harness", "prompt-check", name] as const,
     queryFn: () =>
@@ -309,28 +308,7 @@ const importPromptCheckQuery = (name: string | null) =>
     gcTime: 0,
   });
 
-// Asked once the name is left, not per keystroke; null asks nothing.
-export function useImportPromptCheck(name: string | null) {
-  return useQuery({
-    ...importPromptCheckQuery(name),
-    enabled: name !== null,
-  });
-}
-
-// Invalidated rather than written, like Import skill: the read places the row.
-export function useImportPrompt() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (request: PromptDraft) =>
-      requestJson<ImportPromptSuccess>("/api/harness/prompt/import", {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
-  });
-}
-
-/** Each chosen name's check, as the single import's name check reads it. */
+/** Each listed name's check: whether the Harness holds it. */
 export function useImportPromptChecks(names: readonly string[]) {
   return useQueries({
     queries: names.map((name) => importPromptCheckQuery(name)),

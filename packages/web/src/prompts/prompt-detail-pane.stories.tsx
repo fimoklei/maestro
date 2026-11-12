@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { MemoryRouter } from "react-router";
 import { HttpError } from "../api/http";
-import { promptReadNotice } from "../harness/import-prompt-copy";
+import { promptReadNotice } from "../harness/prompt-copy";
 import {
   COPY_EXAMPLE,
   COPY_PROMPT,
