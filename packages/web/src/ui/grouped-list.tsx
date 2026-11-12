@@ -24,7 +24,7 @@ type GroupedListRow = {
   machineName?: boolean;
   /** A row the action leaves alone, such as a folder it does not write. */
   muted?: boolean;
-  /** The full text a shortened name stands for, on hover. */
+  /** The full text a shortened name stands for, on hover; keeps the name on one line. */
   title?: string;
   value?: string;
   /** Its cost or reason, after the name. */
@@ -263,8 +263,11 @@ function Group({
                 {LIST_TOKENS[tone].glyph}
               </span>
             ) : null;
+          // A name with its full text on hover stays on one line; any other
+          // wraps, since a sentence beside it keeps at least 40% of the row.
           const nameClass = cn(
-            "min-w-0 truncate text-row",
+            "min-w-0 text-row",
+            row.title === undefined ? "wrap-break-word" : "truncate",
             row.muted ? "text-gray-11" : "text-gray-12",
           );
           const name = row.machineName ? (

@@ -7,7 +7,7 @@ const meta = {
   component: GroupedList,
   decorators: [
     (Story) => (
-      <div className="flex w-[608px] flex-col gap-cell">
+      <div className="flex w-full max-w-[608px] flex-col gap-cell">
         <Story />
       </div>
     ),
@@ -111,6 +111,38 @@ export const ChecklistWithControls: Story = {
     ],
     checklist: {
       checked: new Set(["tdd"]),
+      onToggle: () => {},
+      isRunning: false,
+      firstBox: null,
+    },
+  },
+};
+
+// A long name beside a long sentence: both wrap, neither is cut off.
+export const ChecklistLongName: Story = {
+  args: {
+    live: null,
+    groups: [
+      {
+        tone: "attention",
+        legend: null,
+        rows: [
+          {
+            key: "tdd",
+            name: "Discard local edits for tdd in ~/.claude/skills",
+            sentence:
+              "tdd has local edits. This update replaces them with release v0.3.4.",
+          },
+          {
+            key: "jobs",
+            name: "Overwrite unverified copy for jobs in ~/.agents/skills",
+            sentence: "jobs could not be verified. This update overwrites it.",
+          },
+        ],
+      },
+    ],
+    checklist: {
+      checked: new Set(),
       onToggle: () => {},
       isRunning: false,
       firstBox: null,
