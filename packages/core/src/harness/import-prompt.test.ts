@@ -266,7 +266,7 @@ describe("ImportPrompt.importMany, one prompt", () => {
     await expect(
       importOne(importPrompt, { ...VALID, ...change }),
     ).resolves.toEqual({ ok: false, error });
-    expect(await fs.listRawEntries(PROMPTS)).toEqual([]);
+    expect(await fs.exists(PROMPTS)).toBe(false);
   });
 
   it("refuses a pasted front matter and text that together pass 100 KB, and writes nothing", async () => {
@@ -279,7 +279,7 @@ describe("ImportPrompt.importMany, one prompt", () => {
         text: "t".repeat(60_000),
       }),
     ).resolves.toEqual({ ok: false, error: "long-text" });
-    expect(await fs.listRawEntries(PROMPTS)).toEqual([]);
+    expect(await fs.exists(PROMPTS)).toBe(false);
   });
 
   it("refuses without a connected Harness", async () => {

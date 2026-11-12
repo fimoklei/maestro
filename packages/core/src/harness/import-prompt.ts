@@ -207,15 +207,22 @@ export class ImportPrompt {
     root: string,
     drafts: readonly PromptImportDraft[],
   ): Promise<ImportPromptsResult> {
-    const folder = await this.ensureFolder(root);
-    if (folder !== null) {
-      return { ok: false, error: folder };
+    const judged = drafts.map(({ replace, ...draft }) => ({
+      draft,
+      replace,
+      problem: promptDraftProblems(draft)[0],
+    }));
+    // A batch the field rules refuse whole leaves no empty prompts folder.
+    if (judged.some(({ problem }) => problem === undefined)) {
+      const folder = await this.ensureFolder(root);
+      if (folder !== null) {
+        return { ok: false, error: folder };
+      }
     }
     const outcomes: PromptImportOutcome[] = [];
     // In order: an earlier file's write takes its name from a later one.
     const written = new Set<string>();
-    for (const { replace, ...draft } of drafts) {
-      const [problem] = promptDraftProblems(draft);
+    for (const { draft, replace, problem } of judged) {
       const landed =
         problem === undefined
           ? await this.writeOne(
