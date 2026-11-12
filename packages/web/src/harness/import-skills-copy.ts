@@ -32,24 +32,24 @@ export const NO_SKILL_FOLDERS: NoticeCopy = {
 const AGAIN = `then select ${IMPORT_SKILLS} again.`;
 
 // A row's reason and its next step, under its name. "The folder" is the row's
-// own; "choose the folder again" means the one in Folder path, which lists the
+// own; "select the folder again" means the one in Folder path, which lists the
 // rows anew.
 const REFUSAL: Record<ImportSkillError, string> = {
   "source-unreadable":
-    "Maestro cannot read this folder. Make it readable, then choose the folder again.",
+    "Maestro cannot read this folder. Make it readable, then select the folder again.",
   "outside-root":
-    "This folder links outside your home folder, so Maestro cannot read it. Move the skill into your home folder, then choose the folder again.",
+    "This folder links outside your home folder, so Maestro cannot read it. Move the skill into your home folder, then select the folder again.",
   "deployed-copy":
     "Another Harness deployed this copy. Import the skill from that Harness's clone instead.",
   "origin-unproven":
     "The deployment record does not name this copy's Harness. Copy the skill's files into the Harness clone yourself.",
   "missing-manifest": "This folder has no SKILL.md, so it is not a skill.",
   "invalid-frontmatter":
-    "Maestro cannot read the SKILL.md frontmatter. Fix it, then choose the folder again.",
+    "Maestro cannot read the SKILL.md frontmatter. Fix it, then select the folder again.",
   "empty-description":
-    "SKILL.md has an empty description. Add one, then choose the folder again.",
+    "SKILL.md has an empty description. Add one, then select the folder again.",
   "invalid-name":
-    "Maestro cannot make a skill name from this folder name. Give the folder a name like code-review, then choose the folder again.",
+    "Maestro cannot make a skill name from this folder name. Give the folder a name like code-review, then select the folder again.",
   // A held skill is listed apart, so this reaches only the Report: the name
   // was taken after the scan.
   "name-taken": `The Harness already contains a skill with this name. To replace it, select ${IMPORT_SKILLS} again. Choose the folder, then check it under ${ALREADY_IN_HARNESS}.`,
@@ -84,7 +84,7 @@ const FOLDER_BLOCKERS: Record<SkillsFolderBlocker, NoticeContent> = {
     level: "error",
     label: "Folder not read",
     message:
-      "Nothing was copied. Make the folder readable, then choose it again.",
+      "Nothing was copied. Make the folder readable, then select it again.",
   },
   "outside-root": {
     level: "error",

@@ -13,7 +13,7 @@ describe("Import skills copy", () => {
   it.each([
     [
       "empty-description",
-      "SKILL.md has an empty description. Add one, then choose the folder again.",
+      "SKILL.md has an empty description. Add one, then select the folder again.",
     ],
     ["missing-manifest", "This folder has no SKILL.md, so it is not a skill."],
     [

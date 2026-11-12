@@ -125,7 +125,7 @@ describe("Harness import of several skills", () => {
     expect(broken).toHaveAttribute("aria-disabled", "true");
     expectDescription(
       broken,
-      "SKILL.md has an empty description. Add one, then choose the folder again.",
+      "SKILL.md has an empty description. Add one, then select the folder again.",
     );
     expect(
       within(dialog).getByRole("button", { name: "Import 2 skills" }),
