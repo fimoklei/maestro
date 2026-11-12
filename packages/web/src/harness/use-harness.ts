@@ -294,7 +294,7 @@ export function useReadPrompt() {
   });
 }
 
-// Invalidated rather than written, like Import prompt: the read places the row.
+// Invalidated rather than written, like Import prompts: the read places the row.
 export function useEditPrompt() {
   const queryClient = useQueryClient();
   return useMutation({
