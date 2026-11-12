@@ -29,7 +29,10 @@ import {
 } from "./harness/import-prompt-copy";
 import { ImportPromptDialog } from "./harness/import-prompt-dialog";
 import { ImportPromptsDialog } from "./harness/import-prompts-dialog";
-import { ImportSkillsDialog } from "./harness/import-skills-dialog";
+import {
+  ImportSkillsDialog,
+  skillFolderRow,
+} from "./harness/import-skills-dialog";
 import { ProposeBatchDialog } from "./harness/propose-batch-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import {
@@ -335,40 +338,49 @@ const SKILL_FOLDERS: SkillFolderScan = {
   folders: [{ entry: "tdd", name: "tdd", refusal: null, replaces: false }],
 };
 
-const importSkillsDialog = (
-  props: Partial<ComponentProps<typeof ImportSkillsDialog>>,
-) => (
-  <ImportSkillsDialog
-    source={null}
-    sourceText=""
-    sourceError={undefined}
-    onSourceChange={vi.fn()}
-    onSourceCommit={vi.fn()}
-    chooser={NO_CHOOSER}
-    load={{ kind: "idle" }}
-    checked={new Set(["tdd"])}
-    onToggle={vi.fn()}
-    isRunning={false}
-    outcomes={null}
-    failure={null}
-    onClose={vi.fn()}
-    onImport={vi.fn()}
-    {...props}
-  />
-);
+// The checklist lists what the scan in `load` holds, every row checked.
+const importSkillsDialog = ({
+  load = { kind: "idle" },
+  ...props
+}: Partial<ComponentProps<typeof ImportSkillsDialog>>) => {
+  const rows =
+    load.kind === "ready" ? load.scan.folders.map(skillFolderRow) : null;
+  const keys = (rows ?? []).map(({ key }) => key);
+  return (
+    <ImportSkillsDialog
+      source={null}
+      sourceText=""
+      sourceError={undefined}
+      onSourceChange={vi.fn()}
+      onSourceCommit={vi.fn()}
+      chooser={NO_CHOOSER}
+      load={load}
+      checklist={{
+        rows,
+        checked: new Set(keys),
+        toggle: vi.fn(),
+        picked: keys.map((key) => ({ key, replace: false })),
+      }}
+      isRunning={false}
+      outcomes={null}
+      failure={null}
+      onClose={vi.fn()}
+      onImport={vi.fn()}
+      {...props}
+    />
+  );
+};
 
 // Opened, before any file is chosen.
 const importPromptsDialog = (
   props: Partial<ComponentProps<typeof ImportPromptsDialog>>,
 ) => (
   <ImportPromptsDialog
-    rows={null}
-    checked={new Set()}
+    checklist={{ rows: null, checked: new Set(), toggle: vi.fn(), picked: [] }}
     running={false}
     report={null}
     error={null}
     chooseFiles={vi.fn()}
-    toggle={vi.fn()}
     submit={vi.fn()}
     close={vi.fn()}
     {...props}
@@ -1128,10 +1140,14 @@ const ON_DIALOG: Row[] = [
     changed: async (onClose) => {
       render(
         importPromptsDialog({
-          rows: [
-            { key: "0", label: "release-notes", refusal: null, held: false },
-          ],
-          checked: new Set(["0"]),
+          checklist: {
+            rows: [
+              { key: "0", name: "release-notes", refusal: null, held: false },
+            ],
+            checked: new Set(["0"]),
+            toggle: vi.fn(),
+            picked: [{ key: "0", replace: false }],
+          },
           close: onClose,
         }),
       );
