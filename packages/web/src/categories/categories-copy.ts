@@ -88,7 +88,7 @@ export const CATEGORY_FIELD = {
   hint: "Only you see this category.",
 } as const;
 
-const CATEGORY_NOT_SET = "Category not set";
+export const CATEGORY_NOT_SET = "Category not set";
 
 /** The edit landed in the Harness; the category after it did not. */
 export const CATEGORY_NOT_SET_AFTER_EDIT: NoticeContent = {

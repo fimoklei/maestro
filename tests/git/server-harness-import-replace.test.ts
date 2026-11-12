@@ -50,12 +50,19 @@ describe("batch import over a held item", { timeout: 40_000 }, () => {
     expect(await response.json()).toEqual({
       folderBlocker: null,
       folders: [
-        { entry: "tdd", name: "tdd", refusal: null, replaces: true },
+        {
+          entry: "tdd",
+          name: "tdd",
+          refusal: null,
+          replaces: true,
+          category: null,
+        },
         {
           entry: "write-spec",
           name: "write-spec",
           refusal: null,
           replaces: false,
+          category: null,
         },
       ],
     });

@@ -11,16 +11,18 @@ import type {
 import { proposeSkillSlug } from "./skill-slug";
 
 /**
- * One folder inside the chosen one: its directory entry, its skill name, why
- * it cannot land, and whether landing replaces the skill the Harness holds
- * under that name.
+ * What one folder inside the chosen one did on import: its directory entry,
+ * its skill name, why it did not land, and whether it replaced a held skill.
  */
-export type SkillFolder = {
+export type SkillFolderOutcome = {
   entry: string;
   name: string;
   refusal: ImportSkillError | null;
   replaces: boolean;
 };
+
+/** One folder as the scan judges it, with its SKILL.md `metadata.category`. */
+export type SkillFolder = SkillFolderOutcome & { category: string | null };
 
 // A folder to import; only `replace` lets it take the place of a held skill.
 type SkillFolderPick = { entry: string; replace: boolean };
@@ -43,7 +45,7 @@ export type ScanSkillFoldersResult =
   | { ok: false; error: "not-configured" };
 
 export type ImportSkillsResult =
-  | { ok: true; outcomes: SkillFolder[] }
+  | { ok: true; outcomes: SkillFolderOutcome[] }
   | { ok: false; error: ImportSkillsError };
 
 // The chosen folder answers to the single import's source rules only; it
@@ -120,7 +122,7 @@ export class ImportSkills {
     if (listing === null) {
       return { ok: false, error: "not-configured" };
     }
-    const outcomes: SkillFolder[] = [];
+    const outcomes: SkillFolderOutcome[] = [];
     // A skill this batch landed is never replaced by a later folder.
     const landedNames = new Set<string>();
     for (const { entry, replace } of input.entries) {

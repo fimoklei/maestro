@@ -187,6 +187,7 @@ export type {
   ImportSkillsError,
   ImportSkillsInput,
   SkillFolder,
+  SkillFolderOutcome,
   SkillFolderScan,
 } from "./harness/import-skills";
 export {

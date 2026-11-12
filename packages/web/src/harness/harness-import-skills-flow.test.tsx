@@ -1,10 +1,15 @@
-import type { HarnessState, SkillFolder, SkillFolderScan } from "@maestro/core";
+import type {
+  HarnessState,
+  SkillFolderOutcome,
+  SkillFolderScan,
+} from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   expectDescription,
   jsonResponse,
+  noCategories,
   renderWithQuery,
 } from "../test-utils";
 import { RELEASED } from "./harness-flow-fixture";
@@ -20,22 +25,36 @@ const SCAN = {
       name: "code-review",
       refusal: null,
       replaces: false,
+      category: null,
     },
     {
       entry: "notes-helper",
       name: "notes-helper",
       refusal: "empty-description",
       replaces: false,
+      category: null,
     },
-    { entry: "review", name: "review", refusal: null, replaces: true },
-    { entry: "tdd", name: "tdd", refusal: null, replaces: false },
+    {
+      entry: "review",
+      name: "review",
+      refusal: null,
+      replaces: true,
+      category: null,
+    },
+    {
+      entry: "tdd",
+      name: "tdd",
+      refusal: null,
+      replaces: false,
+      category: null,
+    },
   ],
 } satisfies SkillFolderScan;
 
 // The harness read, the folder chooser, the scan and the import.
 function stubServer(options: {
   scan?: SkillFolderScan;
-  outcomes?: SkillFolder[];
+  outcomes?: SkillFolderOutcome[];
   harness?: HarnessState;
 }) {
   const imports: unknown[] = [];
@@ -43,6 +62,8 @@ function stubServer(options: {
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+      const categories = noCategories(input);
+      if (categories !== null) return categories;
       if (url === "/api/folder-chooser") {
         return jsonResponse(
           init?.method === "POST" ? { path: FOLDER } : { available: true },

@@ -22,7 +22,6 @@ import {
   PROMPT_FILES_HINT,
   PROMPT_FILES_LABEL,
 } from "./import-prompts-copy";
-import { importChecklistGroups } from "./use-import-checklist";
 import type { ImportPromptsFlow } from "./use-import-prompts-flow";
 
 // The checklist of chosen files, then the Report in the same dialog.
@@ -39,7 +38,7 @@ export function ImportPromptsDialog({
   const labelId = useId();
   const hintId = useId();
   const fileInput = useRef<HTMLInputElement>(null);
-  const { rows, checked, toggle } = checklist;
+  const { rows, checked, toggle, groups } = checklist;
   const ready = (rows ?? []).filter((row) => row.refusal === null);
   const run = dialogRun({
     source:
@@ -150,9 +149,9 @@ export function ImportPromptsDialog({
           </div>
           {rows === null ? null : (
             <GroupedList
-              groups={importChecklistGroups(
-                rows,
+              groups={groups(
                 (refusal) => PROMPT_FILE_REFUSALS[refusal],
+                running,
               )}
               checklist={{
                 checked,

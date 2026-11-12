@@ -4,9 +4,10 @@ import {
   promptDraftProblems,
 } from "@maestro/core/prompt-file";
 import { useState } from "react";
+import type { ImportRow } from "./import-checklist-groups";
 import type { PromptFileRefusal } from "./import-prompts-copy";
 import { useImportPromptChecks, useImportPrompts } from "./use-harness";
-import { type ImportRow, useImportChecklist } from "./use-import-checklist";
+import { useImportChecklist } from "./use-import-checklist";
 
 /**
  * One chosen file: its fields, or null where it is not UTF-8 text. The label
@@ -69,10 +70,15 @@ export function useImportPromptsFlow(onClose: () => void) {
         name: file.label,
         refusal,
         held: refusal === null && taken.has(name),
+        fileCategory: null,
       };
     },
   );
-  const checklist = useImportChecklist(chosen, chosen === null ? null : rows);
+  const checklist = useImportChecklist(
+    chosen,
+    chosen === null ? null : rows,
+    null,
+  );
   const toSend = checklist.picked.flatMap(({ key, replace }) => {
     const draft = chosen?.find((file) => file.key === key)?.draft;
     return draft ? [{ ...draft, replace }] : [];

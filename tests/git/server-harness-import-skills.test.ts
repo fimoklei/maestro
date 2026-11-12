@@ -92,18 +92,21 @@ describe("harness import of several skills over HTTP", () => {
           name: "code-review",
           refusal: null,
           replaces: false,
+          category: null,
         },
         {
           entry: "foreign",
           name: "foreign",
           refusal: "deployed-copy",
           replaces: false,
+          category: null,
         },
         {
           entry: "notes-helper",
           name: "notes-helper",
           refusal: "empty-description",
           replaces: false,
+          category: null,
         },
         // This Harness is no git clone, so a replace cannot prove it loses no work.
         {
@@ -111,10 +114,45 @@ describe("harness import of several skills over HTTP", () => {
           name: "review",
           refusal: "harness-unreadable",
           replaces: true,
+          category: null,
         },
-        { entry: "tdd", name: "tdd", refusal: null, replaces: false },
+        {
+          entry: "tdd",
+          name: "tdd",
+          refusal: null,
+          replaces: false,
+          category: null,
+        },
       ],
     });
+  });
+
+  it("reads each folder's category from its SKILL.md, null where it names none or an invalid one", async () => {
+    const app = makeApp();
+    const categorised = (category: string) =>
+      `---\nname: anything\ndescription: Reviews code.\nmetadata:\n  category: ${category}\n---\n\nBody.\n`;
+    await writeFile(
+      join(folder, "code-review", "SKILL.md"),
+      categorised("Quality"),
+    );
+    await writeFile(join(folder, "tdd", "SKILL.md"), categorised('"   "'));
+
+    const response = await post(app, "/api/harness/import/skills/check", {
+      source: folder,
+    });
+
+    const { folders } = (await response.json()) as {
+      folders: { entry: string; category: string | null }[];
+    };
+    expect(folders.map(({ entry, category }) => ({ entry, category }))).toEqual(
+      [
+        { entry: "code-review", category: "Quality" },
+        { entry: "foreign", category: null },
+        { entry: "notes-helper", category: null },
+        { entry: "review", category: null },
+        { entry: "tdd", category: null },
+      ],
+    );
   });
 
   it("refuses a chosen folder outside the home folder and lists nothing", async () => {
@@ -184,6 +222,7 @@ describe("harness import of several skills over HTTP", () => {
           name: "code-review",
           refusal: null,
           replaces: false,
+          category: null,
         },
       ]),
     });

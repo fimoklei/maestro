@@ -22,12 +22,17 @@ import { RemoveSkillDialog } from "./deploy-state/remove-skill-dialog";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog, type DeletionMode } from "./harness/deletion-dialog";
 import { DiscardDialog } from "./harness/discard-dialog";
+import {
+  type ImportRow,
+  importChecklistGroups,
+} from "./harness/import-checklist-groups";
 import { ImportDialog } from "./harness/import-dialog";
 import {
   longTextNotice,
   PROMPT_TAKEN_NOTICE,
 } from "./harness/import-prompt-copy";
 import { ImportPromptDialog } from "./harness/import-prompt-dialog";
+import type { PromptFileRefusal } from "./harness/import-prompts-copy";
 import { ImportPromptsDialog } from "./harness/import-prompts-dialog";
 import {
   ImportSkillsDialog,
@@ -40,6 +45,7 @@ import {
   ReleaseWithdrawalDialog,
 } from "./harness/release-withdrawal-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
+import type { ImportChecklist } from "./harness/use-import-checklist";
 import {
   type UnproposedCheck,
   WithdrawDialog,
@@ -335,7 +341,32 @@ const importLocalEditsDialog = (
 
 const SKILL_FOLDERS: SkillFolderScan = {
   folderBlocker: null,
-  folders: [{ entry: "tdd", name: "tdd", refusal: null, replaces: false }],
+  folders: [
+    {
+      entry: "tdd",
+      name: "tdd",
+      refusal: null,
+      replaces: false,
+      category: null,
+    },
+  ],
+};
+
+// An import checklist frozen as listed, each given row checked.
+const listedChecklist = <Refusal,>(
+  rows: readonly ImportRow<Refusal>[] | null,
+): ImportChecklist<Refusal> => {
+  const keys = (rows ?? []).map(({ key }) => key);
+  return {
+    rows,
+    checked: new Set(keys),
+    toggle: vi.fn(),
+    picked: keys.map((key) => ({ key, replace: false })),
+    groups: (refusalSentence) =>
+      importChecklistGroups(rows ?? [], refusalSentence, () => ({})),
+    categoryAdd: idleCategoryAdd,
+    saveCategories: async () => [],
+  };
 };
 
 // The checklist lists what the scan in `load` holds, every row checked.
@@ -345,7 +376,6 @@ const importSkillsDialog = ({
 }: Partial<ComponentProps<typeof ImportSkillsDialog>>) => {
   const rows =
     load.kind === "ready" ? load.scan.folders.map(skillFolderRow) : null;
-  const keys = (rows ?? []).map(({ key }) => key);
   return (
     <ImportSkillsDialog
       source={null}
@@ -355,14 +385,9 @@ const importSkillsDialog = ({
       onSourceCommit={vi.fn()}
       chooser={NO_CHOOSER}
       load={load}
-      checklist={{
-        rows,
-        checked: new Set(keys),
-        toggle: vi.fn(),
-        picked: keys.map((key) => ({ key, replace: false })),
-      }}
+      checklist={listedChecklist(rows)}
       isRunning={false}
-      outcomes={null}
+      report={null}
       failure={null}
       onClose={vi.fn()}
       onImport={vi.fn()}
@@ -376,7 +401,7 @@ const importPromptsDialog = (
   props: Partial<ComponentProps<typeof ImportPromptsDialog>>,
 ) => (
   <ImportPromptsDialog
-    checklist={{ rows: null, checked: new Set(), toggle: vi.fn(), picked: [] }}
+    checklist={listedChecklist(null)}
     running={false}
     report={null}
     error={null}
@@ -1140,14 +1165,15 @@ const ON_DIALOG: Row[] = [
     changed: async (onClose) => {
       render(
         importPromptsDialog({
-          checklist: {
-            rows: [
-              { key: "0", name: "release-notes", refusal: null, held: false },
-            ],
-            checked: new Set(["0"]),
-            toggle: vi.fn(),
-            picked: [{ key: "0", replace: false }],
-          },
+          checklist: listedChecklist<PromptFileRefusal>([
+            {
+              key: "0",
+              name: "release-notes",
+              refusal: null,
+              held: false,
+              fileCategory: null,
+            },
+          ]),
           close: onClose,
         }),
       );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSubmitAfterAdd } from "../categories/use-held-category-add";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { type ScreenWrites, useWriteAction } from "../ui/use-write-action";
 import {
@@ -9,6 +10,7 @@ import {
 import {
   ImportSkillsDialog,
   type SkillFolderLoad,
+  type SkillsImportReport,
   skillFolderRow,
 } from "./import-skills-dialog";
 import { useImportSkills, useSkillFolderScan } from "./use-harness";
@@ -49,7 +51,11 @@ export function ImportSkillsAction({
   const checklist = useImportChecklist(
     source,
     load.kind === "ready" ? load.scan.folders.map(skillFolderRow) : null,
+    "skill",
   );
+  // Set once the landed rows' categories are saved too.
+  const [report, setReport] = useState<SkillsImportReport | null>(null);
+  const [savingCategories, setSavingCategories] = useState(false);
 
   // The same folder chosen again lists it anew: its rows may have changed.
   const commitSource = (path: string) => {
@@ -76,14 +82,32 @@ export function ImportSkillsAction({
       void scan.refetch();
       return;
     }
-    importWrite.run({
-      source: typed,
-      entries: checklist.picked.map(({ key, replace }) => ({
-        entry: key,
-        replace,
-      })),
-    });
+    importWrite.run(
+      {
+        source: typed,
+        entries: checklist.picked.map(({ key, replace }) => ({
+          entry: key,
+          replace,
+        })),
+      },
+      {
+        onSuccess: ({ outcomes }) => {
+          setSavingCategories(true);
+          void checklist
+            .saveCategories(
+              outcomes.flatMap(({ entry, name, refusal }) =>
+                refusal === null ? [{ key: entry, name }] : [],
+              ),
+            )
+            .then((unsavedCategories) => {
+              setReport({ outcomes, unsavedCategories });
+              setSavingCategories(false);
+            });
+        },
+      },
+    );
   };
+  const afterAdd = useSubmitAfterAdd(checklist.categoryAdd, submit);
 
   return (
     <ImportSkillsDialog
@@ -98,11 +122,13 @@ export function ImportSkillsAction({
       chooser={chooser}
       load={load}
       checklist={checklist}
-      isRunning={importWrite.phase === "running"}
-      outcomes={run.data?.outcomes ?? null}
+      isRunning={
+        importWrite.phase === "running" || savingCategories || afterAdd.waiting
+      }
+      report={report}
       failure={importWrite.failure}
       onClose={onClose}
-      onImport={submit}
+      onImport={afterAdd.submit}
     />
   );
 }

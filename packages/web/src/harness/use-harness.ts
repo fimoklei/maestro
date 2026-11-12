@@ -22,7 +22,7 @@ import type {
   ReleaseBlock,
   ReleasePlan,
   SemverStep,
-  SkillFolder,
+  SkillFolderOutcome,
   SkillFolderScan,
 } from "@maestro/core";
 import type { PromptDraft, PromptFile } from "@maestro/core/prompt-file";
@@ -284,10 +284,13 @@ export function useImportSkills() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: ImportSkillsInput) =>
-      requestJson<{ outcomes: SkillFolder[] }>("/api/harness/import/skills", {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
+      requestJson<{ outcomes: SkillFolderOutcome[] }>(
+        "/api/harness/import/skills",
+        {
+          method: "POST",
+          body: JSON.stringify(request),
+        },
+      ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
   });
 }

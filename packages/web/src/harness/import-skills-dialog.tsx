@@ -1,4 +1,8 @@
-import type { SkillFolder, SkillFolderScan } from "@maestro/core";
+import type {
+  SkillFolder,
+  SkillFolderOutcome,
+  SkillFolderScan,
+} from "@maestro/core";
 import {
   IMPORTED,
   IMPORTED_NEXT_STEP,
@@ -13,10 +17,11 @@ import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { PathField } from "../ui/path-field";
-import { Report } from "../ui/report";
+import { Report, type ReportGroup } from "../ui/report";
 import { StatusLine } from "../ui/status-line";
 import type { FolderChooser } from "../ui/use-folder-chooser";
 import { CHANGE_WORD } from "./change-words";
+import type { ImportRow } from "./import-checklist-groups";
 import {
   IMPORT_SKILLS_HINT,
   IMPORT_SKILLS_PLACEHOLDER,
@@ -25,14 +30,10 @@ import {
   skillFolderRefusal,
 } from "./import-skills-copy";
 import { sourceBlockerNotice } from "./import-view-model";
-import {
-  type ImportChecklist,
-  type ImportRow,
-  importChecklistGroups,
-} from "./use-import-checklist";
+import type { ImportChecklist } from "./use-import-checklist";
 
 // A folder whose name yields no skill name still needs a row name.
-const shownName = ({ entry, name }: SkillFolder): string =>
+const shownName = ({ entry, name }: SkillFolderOutcome): string =>
   name === "" ? entry : name;
 
 type SkillFolderRefusal = NonNullable<SkillFolder["refusal"]>;
@@ -44,7 +45,14 @@ export const skillFolderRow = (
   name: shownName(folder),
   refusal: folder.refusal,
   held: folder.replaces,
+  fileCategory: folder.category,
 });
+
+/** What the import did, with the categories it could not save. */
+export type SkillsImportReport = {
+  outcomes: readonly SkillFolderOutcome[];
+  unsavedCategories: readonly ReportGroup[];
+};
 
 /** The scan as the dialog shows it: none asked, under way, failed, or in hand. */
 export type SkillFolderLoad =
@@ -66,7 +74,7 @@ export function ImportSkillsDialog({
   load,
   checklist,
   isRunning,
-  outcomes,
+  report,
   failure,
   onClose,
   onImport,
@@ -83,12 +91,13 @@ export function ImportSkillsDialog({
   load: SkillFolderLoad;
   checklist: ImportChecklist<SkillFolderRefusal>;
   isRunning: boolean;
-  /** Null until the import answers. */
-  outcomes: readonly SkillFolder[] | null;
+  /** Null until the import and its category saves answer. */
+  report: SkillsImportReport | null;
   failure: NoticeContent | null;
   onClose: () => void;
   onImport: () => void;
 }) {
+  const outcomes = report?.outcomes ?? null;
   const rows = checklist.rows ?? [];
   const ready = rows.filter((row) => row.refusal === null);
   const count = checklist.checked.size;
@@ -146,6 +155,7 @@ export function ImportSkillsDialog({
             outcomes.length,
           )}
           groups={[
+            ...(report?.unsavedCategories ?? []),
             {
               tone: "failed",
               label: NOT_IMPORTED,
@@ -200,7 +210,7 @@ export function ImportSkillsDialog({
           ) : null}
           {rows.length === 0 ? null : (
             <GroupedList
-              groups={importChecklistGroups(rows, skillFolderRefusal)}
+              groups={checklist.groups(skillFolderRefusal, isRunning)}
               checklist={{
                 checked: checklist.checked,
                 onToggle: checklist.toggle,

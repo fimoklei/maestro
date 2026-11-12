@@ -14,8 +14,15 @@ const SCAN = {
       name: "code-review",
       refusal: null,
       replaces: false,
+      category: null,
     },
-    { entry: "tdd", name: "tdd", refusal: null, replaces: false },
+    {
+      entry: "tdd",
+      name: "tdd",
+      refusal: null,
+      replaces: false,
+      category: null,
+    },
   ],
 } satisfies SkillFolderScan;
 
