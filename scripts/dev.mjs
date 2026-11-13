@@ -172,6 +172,33 @@ function wipeSandbox() {
   rmSync(sandbox, { recursive: true, force: true });
 }
 
+// Puts smoke-gh.mjs first on the cockpit's PATH as `gh`, so its reads reach
+// GitHub and its pull-request writes stop in the sandbox.
+function guardGhWrites(env) {
+  if (process.platform === "win32") {
+    console.warn(
+      "[smoke] gh writes are not guarded on Windows: a proposal opens a real pull request",
+    );
+    return;
+  }
+  let realGh;
+  try {
+    realGh = execFileSync("which", ["gh"], { encoding: "utf8" }).trim();
+  } catch {
+    return;
+  }
+  const bin = join(sandbox, "bin");
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(
+    join(bin, "gh"),
+    `#!/bin/sh\nexec "${process.execPath}" "${join(repoRoot, "scripts", "smoke-gh.mjs")}" "$@"\n`,
+    { mode: 0o755 },
+  );
+  env.MAESTRO_SMOKE_REAL_GH = realGh;
+  env.PATH = `${bin}:${env.PATH}`;
+  console.log("[smoke] gh pull-request writes stop in the sandbox");
+}
+
 if (smoke) {
   // Wipe any sandbox a crashed run left, so smoke starts unconfigured.
   wipeSandbox();
@@ -222,6 +249,8 @@ if (smoke) {
   // apm blanks GIT_CONFIG_GLOBAL, so only this channel sends its fetches of
   // the scenarios' fixture Harness to the local copy `--scenario` builds.
   Object.assign(env, fixtureRedirectEnv(scenarioPaths(sandbox).bare, env));
+
+  guardGhWrites(env);
 
   // Nothing is pre-registered: connect and registration stay UI steps to exercise.
   const seeded = seedSandbox({
