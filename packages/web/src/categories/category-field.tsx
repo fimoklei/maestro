@@ -1,5 +1,6 @@
 import { ChevronDown } from "lucide-react";
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
+import { AnchoredFloat } from "../ui/anchored-float";
 import { NO_CATEGORY } from "../ui/category-menu-copy";
 import { cn } from "../ui/cn";
 import { FieldFrame } from "../ui/field-frame";
@@ -24,7 +25,7 @@ export type CategoryFieldState = {
 
 /**
  * A dialog's Category field: a button holding the category, which opens the
- * category menu under it. Adding a category there adds it at once. The menu
+ * category menu floating under it. Adding a category there adds it at once. The menu
  * takes Escape for itself; `Dialog` leaves it an open combobox's Escape.
  */
 export function CategoryField({
@@ -38,8 +39,8 @@ export function CategoryField({
   disabled: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const button = useRef<HTMLButtonElement>(null);
   const valueId = useId();
+  const close = () => setOpen(false);
   return (
     <FieldFrame
       label={CATEGORY_FIELD.label}
@@ -50,30 +51,32 @@ export function CategoryField({
     >
       {(control) => (
         <div className="flex flex-col gap-tight">
-          <button
-            ref={button}
-            id={control.id}
-            type="button"
-            aria-labelledby={`${control.labelId} ${valueId}`}
-            aria-describedby={control.describedBy}
-            aria-expanded={open}
-            disabled={disabled}
-            onClick={() => setOpen((was) => !was)}
-            className={cn(
-              "flex h-control w-full cursor-pointer items-center justify-between gap-inline rounded-control border border-gray-9 bg-gray-1 px-inline font-ui text-gray-12 text-row",
-              HOVER_TRANSITION,
-              FOCUS_RING,
-              "hover:bg-gray-3 aria-expanded:bg-gray-3 disabled:cursor-not-allowed disabled:text-gray-11 disabled:hover:bg-gray-1",
-            )}
+          <AnchoredFloat
+            open={open}
+            width="anchor"
+            anchor={
+              <button
+                id={control.id}
+                type="button"
+                aria-labelledby={`${control.labelId} ${valueId}`}
+                aria-describedby={control.describedBy}
+                aria-expanded={open}
+                disabled={disabled}
+                onClick={() => setOpen((was) => !was)}
+                className={cn(
+                  "flex h-control w-full cursor-pointer items-center justify-between gap-inline rounded-control border border-gray-9 bg-gray-1 px-inline font-ui text-gray-12 text-row",
+                  HOVER_TRANSITION,
+                  FOCUS_RING,
+                  "hover:bg-gray-3 aria-expanded:bg-gray-3 disabled:cursor-not-allowed disabled:text-gray-11 disabled:hover:bg-gray-1",
+                )}
+              >
+                <span id={valueId} className="truncate">
+                  {value ?? NO_CATEGORY}
+                </span>
+                <Icon of={ChevronDown} className="shrink-0 text-gray-11" />
+              </button>
+            }
           >
-            <span id={valueId} className="truncate">
-              {value ?? NO_CATEGORY}
-            </span>
-            <Icon of={ChevronDown} className="shrink-0 text-gray-11" />
-          </button>
-          {/* In the flow, not floating: the dialog body scrolls, and a menu
-              over it would be cut off at 200% zoom. */}
-          {open ? (
             <CategoryPicker
               label={CATEGORY_FIELD.label}
               current={value}
@@ -82,15 +85,12 @@ export function CategoryField({
               add={add}
               onPick={(category) => {
                 onChange(category);
-                setOpen(false);
-                button.current?.focus();
+                close();
               }}
-              onClose={(via) => {
-                setOpen(false);
-                if (via !== "press") button.current?.focus();
-              }}
+              onClose={close}
             />
-          ) : (
+          </AnchoredFloat>
+          {open ? null : (
             // An add refused after a press closed the menu.
             <Notice
               trigger="user-action"

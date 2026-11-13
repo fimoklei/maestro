@@ -11,7 +11,6 @@ const meta = {
     value: null,
     open: false,
     disabled: false,
-    buttonRef: undefined,
     onToggle: () => {},
   },
 } satisfies Meta<typeof RowCategoryControl>;

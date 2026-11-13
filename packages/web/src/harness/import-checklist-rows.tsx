@@ -1,13 +1,18 @@
 import type { ReactNode } from "react";
 import { RowCategoryControl } from "../categories/row-category-control";
+import { AnchoredFloat } from "../ui/anchored-float";
 import type { GroupedListGroup } from "../ui/grouped-list";
 import { importChecklistGroups } from "./import-checklist-groups";
-import { ImportRowCategoryChoice } from "./import-row-category-choice";
+import {
+  ImportRowCategoryMenu,
+  ImportRowCategoryRefusal,
+} from "./import-row-category-choice";
 import type { ImportChecklist } from "./use-import-checklist";
 
 /**
  * The checklist's groups as a dialog lists them, each row that takes a
- * Category with its control, and its menu or refused add under it.
+ * Category with its control and the menu floating from it, and a refused
+ * add under the row.
  */
 export function importChecklistRows<Refusal>(
   { rows, rowCategory }: Pick<ImportChecklist<Refusal>, "rows" | "rowCategory">,
@@ -19,17 +24,24 @@ export function importChecklistRows<Refusal>(
     if (category === null) return {};
     return {
       control: (
-        <RowCategoryControl
-          name={category.name}
-          value={category.value}
+        <AnchoredFloat
           open={category.open}
-          disabled={isRunning}
-          buttonRef={category.buttonRef}
-          onToggle={category.toggleMenu}
-        />
+          width="menu"
+          anchor={
+            <RowCategoryControl
+              name={category.name}
+              value={category.value}
+              open={category.open}
+              disabled={isRunning}
+              onToggle={category.toggleMenu}
+            />
+          }
+        >
+          <ImportRowCategoryMenu category={category} />
+        </AnchoredFloat>
       ),
-      ...(category.open || category.addFailed
-        ? { choice: <ImportRowCategoryChoice category={category} /> }
+      ...(!category.open && category.addFailed
+        ? { choice: <ImportRowCategoryRefusal /> }
         : {}),
     };
   });

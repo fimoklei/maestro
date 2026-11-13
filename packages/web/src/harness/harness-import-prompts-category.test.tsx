@@ -109,6 +109,42 @@ const categoryOf = (dialog: ReturnType<typeof within>, name: string) =>
   dialog.getByRole("button", { name: `Set category for ${name}` });
 
 describe("Import prompts' Category per row", () => {
+  it("floats a row's category menu over the dialog, leaving the rows in place", async () => {
+    stubServer({});
+    const user = userEvent.setup();
+    const dialog = await openWithFiles(user, [
+      promptFile("release-notes.md"),
+      promptFile("standup.md"),
+    ]);
+
+    const frame = screen.getByRole("dialog", { name: "Import prompts" });
+    await user.click(categoryOf(dialog, "release-notes"));
+
+    const menu = screen.getByRole("group", {
+      name: "Set category for release-notes",
+    });
+    expect(frame).not.toContainElement(menu);
+  });
+
+  it("closes a row's category menu on a press outside it, with focus back on the row's control", async () => {
+    stubServer({});
+    const user = userEvent.setup();
+    const dialog = await openWithFiles(user, [promptFile("standup.md")]);
+    const control = categoryOf(dialog, "standup");
+
+    await user.click(control);
+    // The float is modal: a press beside it reaches no control in the dialog.
+    await user.pointer({
+      keys: "[MouseLeft]",
+      target: document.documentElement,
+    });
+
+    expect(
+      screen.queryByRole("group", { name: "Set category for standup" }),
+    ).not.toBeInTheDocument();
+    expect(control).toHaveFocus();
+  });
+
   it("starts a new row on the category its front matter names when the list holds it, and saves it after the import", async () => {
     const { assigned } = stubServer({});
     const user = userEvent.setup();

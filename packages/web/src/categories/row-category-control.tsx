@@ -1,5 +1,4 @@
 import { ChevronDown } from "lucide-react";
-import type { RefObject } from "react";
 import { NO_CATEGORY } from "../ui/category-menu-copy";
 import { cn } from "../ui/cn";
 import { FOCUS_RING } from "../ui/focus-ring";
@@ -13,7 +12,6 @@ export function RowCategoryControl({
   value,
   open,
   disabled,
-  buttonRef,
   onToggle,
 }: {
   /** The row's name, which the control's accessible name carries. */
@@ -22,13 +20,10 @@ export function RowCategoryControl({
   value: string | null;
   open: boolean;
   disabled: boolean;
-  /** Set on the row whose menu is open, so a pick returns focus to it. */
-  buttonRef: RefObject<HTMLButtonElement | null> | undefined;
   onToggle: () => void;
 }) {
   return (
     <button
-      ref={buttonRef}
       type="button"
       aria-label={setCategoryFor(name)}
       aria-expanded={open}

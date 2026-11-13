@@ -39,6 +39,13 @@ change comes from `ui/`, or the handoff names the new one and why no existing
 module fits. When none fits, measure what Vercel and Linear do; add
 the new pattern to this section before building it.
 
+**Menus from a control.** In a dialog, float the category menu from the
+control that opens it with `AnchoredFloat`, as Linear does: 4px under the
+control, flipped above it where the space below runs out, scrolling inside
+the window. A field's menu takes the field's width; a row control's menu is
+240px, aligned to the control's end. It moves no row and closes on Escape or
+a press beside it, with focus back on the control.
+
 **Meaning and emphasis.**
 - Give a column, badge, glyph and word one meaning on every screen. Say
   `Re-read` for reading again, never `Refresh` or `Retry check`.

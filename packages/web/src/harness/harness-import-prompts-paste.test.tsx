@@ -224,9 +224,8 @@ describe("Import prompts — Paste text", () => {
     }
 
     await user.click(category);
-    await user.click(
-      await within(dialog).findByRole("option", { name: "Docs" }),
-    );
+    // The menu floats outside the dialog.
+    await user.click(await screen.findByRole("option", { name: "Docs" }));
     await fillPrompt(user, dialog, "review-pr");
     await user.click(importOne(dialog));
 
