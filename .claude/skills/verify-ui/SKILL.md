@@ -1,15 +1,13 @@
 ---
-paths:
-  - "packages/web/src/**/*.tsx"
-  - "packages/web/src/**/*.css"
-  - "packages/web/index.html"
-  - ".impeccable/**"
-  - "DESIGN.md"
+name: verify-ui
+description: Browser check of a cockpit change in `pnpm smoke` and Storybook — screenshots per state and theme, narrow width, 200% zoom, the primary flow. Use before calling any change to what `packages/web` renders done, or before committing it.
 ---
 
-# Verify a cockpit change (project-specific for Maestro)
+# Verify a cockpit change
 
-Mandatory for any change that alters what `packages/web` renders:
+Run every step for a change that alters what `packages/web` renders. The check
+is done when step 8's commit-body list names every screen, state, theme, width
+and zoom the change touches, and each state you could not reach.
 
 1. Start `pnpm smoke` in the background: this worktree's own ports, sandbox
    config, connect gate.
@@ -47,5 +45,3 @@ Mandatory for any change that alters what `packages/web` renders:
    body, list what the check covered: each screen, state, theme, width and zoom.
    Name each state you could not reach.
 9. Stop the run with `pnpm smoke:stop` and stop Storybook.
-
-Only a screenshot proves visual fidelity — the vitest/happy-dom suite renders without CSS.

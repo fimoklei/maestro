@@ -6,13 +6,10 @@ paths:
   - "**/vitest.config.*"
 ---
 
-# Testing principles (project-specific for Maestro)
-
-Runner: **Vitest**, all lanes.
+# Testing principles
 
 ## Hard rules
 
-- TDD via the `/tdd` skill. No Edit/Write to code without RED first.
 - **Preserve behavioural claims.** When an existing test fails during a change,
   restore green without reducing the behaviour it proves. Refactor the test if
   the claim stays intact. Remove or weaken the claim only when the user approves
@@ -38,7 +35,7 @@ Storybook stories are **not** a lane: documentation, not coverage. Behaviour is 
 
 Run from the repo root.
 
-- `pnpm test:affected` is the coding loop: the tests of the three cheap lanes that the uncommitted work reaches, selected as the commit gate selects them; `--since <ref>` adds the work committed since `<ref>`. `pnpm test:loop` runs those three lanes whole; `pnpm test` runs all four.
+- The coding loop is `pnpm test:affected` (`CODING_STANDARDS.md` → Checks); `--since <ref>` adds the work committed since `<ref>`.
 - One file, for TDD red/green: `./node_modules/.bin/vitest run <path-from-repo-root>`, without `--root` (it breaks the root config's project globs); `--reporter=verbose` prints per-test names.
 - `pnpm verify` is the gate: lint, typecheck and test in one summary. It reuses a passing run on an unchanged tree (ignored files do not count); `--force` reruns.
 - `pnpm verify` fails on an export only tests use (`knip --production --include exports,types`). Test through the real entry point, or remove the `export`.
@@ -74,15 +71,12 @@ From `packages/web/src/test-utils.tsx`:
 ## Mocking
 
 - Start a new test in the core composition (`composeUseCases`) over the in-memory adapters (`*.fake.ts` in `packages/core`, `tests/helpers/in-memory-app.ts`, `tests/helpers/deploy-world.ts`). Use the real disk or git only through `tests/helpers/node-app.ts`. Fake outside-world ports only, never a Maestro use case.
-- Prefer in-memory data structures (real arrays/objects/Maps).
 - Mock only external deps (fs/git/network, APM) that would otherwise force the file into integration.
 - Type every hand-built server response with `satisfies` and its `@maestro/core`
   type, or build it from a typed fixture.
 
 ## File size
 
-- No line limit on a test file; the operator's global `code-standards.md`
-  exempts test files. Split by grouping, not by count.
 - Split when the tests fall into groups that do not share setup: one file per group, named for the group (`harness-import-flow.test.tsx`), never one file per `describe`.
 - Repeated setup is the signal, not length. Before a third test builds the same fixture inline, extract one shared helper.
 

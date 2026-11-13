@@ -1,12 +1,10 @@
 // `pnpm rules-guard [root]`: prints `rule: problem` for every Claude rule file
-// whose `paths:` pattern matches no file, and for every unscoped rule outside
-// ALWAYS_LOADED. A renamed folder otherwise stops a rule loading without any
-// failure.
+// whose `paths:` pattern matches no file, and for every unscoped rule. A renamed
+// folder otherwise stops a rule loading without any failure.
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, matchesGlob, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ALWAYS_LOADED = new Set(["architecture.md", "security.md"]);
 const SKIPPED_DIRS = new Set([
   "node_modules",
   "dist",
@@ -68,11 +66,9 @@ for (const name of rules.sort()) {
   const rule = `.claude/rules/${name}`;
   const patterns = pathsOf(readFileSync(join(rulesDir, name), "utf8"));
   if (patterns === null || patterns.length === 0) {
-    if (!ALWAYS_LOADED.has(name)) {
-      problems.push(
-        `${rule}: no paths frontmatter, so it loads in every session`,
-      );
-    }
+    problems.push(
+      `${rule}: no paths frontmatter, so it loads in every session`,
+    );
     continue;
   }
   for (const pattern of patterns) {

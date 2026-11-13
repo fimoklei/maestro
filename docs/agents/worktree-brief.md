@@ -6,8 +6,8 @@ worktree (`isolation: "worktree"`).
 ```
 You work in an isolated git worktree. It has no node_modules and no
 auto-loaded rule files, and it may not start on the branch you build on.
-- First run `pnpm install --frozen-lockfile`. Then read the rule files for
-  your task (CODING_STANDARDS.md → Rule files by task) and LEARNINGS.md → Active.
+- First run `pnpm install --frozen-lockfile`. Then read CODING_STANDARDS.md,
+  the rule files it names for your task, and LEARNINGS.md → Active.
 - To build on a branch, run `git reset --hard <branch>` as its own call.
 - Build test-first: see each new test go red on its own assertion before you
   write the code that turns it green.

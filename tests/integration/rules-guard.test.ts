@@ -35,13 +35,11 @@ function runGuard(): { status: number | null; stdout: string } {
 }
 
 describe("rules guard", () => {
-  it("passes scoped rules whose patterns all match a file, and the always-loaded rules", () => {
+  it("passes scoped rules whose patterns all match a file", () => {
     plant("packages/web/src/a.tsx");
     plant("packages/core/src/b.test.ts");
     plant(".claude/rules/frontend.md", scoped("packages/web/**"));
     plant(".claude/rules/testing.md", scoped("**/*.test.{ts,tsx}"));
-    plant(".claude/rules/architecture.md", "# Architecture\n");
-    plant(".claude/rules/security.md", "# Security\n");
 
     expect(runGuard()).toEqual({ status: 0, stdout: "" });
   });
@@ -62,14 +60,18 @@ describe("rules guard", () => {
     expect(stdout).not.toContain("packages/web/**");
   });
 
-  it("fails an unscoped rule that is not one of the always-loaded rules", () => {
+  it("fails every unscoped rule", () => {
     plant(".claude/rules/copy.md", "# Copy\n");
+    plant(".claude/rules/security.md", "# Security\n");
 
     const { status, stdout } = runGuard();
 
     expect(status).toBe(1);
     expect(stdout).toContain(
       ".claude/rules/copy.md: no paths frontmatter, so it loads in every session",
+    );
+    expect(stdout).toContain(
+      ".claude/rules/security.md: no paths frontmatter, so it loads in every session",
     );
   });
 

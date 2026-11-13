@@ -7,7 +7,7 @@ paths:
   - "DESIGN.md"
 ---
 
-# Design source (project-specific for Maestro)
+# Design source
 
 Read this file whole before you design or change a screen. Every section binds
 every screen.
@@ -273,4 +273,3 @@ Pick the form from this table. Add no other form, and no banner.
 **Tokens.**
 - Use only the documented colour pairs. A new pairing enters `design.json` and
   the contrast test first.
-- Check every changed screen in both themes.

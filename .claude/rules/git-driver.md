@@ -10,7 +10,7 @@ paths:
   - "docs/research/552-empty-repo-and-scaffold-shape.md"
 ---
 
-# git driver rules (project-specific for Maestro)
+# git driver rules
 
 Imperatives for driving `git` — rules only. Measured against git 2.50.1–2.51;
 the empty-repository captures are in
@@ -48,3 +48,7 @@ the empty-repository captures are in
   (`scripts/fixture-harness.mjs`). apm's `GIT_CONFIG_GLOBAL=/dev/null` leaves
   that channel active, so check it too before you call a run git-config
   isolated.
+- Redirect only a GitHub name that exists: apm asks `api.github.com` whether
+  the repository exists and aborts on a 404 before any git call. The empty
+  `fimoklei/maestro-fixture-harness` serves this; reach deploy states with
+  `pnpm smoke:ready --scenario` instead of hand-building them.
