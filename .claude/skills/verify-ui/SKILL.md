@@ -20,6 +20,9 @@ and zoom the change touches, and each state you could not reach.
      straight after `pnpm smoke`, with no wait loop.
    - A newer or older release after seeding → `pnpm smoke:release <tag>`
      (`v1.0.0`, `v1.1.0`, `v2.0.0`).
+   - In smoke, `gh` reads reach GitHub and its pull-request writes stop in
+     the sandbox (`scripts/smoke-gh.mjs`), so a proposal opens no pull
+     request.
 2. Screenshot the changed UI with `agent-browser --session maestro-<worktree folder>`,
    in each theme. Repeat it through a function, `ab(){ agent-browser --session
    maestro-<worktree folder> "$@"; }`, never a variable. Read a region as text with
