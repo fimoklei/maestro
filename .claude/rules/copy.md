@@ -1,10 +1,11 @@
 ---
 paths:
-  - "packages/web/src/**"
-  - "packages/server/src/**"
+  - "packages/web/src/**/*-copy*.ts"
+  - "packages/web/src/ui/control-labels.ts"
+  - "packages/server/src/request-bodies.ts"
 ---
 
-# Copy (project-specific for Maestro)
+# Copy
 
 Applies to every word the cockpit shows, and to the server's request-shape
 messages, not their `detail`.
@@ -37,8 +38,8 @@ hover card, hint, dialog body and sentence carries one part of it.
 Use the screen names in `GLOSSARY.md` and the exact labels of controls.
 
 The copy review is complete when every changed user-facing string is accounted
-for and has passed the `writing-clearly-and-concisely` skill. The reader can tell on the first reading whether the action finished, what
-remains unchanged and what to do next.
+for. The reader can tell on the first reading whether the action finished,
+what remains unchanged and what to do next.
 
 When you retire a screen word, add the old word to `scripts/copy-guard.mjs`.
 List only a word that is wrong in every screen use; a word with a second
@@ -73,8 +74,6 @@ meaning stays with review.
   changed, what stays) to the code line that makes it true.
 - Approved sentences live in the copy module's sibling test as exact strings.
   Add a new sentence there; change an existing one there.
-- Render changed copy in the cockpit. Read it at a narrow width and at 200% zoom
-  as required by `design.md`.
 
 ## Register
 

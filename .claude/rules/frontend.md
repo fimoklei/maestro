@@ -3,9 +3,9 @@ paths:
   - "packages/web/**"
 ---
 
-# Frontend conventions (project-specific for Maestro)
+# Frontend conventions
 
-React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui**. The layer boundary lives in `architecture.md`.
+React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui**. The layer boundary lives in `CODING_STANDARDS.md` → Architecture.
 
 ## Server-state vs UI-state — the core split
 
@@ -32,8 +32,7 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui**. The layer boundary live
 
 ## Components & hooks
 
-- Components PascalCase, one component per file.
-- Small and focused; extract when a component outgrows its one job.
+- One component per file.
 - A shape a second feature needs moves to `ui/` with its story, before the
   second feature uses it.
 - Custom hooks hold data and logic; components stay mostly presentational.
@@ -54,6 +53,7 @@ React 19, TypeScript, Vite, **Tailwind v4 + shadcn/ui**. The layer boundary live
 ## Styling & components
 
 - **Tokens are the source of truth** (CSS variables via Tailwind v4 `@theme`). Never hard-coded values.
+- Use only the colour utilities `styles/theme.css` maps (`bg-gray-1` … `bg-gray-12`, plus the blue, green, amber and red steps it lists). happy-dom renders without CSS, so an invalid utility such as `bg-app` passes every test.
 - **shadcn/ui components are owned:** copied into the repo and restyled to our tokens. No externally-themed component library (MUI/Mantine).
 - New components land with a Storybook story.
 - Styled UI lands in one pass *after* working behaviour — do not style ahead.
@@ -66,7 +66,6 @@ A story is documentation, not a test (behaviour → `.test.tsx`, see `testing.md
 - **Tokens apply in stories too.** No hard-coded colours. Inline `style` only for layout scaffolding.
 - No play/interaction tests; don't duplicate the sibling test.
 - One story per meaningful state, not per prop permutation.
-- CSF3 (`satisfies Meta<typeof X>`, `StoryObj`); no legacy `storiesOf`.
 - Title is `Group/Component`; reuse existing groups.
 
 ## Copy implementation

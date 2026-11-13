@@ -33,7 +33,7 @@ different jobs. Coincidental similarity is the main false positive — reject it
 
 ### 1. Map the source tree
 Enumerate the code to sweep. Maestro's product code is three packages
-(`architecture.md`): `packages/core` (domain), `packages/server` (transport),
+(`CODING_STANDARDS.md` → Architecture): `packages/core` (domain), `packages/server` (transport),
 `packages/web` (UI). Glob the source files:
 ```bash
 git -C ~/Projects/maestro ls-files 'packages/**/*.ts' 'packages/**/*.tsx' | grep -v -E '\.(test|stories)\.'
