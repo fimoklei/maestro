@@ -1,6 +1,6 @@
 # ADR-0025 — The cockpit's copy standard
 
-- **Status:** Accepted, amended 2026-09-08, 2026-10-02 and 2026-10-04
+- **Status:** Accepted, amended 2026-09-08, 2026-10-02, 2026-10-04 and 2026-11-13
 - **Date:** 2026-08-31
 - **Amends:** ADR-0018's ownership of user-facing messages.
 - **Resolves:** [Cockpit language map #646](https://github.com/fimoklei/maestro/issues/646).
@@ -19,10 +19,12 @@ anchor tie-breaker and checklist with the short guidance in `copy.md`.
 
 ## Decision
 
-1. Write simple English for a developer who knows git and a terminal but not
-   APM. ASD-STE100 principles guide the writing; full compliance with the
-   standard and its dictionary is not required. GOV.UK and Polaris research
-   remains background, rather than an additional set of mandatory rules.
+1. Write for a developer who knows git and a terminal but not APM. Each text
+   lets that reader understand what is happening, what their action changes
+   and what they can do next. Copy is written one screen at a time, from a
+   term table that gives each action and each thing one word across that
+   screen. ASD-STE100, GOV.UK and Polaris remain background, rather than
+   mandatory rules.
 2. The repo's copy rule for agents is the writing and review guide for every word the
    cockpit shows. Review the whole message in context for first-reading
    comprehension and agreement with the implemented behaviour. Enforcement
@@ -65,6 +67,17 @@ that kept passing review and could be found with no false positives.
 The 2026-10-04 amendment ([#1388](https://github.com/fimoklei/maestro/issues/1388))
 extends the same check to the register's excluded words and marks. Like a
 retired word, each is wrong in every screen use.
+
+The 2026-11-13 amendment
+([#1882](https://github.com/fimoklei/maestro/issues/1882#issuecomment-6859670099))
+replaces decision 1's ASD-STE100 guidance. The owner rejected reviewed copy
+five times as clipped or unidiomatic. The sentence rules (one-word verbs, a
+word limit, a fixed `Select {control} to {result}` pattern, headings without
+a verb) each passed review and together produced that copy, and a
+string-by-string review left one action with three verbs on one screen. The
+guide now starts from what the reader must understand, and a control label
+names its result. Shipped strings written under the older guidance stay
+until their screen is next written.
 
 The 2026-09-08 amendment changes agent guidance, not rendered copy or the Notice
 component. Existing copy implementation and any remaining migration work are
