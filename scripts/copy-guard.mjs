@@ -6,6 +6,14 @@ import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import ts from "typescript-6";
 
+// An import dialog's confirm reads the bare singular for one checked row;
+// the same words anywhere else are a retired menu item.
+const SINGULAR_CONFIRM = /^Import (?:skill|prompt)$/;
+const SINGULAR_CONFIRM_FILES = new Set([
+  "packages/web/src/harness/import-prompts-copy.ts",
+  "packages/web/src/deploy-state/import-local-edits-copy.ts",
+]);
+
 const RETIRED = [
   /\bInventory source\b/i,
   /\bRe-read Inventory\b/i,
@@ -35,9 +43,7 @@ const RETIRED = [
   /\bImport local edits…/i,
   /\bSelected skills\b/i,
   // One dialog imports skills or prompts; Edit prompt changes one (#1844).
-  // The bare singular stays as that dialog's confirm for one checked row.
-  /\bUpdate (?:skill|prompt)\b/,
-  /(?<=.)\bImport (?:skill|prompt)\b|\bImport (?:skill|prompt)\b(?=.)/,
+  /\b(?:Import|Update) (?:skill|prompt)\b/,
   // A status states where a change stands; the Change column names it (#1399).
   /\bDeleted locally\b/i,
   /\bDeletion (?:in draft|waiting for review|changes requested|approved|merged)\b/i,
@@ -258,6 +264,9 @@ export function findOffenders(root) {
         file !== CONTROL_LABELS.split(sep).join("/");
       for (const { line, text } of textsOf(path, readFileSync(path, "utf8"))) {
         for (const pattern of RETIRED) {
+          if (SINGULAR_CONFIRM_FILES.has(file) && SINGULAR_CONFIRM.test(text)) {
+            continue;
+          }
           const match = text.match(pattern);
           if (match) offenders.push({ file, line, word: match[0] });
         }
