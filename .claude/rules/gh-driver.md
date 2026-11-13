@@ -4,7 +4,7 @@ paths:
   - "docs/research/806-gh-pull-request-status.md"
 ---
 
-# `gh` driver rules (project-specific for Maestro)
+# `gh` driver rules
 
 Imperatives for reading and writing GitHub through the `gh` CLI — rules only.
 The observed behavior behind them is in `docs/research/806-gh-pull-request-status.md`
@@ -18,8 +18,6 @@ The observed behavior behind them is in `docs/research/806-gh-pull-request-statu
 
 ## Invocation
 
-- `execFile("gh", [...])` with an args array, never a shell string
-  (`security.md`).
 - Gate on `github.com` before every call. `gh` sends an unknown host's query
   onward as GitHub Enterprise.
 - Read the whole Harness in one call. Never one call per skill.
@@ -28,8 +26,6 @@ The observed behavior behind them is in `docs/research/806-gh-pull-request-statu
 - Always pass `--json` with the exact fields you consume.
 - Disable prompts (`GH_PROMPT_DISABLED`) and bound execution time, as
   `GhCliAdapter` does.
-- Pass ambient env only. Never inject `GH_TOKEN`, `GITHUB_TOKEN` or any other
-  credential.
 
 ## Writing
 
@@ -67,7 +63,6 @@ The observed behavior behind them is in `docs/research/806-gh-pull-request-statu
   Accept an app's `app/<slug>` login, and read gh's slugless `app/` (no
   author) as `ghost`.
 - Refuse a branch name `git check-ref-format` would refuse.
-- Never put `gh` prose in an HTTP response, a notice or a log.
 - Sort matching requests explicitly; never take `[0]`. One branch can carry
   several requests.
 - Take state from `state` plus `mergedAt`, never from branch ancestry.

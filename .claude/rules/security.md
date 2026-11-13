@@ -1,6 +1,13 @@
-# Security (project-specific for Maestro)
+---
+paths:
+  - "packages/core/src/**"
+  - "packages/server/src/**"
+  - "scripts/**"
+---
 
-Treat every input as hostile. Read before writing code that starts a process, touches a path derived from input, parses an external file, or adds an HTTP endpoint.
+# Security
+
+Treat every input as hostile.
 
 ## Hard rules
 
