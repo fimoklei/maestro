@@ -24,12 +24,14 @@ type GroupedListRow = {
   machineName?: boolean;
   /** A row the action leaves alone, such as a folder it does not write. */
   muted?: boolean;
-  /** The full text a shortened name stands for, on hover. */
+  /** The full text a shortened name stands for, on hover; keeps the name on one line. */
   title?: string;
   value?: string;
-  /** Its cost or reason, under the name. */
+  /** Its cost or reason, after the name. */
   sentence?: ReactNode;
-  /** A control the row asks the reader to set, such as a radio group, under the sentence. */
+  /** One 24px control that sets a value of this row only, at the row's end; never drawn in a refused group. */
+  control?: ReactNode;
+  /** A choice the row asks the reader to make, such as a radio group, under the row. */
   choice?: ReactNode;
   /** The row's own reading where it differs from its group's. */
   tone?: StatusFamily;
@@ -261,8 +263,11 @@ function Group({
                 {LIST_TOKENS[tone].glyph}
               </span>
             ) : null;
+          // A name with its full text on hover stays on one line; any other
+          // wraps, since a sentence beside it keeps at least 40% of the row.
           const nameClass = cn(
-            "min-w-0 truncate text-row",
+            "min-w-0 text-row",
+            row.title === undefined ? "wrap-break-word" : "truncate",
             row.muted ? "text-gray-11" : "text-gray-12",
           );
           const name = row.machineName ? (
@@ -275,52 +280,51 @@ function Group({
               key={row.key}
               id={row.id}
               className={cn(
-                "grid min-h-row items-center gap-x-inline gap-y-tight px-cell py-tight",
-                lead === null
-                  ? "grid-cols-[minmax(0,1fr)_auto]"
-                  : "grid-cols-[auto_minmax(0,1fr)_auto]",
+                "flex min-h-row flex-col justify-center gap-y-tight px-cell py-tight",
                 LIST_TOKENS[tone].fill,
                 index < group.rows.length - 1 && cn("border-b", edge),
               )}
             >
-              {lead}
-              {checklist !== null ? (
-                <label
-                  htmlFor={boxId}
-                  className={cn(nameClass, !refused && "cursor-pointer")}
-                  title={row.title}
-                >
-                  {name}
-                </label>
-              ) : (
-                <span className={nameClass} title={row.title}>
-                  {name}
-                </span>
-              )}
-              <span className="break-all text-right text-gray-11 text-meta">
-                {row.value === undefined ? null : (
-                  <MachineValue>{row.value}</MachineValue>
+              <div className="flex min-w-0 items-center gap-x-inline">
+                {lead}
+                {checklist !== null ? (
+                  <label
+                    htmlFor={boxId}
+                    className={cn(nameClass, !refused && "cursor-pointer")}
+                    title={row.title}
+                  >
+                    {name}
+                  </label>
+                ) : (
+                  <span className={nameClass} title={row.title}>
+                    {name}
+                  </span>
                 )}
-              </span>
-              {row.sentence === undefined ? null : (
-                <p
-                  id={sentenceId}
-                  className={cn(
-                    // A path in the sentence has no break point of its own.
-                    "col-span-2 m-0 font-ui text-meta wrap-anywhere",
-                    lead !== null && "col-start-2",
-                    LIST_TOKENS[tone].sentence,
-                  )}
-                >
-                  {row.sentence}
-                </p>
-              )}
+                {row.sentence === undefined ? null : (
+                  <p
+                    id={sentenceId}
+                    className={cn(
+                      // A path in the sentence has no break point of its own.
+                      "m-0 min-w-[40%] flex-1 text-right font-ui text-meta wrap-anywhere",
+                      LIST_TOKENS[tone].sentence,
+                    )}
+                  >
+                    {row.sentence}
+                  </p>
+                )}
+                {row.value === undefined ? null : (
+                  <span className="ml-auto break-all text-right text-gray-11 text-meta">
+                    <MachineValue>{row.value}</MachineValue>
+                  </span>
+                )}
+                {row.control === undefined || refused ? null : (
+                  <span className="ml-auto flex h-6 flex-none items-center">
+                    {row.control}
+                  </span>
+                )}
+              </div>
               {row.choice === undefined ? null : (
-                <div
-                  className={cn("col-span-2", lead !== null && "col-start-2")}
-                >
-                  {row.choice}
-                </div>
+                <div className={cn(lead !== null && "pl-6")}>{row.choice}</div>
               )}
             </li>
           );

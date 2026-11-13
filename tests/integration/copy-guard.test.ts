@@ -36,6 +36,9 @@ describe("copy guard", () => {
         'export const f = "Deploy tdd again";',
         'export const g = "Remove from target";',
         'export const h = "Free up disk space, then deploy again.";',
+        'export const i = "Import skills";',
+        'export const j = "Import prompts…";',
+        'export const k = "Edit prompt";',
         "",
       ].join("\n"),
     );
@@ -87,6 +90,11 @@ describe("copy guard", () => {
     ["Remove from Claude Code and Codex", "Remove from Claude Code"],
     ["Remove from Codex", "Remove from Codex"],
     ["The skill's files are still on disk.", "on disk"],
+    ["Select Import skill to add it.", "Import skill"],
+    ["Import skill…", "Import skill"],
+    ["Select Import prompt to add it.", "Import prompt"],
+    ["Update skill", "Update skill"],
+    ["Select Update prompt to change it.", "Update prompt"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",
@@ -148,6 +156,32 @@ describe("copy guard", () => {
 
       expect(findOffenders(root)).toEqual([]);
     });
+  });
+
+  it("passes the bare singular only as an import dialog's confirm", () => {
+    for (const file of [
+      "packages/web/src/harness/import-prompts-copy.ts",
+      "packages/web/src/deploy-state/import-local-edits-copy.ts",
+    ]) {
+      plant(
+        file,
+        'export const c = n === 1 ? "Import prompt" : "Import skill";\n',
+      );
+    }
+
+    expect(findOffenders(root)).toEqual([]);
+  });
+
+  it("fails the bare singular anywhere else, such as a menu item", () => {
+    plant(
+      "packages/web/src/harness/import-menu.tsx",
+      'export const items = ["Import skill", "Import prompt"];\n',
+    );
+
+    expect(findOffenders(root)).toEqual([
+      "packages/web/src/harness/import-menu.tsx:1: Import prompt",
+      "packages/web/src/harness/import-menu.tsx:1: Import skill",
+    ]);
   });
 
   it("reads JSX text, attributes and the text parts of a template", () => {

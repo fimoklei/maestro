@@ -1,5 +1,79 @@
+import type { SkillFolderScan } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ImportSkillsDialog } from "./import-skills-dialog";
+import type { ImportRow } from "./import-checklist-groups";
+import { ImportSkillsDialog, skillFolderRow } from "./import-skills-dialog";
+import type { ImportChecklist } from "./use-import-checklist";
+
+const SCAN = {
+  folderBlocker: null,
+  folder: "/home/me/.claude/skills",
+  folders: [
+    {
+      entry: "code-review",
+      name: "code-review",
+      refusal: null,
+      replaces: false,
+      category: "Code review",
+    },
+    {
+      entry: "notes-helper",
+      name: "notes-helper",
+      refusal: "empty-description",
+      replaces: false,
+      category: null,
+    },
+    {
+      entry: "review",
+      name: "review",
+      refusal: null,
+      replaces: true,
+      category: null,
+    },
+    {
+      entry: "tdd",
+      name: "tdd",
+      refusal: null,
+      replaces: false,
+      category: null,
+    },
+  ],
+} satisfies SkillFolderScan;
+
+type Refusal = NonNullable<SkillFolderScan["folders"][number]["refusal"]>;
+
+const IDLE_ADD = {
+  run: async () => null,
+  pending: false,
+  failed: false,
+  reset: () => {},
+};
+
+// A checklist frozen as listed: each row shows the category its file names.
+const listed = (
+  rows: readonly ImportRow<Refusal>[] | null,
+  checked: readonly string[],
+): ImportChecklist<Refusal> => ({
+  rows,
+  checked: new Set(checked),
+  toggle: () => {},
+  picked: checked.map((key) => ({ key, replace: false })),
+  rowCategory: (row) =>
+    row.refusal === null
+      ? {
+          name: row.name,
+          value: row.fileCategory,
+          suggested: null,
+          open: false,
+          addFailed: false,
+          add: IDLE_ADD,
+          toggleMenu: () => {},
+          pick: () => {},
+          closeMenu: () => {},
+        }
+      : null,
+  categoryAdd: IDLE_ADD,
+  saveCategories: async () => [],
+});
 
 const meta = {
   title: "Harness/ImportSkillsDialog",
@@ -11,32 +85,10 @@ const meta = {
     onSourceChange: () => {},
     onSourceCommit: () => {},
     chooser: { available: true, busy: false, notice: null, browse: () => {} },
-    load: {
-      kind: "ready",
-      scan: {
-        folderBlocker: null,
-        folders: [
-          {
-            entry: "code-review",
-            name: "code-review",
-            refusal: null,
-            replaces: false,
-          },
-          {
-            entry: "notes-helper",
-            name: "notes-helper",
-            refusal: "empty-description",
-            replaces: false,
-          },
-          { entry: "review", name: "review", refusal: null, replaces: true },
-          { entry: "tdd", name: "tdd", refusal: null, replaces: false },
-        ],
-      },
-    },
-    checked: new Set(["code-review", "tdd"]),
-    onToggle: () => {},
+    load: { kind: "ready", scan: SCAN },
+    checklist: listed(SCAN.folders.map(skillFolderRow), ["code-review", "tdd"]),
     isRunning: false,
-    outcomes: null,
+    report: null,
     failure: null,
     onClose: () => {},
     onImport: () => {},
@@ -54,26 +106,39 @@ export const NoFolderChosen: Story = {
     source: null,
     sourceText: "",
     load: { kind: "idle" },
-    checked: new Set(),
+    checklist: listed(null, []),
   },
 };
 
-export const Reading: Story = { args: { load: { kind: "loading" } } };
+export const Reading: Story = {
+  args: {
+    load: { kind: "loading" },
+    checklist: listed(null, []),
+  },
+};
 
 export const Importing: Story = { args: { isRunning: true } };
 
 export const Report: Story = {
   args: {
-    outcomes: [
-      {
-        entry: "code-review",
-        name: "code-review",
-        refusal: null,
-        replaces: false,
-      },
-      { entry: "review", name: "review", refusal: null, replaces: true },
-      { entry: "tdd", name: "tdd", refusal: "source-changed", replaces: false },
-      { entry: "lint", name: "lint", refusal: "name-taken", replaces: false },
-    ],
+    report: {
+      outcomes: [
+        {
+          entry: "code-review",
+          name: "code-review",
+          refusal: null,
+          replaces: false,
+        },
+        { entry: "review", name: "review", refusal: null, replaces: true },
+        {
+          entry: "tdd",
+          name: "tdd",
+          refusal: "source-changed",
+          replaces: false,
+        },
+        { entry: "lint", name: "lint", refusal: "name-taken", replaces: false },
+      ],
+      unsavedCategories: [],
+    },
   },
 };

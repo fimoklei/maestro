@@ -7,7 +7,7 @@ paths:
   - "DESIGN.md"
 ---
 
-# Design source (project-specific for Maestro)
+# Design source
 
 Read this file whole before you design or change a screen. Every section binds
 every screen.
@@ -38,6 +38,13 @@ its stories; build from the module that fits. Done when every element in the
 change comes from `ui/`, or the handoff names the new one and why no existing
 module fits. When none fits, measure what Vercel and Linear do; add
 the new pattern to this section before building it.
+
+**Menus from a control.** In a dialog, float the category menu from the
+control that opens it with `AnchoredFloat`, as Linear does: 4px under the
+control, flipped above it where the space below runs out, scrolling inside
+the window. A field's menu takes the field's width; a row control's menu is
+240px, aligned to the control's end. It moves no row and closes on Escape or
+a press beside it, with focus back on the control.
 
 **Meaning and emphasis.**
 - Give a column, badge, glyph and word one meaning on every screen. Say
@@ -184,7 +191,8 @@ Pick the form from this table. Add no other form, and no banner.
   a row to one line: its cost or reason follows the name in slate 11 `meta`,
   right-aligned, and wraps only when long. A row may end in one 24px control
   that sets a value of that row only; a row that cannot run has none. Name the checked count
-  in the confirm, live, and block it when nothing is checked. Add no
+  in the confirm, live, from two rows up (`Import 3 skills`; one row reads
+  `Import skill`), and block it when nothing is checked. Add no
   select-all.
 - Drop what only describes the copy, such as files left out or file counts.
   Put what the reader must act on in the new row's detail pane.
@@ -265,4 +273,3 @@ Pick the form from this table. Add no other form, and no banner.
 **Tokens.**
 - Use only the documented colour pairs. A new pairing enters `design.json` and
   the contrast test first.
-- Check every changed screen in both themes.

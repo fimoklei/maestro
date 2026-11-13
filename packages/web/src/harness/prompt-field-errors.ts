@@ -2,7 +2,7 @@ import type {
   PromptDraft,
   PromptFieldProblem,
 } from "@maestro/core/prompt-file";
-import { isFieldError, PROMPT_FIELD_ERRORS } from "./import-prompt-copy";
+import { isFieldError, PROMPT_FIELD_ERRORS } from "./prompt-copy";
 
 const PROBLEM_FIELD: Record<
   keyof typeof PROMPT_FIELD_ERRORS,

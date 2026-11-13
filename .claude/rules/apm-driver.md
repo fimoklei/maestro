@@ -10,7 +10,7 @@ paths:
   - "docs/apm-behavior.md"
 ---
 
-# APM driver rules (project-specific for Maestro)
+# APM driver rules
 
 Imperatives for driving `apm` or parsing its lockfile/output — rules only.
 The observed behavior behind every rule lives in `docs/apm-behavior.md`
@@ -30,17 +30,16 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
 
 ## Invocation
 
-- `execFile` + args array, never a shell string (`security.md`).
 - Always pass `-t` on install and update, as one comma list of tools.
   `uninstall` has no `-t` — see Remove.
 - Deploy refs are tag-pinned
-  `github.com/<owner>/<repo>/.apm/skills/<name>#vX.Y.Z` only.
+  `github.com/<owner>/<repo>/.apm/skills/<name>#vX.Y.Z` only. Build the
+  subpath with `harnessSkillSubpath`: apm reads a ref's subpath literally, so
+  a hand-written `skills/<name>` fails `Subdirectory … not found`.
 - Run global (`-g`) installs from a neutral cwd — apm edits the cwd's
   `.gitignore`.
 - Hand every `-g` command a `realpath`ed `HOME`; a symlink component makes
   the install deploy nothing while reporting success.
-- Keep real apm out of the fast test loop (`testing.md`); network + auth
-  belong to the canary/integration lanes.
 
 ## Root package and its Selection
 
@@ -89,13 +88,17 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
   set; never classify them there.
 - Whitespace-normalize and lowercase before matching any apm phrase — Rich
   wraps mid-sentence.
+- Check structural skill rules in `core`. `apm compile --validate` never reads
+  `skills/*/SKILL.md`, and `apm install` normalizes a bad name and exits 0. For
+  hidden Unicode, read `passed` from `apm audit --file <path> -f json`, never
+  the exit code.
 - `apm outdated` / `apm view` have no `--json`: parse behind the driver
   port, capture with `COLUMNS=200`, keep empty table cells intact, and
   integration-test against fixtures.
 
 ## Lockfile
 
-- Parse → validate with Zod → use (`security.md`); ignore unknown keys.
+- Ignore unknown keys.
 - Never recompute `content_hash` (opaque); `deployed_file_hashes` is the
   content baseline.
 - Scope (global vs per-repo) is known only from *which* lockfile you read,
@@ -136,7 +139,14 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
 ## Danger
 
 - Never run a bare `apm uninstall -g`; always name the package.
-- Never point a spike `-g` command at the real home; sandbox `HOME` always.
+- Never point a spike `-g` command at the real home; sandbox `HOME` always,
+  with `GITHUB_TOKEN=$(gh auth token)` and `GITHUB_APM_PAT` set.
+- Run `apm compile` only with `--validate` or `--dry-run`. Plain `compile`
+  overwrites `AGENTS.md`/`CLAUDE.md` in `$PWD`; `--user-scope` overwrites
+  `~/.claude/CLAUDE.md`.
+- Move a pin in `apm.yml` by editing the git entry's `ref:`, then check it with
+  `grep -n ref:` before installing. apm writes a git dependency as an object
+  (`git:`, `ref:`, `skills:`), so a `sed` on a `#tag` string matches nothing.
 
 ## Unobserved
 

@@ -7,7 +7,7 @@ import { categoryView } from "../categories/category-view";
 import { SetCategoryBarAction } from "../categories/set-category-bar-action";
 import { usePaneCategory } from "../categories/use-pane-category";
 import { EditPromptAction } from "../harness/edit-prompt-action";
-import { promptReadNotice } from "../harness/import-prompt-copy";
+import { promptReadNotice } from "../harness/prompt-copy";
 import { useEditPromptOpening } from "../harness/use-edit-prompt-flow";
 import {
   type CloneReading,

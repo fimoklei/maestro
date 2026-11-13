@@ -1,10 +1,11 @@
 ---
 paths:
-  - "packages/web/src/**"
-  - "packages/server/src/**"
+  - "packages/web/src/**/*-copy*.ts"
+  - "packages/web/src/ui/control-labels.ts"
+  - "packages/server/src/request-bodies.ts"
 ---
 
-# Copy (project-specific for Maestro)
+# Copy
 
 Applies to every word the cockpit shows, and to the server's request-shape
 messages, not their `detail`.
@@ -86,10 +87,6 @@ Term table
   when it fails, write a new one and file a tracker issue for the shipped one.
 - Approved sentences live in the copy module's sibling test as exact strings.
   Add a new sentence there; change an existing one there.
-- Run the final texts through the `writing-clearly-and-concisely` skill before
-  showing them: in code, a spec, a ticket or a proposal in chat.
-- Render changed copy in the cockpit. Read it at a narrow width and at 200% zoom
-  as required by `design.md`.
 - When you retire a screen word, add the old word to `scripts/copy-guard.mjs`.
   List only a word that is wrong in every screen use; a word with a second
   meaning stays with review.
@@ -115,7 +112,7 @@ Write level statements and commands that end in a full stop.
 | Tooltip cause | A blocked button's tooltip and description: one short command that says what to do first, or the cause when the reader can do nothing. The detail belongs in the sentence beside the button | `Add a category.`; `Wait for pull request #46.` |
 | Status announcement | Start: the busy label. End: `{Done word} {name}.` A failure is the notice, a toast replaces the end | `Deployed tdd.` |
 | Loading text | `Loading the {screen name}…` — heard, not seen; visible only inside a dialog | `Loading the Skills…` |
-| Dialog | Title and confirm button share a verb with the control that opens the dialog. A dialog that acts on a subject the reader already chose titles `{Verb} {name}`, or `{Verb} {object} for {name}` where the verb carries its own object; where the control label ends in a phrase, wrap the name inside it: `Withdraw {name} from release`. A dialog that asks the reader to choose the subject titles `{Verb} a {thing}`. Confirm button `{Verb} {thing}`. The body states what changes, then what stays | `Delete {skill}` / `Delete skill`; `Withdraw proposal for {skill}` / `Withdraw proposal`; `Withdraw {skill} from release` / `Withdraw from release`; `Update a skill` / `Update skill`; `Your targets keep the skill until you update them.` |
+| Dialog | Title and confirm button share a verb with the control that opens the dialog. A dialog that acts on a subject the reader already chose titles `{Verb} {name}`, or `{Verb} {object} for {name}` where the verb carries its own object; where the control label ends in a phrase, wrap the name inside it: `Withdraw {name} from release`. A dialog that asks the reader to choose the subject titles `{Verb} a {thing}`. Confirm button `{Verb} {thing}`. The body states what changes, then what stays | `Delete {skill}` / `Delete skill`; `Withdraw proposal for {skill}` / `Withdraw proposal`; `Withdraw {skill} from release` / `Withdraw from release`; `Add a category` / `Add category`; `Your targets keep the skill until you update them.` |
 | Field | Visible label naming the value; a hint adds what a label cannot | `Folder path` |
 | Accessible name | Visible words first, in the same order (`design.md`) | `Skills table` |
 | Request-shape message | `Nothing was {done}. Reload the page, then {do it} again.` Its `detail` names the expected shape for a developer; never show it in the cockpit | see `packages/server/src/request-bodies.ts` |

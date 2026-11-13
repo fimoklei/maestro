@@ -353,7 +353,7 @@ describe("Harness — Edit prompt", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("states another refused read in the Import prompt words", async () => {
+  it("states another refused read in the Import prompts words", async () => {
     const proposal = withStages(FETCHED, {
       proposal: [prompt("pending-proposal", "not-yet-proposed")],
     });

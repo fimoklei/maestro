@@ -9,10 +9,7 @@ import type {
   HarnessChange,
   HarnessPrimitiveType,
   HarnessState,
-  ImportCheck,
-  ImportMode,
   ImportPromptCheck,
-  ImportPromptSuccess,
   ImportPromptsAnswer,
   ImportSkillsInput,
   PrimitiveDeletionCheck,
@@ -22,10 +19,10 @@ import type {
   ReleaseBlock,
   ReleasePlan,
   SemverStep,
-  SkillFolder,
+  SkillFolderOutcome,
   SkillFolderScan,
 } from "@maestro/core";
-import type { PromptDraft, PromptFile } from "@maestro/core/prompt-file";
+import type { PromptFile } from "@maestro/core/prompt-file";
 import {
   queryOptions,
   useMutation,
@@ -213,51 +210,6 @@ const isFinding = (entry: Record<string, unknown>): boolean =>
 const fetchHarnessState = () =>
   requestJson<HarnessState>("/api/harness/refresh", { method: "POST" });
 
-// Re-asked whenever the folder or name changes: the server owns every refusal.
-/** One folder's import check, shared by the dialog's read and its submit. */
-export function importCheckQuery(source: string | null, name: string | null) {
-  return {
-    queryKey: ["harness", "import-check", source, name] as const,
-    queryFn: () =>
-      requestJson<ImportCheck>("/api/harness/import/check", {
-        method: "POST",
-        body: JSON.stringify(name === null ? { source } : { source, name }),
-      }),
-    // A check is a snapshot of the disk at one moment, and the disk is the
-    // author's to change while the dialog is open.
-    staleTime: 0,
-    gcTime: 0,
-  };
-}
-
-export function useImportCheck(source: string | null, name: string | null) {
-  return useQuery({
-    ...importCheckQuery(source, name),
-    enabled: source !== null,
-  });
-}
-
-// `skipped` counts the `.git` entries the copy did not carry.
-export type ImportOutcome = {
-  mode: ImportMode;
-  name: string;
-  skipped: number;
-};
-
-// Invalidated rather than written: only the read can say what landed (#576).
-export function useImportSkill() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (request: { source: string; name: string }) =>
-      requestJson<ImportOutcome>("/api/harness/import", {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
-    // Returned, so the dialog closes onto a read that already holds the row.
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
-  });
-}
-
 const skillFolderScanQuery = (source: string | null) =>
   queryOptions({
     queryKey: ["harness", "import-skills-check", source] as const,
@@ -284,16 +236,19 @@ export function useImportSkills() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: ImportSkillsInput) =>
-      requestJson<{ outcomes: SkillFolder[] }>("/api/harness/import/skills", {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
+      requestJson<{ outcomes: SkillFolderOutcome[] }>(
+        "/api/harness/import/skills",
+        {
+          method: "POST",
+          body: JSON.stringify(request),
+        },
+      ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
   });
 }
 
-// Shared by the single import's name check and the batch's per-name checks.
-const importPromptCheckQuery = (name: string | null) =>
+// One name check of Import prompts.
+const importPromptCheckQuery = (name: string) =>
   queryOptions({
     queryKey: ["harness", "prompt-check", name] as const,
     queryFn: () =>
@@ -306,28 +261,7 @@ const importPromptCheckQuery = (name: string | null) =>
     gcTime: 0,
   });
 
-// Asked once the name is left, not per keystroke; null asks nothing.
-export function useImportPromptCheck(name: string | null) {
-  return useQuery({
-    ...importPromptCheckQuery(name),
-    enabled: name !== null,
-  });
-}
-
-// Invalidated rather than written, like Import skill: the read places the row.
-export function useImportPrompt() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (request: PromptDraft) =>
-      requestJson<ImportPromptSuccess>("/api/harness/prompt/import", {
-        method: "POST",
-        body: JSON.stringify(request),
-      }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: HARNESS_KEY }),
-  });
-}
-
-/** Each chosen name's check, as the single import's name check reads it. */
+/** Each listed name's check: whether the Harness holds it. */
 export function useImportPromptChecks(names: readonly string[]) {
   return useQueries({
     queries: names.map((name) => importPromptCheckQuery(name)),
@@ -360,7 +294,7 @@ export function useReadPrompt() {
   });
 }
 
-// Invalidated rather than written, like Import prompt: the read places the row.
+// Invalidated rather than written, like Import prompts: the read places the row.
 export function useEditPrompt() {
   const queryClient = useQueryClient();
   return useMutation({

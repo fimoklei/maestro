@@ -29,13 +29,6 @@ export const connectBodySchema = z.object({
 // The field's current value: the folder the chooser opens on.
 export const chooseFolderBodySchema = z.object({ path: z.string() });
 
-// The destination is never sent: the connected Harness is resolved server-side.
-// `name` absent asks for Maestro's proposal (#576).
-export const importBodySchema = z.object({
-  source: z.string(),
-  name: z.string().optional(),
-});
-
 export const importSkillsCheckBodySchema = z.object({ source: z.string() });
 
 // An entry names a folder directly inside `source`: never a path.
@@ -61,11 +54,6 @@ const promptFileSchema = z.object({
   text: z.string().refine(withinPromptLimit),
   example: z.string().refine(withinPromptLimit),
 }) satisfies z.ZodType<PromptFile>;
-
-// "" carries no front matter, so a block with only the description is written.
-export const importPromptBodySchema = promptFileSchema
-  .extend({ name: z.string(), frontmatter: z.string() })
-  .refine(fieldsHold);
 
 // Strings plus a replace flag: core judges each file's fields, and a broken one is data.
 export const importPromptsBodySchema = z.object({
@@ -413,15 +401,8 @@ export const PATH_BODY: RequestShape = {
   detail: "The request carries a path: { path: string }.",
 };
 
-export const IMPORT_BODY: RequestShape = {
-  message:
-    "Nothing was imported. Reload the page, then import the skill again.",
-  detail:
-    "The request carries a source folder and an optional name: { source: string, name?: string }.",
-};
-
 export const IMPORT_SKILLS_CHECK_BODY: RequestShape = {
-  message: "Nothing was read. Reload the page, then choose the folder again.",
+  message: "Nothing was read. Reload the page, then select the folder again.",
   detail: "The request carries a folder: { source: string }.",
 };
 
@@ -430,13 +411,6 @@ export const IMPORT_SKILLS_BODY: RequestShape = {
     "Nothing was imported. Reload the page, then import the skills again.",
   detail:
     "The request carries a folder and the folders directly inside it to import: { source: string, entries: { entry: string, replace: boolean }[] }, at least one entry.",
-};
-
-export const IMPORT_PROMPT_BODY: RequestShape = {
-  message:
-    "Nothing was imported. Reload the page, then import the prompt again.",
-  detail:
-    "The page must send these strings: { name, frontmatter, description, text, example }.",
 };
 
 export const IMPORT_PROMPTS_BODY: RequestShape = {

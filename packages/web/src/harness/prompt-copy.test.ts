@@ -2,37 +2,23 @@ import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import { readNotice } from "../test-utils";
 import { EDIT_PROMPT } from "../ui/control-labels";
-import { plainText } from "../ui/phrase";
 import {
-  CHOOSE_FILE_HINT,
+  EXAMPLE_HINT,
   editPromptNotice,
   editPromptTitle,
   harnessPromptReadNotice,
-  importPromptNotice,
   longTextNotice,
-  NOT_TEXT_FILE_NOTICE,
   NOTHING_CHANGED,
   PROMPT_BOX_LABEL,
   PROMPT_BOX_PARTS,
   PROMPT_FIELD_ERRORS,
-  PROMPT_FIELD_HINTS,
-  PROMPT_SOURCE_LABEL,
-  PROMPT_SOURCES,
-  PROMPT_TAKEN_NOTICE,
   promptReadNotice,
-} from "./import-prompt-copy";
+} from "./prompt-copy";
 
 const refusal = (code: string) => new HttpError(409, "refused", code);
 
-describe("Import prompt copy", () => {
-  it("states each field's hint and error in the approved words", () => {
-    expect(plainText(PROMPT_FIELD_HINTS.name)).toBe(
-      "Maestro uses this as the file name in .maestro/prompts.",
-    );
-    expect(PROMPT_FIELD_HINTS.description).toBe(
-      "One line, shown in the Prompts table.",
-    );
-    expect(PROMPT_FIELD_HINTS.text).toBe("Saved exactly as you enter it.");
+describe("Prompt field copy", () => {
+  it("states each field's error in the approved words", () => {
     expect(PROMPT_FIELD_ERRORS).toEqual({
       "empty-name": "Enter a name.",
       "invalid-name":
@@ -52,93 +38,7 @@ describe("Import prompt copy", () => {
       "Prompt text",
       "Example",
     ]);
-    expect(PROMPT_FIELD_HINTS.example).toBe("Optional example prompt.");
-  });
-
-  it("refuses a text over 100 KB with its own notice", () => {
-    expect(longTextNotice("Import prompt")).toEqual({
-      level: "error",
-      label: "Prompt over 100 KB",
-      message: "Shorten the text to 100 KB or less. Then select Import prompt.",
-    });
-    expect(longTextNotice("Update prompt").message).toBe(
-      "Shorten the text to 100 KB or less. Then select Update prompt.",
-    );
-    expect(
-      importPromptNotice(refusal("long-text"), "Import prompt"),
-    ).toMatchObject({ label: "Prompt over 100 KB" });
-  });
-
-  it("states the Choose file tab and its refusal in the approved words", () => {
-    expect(PROMPT_SOURCE_LABEL).toBe("Prompt source");
-    expect(PROMPT_SOURCES.map((each) => each.label)).toEqual([
-      "Paste text",
-      "Choose file",
-    ]);
-    expect(CHOOSE_FILE_HINT).toBe("Use a .md or .txt file of 100 KB or less.");
-    expect(NOT_TEXT_FILE_NOTICE).toEqual({
-      level: "error",
-      label: "Not a text file",
-      message: "Maestro reads only UTF-8 text. Choose another file.",
-    });
-  });
-
-  it("states a taken name under Name in the approved words", () => {
-    expect(PROMPT_TAKEN_NOTICE).toEqual({
-      level: "info",
-      label: "Prompt already in the Harness",
-      message:
-        "Select Update prompt to replace its text, description and example.",
-      detail: "To keep it, pick another name.",
-    });
-  });
-
-  it("names Update prompt in a refusal while updating", () => {
-    expect(
-      importPromptNotice(refusal("import-in-progress"), "Update prompt"),
-    ).toMatchObject({
-      message:
-        "Wait for that change to finish, then select Update prompt again.",
-    });
-  });
-
-  it.each([
-    [
-      "not-configured",
-      "No Harness connected",
-      "Select Change Harness location in Settings, then select Import prompt again.",
-    ],
-    [
-      "destination-unsafe",
-      "Link in the Harness",
-      "Nothing was imported. Replace the link with a real file or folder, then select Import prompt again.",
-    ],
-    [
-      "destination-unreadable",
-      "Prompts folder not read",
-      "Nothing was imported. Make the Harness clone readable, then select Import prompt again.",
-    ],
-    [
-      "import-in-progress",
-      "Harness busy",
-      "Wait for that change to finish, then select Import prompt again.",
-    ],
-    [
-      "write-failed",
-      "Prompt not imported",
-      "The Harness is as it was. Make the prompts folder writable, then select Import prompt again.",
-    ],
-    [
-      "unknown",
-      "Prompt not imported",
-      "The Maestro server did not answer, and nothing reached the Harness. Select Import prompt again.",
-    ],
-  ])("states %s in Maestro's own words", (code, label, message) => {
-    expect(importPromptNotice(refusal(code), "Import prompt")).toMatchObject({
-      level: "error",
-      label,
-      message,
-    });
+    expect(EXAMPLE_HINT).toBe("Optional example prompt.");
   });
 });
 
@@ -190,16 +90,15 @@ describe("Edit prompt copy", () => {
       "Prompt not edited",
       "The Maestro server did not answer, and nothing reached the Harness. Select Edit prompt again.",
     ],
-  ])(
-    "states %s in the Import prompt words, for an edit",
-    (code, label, message) => {
-      expect(importPromptNotice(refusal(code), "Edit prompt")).toMatchObject({
-        level: "error",
-        label,
-        message,
-      });
-    },
-  );
+  ])("states %s in Edit prompt words", (code, label, message) => {
+    expect(
+      editPromptNotice(refusal(code), { name: "pr-review", screen: "harness" }),
+    ).toMatchObject({
+      level: "error",
+      label,
+      message,
+    });
+  });
 });
 
 describe("Edit prompt refusal copy", () => {
@@ -244,15 +143,6 @@ describe("Edit prompt refusal copy", () => {
         "Nothing was edited. Copy your text, select Close, then select Edit prompt again.",
       detail: "The pr-review file changed after this dialog opened.",
     });
-  });
-
-  it("states any other refusal in the Import prompt words", () => {
-    expect(
-      editPromptNotice(refusal("write-failed"), {
-        name: "pr-review",
-        screen: "harness",
-      }),
-    ).toEqual(importPromptNotice(refusal("write-failed"), "Edit prompt"));
   });
 
   it("states a read on the Harness screen that found no file", () => {

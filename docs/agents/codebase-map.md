@@ -1,6 +1,6 @@
 # Codebase map
 
-Where to look first. Layer rules and package shape: `.claude/rules/architecture.md`.
+Where to look first. Layer rules and package shape: `CODING_STANDARDS.md` → Architecture.
 
 - **Packages**: one dir per domain feature under `packages/*/src/<feature>/`
   (deploy, drift, registry…). `tests/` holds the unit, integration and git-lane tests, fixtures and helpers.

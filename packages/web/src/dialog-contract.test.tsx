@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import type {
   ReleasePlan,
   SkillFolderScan,
@@ -16,20 +16,19 @@ import {
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps, ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { CategoryFieldState } from "./categories/category-field";
 import { ImportLocalEditsDialog } from "./deploy-state/import-local-edits-dialog";
 import { RemoveSkillDialog } from "./deploy-state/remove-skill-dialog";
 import { UpdateTargetDialog } from "./deploy-state/update-target-dialog";
 import { DeletionDialog, type DeletionMode } from "./harness/deletion-dialog";
 import { DiscardDialog } from "./harness/discard-dialog";
-import { ImportDialog } from "./harness/import-dialog";
-import {
-  longTextNotice,
-  PROMPT_TAKEN_NOTICE,
-} from "./harness/import-prompt-copy";
-import { ImportPromptDialog } from "./harness/import-prompt-dialog";
+import { EditPromptDialog } from "./harness/edit-prompt-dialog";
+import type { ImportRow } from "./harness/import-checklist-groups";
+import type { PromptFileRefusal } from "./harness/import-prompts-copy";
 import { ImportPromptsDialog } from "./harness/import-prompts-dialog";
-import { ImportSkillsDialog } from "./harness/import-skills-dialog";
+import {
+  ImportSkillsDialog,
+  skillFolderRow,
+} from "./harness/import-skills-dialog";
 import { ProposeBatchDialog } from "./harness/propose-batch-dialog";
 import { ReleaseDialog, type ReleasePlanLoad } from "./harness/release-dialog";
 import {
@@ -37,6 +36,7 @@ import {
   ReleaseWithdrawalDialog,
 } from "./harness/release-withdrawal-dialog";
 import { RestoreDialog } from "./harness/restore-dialog";
+import type { ImportChecklist } from "./harness/use-import-checklist";
 import {
   type UnproposedCheck,
   WithdrawDialog,
@@ -54,7 +54,6 @@ import { SetLocationDialog } from "./settings/set-location-dialog";
 import { BulkDeployDialog } from "./skills/bulk-deploy-dialog";
 import { BulkRemoveDialog } from "./skills/bulk-remove-dialog";
 import { expectTooltipCause, htmlElement, idleCategoryAdd } from "./test-utils";
-import { UPDATE_PROMPT } from "./ui/control-labels";
 import type { NoticeContent } from "./ui/notice";
 import type { FolderChooser } from "./ui/use-folder-chooser";
 
@@ -128,23 +127,6 @@ const PREVIEW: UpdatePreview = {
   selection: { current: ["tdd"], desired: ["tdd"] },
   copyReceipt: "b".repeat(64),
   token: "a".repeat(64),
-};
-
-const CHECK = {
-  mode: "add" as const,
-  name: "release-notes",
-  sourceBlocker: null,
-  nameBlocker: null,
-  advisories: [],
-  category: null,
-};
-
-const NO_CATEGORY_FIELD: CategoryFieldState = {
-  value: null,
-  hint: "Only you see this category.",
-  suggested: null,
-  onChange: vi.fn(),
-  add: idleCategoryAdd,
 };
 
 type Options = {
@@ -251,39 +233,15 @@ const updateDialog = (
   />
 );
 
-const importDialog = (props: Partial<ComponentProps<typeof ImportDialog>>) => (
-  <ImportDialog
-    source={null}
-    sourceText=""
-    sourceError={undefined}
-    onSourceChange={vi.fn()}
-    onSourceCommit={vi.fn()}
-    chooser={NO_CHOOSER}
-    name=""
-    load={{ kind: "idle" }}
-    onNameChange={vi.fn()}
-    onClose={vi.fn()}
-    onImport={vi.fn()}
-    importing={false}
-    importError={null}
-    outcome={false}
-    category={NO_CATEGORY_FIELD}
-    {...props}
-  />
-);
-
-// The import mode: the edit mode carries no source tabs.
-const importPromptDialog = (
-  props: Partial<
-    Extract<ComponentProps<typeof ImportPromptDialog>, { source: unknown }>
-  >,
+// Opened on review-pr, nothing changed yet.
+const editPromptDialog = (
+  props: Partial<ComponentProps<typeof EditPromptDialog>>,
 ) => (
-  <ImportPromptDialog
+  <EditPromptDialog
     draft={{
-      name: "",
-      frontmatter: "",
-      description: "",
-      text: "",
+      name: "review-pr",
+      description: "Review a pull request.",
+      text: "Review $ARGUMENTS.",
       example: "",
     }}
     fieldErrors={{}}
@@ -291,21 +249,15 @@ const importPromptDialog = (
     phase="idle"
     outcome={false}
     failure={null}
-    mode="add"
-    takenNotice={null}
-    category={{ field: NO_CATEGORY_FIELD }}
-    source="paste"
-    chosenFile={null}
-    fileNotice={null}
-    setSource={vi.fn()}
     part="text"
     showPart={vi.fn()}
-    chooseFile={vi.fn()}
-    checkName={vi.fn()}
     edit={vi.fn()}
-    paste={() => false}
     submit={vi.fn()}
     close={vi.fn()}
+    unavailable={null}
+    category={null}
+    pickCategory={vi.fn()}
+    categoryAdd={idleCategoryAdd}
     {...props}
   />
 );
@@ -332,43 +284,91 @@ const importLocalEditsDialog = (
 
 const SKILL_FOLDERS: SkillFolderScan = {
   folderBlocker: null,
-  folders: [{ entry: "tdd", name: "tdd", refusal: null, replaces: false }],
+  folder: "/home/me/.claude/skills",
+  folders: [
+    {
+      entry: "tdd",
+      name: "tdd",
+      refusal: null,
+      replaces: false,
+      category: null,
+    },
+  ],
 };
 
-const importSkillsDialog = (
-  props: Partial<ComponentProps<typeof ImportSkillsDialog>>,
-) => (
-  <ImportSkillsDialog
-    source={null}
-    sourceText=""
-    sourceError={undefined}
-    onSourceChange={vi.fn()}
-    onSourceCommit={vi.fn()}
-    chooser={NO_CHOOSER}
-    load={{ kind: "idle" }}
-    checked={new Set(["tdd"])}
-    onToggle={vi.fn()}
-    isRunning={false}
-    outcomes={null}
-    failure={null}
-    onClose={vi.fn()}
-    onImport={vi.fn()}
-    {...props}
-  />
-);
+// An import checklist frozen as listed, each given row checked.
+const listedChecklist = <Refusal,>(
+  rows: readonly ImportRow<Refusal>[] | null,
+): ImportChecklist<Refusal> => {
+  const keys = (rows ?? []).map(({ key }) => key);
+  return {
+    rows,
+    checked: new Set(keys),
+    toggle: vi.fn(),
+    picked: keys.map((key) => ({ key, replace: false })),
+    rowCategory: () => null,
+    categoryAdd: idleCategoryAdd,
+    saveCategories: async () => [],
+  };
+};
+
+// The checklist lists what the scan in `load` holds, every row checked.
+const importSkillsDialog = ({
+  load = { kind: "idle" },
+  ...props
+}: Partial<ComponentProps<typeof ImportSkillsDialog>>) => {
+  const rows =
+    load.kind === "ready" ? load.scan.folders.map(skillFolderRow) : null;
+  return (
+    <ImportSkillsDialog
+      source={null}
+      sourceText=""
+      sourceError={undefined}
+      onSourceChange={vi.fn()}
+      onSourceCommit={vi.fn()}
+      chooser={NO_CHOOSER}
+      load={load}
+      checklist={listedChecklist(rows)}
+      isRunning={false}
+      report={null}
+      failure={null}
+      onClose={vi.fn()}
+      onImport={vi.fn()}
+      {...props}
+    />
+  );
+};
 
 // Opened, before any file is chosen.
 const importPromptsDialog = (
   props: Partial<ComponentProps<typeof ImportPromptsDialog>>,
 ) => (
   <ImportPromptsDialog
-    rows={null}
-    checked={new Set()}
+    source="files"
+    switchSource={vi.fn()}
+    pasted={{
+      draft: {
+        name: "",
+        frontmatter: "",
+        description: "",
+        text: "",
+        example: "",
+      },
+      fieldErrors: {},
+      part: "text",
+      showPart: vi.fn(),
+      changed: false,
+      leaveName: vi.fn(),
+      paste: () => false,
+      edit: vi.fn(),
+      category: null,
+      failure: null,
+    }}
+    checklist={listedChecklist(null)}
     running={false}
     report={null}
     error={null}
     chooseFiles={vi.fn()}
-    toggle={vi.fn()}
     submit={vi.fn()}
     close={vi.fn()}
     {...props}
@@ -882,100 +882,22 @@ const ON_DIALOG: Row[] = [
     notices: [],
   },
   {
-    file: "harness/import-dialog.tsx",
-    heading: "Import a skill",
+    file: "harness/edit-prompt-dialog.tsx",
+    heading: "Edit review-pr",
     render: ({ running, onClose }) =>
-      importDialog({
-        source: "/home/me/incoming/release-notes",
-        sourceText: "/home/me/incoming/release-notes",
-        name: "release-notes",
-        load: { kind: "loading" },
-        importing: running,
-        onClose,
-      }),
-    // A typed path is work too, not only a typed name.
-    changed: async (onClose) => {
-      render(
-        importDialog({
-          sourceText: "/home/me/incoming/release-notes",
-          onClose,
-        }),
-      );
-    },
-    emptyForm: {
-      submit: "Import skill",
-      render: (onRun) => importDialog({ onImport: onRun }),
-    },
-    loading: null,
-    loadFailed: null,
-    notices: [
-      {
-        label: "Skill checks found issues",
-        render: () =>
-          importDialog({
-            source: "/home/me/incoming/release-notes",
-            sourceText: "/home/me/incoming/release-notes",
-            name: "release-notes",
-            load: {
-              kind: "ready",
-              check: { ...CHECK, advisories: ["long-manifest"] },
-            },
-          }),
-      },
-    ],
-  },
-  {
-    file: "harness/import-prompt-dialog.tsx",
-    heading: "Import a prompt",
-    render: ({ running, onClose }) =>
-      importPromptDialog({
-        draft: {
-          name: "review-pr",
-          frontmatter: "",
-          description: "Review a pull request.",
-          text: "Review $ARGUMENTS.",
-          example: "",
-        },
+      editPromptDialog({
         changed: true,
         phase: running ? "running" : "idle",
         close: onClose,
       }),
-    // The owner reports a typed field as a change.
     changed: async (onClose) => {
-      render(
-        importPromptDialog({
-          draft: {
-            name: "",
-            frontmatter: "",
-            description: "",
-            text: "Review.",
-            example: "",
-          },
-          changed: true,
-          close: onClose,
-        }),
-      );
+      render(editPromptDialog({ changed: true, close: onClose }));
     },
-    emptyForm: {
-      submit: "Import prompt",
-      render: (onRun) => importPromptDialog({ submit: onRun }),
-    },
+    // Its fields sit in PromptBodyFields; a refusal is the dialog's own failure.
+    emptyForm: null,
     loading: null,
     loadFailed: null,
-    // The taken-name notice is information, placed under Name, the region
-    // it describes; Not a text file refuses one control, the chosen file, and
-    // sits under it. Only a refusal of the submit sits above the footer.
-    notices: [
-      {
-        label: "Prompt over 100 KB",
-        render: () =>
-          importPromptDialog({
-            mode: "update",
-            takenNotice: PROMPT_TAKEN_NOTICE,
-            failure: longTextNotice(UPDATE_PROMPT),
-          }),
-      },
-    ],
+    notices: [],
   },
   {
     file: "skills/bulk-remove-dialog.tsx",
@@ -1097,7 +1019,7 @@ const ON_DIALOG: Row[] = [
       submit: "Import skills",
       render: (onRun) => importSkillsDialog({ onImport: onRun }),
     },
-    // The scan checks the field, as Import skill's check does: its failure
+    // The scan checks the field: its failure
     // stands beside Folder path and the press asks again.
     loading: {
       line: "Reading the folder…",
@@ -1110,11 +1032,18 @@ const ON_DIALOG: Row[] = [
     loadFailed: null,
     notices: [
       {
-        label: "No skill folders",
+        label: "No skills in this folder",
         render: () =>
           importSkillsDialog({
             sourceText: "/home/me/empty",
-            load: { kind: "ready", scan: { folderBlocker: null, folders: [] } },
+            load: {
+              kind: "ready",
+              scan: {
+                folderBlocker: null,
+                folder: "/home/me/empty",
+                folders: [],
+              },
+            },
           }),
       },
     ],
@@ -1128,10 +1057,15 @@ const ON_DIALOG: Row[] = [
     changed: async (onClose) => {
       render(
         importPromptsDialog({
-          rows: [
-            { key: "0", label: "release-notes", refusal: null, held: false },
-          ],
-          checked: new Set(["0"]),
+          checklist: listedChecklist<PromptFileRefusal>([
+            {
+              key: "0",
+              name: "release-notes",
+              refusal: null,
+              held: false,
+              fileCategory: null,
+            },
+          ]),
           close: onClose,
         }),
       );
@@ -1163,6 +1097,22 @@ const textOf = (file: string) =>
 const sourceOf = (file: string) => {
   const text = textOf(file);
   return USES_CONFIRMATION.test(text) ? text + textOf(CONFIRMATION) : text;
+};
+
+// A dialog's source with each component it renders from outside `ui/`, followed
+// through their own imports, so a field moved into a component still counts.
+const renderedSourceOf = (file: string, seen = new Set<string>()): string => {
+  if (seen.has(file)) return "";
+  seen.add(file);
+  const text = sourceOf(file);
+  const components = [
+    ...text.matchAll(/^import (?!type )[^;]*?from "(\.[^"]+)";/gm),
+  ]
+    .map(([, path]) => join(dirname(file), `${path}.tsx`))
+    .filter((path) => !path.startsWith("ui/") && textOf(path) !== "");
+  return [text, ...components.map((path) => renderedSourceOf(path, seen))].join(
+    "\n",
+  );
 };
 
 // Only `Dialog` opens a modal layer.
@@ -1242,7 +1192,7 @@ describe("every dialog", () => {
 
   it("declares a changed state for each dialog with a field", () => {
     const withField = ON_DIALOG.filter((row) =>
-      RENDERS_A_FIELD.test(sourceOf(row.file)),
+      RENDERS_A_FIELD.test(renderedSourceOf(row.file)),
     ).map((row) => row.file);
 
     expect(
@@ -1410,7 +1360,7 @@ type AddsARow = {
   row: string;
 };
 
-// Import skill opens the new row's pane, which its flow test proves; a screen
+// A dialog that adds a row opens its pane; a screen
 // without a pane focuses the row itself.
 const ADDS_A_ROW: AddsARow[] = [
   {

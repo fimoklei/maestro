@@ -22,7 +22,6 @@ import {
   notRenamed,
   renameHint,
   setCategoryFor,
-  TAKEN_FROM_FILE,
 } from "./categories-copy";
 
 // Approved sentences, as exact strings.
@@ -135,11 +134,8 @@ describe("Categories copy", () => {
     },
   );
 
-  it("labels the Category field with the hint drawn on the canvas", () => {
-    expect(CATEGORY_FIELD).toEqual({
-      label: "Category",
-      hint: "Only you see this category.",
-    });
+  it("labels the Category field without a hint", () => {
+    expect(CATEGORY_FIELD).toEqual({ label: "Category" });
   });
 
   it("states a category the edit could not set after the prompt was edited", () => {
@@ -148,13 +144,6 @@ describe("Categories copy", () => {
       label: "Category not set",
       message:
         "The prompt was edited. Select Close, then select Set category on Prompts.",
-    });
-  });
-
-  it("says where a category the imported file named came from", () => {
-    expect(TAKEN_FROM_FILE).toEqual({
-      skill: "Taken from SKILL.md.",
-      prompt: "Taken from the front matter.",
     });
   });
 

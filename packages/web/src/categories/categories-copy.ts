@@ -82,13 +82,10 @@ export const ITEM_WORDS: Record<
   prompt: { one: "prompt", many: "prompts" },
 };
 
-/** The Category field of Import skill, Import prompt and Edit prompt. */
-export const CATEGORY_FIELD = {
-  label: "Category",
-  hint: "Only you see this category.",
-} as const;
+/** The Category field of Import prompts and Edit prompt. */
+export const CATEGORY_FIELD = { label: "Category" } as const;
 
-const CATEGORY_NOT_SET = "Category not set";
+export const CATEGORY_NOT_SET = "Category not set";
 
 /** The edit landed in the Harness; the category after it did not. */
 export const CATEGORY_NOT_SET_AFTER_EDIT: NoticeContent = {
@@ -120,12 +117,6 @@ export const categoryNotSet = (
         ? `The Harness no longer contains ${count === 1 ? "the" : "a"} ${ITEM_WORDS[type].one}. Select ${reread} to update the list.`
         : "Choose the category again.",
 });
-
-/** The hint once the field holds the category the imported file names. */
-export const TAKEN_FROM_FILE: Record<HarnessPrimitiveType, string> = {
-  skill: "Taken from SKILL.md.",
-  prompt: "Taken from the front matter.",
-};
 
 const SCREEN_OF: Record<HarnessPrimitiveType, string> = {
   skill: "Skills",

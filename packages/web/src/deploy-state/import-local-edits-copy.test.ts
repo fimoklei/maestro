@@ -18,7 +18,7 @@ import {
   NO_SKILL_QUALIFIES,
   NOTHING_CHECKED,
   noLocalEditsLine,
-  replacesLine,
+  REPLACES_LINE,
   SELECT_A_COPY,
   UNSELECTED_COPIES_LINE,
   undoesNewerLegend,
@@ -28,9 +28,7 @@ import {
 describe("Import local edits copy", () => {
   it("names the group of rows that replace what the Harness holds", () => {
     expect(alreadyInHarnessLegend(1)).toBe("⚠ Already in the Harness · 1");
-    expect(plainText(replacesLine("review"))).toBe(
-      "Replaces review in the Harness.",
-    );
+    expect(REPLACES_LINE).toBe("Replaces the one in the Harness");
   });
 
   it("states the differing copies block and its radio group", () => {
@@ -49,13 +47,13 @@ describe("Import local edits copy", () => {
 
   it("counts the checked skills in the confirm", () => {
     expect(importConfirmLabel(0, 0)).toBe("Import skills");
-    expect(importConfirmLabel(1, 0)).toBe("Import 1 skill");
+    expect(importConfirmLabel(1, 0)).toBe("Import skill");
     expect(importConfirmLabel(3, 0)).toBe("Import 3 skills");
   });
 
   it("counts the checked skills that undo newer Harness changes", () => {
     expect(importConfirmLabel(1, 1)).toBe(
-      "Import 1 skill · 1 undoes newer changes",
+      "Import skill · 1 undoes newer changes",
     );
     expect(importConfirmLabel(3, 2)).toBe(
       "Import 3 skills · 2 undo newer changes",

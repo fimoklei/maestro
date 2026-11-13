@@ -1,3 +1,5 @@
+// Import skills given one skill folder: the scan lists it as one row, and the
+// import copies it as the single import did.
 import { execFile } from "node:child_process";
 import {
   link,
@@ -13,12 +15,17 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
+import {
+  HarnessGitAdapter,
+  ReleasedContentReader,
+  type SkillFolderOutcome,
+  type SkillFolderScan,
+} from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { initGitClone } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
 
-describe("harness import HTTP route", () => {
+describe("Import skills over one skill folder", () => {
   let base: string;
   let harnessRoot: string;
   let source: string;
@@ -64,22 +71,51 @@ describe("harness import HTTP route", () => {
       body: JSON.stringify(body),
     });
 
-  const check = (app: ReturnType<typeof makeApp>, body: unknown) =>
-    post(app, "/api/harness/import/check", body);
+  const scan = async (
+    app: ReturnType<typeof makeApp>,
+    folder: string,
+  ): Promise<SkillFolderScan> => {
+    const response = await post(app, "/api/harness/import/skills/check", {
+      source: folder,
+    });
+    expect(response.status).toBe(200);
+    return (await response.json()) as SkillFolderScan;
+  };
 
-  const importSkill = (app: ReturnType<typeof makeApp>, body: unknown) =>
-    post(app, "/api/harness/import", body);
+  // Scans the one folder, then imports the row it lists, replacing a held
+  // skill only when the scan says it would.
+  const importFolder = async (
+    app: ReturnType<typeof makeApp>,
+    folder: string,
+  ): Promise<SkillFolderOutcome> => {
+    const listed = await scan(app, folder);
+    const [row] = listed.folders;
+    if (row === undefined || listed.folder === null) {
+      throw new Error("The scan listed no row.");
+    }
+    const response = await post(app, "/api/harness/import/skills", {
+      source: listed.folder,
+      entries: [{ entry: row.entry, replace: row.replaces }],
+    });
+    expect(response.status).toBe(200);
+    const { outcomes } = (await response.json()) as {
+      outcomes: SkillFolderOutcome[];
+    };
+    const [outcome] = outcomes;
+    if (outcome === undefined) throw new Error("The import answered no row.");
+    return outcome;
+  };
 
   it("copies nested content and the executable bit, and skips .git", async () => {
     const app = makeApp();
 
-    const response = await importSkill(app, { source });
+    const outcome = await importFolder(app, source);
 
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      mode: "add",
+    expect(outcome).toEqual({
+      entry: "Code Review",
       name: "code-review",
-      skipped: 1,
+      refusal: null,
+      replaces: false,
     });
     const landed = join(harnessRoot, ".apm", "skills", "code-review");
     expect(await readFile(join(landed, "references", "notes.md"), "utf8")).toBe(
@@ -92,58 +128,12 @@ describe("harness import HTTP route", () => {
   it("rewrites the copied manifest's name to the directory name", async () => {
     const app = makeApp();
 
-    await importSkill(app, { source, name: "reviewer" });
+    await importFolder(app, source);
 
-    const landed = join(harnessRoot, ".apm", "skills", "reviewer", "SKILL.md");
-    expect(await readFile(landed, "utf8")).toContain("name: reviewer");
-  });
-
-  it("proposes a slug and reports the conventions without refusing", async () => {
-    await writeFile(
-      join(source, "SKILL.md"),
-      `${manifest("d".repeat(1025))}${"line\n".repeat(500)}`,
-      "utf8",
+    const landed = join(harnessRoot, ".apm", "skills", "code-review");
+    expect(await readFile(join(landed, "SKILL.md"), "utf8")).toContain(
+      "name: code-review",
     );
-    const app = makeApp();
-
-    const response = await check(app, { source });
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
-      mode: "add",
-      name: "code-review",
-      sourceBlocker: null,
-      nameBlocker: null,
-      advisories: ["long-manifest", "long-description"],
-      category: null,
-    });
-  });
-
-  it("reports a name the harness already holds on the name field", async () => {
-    await mkdir(join(harnessRoot, ".apm", "skills", "code-review"), {
-      recursive: true,
-    });
-    const app = makeApp();
-
-    const response = await check(app, { source });
-
-    expect(await response.json()).toMatchObject({
-      sourceBlocker: null,
-      nameBlocker: "name-taken",
-    });
-  });
-
-  it("refuses a source with no SKILL.md, leaving the harness untouched", async () => {
-    await rm(join(source, "SKILL.md"));
-    const app = makeApp();
-
-    const response = await importSkill(app, { source });
-
-    expect(response.status).toBe(422);
-    expect(await response.json()).toMatchObject({ error: "missing-manifest" });
-    await expect(
-      stat(join(harnessRoot, ".apm", "skills", "code-review")),
-    ).rejects.toThrow();
   });
 
   it("refuses a recorded copy whose record names no origin", async () => {
@@ -151,9 +141,8 @@ describe("harness import HTTP route", () => {
     const deployed = join(repo, ".claude", "skills", "code-review");
     await mkdir(deployed, { recursive: true });
     await writeFile(join(deployed, "SKILL.md"), manifest(), "utf8");
-    const lockfilePath = join(repo, "apm.lock.yaml");
     await writeFile(
-      lockfilePath,
+      join(repo, "apm.lock.yaml"),
       [
         "dependencies:",
         "- virtual_path: skills/code-review",
@@ -169,10 +158,11 @@ describe("harness import HTTP route", () => {
     const app = makeApp();
     await register(app, repo);
 
-    const response = await importSkill(app, { source: deployed });
-
-    expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({ error: "origin-unproven" });
+    expect(await scan(app, deployed)).toEqual({
+      folderBlocker: "origin-unproven",
+      folder: null,
+      folders: [],
+    });
   });
 
   it("lets a hand-authored skill through the same folder a deploy would use (#667)", async () => {
@@ -180,26 +170,11 @@ describe("harness import HTTP route", () => {
     const authored = join(repo, ".claude", "skills", "code-review");
     await mkdir(authored, { recursive: true });
     await writeFile(join(authored, "SKILL.md"), manifest(), "utf8");
-    const lockfilePath = join(repo, "apm.lock.yaml");
-    await writeFile(lockfilePath, "dependencies: []\n", "utf8");
+    await writeFile(join(repo, "apm.lock.yaml"), "dependencies: []\n", "utf8");
     const app = makeApp();
     await register(app, repo);
 
-    const response = await importSkill(app, { source: authored });
-
-    expect(response.status).toBe(200);
-  });
-
-  it("reports the .git entries the copy left behind", async () => {
-    const app = makeApp();
-
-    const response = await importSkill(app, { source });
-
-    expect(await response.json()).toEqual({
-      mode: "add",
-      name: "code-review",
-      skipped: 1,
-    });
+    expect(await importFolder(app, authored)).toMatchObject({ refusal: null });
   });
 
   it("refuses a harness whose skills folder points outside the harness", async () => {
@@ -210,11 +185,8 @@ describe("harness import HTTP route", () => {
     await symlink(elsewhere, join(harnessRoot, ".apm", "skills"));
     const app = makeApp();
 
-    const response = await importSkill(app, { source });
-
-    expect(response.status).toBe(409);
-    expect(await response.json()).toMatchObject({
-      error: "destination-unsafe",
+    expect(await importFolder(app, source)).toMatchObject({
+      refusal: "destination-unsafe",
     });
     expect(await readdir(elsewhere)).toEqual([]);
   });
@@ -228,20 +200,11 @@ describe("harness import HTTP route", () => {
     );
     const app = makeApp();
 
-    const response = await importSkill(app, { source, name: "reviewer" });
-
-    expect(response.status).toBe(200);
-    const landed = join(harnessRoot, ".apm", "skills", "reviewer", "SKILL.md");
-    expect(await readFile(landed, "utf8")).toContain("name: reviewer");
-  });
-
-  it("refuses a folder outside the home ceiling", async () => {
-    const app = makeApp();
-
-    const response = await importSkill(app, { source: "/etc" });
-
-    expect(response.status).toBe(403);
-    expect(await response.json()).toMatchObject({ error: "outside-root" });
+    expect(await importFolder(app, source)).toMatchObject({ refusal: null });
+    const landed = join(harnessRoot, ".apm", "skills", "code-review");
+    expect(await readFile(join(landed, "SKILL.md"), "utf8")).toContain(
+      "name: code-review",
+    );
   });
 
   // The whole chain in one case (#732): the seams are the value.
@@ -251,9 +214,7 @@ describe("harness import HTTP route", () => {
       run(
         "git",
         ["-c", "user.email=t@example.invalid", "-c", "user.name=T", ...args],
-        {
-          cwd: harnessRoot,
-        },
+        { cwd: harnessRoot },
       );
     // Offline: the origin URL is never fetched.
     await initGitClone(harnessRoot);
@@ -272,9 +233,8 @@ describe("harness import HTTP route", () => {
       manifest("Fixed in place."),
       "utf8",
     );
-    const lockfilePath = join(repo, "apm.lock.yaml");
     await writeFile(
-      lockfilePath,
+      join(repo, "apm.lock.yaml"),
       [
         "dependencies:",
         "- virtual_path: .apm/skills/code-review",
@@ -292,20 +252,14 @@ describe("harness import HTTP route", () => {
     const app = makeApp();
     await register(app, repo);
 
-    const offered = await check(app, { source: deployed });
-    expect(await offered.json()).toMatchObject({
-      mode: "update",
-      name: "code-review",
-      sourceBlocker: null,
-      nameBlocker: null,
-    });
+    expect((await scan(app, deployed)).folders).toMatchObject([
+      { name: "code-review", refusal: null, replaces: true },
+    ]);
 
-    const response = await importSkill(app, { source: deployed });
-
-    expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({
-      mode: "update",
+    expect(await importFolder(app, deployed)).toMatchObject({
       name: "code-review",
+      refusal: null,
+      replaces: true,
     });
     expect(await readFile(join(held, "SKILL.md"), "utf8")).toContain(
       "Fixed in place.",
@@ -345,9 +299,8 @@ describe("harness import HTTP route", () => {
     const deployed = join(repo, ".claude", "skills", "caveman");
     await mkdir(deployed, { recursive: true });
     await writeFile(join(deployed, "SKILL.md"), released, "utf8");
-    const lockfilePath = join(repo, "apm.lock.yaml");
     await writeFile(
-      lockfilePath,
+      join(repo, "apm.lock.yaml"),
       await readFile(
         new URL(
           "../fixtures/apm.lock.957-root-selection-project.yaml",
@@ -360,29 +313,20 @@ describe("harness import HTTP route", () => {
     const app = makeApp();
     await register(app, repo);
 
-    const unedited = await check(app, { source: deployed });
-    expect(await unedited.json()).toMatchObject({
-      mode: "update",
-      name: "caveman",
-      sourceBlocker: "nothing-to-carry-back",
-    });
+    expect((await scan(app, deployed)).folders).toMatchObject([
+      { name: "caveman", refusal: "nothing-to-carry-back", replaces: true },
+    ]);
 
     await writeFile(
       join(deployed, "SKILL.md"),
       manifest("Fixed in place."),
       "utf8",
     );
-    const offered = await check(app, { source: deployed });
-    expect(await offered.json()).toMatchObject({
-      mode: "update",
+    expect(await importFolder(app, deployed)).toMatchObject({
       name: "caveman",
-      sourceBlocker: null,
-      nameBlocker: null,
+      refusal: null,
+      replaces: true,
     });
-
-    const response = await importSkill(app, { source: deployed });
-
-    expect(response.status).toBe(200);
     expect(await readFile(join(held, "SKILL.md"), "utf8")).toContain(
       "Fixed in place.",
     );
@@ -398,10 +342,9 @@ describe("harness import HTTP route", () => {
     await link(join(source, "shared.bin"), join(source, "shared-alias.bin"));
     const app = makeApp();
 
-    const response = await importSkill(app, { source });
-
-    expect(response.status).toBe(422);
-    expect(await response.json()).toMatchObject({ error: "hard-linked-file" });
+    expect(await importFolder(app, source)).toMatchObject({
+      refusal: "hard-linked-file",
+    });
     expect(await readdir(join(harnessRoot, ".apm", "skills"))).toEqual([]);
   });
 });

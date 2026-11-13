@@ -6,12 +6,10 @@ import {
   NEXT_RELEASE_COMMIT_HINT,
 } from "./deletion-copy";
 import {
-  ADVISORY_TEXT,
   DISCARD_HINT,
   discardBody,
   discardTitle,
   FINDING_TEXT,
-  FOLDER_MISSING,
   inFlightNotice,
   RELEASE_WITHDRAWAL_CHECKING,
   RESTORE_KEEPS_PROPOSAL,
@@ -142,16 +140,5 @@ describe("Harness dialog copy", () => {
       "invalid-frontmatter": "has frontmatter Maestro cannot read.",
       "empty-description": "has an empty description.",
     });
-  });
-
-  it("states each import check", () => {
-    expect(ADVISORY_TEXT).toEqual({
-      "long-manifest": "SKILL.md is over 500 lines.",
-      "long-description": "The description is over 1,024 characters.",
-    });
-  });
-
-  it("asks for the skill folder when Import skill is submitted without one", () => {
-    expect(FOLDER_MISSING).toBe("Enter the skill folder's absolute path.");
   });
 });

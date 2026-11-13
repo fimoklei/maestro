@@ -218,7 +218,7 @@ describe("Harness freshness and failed reads", () => {
     );
   });
 
-  // Import, the menu holding Import skill, lives in the panel header, so a
+  // Import, the menu holding Import skills, lives in the panel header, so a
   // confirmed empty Pending
   // proposal drops out like the other two stages (#1224).
   it("draws no Pending proposal group when only Pending proposal is empty", async () => {

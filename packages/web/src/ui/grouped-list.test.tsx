@@ -103,6 +103,120 @@ describe("GroupedList as a checklist", () => {
     expect(screen.getAllByRole("group")).toHaveLength(1);
   });
 
+  it("ends a row in its own control, after its sentence", () => {
+    checklist({
+      groups: [
+        {
+          tone: "attention",
+          legend: "Already in the Harness · 1",
+          rows: [
+            {
+              key: "review",
+              name: "review",
+              sentence: "Replaces the one in the Harness",
+              control: <button type="button">Set category for review</button>,
+            },
+          ],
+        },
+      ],
+    });
+
+    const row = screen.getByRole("listitem");
+    const control = within(row).getByRole("button", {
+      name: "Set category for review",
+    });
+    expect(row).toHaveTextContent(
+      /^reviewReplaces the one in the HarnessSet category for review$/,
+    );
+    expect(control).toBeInTheDocument();
+  });
+
+  it("drops the control of a row that cannot run", () => {
+    checklist({
+      groups: [
+        {
+          tone: "failed",
+          legend: "Cannot be imported · 1",
+          rows: [
+            {
+              key: "brief",
+              name: "brief",
+              sentence: "Copies differ.",
+              control: <button type="button">Set category for brief</button>,
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByRole("listitem")).toHaveTextContent("Copies differ.");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("states a long reason whole, beside the row's name", () => {
+    const reason =
+      "The skill folder ~/Projects/acme/.claude/skills/review-pull-request-before-merge holds no SKILL.md. Add one, then select Import skills again.";
+    checklist({
+      groups: [
+        {
+          tone: "failed",
+          legend: "Cannot be imported · 1",
+          rows: [{ key: "review", name: "review", sentence: reason }],
+        },
+      ],
+    });
+
+    const box = screen.getByRole("checkbox", { name: "review" });
+    expect(box).toHaveAccessibleDescription(reason);
+    expect(screen.getByText(reason).parentElement?.contains(box)).toBe(true);
+  });
+
+  it("wraps a long name beside its sentence, cutting off no part of it", () => {
+    const name = "Discard local edits for tdd in ~/.claude/skills";
+    checklist({
+      groups: [
+        {
+          tone: "attention",
+          legend: null,
+          rows: [
+            {
+              key: "tdd",
+              name,
+              sentence: "tdd has local edits. This update replaces them.",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByText(name)).not.toHaveClass("truncate");
+  });
+
+  it("keeps a row's choice under its line", () => {
+    checklist({
+      groups: [
+        {
+          tone: "attention",
+          legend: "Copies differ · 1",
+          rows: [
+            {
+              key: "brief",
+              name: "brief",
+              sentence: "The copies differ.",
+              choice: <input type="radio" aria-label="Claude Code" />,
+            },
+          ],
+        },
+      ],
+    });
+
+    const row = screen.getByRole("listitem");
+    const radio = within(row).getByRole("radio", { name: "Claude Code" });
+    const line = within(row).getByText("The copies differ.").parentElement;
+    expect(line?.contains(radio)).toBe(false);
+    expect(line?.contains(screen.getByRole("checkbox"))).toBe(true);
+  });
+
   it("hands the first box of the first group with rows to the focus target", () => {
     const firstBox = { current: null as HTMLInputElement | null };
     render(

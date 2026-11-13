@@ -8,7 +8,7 @@ const idleAdd = {
   reset: () => {},
 };
 
-// The Category field of Import skill, Import prompt and Edit prompt, closed.
+// The Category field of Import prompts and Edit prompt, closed.
 // The open menu is `Core/CategoryMenu`; the field reads the categories when
 // it opens.
 const meta = {
@@ -18,7 +18,6 @@ const meta = {
     value: null,
     onChange: () => {},
     disabled: false,
-    hint: "Only you see this category.",
     suggested: null,
     add: idleAdd,
   },
@@ -39,7 +38,7 @@ export const NoCategory: Story = {};
 
 /** SKILL.md named a category that exists. */
 export const TakenFromFile: Story = {
-  args: { value: "Code review", hint: "Taken from SKILL.md." },
+  args: { value: "Code review" },
 };
 
 /** Locked while the import runs. */

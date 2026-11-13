@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import {
+  IMPORT_SKILLS_HINT,
   importSkillsNotice,
   importSkillsScanNotice,
   NO_SKILL_FOLDERS,
@@ -12,7 +13,7 @@ describe("Import skills copy", () => {
   it.each([
     [
       "empty-description",
-      "SKILL.md has an empty description. Add one, then choose the folder again.",
+      "SKILL.md has an empty description. Add one, then select the folder again.",
     ],
     ["missing-manifest", "This folder has no SKILL.md, so it is not a skill."],
     [
@@ -25,7 +26,7 @@ describe("Import skills copy", () => {
     ],
     [
       "destination-exists",
-      "The Harness already contains a folder under this name. To import it under another name, select Import skill.",
+      "The Harness already contains a folder with the same name. Rename this folder, then select the folder again.",
     ],
     [
       "unsafe-link",
@@ -78,13 +79,17 @@ describe("Import skills copy", () => {
     });
   });
 
-  it("asks for the folder that contains the skills", () => {
+  it("asks for a skill folder, or a folder of skill folders", () => {
+    expect(IMPORT_SKILLS_HINT).toBe(
+      "Choose a skill folder, or a folder of skill folders.",
+    );
     expect(SKILLS_FOLDER_MISSING).toBe(
       "Enter the absolute path of the folder that contains your skills.",
     );
     expect(NO_SKILL_FOLDERS).toEqual({
-      label: "No skill folders",
-      message: "Choose the folder that contains your skill folders.",
+      label: "No skills in this folder",
+      message:
+        "A skill folder holds a SKILL.md. Choose a skill folder, or a folder of skill folders.",
     });
   });
 });
