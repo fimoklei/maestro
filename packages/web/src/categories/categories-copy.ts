@@ -83,10 +83,7 @@ export const ITEM_WORDS: Record<
 };
 
 /** The Category field of Import prompts and Edit prompt. */
-export const CATEGORY_FIELD = {
-  label: "Category",
-  hint: "Only you see this category.",
-} as const;
+export const CATEGORY_FIELD = { label: "Category" } as const;
 
 export const CATEGORY_NOT_SET = "Category not set";
 

@@ -47,13 +47,13 @@ describe("Import local edits copy", () => {
 
   it("counts the checked skills in the confirm", () => {
     expect(importConfirmLabel(0, 0)).toBe("Import skills");
-    expect(importConfirmLabel(1, 0)).toBe("Import 1 skill");
+    expect(importConfirmLabel(1, 0)).toBe("Import skill");
     expect(importConfirmLabel(3, 0)).toBe("Import 3 skills");
   });
 
   it("counts the checked skills that undo newer Harness changes", () => {
     expect(importConfirmLabel(1, 1)).toBe(
-      "Import 1 skill · 1 undoes newer changes",
+      "Import skill · 1 undoes newer changes",
     );
     expect(importConfirmLabel(3, 2)).toBe(
       "Import 3 skills · 2 undo newer changes",

@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CATEGORY_FIELD } from "../categories/categories-copy";
 import { ImportPromptsDialog } from "./import-prompts-dialog";
 
 const IDLE_ADD = {
@@ -120,7 +119,6 @@ export const PasteText: Story = {
       changed: true,
       category: {
         value: null,
-        hint: CATEGORY_FIELD.hint,
         suggested: null,
         onChange: () => {},
         add: meta.args.checklist.categoryAdd,

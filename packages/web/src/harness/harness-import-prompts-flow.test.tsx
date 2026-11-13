@@ -14,6 +14,7 @@ import {
   noCategories,
   renderWithQuery,
 } from "../test-utils";
+import { chooseFilesSource } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 
 const HARNESS: HarnessState = {
@@ -105,7 +106,9 @@ async function openImportPrompts(user: ReturnType<typeof userEvent.setup>) {
   await user.click(
     await screen.findByRole("menuitem", { name: "Import prompts" }),
   );
-  return screen.findByRole("dialog", { name: "Import prompts" });
+  const dialog = await screen.findByRole("dialog", { name: "Import prompts" });
+  await chooseFilesSource(user, dialog);
+  return dialog;
 }
 
 // The browser's file input sits hidden behind Choose files; it has no role.
@@ -240,7 +243,7 @@ describe("Harness import prompts flow", () => {
       ),
     ]);
     await user.click(
-      within(dialog).getByRole("button", { name: "Import 1 prompt" }),
+      within(dialog).getByRole("button", { name: "Import prompt" }),
     );
 
     await within(dialog).findByRole("heading", {
@@ -290,7 +293,7 @@ describe("Harness import prompts flow", () => {
     expect(group(dialog, /Can be imported · 1/)).toBeVisible();
 
     await user.click(
-      within(dialog).getByRole("button", { name: "Import 1 prompt" }),
+      within(dialog).getByRole("button", { name: "Import prompt" }),
     );
     await within(dialog).findByRole("heading", {
       name: "Imported 1 of 1 prompt",
@@ -316,7 +319,7 @@ describe("Harness import prompts flow", () => {
     expect(box).not.toHaveAttribute("aria-disabled");
     expect(box).toHaveAccessibleDescription("Replaces the one in the Harness");
     expect(
-      within(dialog).getByRole("button", { name: "Import 1 prompt" }),
+      within(dialog).getByRole("button", { name: "Import prompt" }),
     ).toBeVisible();
   });
 
@@ -362,7 +365,7 @@ describe("Harness import prompts flow", () => {
       within(dialog).getByRole("checkbox", { name: "standup-notes" }),
     );
     await user.click(
-      within(dialog).getByRole("button", { name: "Import 1 prompt" }),
+      within(dialog).getByRole("button", { name: "Import prompt" }),
     );
 
     await within(dialog).findByRole("heading", {
@@ -454,7 +457,7 @@ describe("Harness import prompts flow", () => {
     await chooseFiles(user, dialog, [RELEASE_NOTES]);
 
     await user.click(
-      within(dialog).getByRole("button", { name: "Import 1 prompt" }),
+      within(dialog).getByRole("button", { name: "Import prompt" }),
     );
 
     expect(await within(dialog).findByText("Harness busy")).toBeVisible();
@@ -472,7 +475,7 @@ describe("Harness import prompts flow", () => {
     const reads = server.harnessReads();
 
     await user.click(
-      within(dialog).getByRole("button", { name: "Import 1 prompt" }),
+      within(dialog).getByRole("button", { name: "Import prompt" }),
     );
 
     await waitFor(() => expect(server.harnessReads()).toBeGreaterThan(reads));

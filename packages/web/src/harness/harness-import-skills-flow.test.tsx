@@ -210,7 +210,7 @@ describe("Harness import of several skills", () => {
 
     await user.click(within(dialog).getByRole("checkbox", { name: "tdd" }));
     expect(
-      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+      within(dialog).getByRole("button", { name: "Import skill" }),
     ).toBeInTheDocument();
     await user.click(within(dialog).getByRole("checkbox", { name: "tdd" }));
     await user.click(
@@ -332,7 +332,7 @@ describe("Harness import of several skills", () => {
     ).toBeChecked();
     expect(within(dialog).getAllByRole("checkbox")).toHaveLength(1);
     await user.click(
-      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+      within(dialog).getByRole("button", { name: "Import skill" }),
     );
 
     await within(dialog).findByRole("heading", {

@@ -18,7 +18,6 @@ const meta = {
     value: null,
     onChange: () => {},
     disabled: false,
-    hint: "Only you see this category.",
     suggested: null,
     add: idleAdd,
   },
@@ -39,7 +38,7 @@ export const NoCategory: Story = {};
 
 /** SKILL.md named a category that exists. */
 export const TakenFromFile: Story = {
-  args: { value: "Code review", hint: "Taken from SKILL.md." },
+  args: { value: "Code review" },
 };
 
 /** Locked while the import runs. */

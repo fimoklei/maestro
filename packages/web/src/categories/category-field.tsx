@@ -15,7 +15,6 @@ import type { HeldCategoryAdd } from "./use-held-category-add";
 export type CategoryFieldState = {
   /** Null for No category. */
   value: string | null;
-  hint: string;
   /** A name the imported file gave that matches no category: the menu opens on Add. */
   suggested: string | null;
   onChange: (category: string | null) => void;
@@ -32,7 +31,6 @@ export function CategoryField({
   value,
   onChange,
   disabled,
-  hint,
   suggested,
   add,
 }: CategoryFieldState & {
@@ -45,7 +43,7 @@ export function CategoryField({
   return (
     <FieldFrame
       label={CATEGORY_FIELD.label}
-      hint={hint}
+      hint={undefined}
       error={undefined}
       describedBy={undefined}
       invalid={false}

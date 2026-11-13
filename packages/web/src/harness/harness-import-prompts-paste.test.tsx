@@ -13,7 +13,7 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
+import { jsonResponse, renderWithQuery } from "../test-utils";
 import { RELEASED } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 
@@ -98,9 +98,7 @@ async function openPasteText(user: ReturnType<typeof userEvent.setup>) {
   await user.click(
     await screen.findByRole("menuitem", { name: "Import prompts" }),
   );
-  const dialog = await screen.findByRole("dialog", { name: "Import prompts" });
-  await user.click(sourceOf(dialog, "Paste text"));
-  return dialog;
+  return screen.findByRole("dialog", { name: "Import prompts" });
 }
 
 const sourceOf = (dialog: HTMLElement, name: "Paste text" | "Choose files") =>
@@ -112,7 +110,7 @@ const field = (dialog: HTMLElement, name: string) =>
   within(dialog).getByRole("textbox", { name });
 
 const importOne = (dialog: HTMLElement) =>
-  within(dialog).getByRole("button", { name: "Import 1 prompt" });
+  within(dialog).getByRole("button", { name: "Import prompt" });
 
 async function fillPrompt(
   user: ReturnType<typeof userEvent.setup>,
@@ -134,15 +132,10 @@ describe("Import prompts — Paste text", () => {
       "true",
     );
     const text = field(dialog, "Prompt text");
-    expect(
-      within(dialog).getByText(
-        sentence("Maestro uses this as the file name in .maestro/prompts."),
-      ),
-    ).toBeInTheDocument();
-    expect(field(dialog, "Description")).toHaveAccessibleDescription(
-      "One line, shown in the Prompts table.",
-    );
-    expect(text).toHaveAccessibleDescription("Saved exactly as you enter it.");
+    for (const name of ["Name", "Description"]) {
+      expect(field(dialog, name)).not.toHaveAccessibleDescription();
+    }
+    expect(text).not.toHaveAccessibleDescription();
 
     await user.click(text);
     await user.paste(PASTED);
@@ -215,7 +208,7 @@ describe("Import prompts — Paste text", () => {
     const category = await within(dialog).findByRole("button", {
       name: "Category No category",
     });
-    expect(category).toHaveAccessibleDescription("Only you see this category.");
+    expect(category).not.toHaveAccessibleDescription();
     const order = [
       field(dialog, "Name"),
       field(dialog, "Description"),
@@ -256,7 +249,7 @@ describe("Import prompts — Paste text", () => {
 
     expect(
       await within(dialog).findByRole("button", { name: "Category Docs" }),
-    ).toHaveAccessibleDescription("Only you see this category.");
+    ).not.toHaveAccessibleDescription();
     await user.type(field(dialog, "Name"), "review-pr");
     await user.click(importOne(dialog));
 
@@ -385,7 +378,7 @@ describe("Import prompts — Paste text", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Shorten the text to 100 KB or less. Then select Import 1 prompt.",
+        "Shorten the text to 100 KB or less. Then select Import prompt.",
       ),
     ).toBeInTheDocument();
     expect(imports).toEqual([]);

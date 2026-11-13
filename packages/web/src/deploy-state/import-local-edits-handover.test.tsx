@@ -112,7 +112,7 @@ async function importAll(count: number) {
   });
   await userEvent.click(
     await within(dialog).findByRole("button", {
-      name: count === 1 ? "Import 1 skill" : `Import ${count} skills`,
+      name: count === 1 ? "Import skill" : `Import ${count} skills`,
     }),
   );
 }

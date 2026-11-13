@@ -499,3 +499,15 @@ export function installHarnessHooks() {
     toast.dismiss();
   });
 }
+
+/** Import prompts opens on Paste text; this switches it to Choose files. */
+export async function chooseFilesSource(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+) {
+  await user.click(
+    within(
+      within(dialog).getByRole("group", { name: "Prompt source" }),
+    ).getByRole("button", { name: "Choose files" }),
+  );
+}

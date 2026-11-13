@@ -610,13 +610,13 @@ const region = () =>
     .find((each) => each.classList.contains("sr-only"));
 
 describe("Prompts — Edit prompt's Category field", () => {
-  it("shows the prompt's current category, under the hint drawn on the canvas", async () => {
+  it("shows the prompt's current category, with no hint", async () => {
     stubServer({ category: "Planning" });
     renderPrompts();
     const dialog = await editFromMenu();
 
     const field = await categoryField(dialog, "Planning");
-    expect(field).toHaveAccessibleDescription("Only you see this category.");
+    expect(field).not.toHaveAccessibleDescription();
     await userEvent.click(field);
     const menu = within(screen.getByRole("group", { name: "Category" }));
     expect(menu.getByRole("option", { name: /Planning/ })).toHaveAttribute(
@@ -779,7 +779,7 @@ describe("Prompts — Edit prompt's Example", () => {
     ).toHaveAttribute("aria-pressed", "true");
     expect(
       within(dialog).getByRole("textbox", { name: "Prompt text" }),
-    ).toHaveAccessibleDescription("Saved exactly as you enter it.");
+    ).not.toHaveAccessibleDescription();
 
     await showExample(dialog);
 

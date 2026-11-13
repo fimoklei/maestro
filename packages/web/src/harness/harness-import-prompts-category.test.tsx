@@ -8,7 +8,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
-import { RELEASED } from "./harness-flow-fixture";
+import { chooseFilesSource, RELEASED } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 
 // Each row's Category in Import prompts, over a server that keeps its own
@@ -97,6 +97,7 @@ async function openWithFiles(
     await screen.findByRole("menuitem", { name: "Import prompts" }),
   );
   const dialog = await screen.findByRole("dialog", { name: "Import prompts" });
+  await chooseFilesSource(user, dialog);
   const input = dialog.querySelector('input[type="file"]');
   if (!(input instanceof HTMLInputElement)) throw new Error("no file input");
   await user.upload(input, files);
@@ -146,7 +147,7 @@ describe("Import prompts' Category per row", () => {
     ).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    await user.click(dialog.getByRole("button", { name: "Import 1 prompt" }));
+    await user.click(dialog.getByRole("button", { name: "Import prompt" }));
 
     await dialog.findByRole("heading", { name: "Imported 1 of 1 prompt" });
     expect(assigned).toEqual([]);
@@ -170,7 +171,7 @@ describe("Import prompts' Category per row", () => {
     await user.click(categoryOf(dialog, "standup"));
     await user.click(screen.getByRole("option", { name: "Code review" }));
     await user.click(dialog.getByRole("checkbox", { name: "standup" }));
-    await user.click(dialog.getByRole("button", { name: "Import 1 prompt" }));
+    await user.click(dialog.getByRole("button", { name: "Import prompt" }));
 
     await dialog.findByRole("heading", { name: "Imported 1 of 1 prompt" });
     expect(assigned).toEqual([
@@ -186,7 +187,7 @@ describe("Import prompts' Category per row", () => {
     ]);
     await dialog.findByText("Docs");
 
-    await user.click(dialog.getByRole("button", { name: "Import 1 prompt" }));
+    await user.click(dialog.getByRole("button", { name: "Import prompt" }));
 
     const failed = await dialog.findByRole("region", {
       name: "Category not set · 1",

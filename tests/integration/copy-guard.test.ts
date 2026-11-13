@@ -39,6 +39,9 @@ describe("copy guard", () => {
         'export const i = "Import skills";',
         'export const j = "Import prompts…";',
         'export const k = "Edit prompt";',
+        // The singular confirm of an import dialog with one row checked.
+        'export const l = "Import skill";',
+        'export const m = "Import prompt";',
         "",
       ].join("\n"),
     );

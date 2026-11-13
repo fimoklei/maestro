@@ -184,7 +184,8 @@ Pick the form from this table. Add no other form, and no banner.
   a row to one line: its cost or reason follows the name in slate 11 `meta`,
   right-aligned, and wraps only when long. A row may end in one 24px control
   that sets a value of that row only; a row that cannot run has none. Name the checked count
-  in the confirm, live, and block it when nothing is checked. Add no
+  in the confirm, live, from two rows up (`Import 3 skills`; one row reads
+  `Import skill`), and block it when nothing is checked. Add no
   select-all.
 - Drop what only describes the copy, such as files left out or file counts.
   Put what the reader must act on in the new row's detail pane.

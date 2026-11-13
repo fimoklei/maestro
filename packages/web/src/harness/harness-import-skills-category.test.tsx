@@ -156,7 +156,7 @@ describe("Import skills' Category per row", () => {
     ).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    await user.click(dialog.getByRole("button", { name: "Import 1 skill" }));
+    await user.click(dialog.getByRole("button", { name: "Import skill" }));
 
     await dialog.findByRole("heading", { name: "Imported 1 of 1 skill" });
     expect(assigned).toEqual([]);
@@ -173,7 +173,7 @@ describe("Import skills' Category per row", () => {
     expect(await dialog.findByText("Docs")).toBeInTheDocument();
     expect(categoryOf(dialog, "review")).toHaveTextContent("Docs");
     await user.click(dialog.getByRole("checkbox", { name: "review" }));
-    await user.click(dialog.getByRole("button", { name: "Import 1 skill" }));
+    await user.click(dialog.getByRole("button", { name: "Import skill" }));
 
     await dialog.findByRole("heading", { name: "Imported 1 of 1 skill" });
     expect(assigned).toEqual([]);
@@ -214,7 +214,7 @@ describe("Import skills' Category per row", () => {
     const dialog = await openImportSkills(user);
     await dialog.findByText("Docs");
 
-    await user.click(dialog.getByRole("button", { name: "Import 1 skill" }));
+    await user.click(dialog.getByRole("button", { name: "Import skill" }));
 
     const failed = await dialog.findByRole("region", {
       name: "Category not set · 1",

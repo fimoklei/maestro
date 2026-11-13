@@ -2,7 +2,6 @@ import type { HarnessPrimitiveType } from "@maestro/core";
 import { sameCategoryName } from "@maestro/core/category-name";
 import { type RefObject, useRef, useState } from "react";
 import {
-  CATEGORY_FIELD,
   CATEGORY_NOT_SET,
   categoryNotSetAfterImport,
 } from "../categories/categories-copy";
@@ -200,7 +199,6 @@ export function useImportChecklist<Source, Refusal>(
       if (type === null || row === undefined) return null;
       return {
         ...categoryOf(row),
-        hint: CATEGORY_FIELD.hint,
         onChange: (category) => pick(key, category),
         add: addFor(key),
       };
