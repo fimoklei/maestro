@@ -11,12 +11,8 @@ import { machine, named, phrase, plainText } from "../ui/phrase";
 import { ITEM_WORDS } from "./item-words";
 import { harnessHeadings, invalidNameHeading } from "./notice-copy";
 
-export const PROMPT_FIELD_HINTS = {
-  name: phrase`Maestro uses this as the file name in ${machine(".maestro/prompts")}.`,
-  description: "One line, shown in the Prompts table.",
-  text: "Saved exactly as you enter it.",
-  example: "Optional example prompt.",
-} as const;
+/** The one hint the prompt box shows, under Example. */
+export const EXAMPLE_HINT = "Optional example prompt.";
 
 /** The accessible name of the Prompt text / Example switch. */
 export const PROMPT_BOX_LABEL = "Prompt text or example";

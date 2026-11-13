@@ -1,5 +1,4 @@
 import type { PromptFile, PromptPart } from "@maestro/core/prompt-file";
-import { CATEGORY_FIELD } from "../categories/categories-copy";
 import { CategoryField } from "../categories/category-field";
 import type { HeldCategoryAdd } from "../categories/use-held-category-add";
 import { EDIT_PROMPT } from "../ui/control-labels";
@@ -90,7 +89,6 @@ export function EditPromptDialog({
             <CategoryField
               value={category}
               onChange={pickCategory}
-              hint={CATEGORY_FIELD.hint}
               suggested={null}
               add={categoryAdd}
               disabled={locked}

@@ -63,7 +63,7 @@ export const undoesNewerLine = (release: string): Phrase =>
 // `undoing` counts the checked skills that undo newer Harness changes.
 export const importConfirmLabel = (count: number, undoing: number): string => {
   if (count === 0) return IMPORT_SKILLS;
-  const label = `Import ${count} ${count === 1 ? "skill" : "skills"}`;
+  const label = count === 1 ? "Import skill" : `Import ${count} skills`;
   return undoing === 0
     ? label
     : `${label} · ${undoing} ${undoing === 1 ? "undoes" : "undo"} newer changes`;

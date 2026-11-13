@@ -54,7 +54,7 @@ const PASTED_KEY = "pasted";
 // prompt, which rows are checked, and the run. It lives only while the
 // dialog stands, so closing forgets it.
 export function useImportPromptsFlow(onClose: () => void) {
-  const [source, setSource] = useState<PromptSource>("files");
+  const [source, setSource] = useState<PromptSource>("paste");
   const [chosen, setChosen] = useState<readonly ChosenPrompt[] | null>(null);
   const pasted = usePastedPrompt();
   // A new object each time Paste text opens, so its checks start afresh.

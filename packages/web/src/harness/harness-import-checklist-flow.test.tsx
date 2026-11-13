@@ -3,7 +3,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery } from "../test-utils";
-import { RELEASED } from "./harness-flow-fixture";
+import { chooseFilesSource, RELEASED } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 
 const SCAN = {
@@ -100,6 +100,7 @@ describe("Harness import checklist", () => {
     const user = userEvent.setup();
     renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
     const dialog = await openImport(user, "Import prompts");
+    await chooseFilesSource(user, dialog);
     const input = dialog.querySelector('input[type="file"]');
     if (!(input instanceof HTMLInputElement)) throw new Error("no file input");
     const files = [promptFile("release-notes"), promptFile("standup")];

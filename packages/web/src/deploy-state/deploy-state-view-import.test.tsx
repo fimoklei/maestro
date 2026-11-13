@@ -104,7 +104,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     await userEvent.click(within(group).getByRole("checkbox", { name: "tdd" }));
     expect(
-      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+      within(dialog).getByRole("button", { name: "Import skill" }),
     ).toBeInTheDocument();
 
     await userEvent.click(
@@ -140,7 +140,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     });
     await userEvent.click(within(group).getByRole("checkbox", { name: "tdd" }));
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+      within(dialog).getByRole("button", { name: "Import skill" }),
     );
 
     expect(
@@ -171,7 +171,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
     await userEvent.click(
-      await within(dialog).findByRole("button", { name: "Import 1 skill" }),
+      await within(dialog).findByRole("button", { name: "Import skill" }),
     );
 
     expect(
@@ -211,7 +211,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     expect(box).not.toBeChecked();
 
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+      within(dialog).getByRole("button", { name: "Import skill" }),
     );
     await screen.findByText("harness view code-review");
     expect(sent).toEqual([
@@ -248,7 +248,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
       within(dialog).getByRole("group", { name: "Can be imported · 1" }),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+      within(dialog).getByRole("button", { name: "Import skill" }),
     ).toBeInTheDocument();
 
     await userEvent.click(box);
@@ -369,7 +369,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
     await userEvent.click(
-      await within(dialog).findByRole("button", { name: "Import 1 skill" }),
+      await within(dialog).findByRole("button", { name: "Import skill" }),
     );
 
     expect(
@@ -385,7 +385,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
     await userEvent.click(
-      await within(dialog).findByRole("button", { name: "Import 1 skill" }),
+      await within(dialog).findByRole("button", { name: "Import skill" }),
     );
 
     expect(await within(dialog).findByText("Harness busy")).toBeInTheDocument();

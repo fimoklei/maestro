@@ -4,10 +4,10 @@ import { Field } from "../ui/field";
 import { SegmentedControl } from "../ui/segmented-control";
 import { TextAreaField } from "../ui/text-area-field";
 import {
+  EXAMPLE_HINT,
   PROMPT_BOX_LABEL,
   PROMPT_BOX_PARTS,
   PROMPT_BOX_WORDS,
-  PROMPT_FIELD_HINTS,
 } from "./prompt-copy";
 import type { PromptFieldErrors } from "./prompt-field-errors";
 import type { PasteTarget } from "./use-pasted-prompt";
@@ -49,7 +49,6 @@ export function PromptBodyFields({
     <>
       <Field
         label="Description"
-        hint={PROMPT_FIELD_HINTS.description}
         error={fieldErrors.description}
         value={draft.description}
         onChange={(description) => edit({ description })}
@@ -69,7 +68,7 @@ export function PromptBodyFields({
             />
           ),
         }}
-        hint={PROMPT_FIELD_HINTS[part]}
+        hint={part === "example" ? EXAMPLE_HINT : undefined}
         error={part === "text" ? fieldErrors.text : undefined}
         value={draft[part]}
         onChange={(value) => edit({ [part]: value })}

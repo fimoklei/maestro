@@ -66,7 +66,6 @@ const listed = (
           open: false,
           addFailed: false,
           add: IDLE_ADD,
-          buttonRef: undefined,
           toggleMenu: () => {},
           pick: () => {},
           closeMenu: () => {},

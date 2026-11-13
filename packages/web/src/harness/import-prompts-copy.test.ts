@@ -11,7 +11,7 @@ import {
 describe("import prompts copy", () => {
   it("counts the checked prompts in the confirm", () => {
     expect(importPromptsConfirm(0)).toBe("Import prompts");
-    expect(importPromptsConfirm(1)).toBe("Import 1 prompt");
+    expect(importPromptsConfirm(1)).toBe("Import prompt");
     expect(importPromptsConfirm(2)).toBe("Import 2 prompts");
   });
 

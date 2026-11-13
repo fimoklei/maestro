@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { CATEGORY_FIELD } from "../categories/categories-copy";
 import { PastedPromptFields } from "./pasted-prompt-fields";
 import { promptFieldErrors } from "./prompt-field-errors";
 
@@ -28,7 +27,6 @@ const pasted = {
   category: {
     value: null,
     suggested: null,
-    hint: CATEGORY_FIELD.hint,
     onChange: () => {},
     add: idleAdd,
   },

@@ -1,7 +1,6 @@
 import { CategoryField } from "../categories/category-field";
 import { Field } from "../ui/field";
 import { PromptBodyFields } from "./prompt-body-fields";
-import { PROMPT_FIELD_HINTS } from "./prompt-copy";
 import type { ImportPromptsFlow } from "./use-import-prompts-flow";
 
 // Paste text's fields: Name, Description, Category, then the text.
@@ -18,7 +17,6 @@ export function PastedPromptFields({
     <>
       <Field
         label="Name"
-        hint={PROMPT_FIELD_HINTS.name}
         error={fieldErrors.name}
         value={draft.name}
         onChange={(name) => edit({ name })}

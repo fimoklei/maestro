@@ -8,7 +8,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { jsonResponse, renderWithQuery, sentence } from "../test-utils";
-import { RELEASED } from "./harness-flow-fixture";
+import { chooseFilesSource, RELEASED } from "./harness-flow-fixture";
 import { HarnessView } from "./harness-view";
 
 // Each row's Category in Import prompts, over a server that keeps its own
@@ -97,6 +97,7 @@ async function openWithFiles(
     await screen.findByRole("menuitem", { name: "Import prompts" }),
   );
   const dialog = await screen.findByRole("dialog", { name: "Import prompts" });
+  await chooseFilesSource(user, dialog);
   const input = dialog.querySelector('input[type="file"]');
   if (!(input instanceof HTMLInputElement)) throw new Error("no file input");
   await user.upload(input, files);
@@ -108,6 +109,42 @@ const categoryOf = (dialog: ReturnType<typeof within>, name: string) =>
   dialog.getByRole("button", { name: `Set category for ${name}` });
 
 describe("Import prompts' Category per row", () => {
+  it("floats a row's category menu over the dialog, leaving the rows in place", async () => {
+    stubServer({});
+    const user = userEvent.setup();
+    const dialog = await openWithFiles(user, [
+      promptFile("release-notes.md"),
+      promptFile("standup.md"),
+    ]);
+
+    const frame = screen.getByRole("dialog", { name: "Import prompts" });
+    await user.click(categoryOf(dialog, "release-notes"));
+
+    const menu = screen.getByRole("group", {
+      name: "Set category for release-notes",
+    });
+    expect(frame).not.toContainElement(menu);
+  });
+
+  it("closes a row's category menu on a press outside it, with focus back on the row's control", async () => {
+    stubServer({});
+    const user = userEvent.setup();
+    const dialog = await openWithFiles(user, [promptFile("standup.md")]);
+    const control = categoryOf(dialog, "standup");
+
+    await user.click(control);
+    // The float is modal: a press beside it reaches no control in the dialog.
+    await user.pointer({
+      keys: "[MouseLeft]",
+      target: document.documentElement,
+    });
+
+    expect(
+      screen.queryByRole("group", { name: "Set category for standup" }),
+    ).not.toBeInTheDocument();
+    expect(control).toHaveFocus();
+  });
+
   it("starts a new row on the category its front matter names when the list holds it, and saves it after the import", async () => {
     const { assigned } = stubServer({});
     const user = userEvent.setup();
@@ -146,7 +183,7 @@ describe("Import prompts' Category per row", () => {
     ).toBeInTheDocument();
     await user.keyboard("{Escape}");
 
-    await user.click(dialog.getByRole("button", { name: "Import 1 prompt" }));
+    await user.click(dialog.getByRole("button", { name: "Import prompt" }));
 
     await dialog.findByRole("heading", { name: "Imported 1 of 1 prompt" });
     expect(assigned).toEqual([]);
@@ -170,7 +207,7 @@ describe("Import prompts' Category per row", () => {
     await user.click(categoryOf(dialog, "standup"));
     await user.click(screen.getByRole("option", { name: "Code review" }));
     await user.click(dialog.getByRole("checkbox", { name: "standup" }));
-    await user.click(dialog.getByRole("button", { name: "Import 1 prompt" }));
+    await user.click(dialog.getByRole("button", { name: "Import prompt" }));
 
     await dialog.findByRole("heading", { name: "Imported 1 of 1 prompt" });
     expect(assigned).toEqual([
@@ -186,7 +223,7 @@ describe("Import prompts' Category per row", () => {
     ]);
     await dialog.findByText("Docs");
 
-    await user.click(dialog.getByRole("button", { name: "Import 1 prompt" }));
+    await user.click(dialog.getByRole("button", { name: "Import prompt" }));
 
     const failed = await dialog.findByRole("region", {
       name: "Category not set · 1",

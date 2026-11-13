@@ -117,7 +117,7 @@ describe("Deploy-state — Import local edits on a skill row", () => {
     expect(within(group).getByRole("checkbox", { name: "tdd" })).toBeChecked();
     expect(within(dialog).getAllByRole("checkbox")).toHaveLength(1);
     await userEvent.click(
-      within(dialog).getByRole("button", { name: "Import 1 skill" }),
+      within(dialog).getByRole("button", { name: "Import skill" }),
     );
 
     expect(await screen.findByText("harness view tdd")).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe("Deploy-state — Import local edits on a skill row", () => {
 
     const dialog = await openSkillDialog(pane, "tdd", ROW);
     await userEvent.click(
-      await within(dialog).findByRole("button", { name: "Import 1 skill" }),
+      await within(dialog).findByRole("button", { name: "Import skill" }),
     );
 
     const refused = await within(dialog).findByRole("region", {
@@ -217,7 +217,7 @@ describe("Deploy-state — Import local edits on a skill row", () => {
 
     const dialog = await openSkillDialog(pane, "code-review", "Global");
     await userEvent.click(
-      await within(dialog).findByRole("button", { name: "Import 1 skill" }),
+      await within(dialog).findByRole("button", { name: "Import skill" }),
     );
 
     expect(

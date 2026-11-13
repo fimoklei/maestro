@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import { readNotice } from "../test-utils";
 import { EDIT_PROMPT } from "../ui/control-labels";
-import { plainText } from "../ui/phrase";
 import {
+  EXAMPLE_HINT,
   editPromptNotice,
   editPromptTitle,
   harnessPromptReadNotice,
@@ -12,21 +12,13 @@ import {
   PROMPT_BOX_LABEL,
   PROMPT_BOX_PARTS,
   PROMPT_FIELD_ERRORS,
-  PROMPT_FIELD_HINTS,
   promptReadNotice,
 } from "./prompt-copy";
 
 const refusal = (code: string) => new HttpError(409, "refused", code);
 
 describe("Prompt field copy", () => {
-  it("states each field's hint and error in the approved words", () => {
-    expect(plainText(PROMPT_FIELD_HINTS.name)).toBe(
-      "Maestro uses this as the file name in .maestro/prompts.",
-    );
-    expect(PROMPT_FIELD_HINTS.description).toBe(
-      "One line, shown in the Prompts table.",
-    );
-    expect(PROMPT_FIELD_HINTS.text).toBe("Saved exactly as you enter it.");
+  it("states each field's error in the approved words", () => {
     expect(PROMPT_FIELD_ERRORS).toEqual({
       "empty-name": "Enter a name.",
       "invalid-name":
@@ -46,7 +38,7 @@ describe("Prompt field copy", () => {
       "Prompt text",
       "Example",
     ]);
-    expect(PROMPT_FIELD_HINTS.example).toBe("Optional example prompt.");
+    expect(EXAMPLE_HINT).toBe("Optional example prompt.");
   });
 });
 

@@ -158,6 +158,32 @@ describe("copy guard", () => {
     });
   });
 
+  it("passes the bare singular only as an import dialog's confirm", () => {
+    for (const file of [
+      "packages/web/src/harness/import-prompts-copy.ts",
+      "packages/web/src/deploy-state/import-local-edits-copy.ts",
+    ]) {
+      plant(
+        file,
+        'export const c = n === 1 ? "Import prompt" : "Import skill";\n',
+      );
+    }
+
+    expect(findOffenders(root)).toEqual([]);
+  });
+
+  it("fails the bare singular anywhere else, such as a menu item", () => {
+    plant(
+      "packages/web/src/harness/import-menu.tsx",
+      'export const items = ["Import skill", "Import prompt"];\n',
+    );
+
+    expect(findOffenders(root)).toEqual([
+      "packages/web/src/harness/import-menu.tsx:1: Import prompt",
+      "packages/web/src/harness/import-menu.tsx:1: Import skill",
+    ]);
+  });
+
   it("reads JSX text, attributes and the text parts of a template", () => {
     plant(
       "packages/web/src/c.tsx",

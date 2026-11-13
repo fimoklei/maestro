@@ -1,8 +1,7 @@
 import type { HarnessPrimitiveType } from "@maestro/core";
 import { sameCategoryName } from "@maestro/core/category-name";
-import { type RefObject, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import {
-  CATEGORY_FIELD,
   CATEGORY_NOT_SET,
   categoryNotSetAfterImport,
 } from "../categories/categories-copy";
@@ -16,7 +15,6 @@ import {
   useHeldCategoryAdd,
 } from "../categories/use-held-category-add";
 import { toggleStaged } from "../ui/bulk-selection";
-import type { MenuClosedBy } from "../ui/category-menu";
 import type { ReportGroup } from "../ui/report";
 import type { ImportRow } from "./import-checklist-groups";
 
@@ -33,10 +31,9 @@ export type ImportRowCategory = {
   open: boolean;
   addFailed: boolean;
   add: HeldCategoryAdd;
-  buttonRef: RefObject<HTMLButtonElement | null> | undefined;
   toggleMenu: () => void;
   pick: (category: string | null) => void;
-  closeMenu: (via: MenuClosedBy) => void;
+  closeMenu: () => void;
 };
 
 export type ImportChecklist<Refusal> = {
@@ -112,7 +109,6 @@ export function useImportChecklist<Source, Refusal>(
   const categoryAdd = useHeldCategoryAdd((category) => {
     if (addingFor.current !== null) pick(addingFor.current, category);
   });
-  const opener = useRef<HTMLButtonElement>(null);
 
   const ownCategory = (name: string): string | null =>
     list?.assignments.find((each) => each.type === type && each.name === name)
@@ -143,10 +139,7 @@ export function useImportChecklist<Source, Refusal>(
     .filter(isChecked)
     .map(({ key, held }) => ({ key, replace: held }));
 
-  const closeMenu = (refocus: boolean) => {
-    update((base) => ({ ...base, menu: null }));
-    if (refocus) opener.current?.focus();
-  };
+  const closeMenu = () => update((base) => ({ ...base, menu: null }));
 
   // The add as one row's menu runs it: the added category lands on that row.
   const addFor = (key: string): HeldCategoryAdd => ({
@@ -167,17 +160,13 @@ export function useImportChecklist<Source, Refusal>(
       // An add refused after a press closed the menu.
       addFailed: categoryAdd.failed && addingFor.current === row.key,
       add: addFor(row.key),
-      buttonRef: open ? opener : undefined,
       toggleMenu: () =>
         update((base) => ({
           ...base,
           menu: base.menu === row.key ? null : row.key,
         })),
-      pick: (category) => {
-        pick(row.key, category);
-        opener.current?.focus();
-      },
-      closeMenu: (via) => closeMenu(via !== "press"),
+      pick: (category) => pick(row.key, category),
+      closeMenu,
     };
   };
 
@@ -200,7 +189,6 @@ export function useImportChecklist<Source, Refusal>(
       if (type === null || row === undefined) return null;
       return {
         ...categoryOf(row),
-        hint: CATEGORY_FIELD.hint,
         onChange: (category) => pick(key, category),
         add: addFor(key),
       };
