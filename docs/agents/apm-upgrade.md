@@ -32,7 +32,7 @@ treat them as hypotheses, not facts.
    differs. Differs → copy the capture over the fixture (re-captured); same →
    leave it (verified unchanged), per that README's bookkeeping. Re-run any
    other README capture by hand from its recorded command and conditions.
-   Then run the real-apm lanes: the four canary tests, via
+   Then run the real-apm lanes: the five canary tests, via
    `scripts/run-apm-canary.sh`, and the integration suite. A failing lane is
    the finding, not an obstacle — it marks a behavior change. The canaries are
    a gate: the upgrade is not done until they are green against the new

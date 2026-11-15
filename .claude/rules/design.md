@@ -72,6 +72,9 @@ a press beside it, with focus back on the control.
   Put the others in the detail pane. A column that reads a separate fact, such
   as the GitHub column, shows its own Unknown badge when that read failed.
 - Show an unknown reading as an Unknown badge, never as a notice.
+- Add a word to a table's Status column only when the reader's next action
+  differs from every word already there. State any other new fact in the
+  detail pane.
 
 **Disclosure.**
 - Keep a row to one line. Put the summary in the hover card and the rest in
