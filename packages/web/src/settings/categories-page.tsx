@@ -18,6 +18,7 @@ import {
 import {
   useAddCategory,
   useCategories,
+  useCategoriesProposal,
   useHarnessCategories,
 } from "../categories/use-categories";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
@@ -34,6 +35,7 @@ import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
 import { AddCategoryDialog } from "./add-category-dialog";
 import { CopyHarnessCategoriesAction } from "./copy-harness-categories-action";
 import { HarnessCategoriesSection } from "./harness-categories-section";
+import { PullRequestRow } from "./pull-request-row";
 import { CATEGORIES_PAGE } from "./settings-pages";
 import { SettingsPanel } from "./settings-panel";
 import { SettingsRow } from "./settings-row";
@@ -47,6 +49,7 @@ const SCREEN = CATEGORIES_PAGE.label;
 export function CategoriesPage() {
   const categories = useCategories();
   const harnessCategories = useHarnessCategories();
+  const proposal = useCategoriesProposal();
   const add = useAddCategory();
   const [open, setOpen] = useState(false);
   const [copying, setCopying] = useState(false);
@@ -146,6 +149,7 @@ export function CategoriesPage() {
                     status.press();
                     void categories.refetch();
                     void harnessCategories.refetch();
+                    void proposal.refetch();
                   }}
                 >
                   <Icon of={RefreshCw} />
@@ -207,7 +211,18 @@ export function CategoriesPage() {
           <HarnessCategoriesSection
             harness={harnessCategories.data}
             onCopy={() => setCopying(true)}
-          />
+          >
+            <PullRequestRow
+              row={
+                proposal.isError
+                  ? { state: "unread" }
+                  : proposal.isPending
+                    ? undefined
+                    : proposal.data
+              }
+              report={status.report}
+            />
+          </HarnessCategoriesSection>
           {copying ? (
             <CopyHarnessCategoriesAction
               report={status.report}

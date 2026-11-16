@@ -39,6 +39,7 @@ import {
   readWorkingDifferences,
   writePrimitiveInto,
 } from "./harness-primitive-git";
+import { pushListFile } from "./list-file-git";
 import {
   deleteProposalBranch,
   readBranchAuthorship,
@@ -57,6 +58,8 @@ import type {
   HarnessGitPort,
   HarnessMovementTrees,
   HarnessTag,
+  ListFilePush,
+  ListPushOutcome,
   PromoteSkillOutcome,
   PublishTagOutcome,
   SkillPushOutcome,
@@ -231,7 +234,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         [{ subject: ref, object }],
         {
           treeBase: base,
-          parent: existingTip ?? base,
+          parents: [existingTip ?? base],
           indexDir,
           message: proposalTitle(ref, kind),
         },
@@ -282,7 +285,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
         [{ subject: ref, object: null }],
         {
           treeBase: base,
-          parent: existingTip ?? base,
+          parents: [existingTip ?? base],
           indexDir,
           message: proposalTitle(ref, "deletion"),
         },
@@ -304,6 +307,15 @@ export class HarnessGitAdapter implements HarnessGitPort {
     withdrawal: DefaultBranchWithdrawal,
   ): Promise<WithdrawalPushOutcome> {
     return await withdrawOnDefaultBranch(root, withdrawal, {
+      pushLandsWhereItFetched: () => this.pushLandsWhereItFetched(root),
+    });
+  }
+
+  async pushListFile(
+    root: string,
+    push: ListFilePush,
+  ): Promise<ListPushOutcome> {
+    return await pushListFile(root, push, {
       pushLandsWhereItFetched: () => this.pushLandsWhereItFetched(root),
     });
   }

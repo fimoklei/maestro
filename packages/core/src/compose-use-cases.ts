@@ -2,6 +2,7 @@
 // (`nodeUseCasePorts`); a test passes in-memory ones.
 
 import { Categories } from "./categories/categories";
+import { CategoriesProposal } from "./categories/categories-proposal";
 import { heldItemsFrom } from "./categories/held-items";
 import { SelectionWriter } from "./deploy/apply-selection";
 import type {
@@ -367,20 +368,34 @@ export function composeUseCases(ports: UseCasePorts) {
     ],
   });
 
+  // The key the operator's own list is saved under.
+  const categoryHarness = async () => {
+    const root = await harnessRoot();
+    return root === undefined
+      ? null
+      : { root, origin: await readHarnessOrigin(root) };
+  };
+
   return {
     registry,
     inventory,
     categories: new Categories({
       store,
-      harness: async () => {
-        const root = await harnessRoot();
-        return root === undefined
-          ? null
-          : { root, origin: await readHarnessOrigin(root) };
-      },
+      harness: categoryHarness,
       configPath: () => resolveMaestroConfigPath(env),
       held: heldItemsFrom({ git: harnessGit, fs }),
       git: harnessGit,
+    }),
+    // Shares the promotion's lock: it pushes from the same clone.
+    categoriesProposal: new CategoriesProposal({
+      store,
+      harness: categoryHarness,
+      git: harnessGit,
+      fs,
+      fetchGate: harnessFetchGate,
+      reads: reviewGate.reads(VIEWER_READ_MAX_AGE_MS),
+      review: reviewGate.writes,
+      locks: harnessPromoteLocks,
     }),
     harness,
     // Shares the lock Delete takes, as Import local edits does.

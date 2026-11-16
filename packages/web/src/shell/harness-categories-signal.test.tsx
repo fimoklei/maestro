@@ -1,4 +1,9 @@
-import type { CopyFacts, CopyPreview, HarnessCategories } from "@maestro/core";
+import type {
+  CategoriesProposalRow,
+  CopyFacts,
+  CopyPreview,
+  HarnessCategories,
+} from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -54,6 +59,9 @@ function stubServer({ changed }: { changed: boolean }) {
           count: 2,
           changed: !seen,
         } satisfies HarnessCategories);
+      }
+      if (url === "/api/categories/proposal") {
+        return jsonResponse({ state: "empty" } satisfies CategoriesProposalRow);
       }
       if (url === "/api/categories/harness/preview") {
         seen = true;
@@ -119,11 +127,15 @@ describe("the Harness categories change signal", () => {
         ),
       ),
     ).toBeInTheDocument();
+    // The notice has no control of its own; Copy is the row's.
+    const notice = within(section)
+      .getByText(SIGNAL)
+      .closest('[role="status"], [role="alert"]');
+    expect(notice).not.toBeNull();
+    expect(within(notice as HTMLElement).queryAllByRole("button")).toEqual([]);
     expect(
-      within(section)
-        .getAllByRole("button")
-        .map((each) => each.textContent),
-    ).toEqual(["Copy"]);
+      within(section).getByRole("button", { name: "Copy Harness categories" }),
+    ).toBeInTheDocument();
   });
 
   it("clears the dot and the notice once the copy dialog opened, without a copy", async () => {

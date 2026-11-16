@@ -67,7 +67,7 @@ export async function withdrawOnDefaultBranch(
     }
     commit = await commitSubjectsOnto(root, changes, {
       treeBase: withdrawal.tip,
-      parent: withdrawal.tip,
+      parents: [withdrawal.tip],
       indexDir,
       message: withdrawal.message,
     });

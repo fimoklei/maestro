@@ -1,4 +1,5 @@
 import type { HarnessCategories } from "@maestro/core";
+import type { ReactNode } from "react";
 import {
   COPY,
   COPY_HARNESS_CATEGORIES,
@@ -13,30 +14,44 @@ import { Notice } from "../ui/notice";
 import { SettingsRow } from "./settings-row";
 import { SettingsSection } from "./settings-section";
 
-// What the latest Harness release holds of the Harness categories, and the
-// copy of them. A Harness without them, or one that could not be read, shows
-// nothing.
+// What the latest Harness release holds of the Harness categories, the copy
+// of them where it holds some, then the pull-request row. A release that
+// could not be read states nothing.
 export function HarnessCategoriesSection({
   harness,
   onCopy,
+  children,
 }: {
   harness: HarnessCategories | undefined;
   onCopy: () => void;
+  /** The rows after Copy, such as Pull request to the Harness. */
+  children: ReactNode;
 }) {
-  if (harness?.kind === "listed") {
-    return (
-      <SettingsSection
-        title={HARNESS_CATEGORIES}
-        description={harnessCategoriesCount(harness.count)}
-        notice={
-          harness.changed ? (
-            <Notice
-              trigger="load"
-              notice={harnessCategoriesChanged(harness.tag)}
-            />
-          ) : null
-        }
-      >
+  return (
+    <SettingsSection
+      title={HARNESS_CATEGORIES}
+      description={
+        harness?.kind === "listed"
+          ? harnessCategoriesCount(harness.count)
+          : harness?.kind === "none"
+            ? harnessCategoriesCount(0)
+            : undefined
+      }
+      notice={
+        harness?.kind === "faulty" ? (
+          <Notice
+            trigger="load"
+            notice={harnessCategoriesFaulty(harness.tag)}
+          />
+        ) : harness?.kind === "listed" && harness.changed ? (
+          <Notice
+            trigger="load"
+            notice={harnessCategoriesChanged(harness.tag)}
+          />
+        ) : undefined
+      }
+    >
+      {harness?.kind === "listed" ? (
         <SettingsRow
           name={COPY_HARNESS_CATEGORIES}
           description={COPY_ROW_SENTENCE}
@@ -50,21 +65,8 @@ export function HarnessCategoriesSection({
             </Button>
           }
         />
-      </SettingsSection>
-    );
-  }
-  if (harness?.kind === "faulty") {
-    return (
-      <SettingsSection
-        title={HARNESS_CATEGORIES}
-        notice={
-          <Notice
-            trigger="load"
-            notice={harnessCategoriesFaulty(harness.tag)}
-          />
-        }
-      />
-    );
-  }
-  return null;
+      ) : null}
+      {children}
+    </SettingsSection>
+  );
 }

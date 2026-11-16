@@ -1,7 +1,10 @@
-import type { CategoryResult } from "@maestro/core";
+import type { CategoriesProposalError, CategoryResult } from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
-import { categoryErrorResponses } from "../error-responses";
+import {
+  categoriesProposalErrorResponses,
+  categoryErrorResponses,
+} from "../error-responses";
 import {
   ADD_CATEGORY_BODY,
   ASSIGN_CATEGORY_BODY,
@@ -16,7 +19,10 @@ import {
   renameCategoryBodySchema,
 } from "../request-bodies";
 
-type Deps = Pick<AppDeps, "categories">;
+type Deps = Pick<AppDeps, "categories" | "categoriesProposal">;
+
+const refuse = (c: Context, error: CategoriesProposalError) =>
+  c.json({ error }, categoriesProposalErrorResponses[error].status);
 
 // Every route answers the whole list, so the cockpit replaces its cache from it.
 const respond = (c: Context, result: CategoryResult) => {
@@ -52,6 +58,25 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
           { error: result.error },
           categoryErrorResponses[result.error].status,
         );
+  });
+
+  app.get("/api/categories/proposal", async (c) => {
+    const result = await deps.categoriesProposal.read();
+    return result.ok ? c.json(result.row) : refuse(c, result.error);
+  });
+
+  app.get("/api/categories/proposal/preview", async (c) => {
+    const result = await deps.categoriesProposal.preview();
+    return result.ok ? c.json(result.preview) : refuse(c, result.error);
+  });
+
+  // Takes nothing from the browser: the server reads the list and rechecks
+  // every refusal itself.
+  app.post("/api/categories/proposal", async (c) => {
+    const result = await deps.categoriesProposal.submit();
+    return result.ok
+      ? c.json({ pullRequest: result.pullRequest })
+      : refuse(c, result.error);
   });
 
   // A POST, as opening the copy dialog also records what the operator saw (#1907).

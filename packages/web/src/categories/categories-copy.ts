@@ -23,7 +23,7 @@ export const NO_CATEGORIES_SENTENCE = "Categories appear here.";
 export const HARNESS_CATEGORIES = "Harness categories";
 
 export const harnessCategoriesCount = (count: number) =>
-  `The latest Harness release contains ${count} ${count === 1 ? "category" : "categories"}.`;
+  `The latest Harness release contains ${count === 0 ? "no" : count} ${count === 1 ? "category" : "categories"}.`;
 
 /** A file with an error never reads as no categories; the own list works on. */
 export const harnessCategoriesFaulty = (tag: string) =>
