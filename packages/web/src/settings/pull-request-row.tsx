@@ -15,7 +15,7 @@ import { CreatePullRequest } from "./create-pull-request";
 import { SettingsRow } from "./settings-row";
 
 // The row Pull request to the Harness (#1910): where the operator's
-// categories pull request stands, and Create pull request.
+// categories pull request stands, and Create or Update pull request.
 export function PullRequestRow({
   row,
   report,
@@ -41,22 +41,26 @@ export function PullRequestRow({
                 <TextLink to="/harness">{VIEW_ON_HARNESS}</TextLink>
               </>
             )}
-            {view.offers ? (
-              <GatedButton
-                label={CREATE_PULL_REQUEST}
-                unavailable={view.blocked}
-                onClick={() => setOpen(true)}
-              />
-            ) : null}
+            <GatedButton
+              label={view.action}
+              unavailable={view.blocked}
+              onClick={() => setOpen(true)}
+            />
           </>
         }
       />
       {open ? (
         <CreatePullRequest
+          update={row.state === "own-open" ? row.number : null}
           onCreated={({ number }) => {
             setOpen(false);
             report(
-              plainText(doneSentence("create", `pull request #${number}`)),
+              plainText(
+                doneSentence(
+                  view.action === CREATE_PULL_REQUEST ? "create" : "update",
+                  `pull request #${number}`,
+                ),
+              ),
             );
           }}
           onClose={() => setOpen(false)}

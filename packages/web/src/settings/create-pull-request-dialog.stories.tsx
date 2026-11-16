@@ -1,8 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { HttpError } from "../api/http";
 import {
+  CREATE_PULL_REQUEST,
   PULL_REQUEST_NOT_OPENED,
   pullRequestNotice,
+  UPDATE_PULL_REQUEST,
 } from "../categories/pull-request-copy";
 import { CreatePullRequestDialog } from "./create-pull-request-dialog";
 
@@ -10,6 +12,7 @@ const meta = {
   title: "Settings/CreatePullRequestDialog",
   component: CreatePullRequestDialog,
   args: {
+    update: null,
     preview: {
       kind: "changes",
       added: [{ name: "Review", skills: 2, prompts: 0 }],
@@ -57,14 +60,96 @@ export const Creating: Story = { args: { running: true } };
 
 export const PushFailed: Story = {
   args: {
-    failure: pullRequestNotice(new HttpError(502, "", "promote-failed")),
+    failure: pullRequestNotice(
+      new HttpError(502, "", "promote-failed"),
+      CREATE_PULL_REQUEST,
+    ),
   },
 };
 
 export const NotConfirmed: Story = {
-  args: { failure: pullRequestNotice(new TypeError("fetch failed")) },
+  args: {
+    failure: pullRequestNotice(
+      new TypeError("fetch failed"),
+      CREATE_PULL_REQUEST,
+    ),
+  },
 };
 
 export const PushedWithoutPullRequest: Story = {
   args: { failure: PULL_REQUEST_NOT_OPENED },
+};
+
+export const UpdateChanges: Story = {
+  args: {
+    update: 45,
+    preview: {
+      kind: "update",
+      number: 45,
+      difference: {
+        kind: "changes",
+        added: [{ name: "Review", skills: 2, prompts: 0 }],
+        deleted: [{ name: "Drafts", skills: 0, prompts: 1 }],
+        moved: [{ type: "skill", name: "tdd", category: "Writing" }],
+      },
+      deleted: [],
+    },
+  },
+};
+
+export const UpdateComparing: Story = { args: { update: 45, preview: null } };
+
+export const UpdateDeletesHarnessCategories: Story = {
+  args: {
+    update: 45,
+    preview: {
+      kind: "update",
+      number: 45,
+      difference: {
+        kind: "changes",
+        added: [],
+        deleted: [{ name: "Debugging", skills: 2, prompts: 0 }],
+        moved: [],
+      },
+      deleted: [{ name: "Debugging", skills: 2, prompts: 0 }],
+    },
+  },
+};
+
+export const UpdateMatchesPullRequest: Story = {
+  args: {
+    update: 45,
+    preview: {
+      kind: "update",
+      number: 45,
+      difference: { kind: "unchanged" },
+      deleted: [],
+    },
+  },
+};
+
+export const UpdateCannotCompare: Story = {
+  args: {
+    update: 45,
+    preview: {
+      kind: "update",
+      number: 45,
+      difference: { kind: "uncompared" },
+      deleted: [],
+    },
+  },
+};
+
+export const Updating: Story = {
+  args: { ...UpdateChanges.args, running: true },
+};
+
+export const UpdateFailed: Story = {
+  args: {
+    ...UpdateChanges.args,
+    failure: pullRequestNotice(
+      new HttpError(502, "", "promote-failed"),
+      UPDATE_PULL_REQUEST,
+    ),
+  },
 };

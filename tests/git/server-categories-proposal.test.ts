@@ -2,10 +2,12 @@
 // bare remote; GitHub is stubbed at the port.
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { CategoriesProposalRow } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   git,
   type HarnessStagesApp,
+  request,
   rowsOf,
   useHarnessStages,
 } from "../helpers/harness-stages";
@@ -148,5 +150,42 @@ describe("the categories pull request on a real Harness", {
     expect(await onRemote("diff", "--name-only", tip, BRANCH)).toBe(
       ".maestro/categories.yml",
     );
+  });
+
+  it("compares with the open pull request's branch, then adds one commit to it", async () => {
+    const app = h.makeApp();
+    await ownList(app);
+    await post(app, "/api/categories/proposal", {});
+    const first = await onRemote("rev-parse", BRANCH);
+    h.review.answer({
+      outcome: "read",
+      requests: [
+        request({ headBranch: "maestro/list.categories", headCommit: first }),
+      ],
+      complete: true,
+      limit: 100,
+    });
+    const listOf = async () => {
+      // The route answers the core row type as JSON.
+      const row = (await (
+        await app.request("/api/categories/proposal")
+      ).json()) as CategoriesProposalRow;
+      return row.state === "own-open" ? row.list : row.state;
+    };
+    const same = await listOf();
+    await post(app, "/api/categories", { name: "Writing" });
+    const differs = await listOf();
+
+    const res = await post(app, "/api/categories/proposal", {});
+
+    expect([same, differs]).toEqual(["same", "differs"]);
+    expect(await res.json()).toMatchObject({
+      pullRequest: { state: "updated", number: 45 },
+    });
+    expect(await onRemote("rev-parse", `${BRANCH}^@`)).toBe(first);
+    expect(
+      await onRemote("show", `${BRANCH}:.maestro/categories.yml`),
+    ).toContain("  - Writing");
+    expect(await listOf()).toBe("same");
   });
 });

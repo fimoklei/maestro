@@ -8,7 +8,9 @@ import {
   CONNECTED_TITLE,
   CONTINUE_TO_FIRST_VIEW,
   CONTINUE_TO_HARNESS,
+  COPY_LATER_HINT,
   CREATED_TITLE,
+  connectCopyFailed,
   connectedMessage,
   NO_SKILLS_YET,
   PATH_LABEL,
@@ -49,6 +51,24 @@ describe("connect gate copy", () => {
     // An unread count is left out rather than shown as zero (#841).
     expect(connectedMessage(null)).toBe(
       "The Harness is ready in the Inventory.",
+    );
+  });
+
+  it("offers the Harness categories and states a failed copy", () => {
+    expect(COPY_LATER_HINT).toBe(
+      "You can also copy them later in Categories in Settings.",
+    );
+    expect(connectCopyFailed("no-harness-categories")).toEqual({
+      level: "error",
+      label: "Categories not copied",
+      message:
+        "The latest Harness release no longer contains categories, so nothing was copied. Clear Copy Harness categories, then select Continue to Skills.",
+    });
+    expect(connectCopyFailed("harness-categories-unread").message).toBe(
+      "Maestro couldn't read the latest Harness release, so nothing was copied. Select Continue to Skills to try again, or clear Copy Harness categories to continue without them.",
+    );
+    expect(connectCopyFailed(null).message).toBe(
+      "Select Continue to Skills to try again, or clear Copy Harness categories to continue without them.",
     );
   });
 

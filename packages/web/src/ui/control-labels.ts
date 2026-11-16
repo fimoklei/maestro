@@ -15,9 +15,7 @@ export const IMPORT = "Import";
 export const IMPORT_LOCAL_EDITS = "Import local edits";
 export const IMPORT_PROMPTS = "Import prompts";
 export const IMPORT_SKILLS = "Import skills";
-/** The page name in a sentence, never with "›". */
-export const CATEGORIES_IN_SETTINGS = "Categories in Settings";
-export const OPEN_CATEGORIES_IN_SETTINGS = `Open ${CATEGORIES_IN_SETTINGS}`;
+export const OPEN_CATEGORIES_IN_SETTINGS = "Open Categories in Settings";
 export const PROPOSE_CHANGE = "Propose change";
 export const PUBLISH_RELEASE = "Publish release";
 export const REGISTER_REPOSITORY = "Register repository";

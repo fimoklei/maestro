@@ -10,7 +10,6 @@ import type {
 import { BRANCH_FACT, NEXT_RELEASE } from "../ui/band-copy";
 import { type BandCount, countOf } from "../ui/band-summary";
 import {
-  CATEGORIES_IN_SETTINGS,
   CREATE_PULL_REQUEST,
   CREATE_RELEASE,
   DISCARD_CHANGE,
@@ -170,7 +169,9 @@ const subjectOf = (row: HarnessStageRow): string =>
 const waitSentence = (row: HarnessStageRow, login: string): Copy =>
   phrase`${named(login)} has pull request ${first(row)} open for ${subjectOf(row)}. Wait until it is merged or closed.`;
 
-// The list is proposed from Categories in Settings, never from its row.
+// The list is proposed from Categories in Settings, never from its row; the
+// page is named without "›".
+const CATEGORIES_IN_SETTINGS = "Categories in Settings";
 const IN_SETTINGS = `open ${CATEGORIES_IN_SETTINGS} and select`;
 
 function listDetailSentence(row: HarnessStageRow): Copy | null {

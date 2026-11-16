@@ -517,9 +517,11 @@ const createPullRequestDialog = (
     running = false,
     onClose = vi.fn(),
     failure = null,
-  }: Options & { failure?: NoticeContent | null } = {},
+    update = null,
+  }: Options & { failure?: NoticeContent | null; update?: number | null } = {},
 ) => (
   <CreatePullRequestDialog
+    update={update}
     preview={preview}
     failure={failure}
     running={running}
@@ -553,6 +555,32 @@ const ON_DIALOG: Row[] = [
       {
         label: "Couldn't compare with the next release",
         render: () => createPullRequestDialog({ kind: "uncompared" }),
+      },
+      {
+        label: "Your categories match the pull request",
+        render: () =>
+          createPullRequestDialog(
+            {
+              kind: "update",
+              number: 45,
+              difference: { kind: "unchanged" },
+              deleted: [],
+            },
+            { update: 45 },
+          ),
+      },
+      {
+        label: "Couldn't compare with the pull request",
+        render: () =>
+          createPullRequestDialog(
+            {
+              kind: "update",
+              number: 45,
+              difference: { kind: "uncompared" },
+              deleted: [],
+            },
+            { update: 45 },
+          ),
       },
     ],
   },
