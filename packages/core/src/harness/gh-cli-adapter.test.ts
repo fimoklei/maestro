@@ -380,20 +380,27 @@ describe("GhCliAdapter", () => {
     expect(result).toMatchObject({ requests: [{ state: "closed" }] });
   });
 
+  // A merge time proves a merge; one disagreeing row never fails the read.
   it.each([
-    ["MERGED", null],
-    ["CLOSED", "2026-09-04T17:30:12Z"],
-    ["OPEN", "2026-09-04T17:30:12Z"],
+    ["MERGED", null, "merged"],
+    ["CLOSED", "2026-09-04T17:30:12Z", "merged"],
+    ["OPEN", "2026-09-04T17:30:12Z", "merged"],
   ])(
-    "fails the read where state %s and mergedAt %s disagree",
-    async (state, mergedAt) => {
+    "reads state %s with mergedAt %s as %s",
+    async (state, mergedAt, reading) => {
       const { run } = fakeRun(
-        JSON.stringify([{ ...mergedRow, state, mergedAt }]),
+        JSON.stringify([
+          { ...mergedRow, state, mergedAt },
+          { ...mergedRow, number: 9, state: "OPEN", mergedAt: null },
+        ]),
       );
 
       const result = await new GhCliAdapter({ run }).readReviews(origin);
 
-      expect(result).toEqual({ outcome: "failed" });
+      expect(result).toMatchObject({
+        outcome: "read",
+        requests: [{ state: reading }, { number: 9, state: "open" }],
+      });
     },
   );
 
