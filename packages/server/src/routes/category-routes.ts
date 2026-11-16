@@ -1,4 +1,8 @@
-import type { CategoriesProposalError, CategoryResult } from "@maestro/core";
+import type {
+  CategoriesProposalError,
+  CategoryResult,
+  HarnessCategoriesResult,
+} from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import {
@@ -36,31 +40,27 @@ const respond = (c: Context, result: CategoryResult) => {
   return c.json(refusal, categoryErrorResponses[result.error].status);
 };
 
+const respondHarness = (c: Context, result: HarnessCategoriesResult) =>
+  result.ok
+    ? c.json(result.harness)
+    : c.json(
+        { error: result.error },
+        categoryErrorResponses[result.error].status,
+      );
+
 export function registerCategoryRoutes(app: Hono, deps: Deps) {
   app.get("/api/categories", async (c) =>
     respond(c, await deps.categories.read()),
   );
 
-  app.get("/api/categories/harness", async (c) => {
-    const result = await deps.categories.readHarness();
-    return result.ok
-      ? c.json(result.harness)
-      : c.json(
-          { error: result.error },
-          categoryErrorResponses[result.error].status,
-        );
-  });
+  app.get("/api/categories/harness", async (c) =>
+    respondHarness(c, await deps.categories.readHarness()),
+  );
 
   // The Connect gate's read: offering the copy records the release as seen.
-  app.post("/api/categories/harness/seen", async (c) => {
-    const result = await deps.categories.markHarnessSeen();
-    return result.ok
-      ? c.json(result.harness)
-      : c.json(
-          { error: result.error },
-          categoryErrorResponses[result.error].status,
-        );
-  });
+  app.post("/api/categories/harness/seen", async (c) =>
+    respondHarness(c, await deps.categories.markHarnessSeen()),
+  );
 
   app.get("/api/categories/proposal", async (c) => {
     const result = await deps.categoriesProposal.read();

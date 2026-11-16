@@ -10,6 +10,7 @@ import type {
 } from "@maestro/core";
 import {
   type QueryClient,
+  queryOptions,
   useMutation,
   useQuery,
   useQueryClient,
@@ -17,6 +18,74 @@ import {
 import { requestJson } from "../api/http";
 
 const CATEGORIES_KEY = ["categories"] as const;
+const HARNESS_KEY = [...CATEGORIES_KEY, "harness"] as const;
+const PROPOSAL_KEY = [...CATEGORIES_KEY, "proposal"] as const;
+
+// The server recorded the release as seen, so the dot and the notice go.
+const refreshSignal = (queryClient: QueryClient) =>
+  queryClient.invalidateQueries({ queryKey: HARNESS_KEY, exact: true });
+
+// A read that records the release as seen: a POST, fresh every open.
+const seenQuery = <T>(queryClient: QueryClient, name: string, path: string) =>
+  queryOptions({
+    queryKey: [...HARNESS_KEY, name] as const,
+    queryFn: async () => {
+      const answer = await requestJson<T>(path, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      void refreshSignal(queryClient);
+      return answer;
+    },
+    gcTime: 0,
+    staleTime: 0,
+  });
+
+/** Every categories read, each with its key. */
+const categoriesQueries = {
+  list: () =>
+    queryOptions({
+      queryKey: CATEGORIES_KEY,
+      queryFn: () => requestJson<CategoryList>("/api/categories"),
+    }),
+  /** What the latest Harness release holds of the Harness categories, and whether it changed since the operator last saw it. */
+  harness: () =>
+    queryOptions({
+      queryKey: HARNESS_KEY,
+      queryFn: () => requestJson<HarnessCategories>("/api/categories/harness"),
+    }),
+  /** The row Pull request to the Harness: where the categories pull request stands. */
+  proposal: () =>
+    queryOptions({
+      queryKey: PROPOSAL_KEY,
+      queryFn: () =>
+        requestJson<CategoriesProposalRow>("/api/categories/proposal"),
+    }),
+  /** The pull request's difference, read fresh per dialog. */
+  proposalPreview: () =>
+    queryOptions({
+      queryKey: [...PROPOSAL_KEY, "preview"] as const,
+      queryFn: () =>
+        requestJson<CategoriesProposalPreview>(
+          "/api/categories/proposal/preview",
+        ),
+      gcTime: 0,
+    }),
+  /** What a copy would do, read while the copy dialog stands; records the release as seen. */
+  copyPreview: (queryClient: QueryClient) =>
+    seenQuery<CopyPreview>(
+      queryClient,
+      "preview",
+      "/api/categories/harness/preview",
+    ),
+  /** What the Connect gate offers to copy; offering it records the release as seen. */
+  offer: (queryClient: QueryClient) =>
+    seenQuery<HarnessCategories>(
+      queryClient,
+      "offer",
+      "/api/categories/harness/seen",
+    ),
+};
 
 export function useCategories() {
   return useCategoriesWhile(true);
@@ -24,44 +93,19 @@ export function useCategories() {
 
 /** The categories query, read only while `enabled`, as while a dialog is open. */
 export function useCategoriesWhile(enabled: boolean) {
-  return useQuery({
-    queryKey: CATEGORIES_KEY,
-    queryFn: () => requestJson<CategoryList>("/api/categories"),
-    enabled,
-  });
+  return useQuery({ ...categoriesQueries.list(), enabled });
 }
 
-const HARNESS_KEY = [...CATEGORIES_KEY, "harness"] as const;
-
-/** What the latest Harness release holds of the Harness categories, and whether it changed since the operator last saw it. */
 export function useHarnessCategories() {
-  return useQuery({
-    queryKey: HARNESS_KEY,
-    queryFn: () => requestJson<HarnessCategories>("/api/categories/harness"),
-  });
+  return useQuery(categoriesQueries.harness());
 }
 
-const PROPOSAL_KEY = [...CATEGORIES_KEY, "proposal"] as const;
-
-/** The row Pull request to the Harness: where the categories pull request stands. */
 export function useCategoriesProposal() {
-  return useQuery({
-    queryKey: PROPOSAL_KEY,
-    queryFn: () =>
-      requestJson<CategoriesProposalRow>("/api/categories/proposal"),
-  });
+  return useQuery(categoriesQueries.proposal());
 }
 
-/** The pull request's difference against the next release, read fresh per dialog. */
 export function useCategoriesProposalPreview() {
-  return useQuery({
-    queryKey: [...PROPOSAL_KEY, "preview"],
-    queryFn: () =>
-      requestJson<CategoriesProposalPreview>(
-        "/api/categories/proposal/preview",
-      ),
-    gcTime: 0,
-  });
+  return useQuery(categoriesQueries.proposalPreview());
 }
 
 /**
@@ -86,57 +130,19 @@ const listChanged = (queryClient: QueryClient, list: CategoryList) => {
   queryClient.setQueryData(CATEGORIES_KEY, list);
   void queryClient.invalidateQueries({ queryKey: PROPOSAL_KEY, exact: true });
 };
+
 /** The dot's condition: a release changed the Harness categories. */
 export function useHarnessCategoriesChanged(): boolean {
   const { data } = useHarnessCategories();
   return data?.kind === "listed" && data.changed;
 }
 
-// The server recorded the release as seen, so the dot and the notice go.
-const refreshSignal = (queryClient: QueryClient) =>
-  queryClient.invalidateQueries({ queryKey: HARNESS_KEY, exact: true });
-
-/**
- * What a copy of the Harness categories would do, read while the copy dialog
- * stands. Fresh every open: the release or the own list may have changed.
- * The read records the release as seen.
- */
 export function useCopyPreview() {
-  const queryClient = useQueryClient();
-  return useQuery({
-    queryKey: [...HARNESS_KEY, "preview"],
-    queryFn: async () => {
-      const preview = await requestJson<CopyPreview>(
-        "/api/categories/harness/preview",
-        { method: "POST", body: JSON.stringify({}) },
-      );
-      void refreshSignal(queryClient);
-      return preview;
-    },
-    gcTime: 0,
-    staleTime: 0,
-  });
+  return useQuery(categoriesQueries.copyPreview(useQueryClient()));
 }
 
-/**
- * What the Connect gate offers to copy. The read records the release as seen,
- * as the gate offers it at once; fresh every connect.
- */
 export function useHarnessCategoriesOffer() {
-  const queryClient = useQueryClient();
-  return useQuery({
-    queryKey: [...HARNESS_KEY, "offer"],
-    queryFn: async () => {
-      const offer = await requestJson<HarnessCategories>(
-        "/api/categories/harness/seen",
-        { method: "POST", body: JSON.stringify({}) },
-      );
-      void refreshSignal(queryClient);
-      return offer;
-    },
-    gcTime: 0,
-    staleTime: 0,
-  });
+  return useQuery(categoriesQueries.offer(useQueryClient()));
 }
 
 /** The server recomputes the copy from the release as it stands on confirm. */
