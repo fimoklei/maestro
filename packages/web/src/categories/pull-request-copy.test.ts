@@ -10,6 +10,7 @@ import {
   CREATE_PULL_REQUEST_BODY,
   comparedWithPullRequest,
   comparingWithPullRequest,
+  createAfterCloseBody,
   DELETED_FROM_HARNESS,
   DELETED_FROM_PULL_REQUEST,
   MOVED_TO_ANOTHER_CATEGORY,
@@ -169,7 +170,11 @@ describe("the Update pull request dialog", () => {
 
   it("names the update in its failures", () => {
     expect(
-      pullRequestNotice(new TypeError("fetch failed"), UPDATE_PULL_REQUEST),
+      pullRequestNotice(
+        new TypeError("fetch failed"),
+        UPDATE_PULL_REQUEST,
+        null,
+      ),
     ).toMatchObject({
       message:
         "The Maestro server did not respond, so the pull request may already be updated. Select Close, then check the Harness screen.",
@@ -178,6 +183,7 @@ describe("the Update pull request dialog", () => {
       pullRequestNotice(
         new HttpError(502, "", "promote-failed"),
         UPDATE_PULL_REQUEST,
+        null,
       ),
     ).toMatchObject({
       label: "Pull request not updated",
@@ -188,6 +194,7 @@ describe("the Update pull request dialog", () => {
       pullRequestNotice(
         new HttpError(409, "", "request-unchanged"),
         UPDATE_PULL_REQUEST,
+        null,
       ),
     ).toMatchObject({
       label: "Your categories match the pull request",
@@ -243,7 +250,11 @@ describe("the Create pull request dialog", () => {
 
   it("claims nothing about GitHub when the server did not answer", () => {
     expect(
-      pullRequestNotice(new TypeError("fetch failed"), CREATE_PULL_REQUEST),
+      pullRequestNotice(
+        new TypeError("fetch failed"),
+        CREATE_PULL_REQUEST,
+        null,
+      ),
     ).toMatchObject({
       label: "Pull request not confirmed",
       message:
@@ -256,12 +267,39 @@ describe("the Create pull request dialog", () => {
       pullRequestNotice(
         new HttpError(502, "", "promote-failed"),
         CREATE_PULL_REQUEST,
+        null,
       ),
     ).toMatchObject({
       label: "Pull request not created",
       message:
         "Your categories stay as they are. Select Close, then select Create pull request again.",
     });
+  });
+
+  it("states the deleted branch of the closed pull request when the push after it failed", () => {
+    expect(
+      pullRequestNotice(
+        new HttpError(502, "", "push-failed-after-delete"),
+        CREATE_PULL_REQUEST,
+        45,
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Pull request not created",
+      message:
+        "Your categories stay as they are. Select Close, then select Create pull request again.",
+      detail:
+        "Maestro deleted the branch of pull request #45, then could not push a new branch. Pull request #45 stays closed.",
+    });
+  });
+
+  it("states the body after a close, with the branch deletion only where Maestro deletes it", () => {
+    expect(createAfterCloseBody(45, true)).toBe(
+      "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed, and Maestro deletes its branch. A curator reviews the new pull request and decides whether to merge it. Your categories stay as they are.",
+    );
+    expect(createAfterCloseBody(45, false)).toBe(
+      "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed. A curator reviews the new pull request and decides whether to merge it. Your categories stay as they are.",
+    );
   });
 
   it("reports a pushed branch without a pull request", () => {
@@ -284,11 +322,14 @@ describe("the Create pull request dialog", () => {
     "request-unchanged",
     "push-elsewhere",
     "promote-failed",
+    // Shares the heading of promote-failed; its detail differs.
+    "push-failed-after-delete",
     "promote-in-progress",
   ])("gives %s its own heading", (code) => {
     const heading = pullRequestNotice(
       new HttpError(409, "", code),
       CREATE_PULL_REQUEST,
+      null,
     )?.label;
     expect(heading).toBeDefined();
     expect(heading).not.toBe("Pull request not confirmed");
@@ -311,8 +352,11 @@ describe("the Create pull request dialog", () => {
     ];
     const headings = codes.map(
       (code) =>
-        pullRequestNotice(new HttpError(409, "", code), CREATE_PULL_REQUEST)
-          ?.label,
+        pullRequestNotice(
+          new HttpError(409, "", code),
+          CREATE_PULL_REQUEST,
+          null,
+        )?.label,
     );
     expect(new Set(headings).size).toBe(codes.length);
   });

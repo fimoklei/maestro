@@ -52,20 +52,20 @@ export type PullRequestRowView = {
 const EMPTY_CAUSE = "Add a category.";
 const OVER_LIMITS_CAUSE = "Delete categories.";
 
-// A list the write refuses blocks the button in any state that keeps its own sentence.
-const listCause = (list: string): string | null =>
-  list === "empty"
-    ? EMPTY_CAUSE
-    : list === "over-limits"
-      ? OVER_LIMITS_CAUSE
-      : null;
-
 const blockedRow = (sentence: Copy, blocked: string): PullRequestRowView => ({
   sentence,
   blocked,
   open: null,
   action: CREATE_PULL_REQUEST,
 });
+
+/** Why a list the write refuses blocks the button; null where it can run. */
+const listCause = (list: string): string | null =>
+  list === "empty"
+    ? EMPTY_CAUSE
+    : list === "over-limits"
+      ? OVER_LIMITS_CAUSE
+      : null;
 
 /** Beside the pull request's own sentence when the operator's list differs from it. */
 const DIFFERS_FROM_PULL_REQUEST =
@@ -112,6 +112,17 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
         open: stageStatusReading("not-yet-released"),
         action: CREATE_PULL_REQUEST,
       };
+    case "closed": {
+      const next = `was closed without merging. Select ${CREATE_PULL_REQUEST} to propose your current categories as a new pull request.`;
+      return {
+        sentence: row.byOther
+          ? phrase`${named(row.author)}'s pull request #${row.number} ${next}`
+          : `Pull request #${row.number} ${next}`,
+        blocked: listCause(row.list),
+        open: stageStatusReading("proposal-closed"),
+        action: CREATE_PULL_REQUEST,
+      };
+    }
     case "own-open": {
       const state =
         row.status === "changes-requested"
@@ -132,6 +143,15 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
 
 export const CREATE_PULL_REQUEST_BODY =
   "This creates a pull request on GitHub that replaces the Harness categories with your list. A curator reviews it and decides whether to merge it. Your categories stay as they are.";
+
+/** Create pull request after pull request #`number` was closed without merging. */
+export const createAfterCloseBody = (
+  number: number,
+  deletesBranch: boolean,
+) => {
+  const deletion = deletesBranch ? ", and Maestro deletes its branch" : "";
+  return `This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #${number} stays closed${deletion}. A curator reviews the new pull request and decides whether to merge it. Your categories stay as they are.`;
+};
 
 /** Heard while the difference is read; shown inside the dialog. */
 export const COMPARING = "Comparing with the next release…";
@@ -233,8 +253,17 @@ export const PULL_REQUEST_NOT_OPENED = {
 
 const headings = (
   action: PullRequestAction,
+  closed: number | null,
 ): NoticeTable<CategoriesProposalError> => {
   const AGAIN = `select ${action} again.`;
+  const notCreated = {
+    level: "error",
+    label:
+      action === UPDATE_PULL_REQUEST
+        ? "Pull request not updated"
+        : "Pull request not created",
+    message: `Your categories stay as they are. Select ${CLOSE}, then ${AGAIN}`,
+  } as const satisfies NoticeContent;
   return {
     "not-configured": harnessHeadings["not-configured"],
     "no-usable-origin": harnessHeadings["no-usable-origin"],
@@ -280,14 +309,14 @@ const headings = (
         "Nothing was pushed. Point the clone's push remote at its origin.",
       detail: "Maestro publishes only to the origin it reads from.",
     },
-    "promote-failed": {
-      level: "error",
-      label:
-        action === UPDATE_PULL_REQUEST
-          ? "Pull request not updated"
-          : "Pull request not created",
-      message: `Your categories stay as they are. Select ${CLOSE}, then ${AGAIN}`,
-    },
+    "promote-failed": notCreated,
+    "push-failed-after-delete":
+      closed === null
+        ? notCreated
+        : {
+            ...notCreated,
+            detail: `Maestro deleted the branch of pull request #${closed}, then could not push a new branch. Pull request #${closed} stays closed.`,
+          },
     "promote-in-progress": {
       level: "error",
       label: HARNESS_BUSY,
@@ -301,5 +330,7 @@ const headings = (
 export const pullRequestNotice = (
   error: unknown,
   action: PullRequestAction,
+  /** The closed pull request a Create pull request replaces; null for none. */
+  closed: number | null,
 ): NoticeContent | null =>
-  noticeFromTable(headings(action), error, notConfirmed(action));
+  noticeFromTable(headings(action, closed), error, notConfirmed(action));

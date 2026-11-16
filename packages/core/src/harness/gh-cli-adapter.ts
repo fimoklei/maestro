@@ -31,6 +31,7 @@ const JSON_FIELDS = [
   "number",
   "url",
   "state",
+  "mergedAt",
   "isDraft",
   "reviewDecision",
   "reviewRequests",
@@ -110,29 +111,33 @@ const reviewerSchema = z.discriminatedUnion("__typename", [
   z.object({ __typename: z.literal("Team"), slug: z.string() }),
 ]);
 
-// A row that fails this fails the whole read, never a shorter answer.
-const requestSchema = z.object({
-  number: z.number().int().positive(),
-  url: urlSchema,
-  state: z.enum(["OPEN", "CLOSED", "MERGED"]),
-  isDraft: z.boolean(),
-  reviewDecision: z.enum([
-    "",
-    "APPROVED",
-    "CHANGES_REQUESTED",
-    "REVIEW_REQUIRED",
-  ]),
-  reviewRequests: z.array(reviewerSchema),
-  headRefName: branchSchema,
-  headRefOid: commitSchema,
-  baseRefName: branchSchema,
-  // Null once the head repository is deleted; `nameWithOwner` is empty in a list read.
-  headRepository: z.object({ name: z.string() }).nullable(),
-  headRepositoryOwner: z.object({ login: z.string() }).nullable(),
-  author: z.object({ login: loginSchema }),
-  // Stays in core: only its prefix is compared, and it never crosses to the browser.
-  title: z.string(),
-});
+// A row that fails this fails the whole read, never a shorter answer. The
+// state counts only where `mergedAt` agrees with it.
+const requestSchema = z
+  .object({
+    number: z.number().int().positive(),
+    url: urlSchema,
+    state: z.enum(["OPEN", "CLOSED", "MERGED"]),
+    mergedAt: z.string().nullable(),
+    isDraft: z.boolean(),
+    reviewDecision: z.enum([
+      "",
+      "APPROVED",
+      "CHANGES_REQUESTED",
+      "REVIEW_REQUIRED",
+    ]),
+    reviewRequests: z.array(reviewerSchema),
+    headRefName: branchSchema,
+    headRefOid: commitSchema,
+    baseRefName: branchSchema,
+    // Null once the head repository is deleted; `nameWithOwner` is empty in a list read.
+    headRepository: z.object({ name: z.string() }).nullable(),
+    headRepositoryOwner: z.object({ login: z.string() }).nullable(),
+    author: z.object({ login: loginSchema }),
+    // Stays in core: only its prefix is compared, and it never crosses to the browser.
+    title: z.string(),
+  })
+  .refine((row) => (row.state === "MERGED") === (row.mergedAt !== null));
 
 const documentSchema = z.array(requestSchema);
 

@@ -1,3 +1,4 @@
+import type { CategoriesProposalPreview } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { HttpError } from "../api/http";
 import {
@@ -13,6 +14,7 @@ const meta = {
   component: CreatePullRequestDialog,
   args: {
     update: null,
+    closed: null,
     preview: {
       kind: "changes",
       added: [{ name: "Review", skills: 2, prompts: 0 }],
@@ -63,6 +65,7 @@ export const PushFailed: Story = {
     failure: pullRequestNotice(
       new HttpError(502, "", "promote-failed"),
       CREATE_PULL_REQUEST,
+      null,
     ),
   },
 };
@@ -72,12 +75,49 @@ export const NotConfirmed: Story = {
     failure: pullRequestNotice(
       new TypeError("fetch failed"),
       CREATE_PULL_REQUEST,
+      null,
     ),
   },
 };
 
 export const PushedWithoutPullRequest: Story = {
   args: { failure: PULL_REQUEST_NOT_OPENED },
+};
+
+const AFTER_CLOSE = {
+  kind: "after-close",
+  number: 45,
+  deletesBranch: true,
+  difference: {
+    kind: "changes",
+    added: [{ name: "Review", skills: 2, prompts: 0 }],
+    deleted: [],
+    moved: [],
+  },
+} satisfies CategoriesProposalPreview;
+
+export const AfterCloseDeletesBranch: Story = {
+  args: { closed: 45, preview: AFTER_CLOSE },
+};
+
+export const AfterCloseKeepsBranch: Story = {
+  args: { closed: 45, preview: { ...AFTER_CLOSE, deletesBranch: false } },
+};
+
+export const AfterCloseComparing: Story = {
+  args: { closed: 45, preview: null },
+};
+
+export const AfterClosePushFailed: Story = {
+  args: {
+    closed: 45,
+    preview: AFTER_CLOSE,
+    failure: pullRequestNotice(
+      new HttpError(502, "", "push-failed-after-delete"),
+      CREATE_PULL_REQUEST,
+      45,
+    ),
+  },
 };
 
 export const UpdateChanges: Story = {
@@ -150,6 +190,7 @@ export const UpdateFailed: Story = {
     failure: pullRequestNotice(
       new HttpError(502, "", "promote-failed"),
       UPDATE_PULL_REQUEST,
+      null,
     ),
   },
 };

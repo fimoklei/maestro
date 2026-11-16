@@ -522,6 +522,7 @@ const createPullRequestDialog = (
 ) => (
   <CreatePullRequestDialog
     update={update}
+    closed={null}
     preview={preview}
     failure={failure}
     running={running}
