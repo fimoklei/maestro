@@ -70,6 +70,27 @@ export function useCopyPreview() {
   });
 }
 
+/**
+ * What the Connect gate offers to copy. The read records the release as seen,
+ * as the gate offers it at once; fresh every connect.
+ */
+export function useHarnessCategoriesOffer() {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: [...HARNESS_KEY, "offer"],
+    queryFn: async () => {
+      const offer = await requestJson<HarnessCategories>(
+        "/api/categories/harness/seen",
+        { method: "POST", body: JSON.stringify({}) },
+      );
+      void refreshSignal(queryClient);
+      return offer;
+    },
+    gcTime: 0,
+    staleTime: 0,
+  });
+}
+
 /** The server recomputes the copy from the release as it stands on confirm. */
 export function useCopyHarnessCategories() {
   const queryClient = useQueryClient();

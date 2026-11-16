@@ -43,6 +43,17 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
         );
   });
 
+  // The Connect gate's read: offering the copy records the release as seen.
+  app.post("/api/categories/harness/seen", async (c) => {
+    const result = await deps.categories.markHarnessSeen();
+    return result.ok
+      ? c.json(result.harness)
+      : c.json(
+          { error: result.error },
+          categoryErrorResponses[result.error].status,
+        );
+  });
+
   // A POST, as opening the copy dialog also records what the operator saw (#1907).
   app.post("/api/categories/harness/preview", async (c) => {
     const result = await deps.categories.previewCopy();

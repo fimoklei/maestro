@@ -178,10 +178,12 @@ export const copyPreviewFailed = (code: string | null): NoticeContent => ({
         : `Select ${CLOSE}, then select ${COPY} to try again.`,
 });
 
+export const CATEGORIES_NOT_COPIED = "Categories not copied";
+
 /** Why Copy categories did not land, by the refusal's code. */
 export const copyFailed = (code: string | null): NoticeContent => ({
   level: "error",
-  label: "Categories not copied",
+  label: CATEGORIES_NOT_COPIED,
   message:
     code === "no-harness-categories"
       ? `${NOTHING_LEFT}, so nothing was copied. Select ${CLOSE}, then select ${REREAD_CATEGORIES}.`

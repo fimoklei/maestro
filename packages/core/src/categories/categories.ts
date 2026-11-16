@@ -150,6 +150,40 @@ export class Categories {
     };
   }
 
+  /**
+   * For the Connect gate: offering the copy records the release as seen. A
+   * release without a valid category, or a broken section, records nothing.
+   */
+  async markHarnessSeen(): Promise<HarnessCategoriesResult> {
+    const harness = await this.harness();
+    if (harness === null) return { ok: false, error: "not-configured" };
+    const released = await readReleasedHarnessCategories(
+      this.git,
+      harness.root,
+    );
+    if (released.kind !== "listed") return { ok: true, harness: released };
+    await this.store.update<undefined>((config) => {
+      const section = readCategorySection(config.categories);
+      if (section === null) return { result: undefined };
+      return {
+        config: {
+          ...config,
+          categories: withSeen(section, harness, released.record),
+        },
+        result: undefined,
+      };
+    });
+    return {
+      ok: true,
+      harness: {
+        kind: "listed",
+        tag: released.tag,
+        count: released.record.names.length,
+        changed: false,
+      },
+    };
+  }
+
   // Never a signal for a broken section: nothing could be recorded as seen.
   private async changedSinceSeen(
     harness: HarnessKey,
