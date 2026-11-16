@@ -5,6 +5,7 @@ export type {
   CategoryError,
   CategoryList,
   CategoryResult,
+  CopyPreview,
   HarnessCategories,
   HarnessCategoriesResult,
 } from "./categories/categories";
@@ -16,6 +17,11 @@ export type {
   CategoryCount,
   MovedItem,
 } from "./categories/categories-proposal";
+export {
+  COPY_MODES,
+  type CopyFacts,
+  type CopyMode,
+} from "./categories/copy-harness-categories";
 export {
   composeUseCases,
   type UseCasePorts,

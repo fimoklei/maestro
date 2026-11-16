@@ -2,6 +2,7 @@
 
 import {
   type BatchRequest,
+  COPY_MODES,
   HARNESS_PRIMITIVE_TYPES,
   type ImportSkillsInput,
   type PromptImportDraft,
@@ -101,6 +102,10 @@ export const assignCategoryBodySchema = z.object({
     )
     .min(1),
   category: z.string().nullable(),
+});
+
+export const copyCategoriesBodySchema = z.object({
+  mode: z.enum(COPY_MODES),
 });
 
 // Global carries no path, so no untrusted path crosses the boundary on it.
@@ -393,6 +398,12 @@ export const ASSIGN_CATEGORY_BODY: RequestShape = {
   message: "Nothing was changed. Reload the page, then set the category again.",
   detail:
     'The request carries the items and a category or null: { items: { type: "skill" | "prompt", name: string }[], category: string | null }.',
+};
+
+export const COPY_CATEGORIES_BODY: RequestShape = {
+  message:
+    "Nothing was copied. Reload the page, then copy the Harness categories again.",
+  detail: 'The request carries how to copy: { mode: "add" | "replace" }.',
 };
 
 export const PATH_BODY: RequestShape = {

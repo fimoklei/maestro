@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type {
   CategoriesProposalPreview,
+  CopyMode,
+  CopyPreview,
   ReleasePlan,
   SkillFolderScan,
   UpdatePreview,
@@ -49,6 +51,7 @@ import {
 } from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
 import { AddCategoryDialog } from "./settings/add-category-dialog";
+import { CopyHarnessCategoriesDialog } from "./settings/copy-harness-categories-dialog";
 import { CreatePullRequestDialog } from "./settings/create-pull-request-dialog";
 import { DeleteCategoryDialog } from "./settings/delete-category-dialog";
 import { RenameCategoryDialog } from "./settings/rename-category-dialog";
@@ -451,6 +454,51 @@ const deleteCategoryDialog = ({
     failure={null}
     busy={running}
     onDelete={vi.fn()}
+    onClose={onClose}
+  />
+);
+
+const COPY_PREVIEW: CopyPreview = {
+  tag: "v1.5.0",
+  count: 1,
+  skipped: 0,
+  choice: true,
+  modes: {
+    add: {
+      added: ["Planning"],
+      deleted: [],
+      unchanged: ["Drafts"],
+      respelled: [],
+      moved: { skills: 0, prompts: 0 },
+      uncategorised: { skills: 0, prompts: 0 },
+    },
+    replace: {
+      added: ["Planning"],
+      deleted: ["Drafts"],
+      unchanged: [],
+      respelled: [],
+      moved: { skills: 0, prompts: 0 },
+      uncategorised: { skills: 1, prompts: 0 },
+    },
+  },
+};
+
+const copyCategoriesDialog = (
+  preview: CopyPreview | null,
+  {
+    running = false,
+    onClose = vi.fn(),
+    failure = null,
+    mode = "add",
+  }: Options & { failure?: NoticeContent | null; mode?: CopyMode } = {},
+) => (
+  <CopyHarnessCategoriesDialog
+    preview={preview}
+    mode={mode}
+    onModeChange={vi.fn()}
+    failure={failure}
+    busy={running}
+    onCopy={vi.fn()}
     onClose={onClose}
   />
 );
@@ -903,6 +951,25 @@ const ON_DIALOG: Row[] = [
     loading: null,
     loadFailed: null,
     notices: [],
+  },
+  {
+    file: "settings/copy-harness-categories-dialog.tsx",
+    heading: "Copy Harness categories",
+    render: ({ running, onClose }) =>
+      copyCategoriesDialog(COPY_PREVIEW, { running, onClose }),
+    changed: null,
+    emptyForm: null,
+    loading: {
+      line: "Loading the Harness categories…",
+      render: () => copyCategoriesDialog(null),
+    },
+    loadFailed: () => copyCategoriesDialog(null, { failure: FAILED }),
+    notices: [
+      {
+        label: "Replace deletes 1 of your categories",
+        render: () => copyCategoriesDialog(COPY_PREVIEW, { mode: "replace" }),
+      },
+    ],
   },
   {
     file: "settings/delete-category-dialog.tsx",

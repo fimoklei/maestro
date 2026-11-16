@@ -13,6 +13,7 @@ const meta = {
   args: {
     harness: { kind: "listed", tag: "v1.5.0", count: 6 },
     children: <PullRequestRow row={{ state: "start" }} report={() => {}} />,
+    onCopy: () => {},
   },
   decorators: [
     (Story) => (
