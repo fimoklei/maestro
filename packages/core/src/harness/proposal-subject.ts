@@ -36,6 +36,10 @@ export const subjectPathspec = (subject: ProposalSubject): string =>
 export const subjectObject = (subject: ProposalSubject): "tree" | "blob" =>
   subject.type === "categories" ? "blob" : primitiveObject(subject.type);
 
+/** The name a row shows: the list's is its type, as the cockpit names it. */
+export const subjectName = (subject: ProposalSubject): string =>
+  subject.type === "categories" ? subject.type : subject.name;
+
 /** A map key for one subject; it never crosses HTTP. */
 export const subjectKey = (subject: ProposalSubject): string =>
   subject.type === "categories" ? subject.type : primitiveKey(subject);

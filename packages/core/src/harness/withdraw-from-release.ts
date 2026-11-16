@@ -12,6 +12,7 @@ import {
   hasValidName,
   type ProposalSubject,
   subjectKey,
+  subjectName,
 } from "./proposal-subject";
 import type {
   HarnessFreshnessPort,
@@ -74,13 +75,11 @@ type WithdrawalPlan = {
   message: string;
 };
 
-// The list has one row and no name.
+// A row names the list by its type.
 const sameRef =
   (a: ProposalSubject) =>
   (b: { type: string; name: string }): boolean =>
-    a.type === "categories"
-      ? b.type === "categories"
-      : a.type === b.type && a.name === b.name;
+    a.type === b.type && subjectName(a) === b.name;
 
 // The Change decides only the names: a rename touches its previous name too.
 const namesOf = (row: HarnessStageRow): ProposalSubject[] => {

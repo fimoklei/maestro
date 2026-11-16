@@ -22,6 +22,7 @@ import {
   type ProposalSubject,
   subjectBranch,
   subjectKey,
+  subjectName,
   subjectPath,
 } from "./proposal-subject";
 import type {
@@ -302,7 +303,7 @@ const blankRow = (
 ): HarnessStageRow => ({
   stage,
   type: ref.type,
-  name: ref.type === "categories" ? ref.type : ref.name,
+  name: subjectName(ref),
   path: subjectPath(ref),
   branch: subjectBranch(ref),
   status,
