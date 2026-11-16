@@ -2,10 +2,8 @@ import type { CategoriesProposalPreview } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { HttpError } from "../api/http";
 import {
-  CREATE_PULL_REQUEST,
   PULL_REQUEST_NOT_OPENED,
   pullRequestNotice,
-  UPDATE_PULL_REQUEST,
 } from "../categories/pull-request-copy";
 import { CreatePullRequestDialog } from "./create-pull-request-dialog";
 
@@ -64,7 +62,7 @@ export const PushFailed: Story = {
   args: {
     failure: pullRequestNotice(
       new HttpError(502, "", "promote-failed"),
-      CREATE_PULL_REQUEST,
+      "create",
       null,
     ),
   },
@@ -72,11 +70,7 @@ export const PushFailed: Story = {
 
 export const NotConfirmed: Story = {
   args: {
-    failure: pullRequestNotice(
-      new TypeError("fetch failed"),
-      CREATE_PULL_REQUEST,
-      null,
-    ),
+    failure: pullRequestNotice(new TypeError("fetch failed"), "create", null),
   },
 };
 
@@ -114,7 +108,7 @@ export const AfterClosePushFailed: Story = {
     preview: AFTER_CLOSE,
     failure: pullRequestNotice(
       new HttpError(502, "", "push-failed-after-delete"),
-      CREATE_PULL_REQUEST,
+      "create",
       45,
     ),
   },
@@ -189,7 +183,7 @@ export const UpdateFailed: Story = {
     ...UpdateChanges.args,
     failure: pullRequestNotice(
       new HttpError(502, "", "promote-failed"),
-      UPDATE_PULL_REQUEST,
+      "update",
       null,
     ),
   },

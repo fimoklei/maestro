@@ -1,11 +1,7 @@
 import type { BulkRemoveReport, RemoveDeployedSkillError } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "./api/http";
-import {
-  CREATE_PULL_REQUEST,
-  pullRequestNotice,
-  UPDATE_PULL_REQUEST,
-} from "./categories/pull-request-copy";
+import { pullRequestNotice } from "./categories/pull-request-copy";
 import {
   deployNotice,
   removeNotice,
@@ -53,8 +49,8 @@ function noticeLabels(code: string): string[] {
     deployNotice(error).label,
     updatePreviewNotice(error).label,
     updateNotice(error).label,
-    ...([CREATE_PULL_REQUEST, UPDATE_PULL_REQUEST] as const).map(
-      (action) => pullRequestNotice(error, action, null)?.label ?? "",
+    ...(["create", "update"] as const).map(
+      (mode) => pullRequestNotice(error, mode, null)?.label ?? "",
     ),
   ].filter((label) => label !== "" && !FALLBACKS.has(label));
   // "Removal outcome unknown" is both the fallback and remove-failed's reason.

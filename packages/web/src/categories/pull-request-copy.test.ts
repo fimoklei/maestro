@@ -6,7 +6,6 @@ import {
   ADDED_TO_HARNESS,
   ADDED_TO_PULL_REQUEST,
   COMPARED_WITH_NEXT_RELEASE,
-  CREATE_PULL_REQUEST,
   CREATE_PULL_REQUEST_BODY,
   comparingWithPullRequest,
   createAfterCloseBody,
@@ -23,7 +22,6 @@ import {
   pullRequestRow,
   SAME_AS_NEXT_RELEASE,
   SAME_AS_PULL_REQUEST,
-  UPDATE_PULL_REQUEST,
   updatePullRequestBody,
   updatePullRequestTitle,
   VIEW_ON_HARNESS,
@@ -175,11 +173,7 @@ describe("the Update pull request dialog", () => {
 
   it("names the update in its failures", () => {
     expect(
-      pullRequestNotice(
-        new TypeError("fetch failed"),
-        UPDATE_PULL_REQUEST,
-        null,
-      ),
+      pullRequestNotice(new TypeError("fetch failed"), "update", null),
     ).toMatchObject({
       message:
         "The Maestro server did not respond, so the pull request may already be updated. Select Close, then check the Harness screen.",
@@ -187,7 +181,7 @@ describe("the Update pull request dialog", () => {
     expect(
       pullRequestNotice(
         new HttpError(502, "", "promote-failed"),
-        UPDATE_PULL_REQUEST,
+        "update",
         null,
       ),
     ).toMatchObject({
@@ -198,7 +192,7 @@ describe("the Update pull request dialog", () => {
     expect(
       pullRequestNotice(
         new HttpError(409, "", "request-unchanged"),
-        UPDATE_PULL_REQUEST,
+        "update",
         null,
       ),
     ).toMatchObject({
@@ -213,7 +207,7 @@ describe("the Update pull request dialog", () => {
     expect(
       pullRequestNotice(
         new HttpError(409, "", "proposal-changed"),
-        UPDATE_PULL_REQUEST,
+        "update",
         null,
       ),
     ).toEqual({
@@ -271,11 +265,7 @@ describe("the Create pull request dialog", () => {
 
   it("claims nothing about GitHub when the server did not answer", () => {
     expect(
-      pullRequestNotice(
-        new TypeError("fetch failed"),
-        CREATE_PULL_REQUEST,
-        null,
-      ),
+      pullRequestNotice(new TypeError("fetch failed"), "create", null),
     ).toMatchObject({
       label: "Pull request not confirmed",
       message:
@@ -287,7 +277,7 @@ describe("the Create pull request dialog", () => {
     expect(
       pullRequestNotice(
         new HttpError(502, "", "promote-failed"),
-        CREATE_PULL_REQUEST,
+        "create",
         null,
       ),
     ).toMatchObject({
@@ -301,7 +291,7 @@ describe("the Create pull request dialog", () => {
     expect(
       pullRequestNotice(
         new HttpError(502, "", "push-failed-after-delete"),
-        CREATE_PULL_REQUEST,
+        "create",
         45,
       ),
     ).toEqual({
@@ -350,7 +340,7 @@ describe("the Create pull request dialog", () => {
   ])("gives %s its own heading", (code) => {
     const heading = pullRequestNotice(
       new HttpError(409, "", code),
-      CREATE_PULL_REQUEST,
+      "create",
       null,
     )?.label;
     expect(heading).toBeDefined();
@@ -375,11 +365,7 @@ describe("the Create pull request dialog", () => {
     ];
     const headings = codes.map(
       (code) =>
-        pullRequestNotice(
-          new HttpError(409, "", code),
-          CREATE_PULL_REQUEST,
-          null,
-        )?.label,
+        pullRequestNotice(new HttpError(409, "", code), "create", null)?.label,
     );
     expect(new Set(headings).size).toBe(codes.length);
   });

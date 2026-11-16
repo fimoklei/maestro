@@ -22,10 +22,17 @@ import { countWords } from "./categories-copy";
 
 export { CREATE_PULL_REQUEST, UPDATE_PULL_REQUEST };
 
-/** The control while the operator's own pull request is open, or not. */
-export type PullRequestAction =
-  | typeof CREATE_PULL_REQUEST
-  | typeof UPDATE_PULL_REQUEST;
+/** Update while the operator's own pull request is open, else create. */
+export type PullRequestMode = "create" | "update";
+
+/** The control's label in each mode. */
+export const PULL_REQUEST_LABEL: Record<PullRequestMode, string> = {
+  create: CREATE_PULL_REQUEST,
+  update: UPDATE_PULL_REQUEST,
+};
+
+/** A pull request named in a done sentence. */
+export const pullRequestName = (number: number) => `pull request #${number}`;
 
 const REREAD_CATEGORIES = rereadLabel("Categories");
 
@@ -46,7 +53,7 @@ export type PullRequestRowView = {
   blocked: string | null;
   /** The chip of the state the Harness row shows, beside the link; null for none. */
   open: StatusReading | null;
-  action: PullRequestAction;
+  mode: PullRequestMode;
 };
 
 const EMPTY_CAUSE = "Add a category.";
@@ -56,7 +63,7 @@ const blockedRow = (sentence: Copy, blocked: string): PullRequestRowView => ({
   sentence,
   blocked,
   open: null,
-  action: CREATE_PULL_REQUEST,
+  mode: "create",
 });
 
 /** Why a list the write refuses blocks the button; null where it can run. */
@@ -79,7 +86,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
           "Propose your categories for the connected Harness. This creates a pull request for review.",
         blocked: null,
         open: null,
-        action: CREATE_PULL_REQUEST,
+        mode: "create",
       };
     case "empty":
       return blockedRow(EMPTY_SENTENCE, EMPTY_CAUSE);
@@ -101,7 +108,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
         sentence: `The proposal branch is on GitHub without a pull request. Select ${CREATE_PULL_REQUEST} to open one.`,
         blocked: listCause(row.list),
         open: stageStatusReading("pull-request-missing"),
-        action: CREATE_PULL_REQUEST,
+        mode: "create",
       };
     // The Harness row's chip under Pending release; a new pull request
     // compares with the next release, which now holds the merged list.
@@ -110,7 +117,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
         sentence: `Pull request #${row.number} was merged. Teammates get these categories with the next Harness release.`,
         blocked: listCause(row.list),
         open: stageStatusReading("not-yet-released"),
-        action: CREATE_PULL_REQUEST,
+        mode: "create",
       };
     case "closed": {
       const next = `was closed without merging. Select ${CREATE_PULL_REQUEST} to propose your current categories as a new pull request.`;
@@ -120,7 +127,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
           : `Pull request #${row.number} ${next}`,
         blocked: listCause(row.list),
         open: stageStatusReading("proposal-closed"),
-        action: CREATE_PULL_REQUEST,
+        mode: "create",
       };
     }
     case "own-open": {
@@ -135,7 +142,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
             : state,
         blocked: listCause(row.list),
         open: stageStatusReading(row.status),
-        action: UPDATE_PULL_REQUEST,
+        mode: "update",
       };
     }
   }
@@ -239,9 +246,9 @@ export const NEXT_RELEASE_UNREADABLE = {
 } as const satisfies NoticeContent;
 
 /** A request the server never answered: GitHub may hold the pull request. */
-const notConfirmed = (action: PullRequestAction): NoticeCopy => ({
+const notConfirmed = (mode: PullRequestMode): NoticeCopy => ({
   label: "Pull request not confirmed",
-  message: `The Maestro server did not respond, so the pull request may already be ${action === UPDATE_PULL_REQUEST ? "updated" : "open"}. Select ${CLOSE}, then check the Harness screen.`,
+  message: `The Maestro server did not respond, so the pull request may already be ${mode === "update" ? "updated" : "open"}. Select ${CLOSE}, then check the Harness screen.`,
 });
 
 /** The branch is pushed and GitHub opened no pull request for it. */
@@ -252,14 +259,14 @@ export const PULL_REQUEST_NOT_OPENED = {
 } as const satisfies NoticeContent;
 
 const headings = (
-  action: PullRequestAction,
+  mode: PullRequestMode,
   closed: number | null,
 ): NoticeTable<CategoriesProposalError> => {
-  const AGAIN = `select ${action} again.`;
+  const AGAIN = `select ${PULL_REQUEST_LABEL[mode]} again.`;
   const notCreated = {
     level: "error",
     label:
-      action === UPDATE_PULL_REQUEST
+      mode === "update"
         ? "Pull request not updated"
         : "Pull request not created",
     message: `Your categories stay as they are. Select ${CLOSE}, then ${AGAIN}`,
@@ -334,8 +341,8 @@ const headings = (
 /** Why the dialog could not compare, create or update; never a claim about GitHub it cannot make. */
 export const pullRequestNotice = (
   error: unknown,
-  action: PullRequestAction,
+  mode: PullRequestMode,
   /** The closed pull request a Create pull request replaces; null for none. */
   closed: number | null,
 ): NoticeContent | null =>
-  noticeFromTable(headings(action, closed), error, notConfirmed(action));
+  noticeFromTable(headings(mode, closed), error, notConfirmed(mode));

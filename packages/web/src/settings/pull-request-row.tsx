@@ -1,14 +1,12 @@
 import type { CategoriesProposalRow } from "@maestro/core";
 import { useState } from "react";
 import {
-  CREATE_PULL_REQUEST,
+  PULL_REQUEST_LABEL,
   PULL_REQUEST_ROW,
   pullRequestRow,
   VIEW_ON_HARNESS,
 } from "../categories/pull-request-copy";
-import { doneSentence } from "../ui/busy-copy";
 import { GatedButton } from "../ui/gated-button";
-import { plainText } from "../ui/phrase";
 import { StatusBadge } from "../ui/status-badge";
 import { TextLink } from "../ui/text-link";
 import { CreatePullRequest } from "./create-pull-request";
@@ -22,8 +20,8 @@ export function PullRequestRow({
 }: {
   /** Undefined while the first read runs. */
   row: CategoriesProposalRow | undefined;
-  /** The screen's status region, for the done sentence. */
-  report: (sentence: string) => void;
+  /** The screen's status region, for the busy label and the done sentence. */
+  report: (write: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   if (row === undefined) return null;
@@ -42,7 +40,7 @@ export function PullRequestRow({
               </>
             )}
             <GatedButton
-              label={view.action}
+              label={PULL_REQUEST_LABEL[view.mode]}
               unavailable={view.blocked}
               onClick={() => setOpen(true)}
             />
@@ -51,19 +49,10 @@ export function PullRequestRow({
       />
       {open ? (
         <CreatePullRequest
+          mode={view.mode}
           update={row.state === "own-open" ? row.number : null}
           closed={row.state === "closed" ? row.number : null}
-          onCreated={({ number }) => {
-            setOpen(false);
-            report(
-              plainText(
-                doneSentence(
-                  view.action === CREATE_PULL_REQUEST ? "create" : "update",
-                  `pull request #${number}`,
-                ),
-              ),
-            );
-          }}
+          report={report}
           onClose={() => setOpen(false)}
         />
       ) : null}
