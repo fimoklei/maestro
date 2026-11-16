@@ -33,7 +33,7 @@ A filled-in version of a prompt that shows how the prompt is meant to be used, a
 _Avoid_: sample, template, demo.
 
 **Category**:
-A named label in the operator's own list for one Harness that sorts skills and prompts. A skill or prompt has one category or none. A category exists until it is deleted, even when nothing carries it. Teammates do not see it (ADR-0034).
+A named label in the operator's own list for one Harness that sorts skills and prompts. A skill or prompt has one category or none. A category exists until it is deleted, even when nothing carries it. The list stays on the operator's computer (ADR-0034); the team shares one through the **Harness categories** (ADR-0036).
 _Avoid_: tag, folder, group (that is how Display shows a category).
 
 **Hook**:
@@ -230,6 +230,7 @@ details may name the exact APM mechanism or file.
 | Import dialog | **Import skills** | The Import menu item and its dialog's title. One folder path: a skill folder lists one row, a folder of skill folders lists one row each. The confirm counts the checked rows, *Import skill* or *Import {n} skills*. A skill keeps its folder's name; to change it, rename the folder first. |
 | Import prompt dialog | **Import prompts** | The Import menu item and its dialog's title. It opens on **Paste text**; **Choose files** is the other source. The confirm counts the checked rows, *Import prompt* or *Import {n} prompts*. Each prompt lands as `<name>.md` in `.maestro/prompts` of the Working Harness. |
 | Import, replacing | **Already in the Harness** | The group in **Import skills** or **Import prompts** for a row whose name the Working Harness already holds; it starts unchecked, reads *Replaces the one in the Harness* after its name, and checking it replaces that skill or prompt. A replaced skill lands under **Pending proposal**. The titles *Update a skill* and *Update a prompt* are retired. |
+| The list a Harness carries | **Harness categories** | The category names and the sorting of skills and prompts in `.maestro/categories.yml` of the latest release, shown on Categories in Settings with their count. A Harness without the file or without a release has none, and Settings says nothing about them; a file with an error shows its own notice and never reads as none. The operator's own list is *your categories* (ADR-0036). |
 | Prompt edit | **Edit prompt** | A prompt row's ⋮ item after **Copy prompt**, its pane's secondary button, and the confirm of the dialog *Edit {prompt}*. It reads the prompt from the Working Harness, never the Released harness, and rewrites its description and text there, keeping the other front matter keys. The name stays fixed (#1640). |
 | Import prompt dialog, source | *Choose files*, *Paste text* | The dialog's two sources. *Choose files* opens the browser's own file input for one or more `.md` or `.txt` files, never the **Folder chooser**; the browser reads them, so no path reaches the server. *Paste text* adds one row, with **Name** and **Description** fields. |
 | Import from a target | **Import local edits** / **Import {n} skills** | The Deploy-state target action that brings its skills' **Local edits** into the Harness as updates; the dialog reads *Import local edits from {target}*. It never adds a new skill; a skill it refuses can still come back through **Import skills** (#1249). |

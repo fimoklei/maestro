@@ -95,6 +95,9 @@ describe("copy guard", () => {
     ["Select Import prompt to add it.", "Import prompt"],
     ["Update skill", "Update skill"],
     ["Select Update prompt to change it.", "Update prompt"],
+    ["Upload", "Upload"],
+    ["Uploads your categories to the connected Harness.", "Uploads"],
+    ["Select Upload to open a pull request.", "Upload"],
   ])("fails a string saying %j and names the word", (sentence, word) => {
     plant(
       "packages/web/src/b-copy.ts",

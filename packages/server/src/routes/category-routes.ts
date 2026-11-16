@@ -31,6 +31,16 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
     respond(c, await deps.categories.read()),
   );
 
+  app.get("/api/categories/harness", async (c) => {
+    const result = await deps.categories.readHarness();
+    return result.ok
+      ? c.json(result.harness)
+      : c.json(
+          { error: result.error },
+          categoryErrorResponses[result.error].status,
+        );
+  });
+
   app.post("/api/categories", async (c) => {
     const body = await parseBody(c, addCategoryBodySchema, ADD_CATEGORY_BODY);
     if (!body.ok) return body.response;

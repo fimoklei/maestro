@@ -14,6 +14,9 @@ import {
   countWords,
   deleteMoves,
   emptyCategoryDeleted,
+  HARNESS_CATEGORIES,
+  harnessCategoriesCount,
+  harnessCategoriesFaulty,
   NO_CATEGORIES,
   NO_CATEGORIES_SENTENCE,
   NO_ITEMS,
@@ -28,10 +31,27 @@ import {
 describe("Categories copy", () => {
   it("says where categories live, and what the empty list holds", () => {
     expect(CATEGORIES_SENTENCE).toBe(
-      "Categories stay on this computer. Only you see them.",
+      "Your categories are saved on this computer.",
     );
     expect(NO_CATEGORIES).toBe("No categories yet");
     expect(NO_CATEGORIES_SENTENCE).toBe("Categories appear here.");
+  });
+
+  it.each([
+    [6, "The latest Harness release contains 6 categories."],
+    [1, "The latest Harness release contains 1 category."],
+  ])("counts %i Harness categories", (count, sentence) => {
+    expect(HARNESS_CATEGORIES).toBe("Harness categories");
+    expect(harnessCategoriesCount(count)).toBe(sentence);
+  });
+
+  it("names the release whose categories file contains an error", () => {
+    const notice = harnessCategoriesFaulty("v1.5.0");
+    expect(notice.level).toBe("warning");
+    expect(notice.label).toBe("Couldn't load Harness categories");
+    expect(plainText(notice.message)).toBe(
+      "The categories file in Harness release v1.5.0 contains an error. You can still propose your own categories for review.",
+    );
   });
 
   it.each([

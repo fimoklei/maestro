@@ -15,7 +15,11 @@ import {
   categoryNotice,
   refusedForName,
 } from "../categories/category-refusals";
-import { useAddCategory, useCategories } from "../categories/use-categories";
+import {
+  useAddCategory,
+  useCategories,
+  useHarnessCategories,
+} from "../categories/use-categories";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { EmptyState } from "../ui/empty-state";
 import { GatedButton } from "../ui/gated-button";
@@ -28,6 +32,7 @@ import { rowActionsLabel } from "../ui/row-menu-copy";
 import { ScreenFocusContext } from "../ui/screen-focus";
 import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
 import { AddCategoryDialog } from "./add-category-dialog";
+import { HarnessCategoriesSection } from "./harness-categories-section";
 import { CATEGORIES_PAGE } from "./settings-pages";
 import { SettingsPanel } from "./settings-panel";
 import { SettingsRow } from "./settings-row";
@@ -40,6 +45,7 @@ const SCREEN = CATEGORIES_PAGE.label;
 // Harness, alphabetical, each with its counts.
 export function CategoriesPage() {
   const categories = useCategories();
+  const harnessCategories = useHarnessCategories();
   const add = useAddCategory();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -137,6 +143,7 @@ export function CategoriesPage() {
                   onClick={() => {
                     status.press();
                     void categories.refetch();
+                    void harnessCategories.refetch();
                   }}
                 >
                   <Icon of={RefreshCw} />
@@ -195,6 +202,7 @@ export function CategoriesPage() {
               ))
             )}
           </SettingsSection>
+          <HarnessCategoriesSection harness={harnessCategories.data} />
           {open ? (
             <AddCategoryDialog
               name={name}

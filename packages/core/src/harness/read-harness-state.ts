@@ -90,6 +90,12 @@ export type HarnessFreshness = {
 
 export type HarnessTag = { name: string; commit: string };
 
+/** A file's text at a ref; `too-large` is refused before it is loaded. */
+export type FileAtRef =
+  | { kind: "absent" }
+  | { kind: "too-large" }
+  | { kind: "text"; text: string };
+
 // `local-changes`: uncommitted work on a path upstream changed, so catch-up
 // leaves it. A local commit ahead of upstream is `current`.
 export type CloneSync =
@@ -149,6 +155,13 @@ export interface HarnessGitPort {
   // The files directly at the root of `ref`'s tree, never a folder. Null is an
   // unreadable ref.
   readRootFiles(root: string, ref: string): Promise<string[] | null>;
+  // Checks the size before it loads the file. Null is an unreadable ref.
+  readFileAt(
+    root: string,
+    ref: string,
+    path: string,
+    maxBytes: number,
+  ): Promise<FileAtRef | null>;
   // Keyed by `primitiveKey`.
   readAuthors(
     root: string,

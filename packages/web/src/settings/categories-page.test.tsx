@@ -1,4 +1,4 @@
-import type { CategoryList } from "@maestro/core";
+import type { CategoryList, HarnessCategories } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -100,6 +100,9 @@ function stubServer({
       if (url === "/api/categories") {
         return read ? read() : jsonResponse(list(saved));
       }
+      if (url === "/api/categories/harness") {
+        return jsonResponse({ kind: "none" } satisfies HarnessCategories);
+      }
       throw new Error(`unexpected ${init?.method ?? "GET"} ${url}`);
     },
   );
@@ -134,7 +137,7 @@ const submit = (dialog: HTMLElement) =>
   userEvent.click(within(dialog).getByRole("button", { name: "Add category" }));
 
 describe("Settings › Categories", () => {
-  it("states that the categories stay on this computer", async () => {
+  it("states that the categories are saved on this computer", async () => {
     stubServer();
     renderPage();
 
@@ -142,9 +145,7 @@ describe("Settings › Categories", () => {
       screen.getByRole("heading", { level: 1, name: "Categories" }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText(
-        "Categories stay on this computer. Only you see them.",
-      ),
+      await screen.findByText("Your categories are saved on this computer."),
     ).toBeInTheDocument();
   });
 

@@ -50,6 +50,7 @@ import { pushesWhereItFetched } from "./push-destination";
 import type {
   BranchAuthorship,
   DefaultBranchWithdrawal,
+  FileAtRef,
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
@@ -521,6 +522,32 @@ export class HarnessGitAdapter implements HarnessGitPort {
             ? [name]
             : [];
         });
+  }
+
+  async readFileAt(
+    root: string,
+    ref: string,
+    path: string,
+    maxBytes: number,
+  ): Promise<FileAtRef | null> {
+    // `-l` gives the blob's size, so a large file is never loaded.
+    const listing = await this.readOutput(root, [
+      "ls-tree",
+      "-z",
+      "-l",
+      ref,
+      "--",
+      path,
+    ]);
+    if (listing === null) return null;
+    const [meta = "", name] = listing.split("\0")[0]?.split("\t") ?? [];
+    const [, type, hash, size] = meta.split(/\s+/);
+    if (name !== path || type !== "blob" || hash === undefined) {
+      return { kind: "absent" };
+    }
+    if (Number(size) > maxBytes) return { kind: "too-large" };
+    const text = await this.readOutput(root, ["cat-file", "blob", hash]);
+    return text === null ? null : { kind: "text", text };
   }
 
   readAuthors = readAuthors;

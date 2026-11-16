@@ -380,6 +380,7 @@ export function composeUseCases(ports: UseCasePorts) {
       },
       configPath: () => resolveMaestroConfigPath(env),
       held: heldItemsFrom({ git: harnessGit, fs }),
+      git: harnessGit,
     }),
     harness,
     // Shares the lock Delete takes, as Import local edits does.

@@ -15,8 +15,23 @@ import {
   withRecord,
 } from "./category-section";
 import type { ReadHeldItems } from "./held-items";
+import {
+  type ReleasedCategoriesGitPort,
+  readReleasedHarnessCategories,
+} from "./released-harness-categories";
 
 export type { CategoryChange } from "./apply-change";
+
+/** What Categories in Settings states about the latest release's Harness categories. */
+export type HarnessCategories =
+  | { kind: "none" }
+  | { kind: "unread" }
+  | { kind: "faulty"; tag: string }
+  | { kind: "listed"; tag: string; count: number };
+
+export type HarnessCategoriesResult =
+  | { ok: true; harness: HarnessCategories }
+  | { ok: false; error: "not-configured" };
 
 export type CategoryList = {
   categories: { name: string; skills: number; prompts: number }[];
@@ -62,17 +77,40 @@ export class Categories {
   private readonly harness: () => Promise<HarnessKey | null>;
   private readonly configPath: () => string;
   private readonly held: ReadHeldItems;
+  private readonly git: ReleasedCategoriesGitPort;
 
   constructor(deps: {
     store: ConfigStore;
     harness: () => Promise<HarnessKey | null>;
     configPath: () => string;
     held: ReadHeldItems;
+    git: ReleasedCategoriesGitPort;
   }) {
     this.store = deps.store;
     this.harness = deps.harness;
     this.configPath = deps.configPath;
     this.held = deps.held;
+    this.git = deps.git;
+  }
+
+  async readHarness(): Promise<HarnessCategoriesResult> {
+    const harness = await this.harness();
+    if (harness === null) return { ok: false, error: "not-configured" };
+    const released = await readReleasedHarnessCategories(
+      this.git,
+      harness.root,
+    );
+    return {
+      ok: true,
+      harness:
+        released.kind === "listed"
+          ? {
+              kind: "listed",
+              tag: released.tag,
+              count: released.record.names.length,
+            }
+          : released,
+    };
   }
 
   async read(): Promise<CategoryResult> {

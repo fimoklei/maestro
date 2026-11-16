@@ -20,6 +20,7 @@ import type {
   BranchAuthorship,
   CloneSync,
   DefaultBranchWithdrawal,
+  FileAtRef,
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
@@ -48,6 +49,8 @@ type Commit = Content & {
   parent: string | null;
   author: string;
   rootFiles: string[];
+  // Any other file by its path from the root, such as the categories file.
+  files: Record<string, string>;
 };
 
 // The tree hash git would give this content.
@@ -192,6 +195,7 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       author?: string;
       prompts?: Prompts;
       rootFiles?: string[];
+      files?: Record<string, string>;
     } = {},
   ): string {
     this.commits.set(id, {
@@ -200,6 +204,7 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       prompts: options.prompts ?? {},
       author: options.author ?? "fimoklei",
       rootFiles: options.rootFiles ?? ["apm.yml"],
+      files: options.files ?? {},
     });
     return id;
   }
@@ -344,6 +349,25 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       return null;
     }
     return this.commits.get(id)?.rootFiles ?? null;
+  }
+
+  async readFileAt(
+    root: string,
+    ref: string,
+    path: string,
+    maxBytes: number,
+  ): Promise<FileAtRef | null> {
+    this.at(root);
+    const id = this.resolve(ref);
+    const commit = id === null ? undefined : this.commits.get(id);
+    if (id === null || this.unreadable.has(id) || commit === undefined) {
+      return null;
+    }
+    const text = commit.files[path];
+    if (text === undefined) return { kind: "absent" };
+    return new TextEncoder().encode(text).byteLength > maxBytes
+      ? { kind: "too-large" }
+      : { kind: "text", text };
   }
 
   async readPrimitivesAtTag(

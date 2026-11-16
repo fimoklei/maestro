@@ -1,4 +1,8 @@
-import type { CategoryList, PrimitiveRef } from "@maestro/core";
+import type {
+  CategoryList,
+  HarnessCategories,
+  PrimitiveRef,
+} from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
@@ -14,6 +18,14 @@ export function useCategoriesWhile(enabled: boolean) {
     queryKey: CATEGORIES_KEY,
     queryFn: () => requestJson<CategoryList>("/api/categories"),
     enabled,
+  });
+}
+
+/** What the latest Harness release holds of the Harness categories. */
+export function useHarnessCategories() {
+  return useQuery({
+    queryKey: [...CATEGORIES_KEY, "harness"],
+    queryFn: () => requestJson<HarnessCategories>("/api/categories/harness"),
   });
 }
 

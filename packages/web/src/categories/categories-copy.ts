@@ -9,9 +9,23 @@ import { machine, named, type Phrase, phrase } from "../ui/phrase";
 
 const CATEGORIES = "Categories";
 export const CATEGORIES_SENTENCE =
-  "Categories stay on this computer. Only you see them.";
+  "Your categories are saved on this computer.";
 export const NO_CATEGORIES = "No categories yet";
 export const NO_CATEGORIES_SENTENCE = "Categories appear here.";
+
+/** The section of the categories the latest Harness release contains. */
+export const HARNESS_CATEGORIES = "Harness categories";
+
+export const harnessCategoriesCount = (count: number) =>
+  `The latest Harness release contains ${count} ${count === 1 ? "category" : "categories"}.`;
+
+/** A file with an error never reads as no categories; the own list works on. */
+export const harnessCategoriesFaulty = (tag: string) =>
+  ({
+    level: "warning",
+    label: "Couldn't load Harness categories",
+    message: phrase`The categories file in Harness release ${machine(tag)} contains an error. You can still propose your own categories for review.`,
+  }) as const satisfies NoticeContent;
 
 export { ADD_CATEGORY };
 export const ADD_A_CATEGORY = "Add a category";

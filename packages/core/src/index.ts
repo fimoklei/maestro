@@ -5,6 +5,8 @@ export type {
   CategoryError,
   CategoryList,
   CategoryResult,
+  HarnessCategories,
+  HarnessCategoriesResult,
 } from "./categories/categories";
 export {
   composeUseCases,
