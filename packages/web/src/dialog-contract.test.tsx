@@ -481,6 +481,7 @@ const COPY_PREVIEW: CopyPreview = {
       uncategorised: { skills: 1, prompts: 0 },
     },
   },
+  fresh: [],
 };
 
 const copyCategoriesDialog = (

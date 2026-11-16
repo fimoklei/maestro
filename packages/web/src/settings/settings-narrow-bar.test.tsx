@@ -10,6 +10,7 @@ function renderBar() {
   render(
     <SettingsNarrowBar
       pages={SETTINGS_PAGES}
+      signal={null}
       onNavigate={onNavigate}
       onBack={onBack}
     />,

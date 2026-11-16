@@ -1,10 +1,14 @@
 import { ChevronsUpDown } from "lucide-react";
+import { useId } from "react";
 import { useNavigate } from "react-router";
+import { HARNESS_CATEGORIES_CHANGED } from "../categories/categories-copy";
+import { useHarnessCategoriesChanged } from "../categories/use-categories";
 import { ActionsMenu } from "../ui/actions-menu";
 import { cn } from "../ui/cn";
 import { HOVER_TRANSITION } from "../ui/hover-transition";
 import { Icon } from "../ui/icon";
 import { PhraseText } from "../ui/phrase-text";
+import { SignalDot } from "../ui/signal-dot";
 import { SETTINGS } from "./screens";
 import { harnessInitial } from "./target-name";
 import { useHarnessSummary } from "./use-harness-summary";
@@ -16,6 +20,10 @@ const MENU_LABEL = "Harness menu";
 export function HarnessButton() {
   const navigate = useNavigate();
   const { path, label, meta } = useHarnessSummary();
+  const signal = useHarnessCategoriesChanged()
+    ? HARNESS_CATEGORIES_CHANGED
+    : null;
+  const signalId = useId();
 
   return (
     <ActionsMenu
@@ -25,11 +33,13 @@ export function HarnessButton() {
         {
           label: SETTINGS.label,
           onSelect: () => navigate(SETTINGS.to),
+          ...(signal === null ? {} : { signal }),
         },
       ]}
       trigger={
         <button
           type="button"
+          aria-describedby={signal === null ? undefined : signalId}
           className={cn(
             "flex h-11 w-full items-center gap-inline rounded-control border border-edge bg-gray-1 px-inline text-left",
             HOVER_TRANSITION,
@@ -58,6 +68,7 @@ export function HarnessButton() {
               </span>
             )}
           </span>
+          {signal === null ? null : <SignalDot id={signalId} text={signal} />}
           <Icon of={ChevronsUpDown} className="shrink-0 text-gray-11" />
         </button>
       }

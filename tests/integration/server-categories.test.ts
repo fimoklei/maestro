@@ -2,7 +2,11 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CategoryList, UseCasePorts } from "@maestro/core";
+import type {
+  CategoryList,
+  HarnessCategories,
+  UseCasePorts,
+} from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { unreachable } from "../helpers/in-memory-app";
 import { nodeApp } from "../helpers/node-app";
@@ -99,6 +103,28 @@ describe("categories on a real filesystem", () => {
       ],
       assignments: [{ type: "skill", name: "tdd", category: "Planning" }],
     } satisfies CategoryList);
+  });
+
+  it("keeps the Harness categories the operator last saw after a restart", async () => {
+    const released =
+      "version: 1\ncategories: [Planning, Review]\nassignments: []\n";
+    const before = await startMaestro(released);
+    const opened = await before.request("/api/categories/harness/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(opened.status).toBe(200);
+
+    const after = await startMaestro(released);
+    const res = await after.request("/api/categories/harness");
+
+    expect(await res.json()).toEqual({
+      kind: "listed",
+      tag: "v1.0.0",
+      count: 2,
+      changed: false,
+    } satisfies HarnessCategories);
   });
 
   it("keeps a skill's category after a restart", async () => {

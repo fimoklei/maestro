@@ -9,6 +9,7 @@ import {
   copySkipped,
   HOW_TO_COPY,
   LOADING_HARNESS_CATEGORIES,
+  newIn,
   replaceWarning,
   spelledInYourList,
   WHAT_HAPPENS,
@@ -17,6 +18,7 @@ import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
 import { Notice, type NoticeContent } from "../ui/notice";
 import { OptionRadios } from "../ui/option-radios";
+import { plainText } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { StatusLine } from "../ui/status-line";
 
@@ -112,13 +114,23 @@ export function CopyHarnessCategoriesDialog({
                 const was = facts.respelled.find(
                   (each) => each.name === name,
                 )?.was;
+                // A row may carry both facts: its new spelling and its arrival.
+                const rowFacts = [
+                  ...(was === undefined ? [] : [spelledInYourList(was)]),
+                  ...(preview.fresh.includes(name) ? [newIn(preview.tag)] : []),
+                ];
                 return {
                   key: name,
                   name,
-                  ...(was === undefined
+                  ...(rowFacts.length === 0
                     ? {}
                     : {
-                        sentence: <PhraseText copy={spelledInYourList(was)} />,
+                        sentence: rowFacts.map((copy, at) => (
+                          <span key={plainText(copy)}>
+                            {at === 0 ? null : " "}
+                            <PhraseText copy={copy} />
+                          </span>
+                        )),
                       }),
                 };
               }),

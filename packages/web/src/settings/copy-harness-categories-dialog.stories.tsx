@@ -28,6 +28,7 @@ const EMPTY_OWN = {
   skipped: 0,
   choice: false,
   modes: { add: facts({ added: SIX }), replace: facts({ added: SIX }) },
+  fresh: [],
 } satisfies CopyPreview;
 
 const WITH_OWN = {
@@ -95,6 +96,11 @@ export const Loading: Story = { args: { preview: null } };
 export const EmptyList: Story = {};
 
 export const WithOwnCategories: Story = { args: { preview: WITH_OWN } };
+
+// Two categories arrived since the operator last looked.
+export const NewSinceLastLook: Story = {
+  args: { preview: { ...WITH_OWN, fresh: ["Release", "Testing"] } },
+};
 
 export const ReplaceSelected: Story = {
   args: { preview: WITH_OWN, mode: "replace" },

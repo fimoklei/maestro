@@ -11,7 +11,7 @@ const meta = {
   title: "Settings/HarnessCategoriesSection",
   component: HarnessCategoriesSection,
   args: {
-    harness: { kind: "listed", tag: "v1.5.0", count: 6 },
+    harness: { kind: "listed", tag: "v1.5.0", count: 6, changed: false },
     children: <PullRequestRow row={{ state: "start" }} report={() => {}} />,
     onCopy: () => {},
   },
@@ -33,6 +33,10 @@ type Story = StoryObj<typeof meta>;
 export const Listed: Story = {};
 
 export const NoCategories: Story = { args: { harness: { kind: "none" } } };
+
+export const Changed: Story = {
+  args: { harness: { kind: "listed", tag: "v1.5.0", count: 6, changed: true } },
+};
 
 export const FileWithAnError: Story = {
   args: { harness: { kind: "faulty", tag: "v1.5.0" } },

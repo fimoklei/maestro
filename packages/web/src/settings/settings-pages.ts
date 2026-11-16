@@ -7,6 +7,9 @@ export interface SettingsPage {
   label: string;
 }
 
+/** A dot on one page's entry, and its text. */
+export type SettingsPageSignal = { to: string; text: string } | null;
+
 export const HARNESS_LOCATION_PAGE: SettingsPage = {
   to: "/settings/harness-location",
   label: "Harness location",

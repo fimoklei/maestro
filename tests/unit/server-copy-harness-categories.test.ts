@@ -105,6 +105,7 @@ describe("copying the Harness categories over HTTP", () => {
           add: { ...NOTHING_TAKEN, added: ["Planning", "Review"] },
           replace: { ...NOTHING_TAKEN, added: ["Planning", "Review"] },
         },
+        fresh: [],
       } satisfies CopyPreview,
     });
   });

@@ -5,6 +5,7 @@ import {
   COPY_HARNESS_CATEGORIES,
   COPY_ROW_SENTENCE,
   HARNESS_CATEGORIES,
+  harnessCategoriesChanged,
   harnessCategoriesCount,
   harnessCategoriesFaulty,
 } from "../categories/categories-copy";
@@ -41,6 +42,11 @@ export function HarnessCategoriesSection({
           <Notice
             trigger="load"
             notice={harnessCategoriesFaulty(harness.tag)}
+          />
+        ) : harness?.kind === "listed" && harness.changed ? (
+          <Notice
+            trigger="load"
+            notice={harnessCategoriesChanged(harness.tag)}
           />
         ) : undefined
       }

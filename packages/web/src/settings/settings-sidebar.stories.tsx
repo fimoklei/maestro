@@ -8,6 +8,7 @@ const meta = {
   args: {
     pages: SETTINGS_PAGES,
     active: "/settings/harness-location",
+    signal: null,
     onNavigate: () => {},
     onBack: () => {},
   },
@@ -18,6 +19,15 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const HarnessLocation: Story = {};
+
+export const CategoriesChanged: Story = {
+  args: {
+    signal: {
+      to: "/settings/categories",
+      text: "Harness categories have changed",
+    },
+  },
+};
 
 export const Appearance: Story = {
   args: { active: "/settings/appearance" },
