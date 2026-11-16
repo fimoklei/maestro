@@ -1,13 +1,18 @@
-// Takes a Pending release primitive out of the next release: one commit on the
-// default branch makes it equal to the latest release (#1729). The Working
-// Harness is never written, so the author's copy waits under Pending proposal.
+// Takes a Pending release primitive, or the categories list, out of the next
+// release: one commit on the default branch makes it equal to the latest
+// release (#1729). The Working Harness is never written for a primitive, so
+// the author's copy waits under Pending proposal.
 import { createHash } from "node:crypto";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
-import type { HarnessObject, PrimitiveRef } from "./harness-primitive";
 import type { HarnessStageRow, HarnessStages } from "./harness-stages";
 import { readLatestRelease } from "./latest-release";
 import { withdrawalTitle } from "./proposal-request";
-import { hasValidName, type ProposalSubject } from "./proposal-subject";
+import {
+  CATEGORIES_SUBJECT,
+  hasValidName,
+  type ProposalSubject,
+  subjectKey,
+} from "./proposal-subject";
 import type {
   HarnessFreshnessPort,
   HarnessGitPort,
@@ -58,7 +63,7 @@ const PUSH_ERROR: Record<
 
 // Everything the confirmation is built from, read in one pass.
 type WithdrawalPlan = {
-  names: PrimitiveRef[];
+  names: ProposalSubject[];
   // The Pending proposal row the withdrawal leaves: a rename's old name.
   selected: string;
   confirmation: string;
@@ -69,28 +74,38 @@ type WithdrawalPlan = {
   message: string;
 };
 
-type PrimitiveRow = HarnessStageRow & PrimitiveRef;
-
+// The list has one row and no name.
 const sameRef =
   (a: ProposalSubject) =>
-  <T extends { type: string; name: string }>(b: T): b is T & PrimitiveRef =>
-    a.type !== "categories" && a.type === b.type && a.name === b.name;
+  (b: { type: string; name: string }): boolean =>
+    a.type === "categories"
+      ? b.type === "categories"
+      : a.type === b.type && a.name === b.name;
 
 // The Change decides only the names: a rename touches its previous name too.
-const namesOf = (row: PrimitiveRow): PrimitiveRef[] =>
-  row.change === "rename" && row.previousName !== null
+const namesOf = (row: HarnessStageRow): ProposalSubject[] => {
+  if (row.type === "categories") {
+    return [CATEGORIES_SUBJECT];
+  }
+  return row.change === "rename" && row.previousName !== null
     ? [
         { type: row.type, name: row.name },
         { type: row.type, name: row.previousName },
       ]
     : [{ type: row.type, name: row.name }];
+};
 
-const messageOf = (row: PrimitiveRow): string => {
-  const subject = withdrawalTitle(row);
+const messageOf = (row: HarnessStageRow): string => {
+  const subject =
+    row.type === "categories"
+      ? LIST_WITHDRAWAL_TITLE
+      : withdrawalTitle({ type: row.type, name: row.name });
   return row.mergedRequest === null
     ? subject
     : `${subject}\n\nTakes pull request #${row.mergedRequest} out of the next release.`;
 };
+
+const LIST_WITHDRAWAL_TITLE = "Withdraw Harness categories";
 
 export class WithdrawFromRelease {
   private readonly deps: {
@@ -102,6 +117,7 @@ export class WithdrawFromRelease {
       | "readWorktreeAmbiguity"
       | "readFacts"
       | "readPrimitives"
+      | "readListHash"
       | "withdrawOnDefaultBranch"
     >;
     locks: InFlightLocks;
@@ -204,24 +220,18 @@ export class WithdrawFromRelease {
     if (!latest.known || tip === null || facts.defaultBranch === null) {
       return { error: "no-answer" };
     }
-    const held =
-      latest.tag === null
-        ? []
-        : await this.deps.git.readPrimitives(root, latest.tag.commit);
-    const atDefault = await this.deps.git.readPrimitives(root, tip);
+    const release = latest.tag === null ? null : latest.tag.commit;
+    const held = await this.hashes(root, release, names);
+    const atDefault = await this.hashes(root, tip, names);
     if (held === null || atDefault === null) {
       return { error: "no-answer" };
     }
-
-    const hashIn = (objects: HarnessObject[], name: PrimitiveRef) =>
-      objects.find(sameRef(name))?.hash ?? null;
     const seen = [
       tip,
-      ...names.map((name) => [
-        name.type,
-        name.name,
-        hashIn(held, name),
-        hashIn(atDefault, name),
+      ...names.map((name, at) => [
+        subjectKey(name),
+        held[at] ?? null,
+        atDefault[at] ?? null,
       ]),
     ];
     return {
@@ -233,8 +243,39 @@ export class WithdrawFromRelease {
         .digest("hex"),
       defaultBranch: facts.defaultBranch,
       tip,
-      release: latest.tag === null ? null : latest.tag.commit,
+      release,
       message: messageOf(row),
     };
+  }
+
+  // Each name's object hash at `ref`, in order; null where it is absent. The
+  // list file is hashed, never parsed, so a faulty file never blocks.
+  private async hashes(
+    root: string,
+    ref: string | null,
+    names: ProposalSubject[],
+  ): Promise<(string | null)[] | null> {
+    if (ref === null) {
+      return names.map(() => null);
+    }
+    const primitives = names.some((name) => name.type !== "categories")
+      ? await this.deps.git.readPrimitives(root, ref)
+      : [];
+    if (primitives === null) {
+      return null;
+    }
+    const out: (string | null)[] = [];
+    for (const name of names) {
+      if (name.type === "categories") {
+        const list = await this.deps.git.readListHash(root, ref, name);
+        if (list === null) {
+          return null;
+        }
+        out.push(list.hash);
+      } else {
+        out.push(primitives.find(sameRef(name))?.hash ?? null);
+      }
+    }
+    return out;
   }
 }

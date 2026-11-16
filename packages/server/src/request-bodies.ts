@@ -272,10 +272,15 @@ export const discardBodySchema = z.object({
 
 // The token is rebuilt from a fresh read and compared; the previous name of a
 // rename is read server-side, never taken from the body.
-export const releaseWithdrawalBodySchema = z.object({
-  ...primitiveRefShape,
-  confirmation: z.string(),
-});
+export const releaseWithdrawalCheckBodySchema = z.union([
+  primitiveRefBodySchema,
+  z.object({ type: z.literal("categories") }),
+]);
+
+export const releaseWithdrawalBodySchema = z.union([
+  z.object({ ...primitiveRefShape, confirmation: z.string() }),
+  z.object({ type: z.literal("categories"), confirmation: z.string() }),
+]);
 
 // The commit is compared against a freshly read HEAD, never used as the thing
 // to restore.
@@ -360,14 +365,14 @@ export const RELEASE_WITHDRAWAL_CHECK_BODY: RequestShape = {
   message:
     "Nothing was withdrawn. Reload the page, then withdraw it from release again.",
   detail:
-    'The request carries a type and a name: { type: "skill" | "prompt", name: string }.',
+    'The request carries a type and a name: { type: "skill" | "prompt", name: string }, or the categories list: { type: "categories" }.',
 };
 
 export const RELEASE_WITHDRAWAL_BODY: RequestShape = {
   message:
     "Nothing was withdrawn. Reload the page, then withdraw it from release again.",
   detail:
-    'The request carries a type, a name and the confirmation it was given: { type: "skill" | "prompt", name: string, confirmation: string }.',
+    'The request carries a type, a name and the confirmation it was given: { type: "skill" | "prompt", name: string, confirmation: string }, or the categories list and its confirmation: { type: "categories", confirmation: string }.',
 };
 
 export const RELEASE_BODY: RequestShape = {

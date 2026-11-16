@@ -220,6 +220,7 @@ export {
   ProposalActions,
   type WithdrawError,
 } from "./harness/proposal-actions";
+export type { ProposalSubject } from "./harness/proposal-subject";
 export type {
   BatchItemError,
   BatchItemOutcome,

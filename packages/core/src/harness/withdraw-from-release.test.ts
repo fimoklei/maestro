@@ -50,6 +50,7 @@ const releaseRow = (
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  openByOther: false,
   mergedRequest: null,
   ...over,
 });

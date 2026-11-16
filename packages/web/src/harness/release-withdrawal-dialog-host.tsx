@@ -1,7 +1,7 @@
 import type { ReleaseWithdrawalItem } from "./harness-dialogs";
 import { ReleaseWithdrawalDialog } from "./release-withdrawal-dialog";
 import { releaseWithdrawalNotice } from "./release-withdrawal-notice-copy";
-import { useReleaseWithdrawalCheck } from "./use-harness";
+import { proposalTargetOf, useReleaseWithdrawalCheck } from "./use-harness";
 import type { useHarnessPresses } from "./use-harness-presses";
 
 // Mounted only while the dialog stands, so every opening reads the token
@@ -15,7 +15,7 @@ export function ReleaseWithdrawalDialogHost({
   write: ReturnType<typeof useHarnessPresses>["releaseWithdrawalWrite"];
   onClose: () => void;
 }) {
-  const ref = { type: target.type, name: target.name };
+  const ref = proposalTargetOf(target);
   const check = useReleaseWithdrawalCheck(ref);
   const refused = check.isError
     ? releaseWithdrawalNotice(check.error, target)

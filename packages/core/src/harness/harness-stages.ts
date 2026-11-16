@@ -148,6 +148,8 @@ export type HarnessStageRow = {
   // name and a rename's previous name. Null where the review read cannot
   // prove there are none.
   openRequests: number[] | null;
+  // Pending release only: one of `openRequests` is another contributor's.
+  openByOther: boolean;
   // Pending release only: the newest merged pull request for the item's
   // name; null where no read found one.
   mergedRequest: number | null;
@@ -318,6 +320,7 @@ const blankRow = (
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  openByOther: false,
   mergedRequest: null,
 });
 
@@ -342,26 +345,33 @@ const isOnDisk = (
 
 // Without gh no proposal can be open; any other unread answer is unknown.
 const openRequestsFor = (
-  { origin, defaultBranch, review }: StageInput,
+  { origin, defaultBranch, review, viewer }: StageInput,
   subjects: ProposalSubject[],
-): number[] | null => {
+): Pick<HarnessStageRow, "openRequests" | "openByOther"> => {
+  const unknown = { openRequests: null, openByOther: false };
   if (review.outcome === "unavailable") {
-    return review.reason === "no-gh" ? [] : null;
+    return review.reason === "no-gh"
+      ? { openRequests: [], openByOther: false }
+      : unknown;
   }
   if (review.outcome === "failed" || defaultBranch === null) {
-    return null;
+    return unknown;
   }
-  const open = review.requests
-    .filter(
-      (request) =>
-        request.state === "open" &&
-        subjects.some((subject) =>
-          proposes(origin, defaultBranch, subject)(request),
-        ),
-    )
-    .map((request) => request.number)
-    .sort((a, b) => a - b);
-  return open.length === 0 && !review.complete ? null : open;
+  const open = review.requests.filter(
+    (request) =>
+      request.state === "open" &&
+      subjects.some((subject) =>
+        proposes(origin, defaultBranch, subject)(request),
+      ),
+  );
+  return open.length === 0 && !review.complete
+    ? unknown
+    : {
+        openRequests: open
+          .map((request) => request.number)
+          .sort((a, b) => a - b),
+        openByOther: open.some((request) => isOthers(request, viewer)),
+      };
 };
 
 /** The highest-numbered merged request; a Pending release row names it. */
@@ -405,7 +415,7 @@ const releaseStage = (input: StageInput): HarnessStageRead => {
       ),
       onDisk: isOnDisk(trees, movement),
       previousName: movement.previousName ?? null,
-      openRequests: openRequestsFor(input, [
+      ...openRequestsFor(input, [
         movement,
         ...(movement.type === "categories" ||
         movement.previousName === undefined

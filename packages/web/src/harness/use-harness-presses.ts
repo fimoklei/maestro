@@ -59,7 +59,7 @@ const landsIn =
   });
 
 // Only the list's own presses reach the categories row: View pull request,
-// Open Categories in Settings and Withdraw proposal.
+// Open Categories in Settings, Withdraw proposal and Withdraw from release.
 const primitiveOf = ({ type, name }: HarnessStageRow): PrimitiveRef | null =>
   type === "categories" ? null : { type, name };
 
@@ -159,26 +159,30 @@ export function useHarnessPresses(
       ? null
       : {
           ...releaseWithdrawalTarget,
-          openRequests:
+          ...openOf(
             releaseRows(state).find(
               (row) =>
                 row.type === releaseWithdrawalTarget.type &&
                 row.name === releaseWithdrawalTarget.name,
-            )?.openRequests ?? null,
+            ),
+          ),
         };
   const releaseWithdrawal = useWithdrawFromRelease();
   const releaseWithdrawalWrite = useWriteAction(releaseWithdrawal, {
     screen,
     action: "withdrawFromRelease",
     // The row the withdrawal leaves under Pending proposal, which the server
-    // names: for a rename, the old name's.
-    subject: (withdrawn, pressed) => ({
-      name: withdrawn.name,
-      row: pressedRow("pending-proposal", {
-        type: pressed.type,
-        name: withdrawn.name,
-      }),
-    }),
+    // names: for a rename, the old name's. The list leaves every stage.
+    subject: (withdrawn, pressed) =>
+      pressed.type === "categories"
+        ? { name: CATEGORIES_NAME, leftItsRow: true }
+        : {
+            name: withdrawn.name,
+            row: pressedRow("pending-proposal", {
+              type: pressed.type,
+              name: withdrawn.name,
+            }),
+          },
     // A failure shows only in the dialog, so its item stands.
     failure: (error) =>
       releaseWithdrawing === null
@@ -260,13 +264,16 @@ export function useHarnessPresses(
     : deletion.isSuccess
       ? (deletion.variables ?? null)
       : null;
+  const withdrawn = releaseWithdrawal.isSuccess
+    ? releaseWithdrawal.variables
+    : undefined;
   const withdrawnFromRelease =
-    releaseWithdrawal.isSuccess && releaseWithdrawal.variables !== undefined
-      ? pressedRow("pending-proposal", {
-          type: releaseWithdrawal.variables.type,
-          name: releaseWithdrawal.data.name,
-        })
-      : null;
+    withdrawn === undefined || withdrawn.type === "categories"
+      ? null
+      : pressedRow("pending-proposal", {
+          type: withdrawn.type,
+          name: releaseWithdrawal.data?.name ?? withdrawn.name,
+        });
   const movedTo =
     movedSkill === null
       ? withdrawnFromRelease
@@ -326,17 +333,17 @@ export function useHarnessPresses(
       });
     },
     withdrawFromRelease: (row) => {
-      const item = primitiveOf(row);
-      if (item === null) return;
       releaseWithdrawal.reset();
       // Frozen at the press: the dialog's copy follows the row it was opened from.
       setOpen({
         kind: "release-withdrawal",
         target: {
-          ...item,
+          type: row.type,
+          name: row.name,
           path: row.path,
           change: row.change,
           previousName: row.previousName,
+          mergedRequest: row.mergedRequest,
         },
       });
     },
@@ -389,6 +396,14 @@ export function useHarnessPresses(
     closeReleaseWithdrawal: close("release-withdrawal"),
   };
 }
+
+// Unknown where the row left the latest read.
+const openOf = (
+  row: HarnessStageRow | undefined,
+): Pick<HarnessStageRow, "openRequests" | "openByOther"> => ({
+  openRequests: row?.openRequests ?? null,
+  openByOther: row?.openByOther ?? false,
+});
 
 function releaseRows(state: HarnessState | undefined): HarnessStageRow[] {
   const stage = state?.stages.release;

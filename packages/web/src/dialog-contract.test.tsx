@@ -166,6 +166,7 @@ const releaseWithdrawalDialog = (
       path: ".apm/skills/research",
       change: "edit",
       previousName: null,
+      mergedRequest: null,
     }}
     check={check}
     onClose={over.onClose ?? vi.fn()}

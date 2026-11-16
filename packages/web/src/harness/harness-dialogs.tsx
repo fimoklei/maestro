@@ -54,18 +54,20 @@ export type WithdrawTarget = Pick<HarnessStageRow, "type" | "name"> & {
   number: number | null;
 };
 
-// The row's path, Change and previous name, frozen at the press: they pick
-// the dialog's facts and copy. The server reads them again; none is sent.
-export type ReleaseWithdrawalTarget = PrimitiveRef & {
+// The row's path, Change, previous name and merged pull request, frozen at
+// the press: they pick the dialog's facts and copy. The server reads them
+// again; none is sent. `name` is the row's Name; the categories list sends
+// none.
+export type ReleaseWithdrawalTarget = Pick<HarnessStageRow, "type" | "name"> & {
   path: string;
   change: HarnessChange;
   previousName: string | null;
+  mergedRequest: number | null;
 };
 
 // The frozen target plus the open pull requests the latest read found.
-export type ReleaseWithdrawalItem = ReleaseWithdrawalTarget & {
-  openRequests: readonly number[] | null;
-};
+export type ReleaseWithdrawalItem = ReleaseWithdrawalTarget &
+  Pick<HarnessStageRow, "openRequests" | "openByOther">;
 
 type Presses = ReturnType<typeof useHarnessPresses>;
 

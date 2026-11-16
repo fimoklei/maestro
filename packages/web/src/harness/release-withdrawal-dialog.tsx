@@ -1,13 +1,14 @@
 import { WITHDRAW_FROM_RELEASE } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import {
+  listReleaseWithdrawalBody,
   RELEASE_WITHDRAWAL_CHECKING,
   releaseWithdrawalBody,
   releaseWithdrawalTitle,
 } from "./dialog-copy";
 import { HarnessConfirmation } from "./harness-confirmation";
 import type { ReleaseWithdrawalTarget } from "./harness-dialogs";
-import { ITEM_WORDS } from "./item-words";
+import { rowWords } from "./item-words";
 
 /** The confirmation's own read: ready, or why it refused. */
 export type ReleaseWithdrawalCheck =
@@ -15,10 +16,21 @@ export type ReleaseWithdrawalCheck =
   | { kind: "read" }
   | { kind: "refused"; notice: NoticeContent };
 
+const bodyOf = ({
+  type,
+  name,
+  change,
+  previousName,
+  mergedRequest,
+}: ReleaseWithdrawalTarget) =>
+  type === "categories"
+    ? listReleaseWithdrawalBody(change, mergedRequest)
+    : releaseWithdrawalBody(type, name, change, previousName);
+
 // The confirmation a withdrawal from release takes before Maestro pushes to
 // GitHub (#1729). Presentational — the host owns the read and the mutation.
 export function ReleaseWithdrawalDialog({
-  target: { type, name, path, change, previousName },
+  target,
   check,
   onClose,
   onConfirm,
@@ -32,7 +44,8 @@ export function ReleaseWithdrawalDialog({
   withdrawing: boolean;
   withdrawError: NoticeContent | null;
 }) {
-  const body = releaseWithdrawalBody(type, name, change, previousName);
+  const { type, name, path } = target;
+  const body = bodyOf(target);
   return (
     <HarnessConfirmation
       type={type}
@@ -51,7 +64,7 @@ export function ReleaseWithdrawalDialog({
       }
       changes={body.changes}
       stays={body.stays}
-      facts={[{ label: ITEM_WORDS[type].Holder, value: path }]}
+      facts={[{ label: rowWords(type).Holder, value: path }]}
       checking={check.kind === "checking" ? RELEASE_WITHDRAWAL_CHECKING : null}
       loadNotice={null}
       onClose={onClose}

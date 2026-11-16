@@ -40,6 +40,7 @@ const IMPORTED_ROW: HarnessStageRow = {
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  openByOther: false,
   mergedRequest: null,
 };
 

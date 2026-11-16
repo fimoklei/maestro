@@ -32,7 +32,7 @@ describe("POST body parsing", () => {
     message:
       "Nothing was withdrawn. Reload the page, then withdraw it from release again.",
     detail:
-      'The request carries a type, a name and the confirmation it was given: { type: "skill" | "prompt", name: string, confirmation: string }.',
+      'The request carries a type, a name and the confirmation it was given: { type: "skill" | "prompt", name: string, confirmation: string }, or the categories list and its confirmation: { type: "categories", confirmation: string }.',
   };
 
   const WITHDRAW_SHAPE = {

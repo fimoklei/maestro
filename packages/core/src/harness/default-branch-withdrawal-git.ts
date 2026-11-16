@@ -1,12 +1,12 @@
 // Withdraw from release on the default branch: one commit pushed with a lease,
 // then followed locally. Nothing leaves as stdout or stderr.
 import { execFile } from "node:child_process";
-import { mkdtemp, rm } from "node:fs/promises";
+import { lstat, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { gitOptions, NO_HOOKS } from "../git/non-interactive";
-import { runGitText } from "../git/run-git-text";
+import { runGit, runGitText } from "../git/run-git-text";
 import { classifyGitError } from "./classify-git-error";
 import { classifyPushFailure } from "./classify-push-failure";
 import {
@@ -14,7 +14,11 @@ import {
   readSubjectObject,
   type SubjectChange,
 } from "./harness-primitive-git";
-import { subjectPathspec } from "./proposal-subject";
+import {
+  type ListSubject,
+  subjectPath,
+  subjectPathspec,
+} from "./proposal-subject";
 import type {
   DefaultBranchWithdrawal,
   WithdrawalPushOutcome,
@@ -121,9 +125,9 @@ const push = async (
 };
 
 // The push is the commit point: a failed step here is reconciled by the next
-// fetch, never reported as a failed withdrawal. The working tree is never
-// touched, so the author's copy reads as uncommitted work and a catch-up has
-// nothing to fast-forward over it.
+// fetch, never reported as a failed withdrawal. A primitive's working tree is
+// never touched, so the author's copy reads as uncommitted work and a catch-up
+// has nothing to fast-forward over it.
 const follow = async (
   root: string,
   { defaultBranch, tip, refs }: DefaultBranchWithdrawal,
@@ -140,4 +144,80 @@ const follow = async (
   }
   await step(["update-ref", `refs/remotes/origin/${defaultBranch}`, commit]);
   await step(["reset", "-q", commit, "--", ...refs.map(subjectPathspec)]);
+  for (const subject of refs) {
+    if (subject.type === "categories") {
+      await setListBack(root, subject, tip, commit);
+    }
+  }
+};
+
+// The list lives in Maestro's config, not the clone: a file equal to the
+// withdrawn one is no author's copy, and left alone it would stop catch-up.
+const setListBack = async (
+  root: string,
+  subject: ListSubject,
+  withdrawn: string,
+  commit: string,
+): Promise<void> => {
+  const path = subjectPath(subject);
+  const working = await workingBlob(root, path);
+  if (working === undefined) {
+    return;
+  }
+  const [before, after] = await Promise.all([
+    blobAt(root, withdrawn, path),
+    blobAt(root, commit, path),
+  ]);
+  if (before === undefined || after === undefined || working !== before) {
+    return;
+  }
+  if (after === null) {
+    await rm(join(root, path), { force: true });
+    return;
+  }
+  await run(
+    "git",
+    [
+      "-C",
+      root,
+      ...NO_HOOKS,
+      "checkout",
+      "-q",
+      commit,
+      "--",
+      subjectPathspec(subject),
+    ],
+    gitOptions(),
+  ).catch(() => undefined);
+};
+
+// The blob id of `path` at `ref`; null where absent, undefined where unread.
+const blobAt = async (
+  root: string,
+  ref: string,
+  path: string,
+): Promise<string | null | undefined> => {
+  const listed = await runGit(root, ["ls-tree", ref, "--", path]);
+  if (!listed.ok) {
+    return undefined;
+  }
+  return listed.stdout.match(/^\d+ blob ([0-9a-f]+)\t/)?.[1] ?? null;
+};
+
+// The working file's blob id; null where absent, undefined where it is not a
+// plain file or could not be hashed.
+const workingBlob = async (
+  root: string,
+  path: string,
+): Promise<string | null | undefined> => {
+  const stat = await lstat(join(root, path)).catch((error: unknown) =>
+    (error as { code?: unknown }).code === "ENOENT" ? null : undefined,
+  );
+  if (stat === null || stat === undefined) {
+    return stat;
+  }
+  if (!stat.isFile()) {
+    return undefined;
+  }
+  return (await runGitText(root, ["hash-object", "--", path])) ?? undefined;
 };

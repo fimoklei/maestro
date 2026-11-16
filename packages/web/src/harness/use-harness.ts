@@ -475,13 +475,13 @@ export function useDiscardChange() {
 
 // The token the server rebuilds at the press, read when a withdrawal from
 // release opens its confirmation.
-export function useReleaseWithdrawalCheck(ref: PrimitiveRef) {
+export function useReleaseWithdrawalCheck(ref: ProposalTarget) {
   return useQuery({
     queryKey: [
       "harness",
       "release-withdrawal-check",
       ref.type,
-      ref.name,
+      ref.type === "categories" ? null : ref.name,
     ] as const,
     queryFn: () =>
       requestJson<{ confirmation: string }>(
@@ -498,7 +498,7 @@ export function useReleaseWithdrawalCheck(ref: PrimitiveRef) {
 export function useWithdrawFromRelease() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: PrimitiveRef & { confirmation: string }) =>
+    mutationFn: (request: ProposalTarget & { confirmation: string }) =>
       requestJson<{ name: string }>("/api/harness/release/withdraw", {
         method: "POST",
         body: JSON.stringify(request),
