@@ -14,6 +14,11 @@ import {
   recordOf,
   withRecord,
 } from "./category-section";
+import {
+  type CopyFacts,
+  type CopyMode,
+  copyHarnessCategories,
+} from "./copy-harness-categories";
 import type { ReadHeldItems } from "./held-items";
 import {
   type ReleasedCategoriesGitPort,
@@ -38,16 +43,19 @@ export type CategoryList = {
   assignments: { type: HarnessPrimitiveType; name: string; category: string }[];
 };
 
+/** Why a copy of the Harness categories cannot run: git could not answer, or the latest release has no valid category. */
+type CopyRefusal = "harness-categories-unread" | "no-harness-categories";
+
 export type CategoryError =
   | "not-configured"
   | "categories-unreadable"
   | "name-invalid"
   | "name-exists"
   | "category-not-found"
-  | "item-not-found";
+  | "item-not-found"
+  | CopyRefusal;
 
-export type CategoryResult =
-  | { ok: true; list: CategoryList; added?: string }
+type Refused =
   | { ok: false; error: "name-exists"; existing: string }
   // `configPath`: the file the operator repairs by hand.
   | { ok: false; error: "categories-unreadable"; configPath: string }
@@ -57,8 +65,26 @@ export type CategoryResult =
         | "not-configured"
         | "name-invalid"
         | "category-not-found"
-        | "item-not-found";
+        | "item-not-found"
+        | CopyRefusal;
     };
+
+export type CategoryResult =
+  | { ok: true; list: CategoryList; added?: string }
+  | Refused;
+
+/** What the copy dialog states before the copy: the release, its valid categories, and each mode's effect. */
+export type CopyPreview = {
+  tag: string;
+  count: number;
+  /** Entries the file left out for an error in them. */
+  skipped: number;
+  /** False for an empty own list, which copies without the choice. */
+  choice: boolean;
+  modes: Record<CopyMode, CopyFacts>;
+};
+
+export type CopyPreviewResult = { ok: true; preview: CopyPreview } | Refused;
 
 const listOf = (record: CategoryRecord): CategoryList => ({
   categories: [...record.names].sort(compareCategoryNames).map((name) => {
@@ -157,7 +183,73 @@ export class Categories {
     });
   }
 
-  private unreadable(): CategoryResult {
+  async previewCopy(): Promise<CopyPreviewResult> {
+    const source = await this.copySource();
+    if (!source.ok) return source;
+    const { own, released, held } = source;
+    const facts = (mode: CopyMode) =>
+      copyHarnessCategories({ own, harness: released.record, mode, held })
+        .facts;
+    return {
+      ok: true,
+      preview: {
+        tag: released.tag,
+        count: released.record.names.length,
+        skipped: released.skipped,
+        choice: own.names.length > 0,
+        modes: { add: facts("add"), replace: facts("replace") },
+      },
+    };
+  }
+
+  /** One change that sets names and assignments together, from the release as it stands now. */
+  async copyFromHarness(mode: CopyMode): Promise<CategoryResult> {
+    const source = await this.copySource();
+    if (!source.ok) return source;
+    const { harness, released, held } = source;
+    return this.store.update<CategoryResult>((config) => {
+      const section = readCategorySection(config.categories);
+      if (section === null) return { result: this.unreadable() };
+      const { record } = copyHarnessCategories({
+        own: recordOf(section, harness),
+        harness: released.record,
+        mode,
+        held,
+      });
+      return {
+        config: { ...config, categories: withRecord(section, harness, record) },
+        result: { ok: true, list: listOf(record) },
+      };
+    });
+  }
+
+  // Read before any update, so no other config write waits on git.
+  private async copySource() {
+    const harness = await this.harness();
+    if (harness === null) {
+      return { ok: false, error: "not-configured" } as const;
+    }
+    const released = await readReleasedHarnessCategories(
+      this.git,
+      harness.root,
+    );
+    if (released.kind === "unread") {
+      return { ok: false, error: "harness-categories-unread" } as const;
+    }
+    if (released.kind !== "listed") {
+      return { ok: false, error: "no-harness-categories" } as const;
+    }
+    const section = readCategorySection((await this.store.read()).categories);
+    if (section === null) return this.unreadable();
+    const own = recordOf(section, harness);
+    const held = await this.held(harness.root, [
+      ...own.assignments,
+      ...released.record.assignments,
+    ]);
+    return { ok: true, harness, released, own, held } as const;
+  }
+
+  private unreadable(): Refused {
     return {
       ok: false,
       error: "categories-unreadable",

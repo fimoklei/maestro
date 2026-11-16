@@ -4,7 +4,10 @@ import { HarnessCategoriesSection } from "./harness-categories-section";
 const meta = {
   title: "Settings/HarnessCategoriesSection",
   component: HarnessCategoriesSection,
-  args: { harness: { kind: "listed", tag: "v1.5.0", count: 6 } },
+  args: {
+    harness: { kind: "listed", tag: "v1.5.0", count: 6 },
+    onCopy: () => {},
+  },
   decorators: [
     (Story) => (
       <div style={{ maxWidth: 640 }}>

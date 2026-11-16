@@ -435,4 +435,6 @@ export const categoryErrorResponses: ErrorTable<CategoryError> = {
   "item-not-found": { status: 404 },
   "not-configured": { status: 409 },
   "categories-unreadable": { status: 500 },
+  "harness-categories-unread": { status: 503 },
+  "no-harness-categories": { status: 409 },
 };

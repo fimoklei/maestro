@@ -32,6 +32,7 @@ import { rowActionsLabel } from "../ui/row-menu-copy";
 import { ScreenFocusContext } from "../ui/screen-focus";
 import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
 import { AddCategoryDialog } from "./add-category-dialog";
+import { CopyHarnessCategoriesAction } from "./copy-harness-categories-action";
 import { HarnessCategoriesSection } from "./harness-categories-section";
 import { CATEGORIES_PAGE } from "./settings-pages";
 import { SettingsPanel } from "./settings-panel";
@@ -48,6 +49,7 @@ export function CategoriesPage() {
   const harnessCategories = useHarnessCategories();
   const add = useAddCategory();
   const [open, setOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [name, setName] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -202,7 +204,16 @@ export function CategoriesPage() {
               ))
             )}
           </SettingsSection>
-          <HarnessCategoriesSection harness={harnessCategories.data} />
+          <HarnessCategoriesSection
+            harness={harnessCategories.data}
+            onCopy={() => setCopying(true)}
+          />
+          {copying ? (
+            <CopyHarnessCategoriesAction
+              report={status.report}
+              onClose={() => setCopying(false)}
+            />
+          ) : null}
           {open ? (
             <AddCategoryDialog
               name={name}

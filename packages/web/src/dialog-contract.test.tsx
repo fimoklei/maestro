@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type {
+  CopyPreview,
   ReleasePlan,
   SkillFolderScan,
   UpdatePreview,
@@ -48,6 +49,7 @@ import {
 } from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
 import { AddCategoryDialog } from "./settings/add-category-dialog";
+import { CopyHarnessCategoriesDialog } from "./settings/copy-harness-categories-dialog";
 import { DeleteCategoryDialog } from "./settings/delete-category-dialog";
 import { RenameCategoryDialog } from "./settings/rename-category-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
@@ -453,6 +455,36 @@ const deleteCategoryDialog = ({
   />
 );
 
+const COPY_PREVIEW: CopyPreview = {
+  tag: "v1.5.0",
+  count: 1,
+  skipped: 0,
+  choice: true,
+  modes: {
+    add: { added: ["Planning"], deleted: [], unchanged: ["Drafts"] },
+    replace: { added: ["Planning"], deleted: ["Drafts"], unchanged: [] },
+  },
+};
+
+const copyCategoriesDialog = (
+  preview: CopyPreview | null,
+  {
+    running = false,
+    onClose = vi.fn(),
+    failure = null,
+  }: Options & { failure?: NoticeContent | null } = {},
+) => (
+  <CopyHarnessCategoriesDialog
+    preview={preview}
+    mode="add"
+    onModeChange={vi.fn()}
+    failure={failure}
+    busy={running}
+    onCopy={vi.fn()}
+    onClose={onClose}
+  />
+);
+
 const ON_DIALOG: Row[] = [
   {
     file: "deploy-state/remove-skill-dialog.tsx",
@@ -849,6 +881,20 @@ const ON_DIALOG: Row[] = [
     },
     loading: null,
     loadFailed: null,
+    notices: [],
+  },
+  {
+    file: "settings/copy-harness-categories-dialog.tsx",
+    heading: "Copy Harness categories",
+    render: ({ running, onClose }) =>
+      copyCategoriesDialog(COPY_PREVIEW, { running, onClose }),
+    changed: null,
+    emptyForm: null,
+    loading: {
+      line: "Loading the Harness categories…",
+      render: () => copyCategoriesDialog(null),
+    },
+    loadFailed: () => copyCategoriesDialog(null, { failure: FAILED }),
     notices: [],
   },
   {

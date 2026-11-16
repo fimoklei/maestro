@@ -1,5 +1,7 @@
 import type {
   CategoryList,
+  CopyMode,
+  CopyPreview,
   HarnessCategories,
   PrimitiveRef,
 } from "@maestro/core";
@@ -26,6 +28,38 @@ export function useHarnessCategories() {
   return useQuery({
     queryKey: [...CATEGORIES_KEY, "harness"],
     queryFn: () => requestJson<HarnessCategories>("/api/categories/harness"),
+  });
+}
+
+/**
+ * What a copy of the Harness categories would do, read while the copy dialog
+ * stands. Fresh every open: the release or the own list may have changed.
+ */
+export function useCopyPreview() {
+  return useQuery({
+    queryKey: [...CATEGORIES_KEY, "harness", "preview"],
+    queryFn: () =>
+      requestJson<CopyPreview>("/api/categories/harness/preview", {
+        method: "POST",
+        body: JSON.stringify({}),
+      }),
+    gcTime: 0,
+    staleTime: 0,
+  });
+}
+
+/** The server recomputes the copy from the release as it stands on confirm. */
+export function useCopyHarnessCategories() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (mode: CopyMode) =>
+      requestJson<CategoryList>("/api/categories/harness/copy", {
+        method: "POST",
+        body: JSON.stringify({ mode }),
+      }),
+    onSuccess: (list) => {
+      queryClient.setQueryData(CATEGORIES_KEY, list);
+    },
   });
 }
 

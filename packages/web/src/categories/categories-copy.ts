@@ -1,6 +1,12 @@
-import type { HarnessPrimitiveType, ImportMode } from "@maestro/core";
+import type {
+  CopyFacts,
+  CopyMode,
+  HarnessPrimitiveType,
+  ImportMode,
+} from "@maestro/core";
 import type { CategoryNameProblem } from "@maestro/core/category-name";
 import { harnessHeadings } from "../harness/notice-copy";
+import { loadingText } from "../ui/busy-copy";
 import { ADD_CATEGORY, NO_CATEGORY } from "../ui/category-menu-copy";
 import { rereadLabel, SET_CATEGORY } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
@@ -26,6 +32,81 @@ export const harnessCategoriesFaulty = (tag: string) =>
     label: "Couldn't load Harness categories",
     message: phrase`The categories file in Harness release ${machine(tag)} contains an error. You can still propose your own categories for review.`,
   }) as const satisfies NoticeContent;
+
+/** The row, its button's accessible name and the copy dialog's title. */
+export const COPY_HARNESS_CATEGORIES = "Copy Harness categories";
+/** The row's button, short as asked; its accessible name says what it copies. */
+export const COPY = "Copy";
+export const COPY_ROW_SENTENCE =
+  "Copies the Harness categories into your list. Your list stays as it is when the Harness changes.";
+export const COPY_CATEGORIES = "Copy categories";
+
+export const copyIntro = (tag: string, count: number): Phrase =>
+  phrase`Harness release ${machine(tag)} has ${count} ${count === 1 ? "category" : "categories"}. After the copy, your categories stay as they are when the Harness changes.`;
+
+export const copySkipped = (count: number) =>
+  count === 1
+    ? "The categories file has 1 entry with an error. It won't be copied."
+    : `The categories file has ${count} entries with errors. They won't be copied.`;
+
+export const HOW_TO_COPY = "How to copy";
+
+export const COPY_MODE_COPY: Record<
+  CopyMode,
+  { label: string; description: string }
+> = {
+  add: {
+    label: "Add",
+    description:
+      "Adds the categories you don't have and gives each skill or prompt without a category its Harness category.",
+  },
+  replace: {
+    label: "Replace",
+    description:
+      "Deletes the categories only you have. Every skill and prompt gets its Harness category, or none.",
+  },
+};
+
+export const WHAT_HAPPENS = "What happens to your categories";
+
+const COPY_GROUPS: Record<keyof CopyFacts, string> = {
+  added: "Added",
+  deleted: "Deleted",
+  unchanged: "Unchanged",
+};
+
+export const copyGroupLegend = (group: keyof CopyFacts, count: number) =>
+  `${COPY_GROUPS[group]} · ${count}`;
+
+/** Heard while the copy dialog reads the release. */
+export const LOADING_HARNESS_CATEGORIES = loadingText(HARNESS_CATEGORIES);
+
+const NOTHING_LEFT = "The latest Harness release no longer contains categories";
+const UNREAD = "Maestro couldn't read the latest Harness release";
+
+/** Why the copy dialog has nothing to show, by the refusal's code. */
+export const copyPreviewFailed = (code: string | null): NoticeContent => ({
+  level: "error",
+  label: "Couldn't load Harness categories",
+  message:
+    code === "no-harness-categories"
+      ? `${NOTHING_LEFT}. Select ${CLOSE}, then select ${REREAD_CATEGORIES}.`
+      : code === "harness-categories-unread"
+        ? `${UNREAD}. Select ${CLOSE}, then select ${COPY} to try again.`
+        : `Select ${CLOSE}, then select ${COPY} to try again.`,
+});
+
+/** Why Copy categories did not land, by the refusal's code. */
+export const copyFailed = (code: string | null): NoticeContent => ({
+  level: "error",
+  label: "Categories not copied",
+  message:
+    code === "no-harness-categories"
+      ? `${NOTHING_LEFT}, so nothing was copied. Select ${CLOSE}, then select ${REREAD_CATEGORIES}.`
+      : code === "harness-categories-unread"
+        ? `${UNREAD}, so nothing was copied. Select ${COPY_CATEGORIES} to try again.`
+        : `Select ${COPY_CATEGORIES} to try again.`,
+});
 
 export { ADD_CATEGORY };
 export const ADD_A_CATEGORY = "Add a category";

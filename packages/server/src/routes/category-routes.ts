@@ -7,6 +7,8 @@ import {
   ASSIGN_CATEGORY_BODY,
   addCategoryBodySchema,
   assignCategoryBodySchema,
+  COPY_CATEGORIES_BODY,
+  copyCategoriesBodySchema,
   DELETE_CATEGORY_BODY,
   deleteCategoryBodySchema,
   parseBody,
@@ -39,6 +41,24 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
           { error: result.error },
           categoryErrorResponses[result.error].status,
         );
+  });
+
+  // A POST, as opening the copy dialog also records what the operator saw (#1907).
+  app.post("/api/categories/harness/preview", async (c) => {
+    const result = await deps.categories.previewCopy();
+    if (result.ok) return c.json(result.preview);
+    const { ok: _ok, ...refusal } = result;
+    return c.json(refusal, categoryErrorResponses[result.error].status);
+  });
+
+  app.post("/api/categories/harness/copy", async (c) => {
+    const body = await parseBody(
+      c,
+      copyCategoriesBodySchema,
+      COPY_CATEGORIES_BODY,
+    );
+    if (!body.ok) return body.response;
+    return respond(c, await deps.categories.copyFromHarness(body.data.mode));
   });
 
   app.post("/api/categories", async (c) => {
