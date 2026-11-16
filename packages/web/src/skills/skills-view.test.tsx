@@ -130,6 +130,7 @@ const baseProps: Props = {
   failure: null,
   reading: false,
   onReread: () => {},
+  arrival: null,
   clone: { kind: "checking" },
   onDeleted: () => {},
 };

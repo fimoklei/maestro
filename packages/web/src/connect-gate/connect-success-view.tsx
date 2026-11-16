@@ -5,7 +5,7 @@ import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { CheckboxField } from "../ui/checkbox-field";
 import { Fact } from "../ui/fact";
-import { Notice, type NoticeContent } from "../ui/notice";
+import { Notice } from "../ui/notice";
 import {
   CONNECTED_TITLE,
   CONTINUE_TO_FIRST_VIEW,
@@ -32,8 +32,6 @@ export type ConnectSuccessViewProps = {
   copyOffer: CategoriesCopyOffer | null;
   /** The copy that continue runs. */
   copying: boolean;
-  /** The copy that continue ran, refused. */
-  failure: NoticeContent | null;
   onContinue: () => void;
 };
 
@@ -78,7 +76,6 @@ export function ConnectSuccessView({
   inventoryPath,
   copyOffer,
   copying,
-  failure,
   onContinue,
 }: ConnectSuccessViewProps) {
   const copy = completionCopy(outcome, primitiveCount);
@@ -112,7 +109,6 @@ export function ConnectSuccessView({
           disabled={copying}
         />
       )}
-      <Notice trigger="user-action" notice={failure} />
       <div>
         <Button variant="primary" busy={copying} onClick={onContinue}>
           {copying ? ACTIONS.copy.busy : copy.continueLabel}

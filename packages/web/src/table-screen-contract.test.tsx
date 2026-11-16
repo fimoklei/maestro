@@ -318,6 +318,7 @@ const renderSkillsRow = () => {
       failure={null}
       reading={false}
       onReread={() => {}}
+      arrival={null}
       clone={{ kind: "checking" }}
       onDeleted={() => {}}
     />,
@@ -635,6 +636,7 @@ const ON_TABLE_SCREEN: Row[] = [
             failure={null}
             reading={false}
             onReread={() => {}}
+            arrival={null}
             clone={{ kind: "checking" }}
             onDeleted={() => {}}
           />,

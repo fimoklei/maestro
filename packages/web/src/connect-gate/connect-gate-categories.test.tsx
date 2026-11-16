@@ -161,7 +161,8 @@ describe("the Connect gate's Harness categories offer", () => {
     expect(server.copies()).toEqual([]);
   });
 
-  it("keeps the gate open with the cause when the copy fails", async () => {
+  // #1908: the operator still moves to Skills, where the failure shows.
+  it("moves to Skills and states the failed copy there, with a close control", async () => {
     stubServer({
       seen: () => jsonResponse(LISTED),
       copy: () => jsonResponse({ error: "harness-categories-unread" }, 502),
@@ -171,22 +172,18 @@ describe("the Connect gate's Harness categories offer", () => {
 
     await continueToSkills();
 
-    expect(
-      await screen.findByText("Categories not copied"),
-    ).toBeInTheDocument();
+    await landedOnSkills();
+    expect(screen.getByText("Categories not copied")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Maestro couldn't read the latest Harness release, so nothing was copied. Select Continue to Skills to try again, or clear Copy Harness categories to continue without them.",
+        "Maestro couldn't read the latest Harness release, so nothing was copied. You can also copy them later in Categories in Settings.",
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: /^skills$/i }),
-    ).not.toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("checkbox", { name: "Copy Harness categories" }),
+      screen.getByRole("button", { name: "Close Categories not copied" }),
     );
-    await continueToSkills();
-    await landedOnSkills();
+    expect(screen.queryByText("Categories not copied")).toBeNull();
+    expect(document.activeElement).toHaveAccessibleName("Re-read Skills");
   });
 });

@@ -19,7 +19,7 @@ import { DetailPaneSlot } from "./detail-pane";
 import { EmptyState, type EmptyStateProps } from "./empty-state";
 import { Icon } from "./icon";
 import { IconButton } from "./icon-button";
-import { Notice } from "./notice";
+import { Notice, type NoticeContent } from "./notice";
 import { OptionMenu } from "./option-menu";
 import { Panel } from "./panel";
 import { ScreenFocusContext } from "./screen-focus";
@@ -67,6 +67,13 @@ type TableScreenBase<T extends RowData> = {
   pane?: (row: T, frame: PaneFrame) => ReactNode;
   /** The screen's dialogs. */
   children?: ReactNode;
+  /** The outcome of the reader's own action at the top of the panel, closable. */
+  outcome?: TableScreenOutcome | null;
+};
+
+export type TableScreenOutcome = {
+  notice: NoticeContent;
+  onDismiss: () => void;
 };
 
 // Filter and Display take their cause from the frame's own failed-read
@@ -107,6 +114,7 @@ export function TableScreen<T extends RowData>({
   empty,
   pane,
   notice,
+  outcome,
   children,
 }: TableScreenProps<T>) {
   const [order, setOrder] = useState<string[]>([]);
@@ -256,6 +264,19 @@ export function TableScreen<T extends RowData>({
                 openRow !== null && "@max-[44rem]:hidden",
               )}
             >
+              {outcome == null ? null : (
+                <div className="p-panel">
+                  <Notice
+                    trigger="user-action"
+                    notice={outcome.notice}
+                    onDismiss={() => {
+                      // Nothing follows it: focus goes to Re-read.
+                      state.rereadRef.current?.focus();
+                      outcome.onDismiss();
+                    }}
+                  />
+                </div>
+              )}
               {notice ?? (
                 // Mounted before a failure is, so it is announced (#465); the
                 // padding comes only with the notice.

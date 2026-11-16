@@ -1,6 +1,5 @@
 import type { ConnectOutcome } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { connectCopyFailed } from "./connect-gate-copy";
 import { ConnectSuccessView } from "./connect-success-view";
 
 const meta = {
@@ -12,7 +11,6 @@ const meta = {
     inventoryPath: "/home/me/agent-harness",
     copyOffer: null,
     copying: false,
-    failure: null,
     onContinue: () => undefined,
   },
 } satisfies Meta<typeof ConnectSuccessView>;
@@ -46,10 +44,3 @@ export const CopyCleared: Story = {
 };
 
 export const Copying: Story = { args: { copyOffer: offer, copying: true } };
-
-export const CopyFailed: Story = {
-  args: {
-    copyOffer: offer,
-    failure: connectCopyFailed("harness-categories-unread"),
-  },
-};

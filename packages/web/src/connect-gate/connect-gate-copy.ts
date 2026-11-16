@@ -1,7 +1,4 @@
-import {
-  CATEGORIES_NOT_COPIED,
-  COPY_HARNESS_CATEGORIES,
-} from "../categories/categories-copy";
+import { CATEGORIES_NOT_COPIED } from "../categories/categories-copy";
 import { FIRST_INVENTORY_VIEW } from "../inventory/inventory-views";
 import { primitiveCountLabel } from "../shell/primitive-count-label";
 import type { NoticeContent } from "../ui/notice";
@@ -31,18 +28,16 @@ export const NO_SKILLS_YET = "It has no skills yet.";
 export const COPY_LATER_HINT =
   "You can also copy them later in Categories in Settings.";
 
-const TRY_AGAIN = `Select ${CONTINUE_TO_FIRST_VIEW} to try again, or clear ${COPY_HARNESS_CATEGORIES} to continue without them.`;
-
-/** Why the copy on Continue to Skills did not land; the gate stays. */
+/** Why the copy on Continue to Skills did not land, stated on Skills after the move. */
 export const connectCopyFailed = (code: string | null): NoticeContent => ({
   level: "error",
   label: CATEGORIES_NOT_COPIED,
   message:
     code === "no-harness-categories"
-      ? `The latest Harness release no longer contains categories, so nothing was copied. Clear ${COPY_HARNESS_CATEGORIES}, then select ${CONTINUE_TO_FIRST_VIEW}.`
+      ? "The latest Harness release no longer contains categories, so nothing was copied."
       : code === "harness-categories-unread"
-        ? `Maestro couldn't read the latest Harness release, so nothing was copied. ${TRY_AGAIN}`
-        : TRY_AGAIN,
+        ? `Maestro couldn't read the latest Harness release, so nothing was copied. ${COPY_LATER_HINT}`
+        : `Nothing was copied. ${COPY_LATER_HINT}`,
 });
 
 // Null is a count that could not be read: left out, never shown as zero (#841).

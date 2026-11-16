@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { LOADING_INVENTORY_CONNECTION } from "../inventory/inventory-copy";
-import { FIRST_INVENTORY_PATH } from "../inventory/inventory-views";
+import {
+  FIRST_INVENTORY_PATH,
+  type InventoryArrival,
+} from "../inventory/inventory-views";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { Card } from "../ui/card";
 import { ConnectFlow } from "./connect-flow";
@@ -40,11 +43,16 @@ export function ConnectView() {
           renderSuccess={(result) => (
             <ConnectSuccess
               result={result}
-              onContinue={() =>
+              onContinue={(copyFailed) =>
                 navigate(
                   result.outcome === "scaffolded"
                     ? "/harness"
                     : FIRST_INVENTORY_PATH,
+                  {
+                    state: {
+                      categoriesNotCopied: copyFailed,
+                    } satisfies InventoryArrival,
+                  },
                 )
               }
             />

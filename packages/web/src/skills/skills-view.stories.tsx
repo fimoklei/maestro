@@ -1,5 +1,6 @@
 import type { InventorySkill } from "@maestro/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { connectCopyFailed } from "../connect-gate/connect-gate-copy";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { DeploymentTarget } from "../inventory/deployed-rollup";
 import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
@@ -109,6 +110,7 @@ const meta = {
     failure: null,
     reading: false,
     onReread: () => {},
+    arrival: null,
     clone: {
       kind: "read",
       checks: Object.fromEntries(
@@ -152,6 +154,16 @@ export const Reading: Story = {
 export const ReadFailed: Story = {
   args: {
     failure: INVENTORY_NOT_READ,
+  },
+};
+
+// The copy that Continue to Skills ran at the Connect gate failed.
+export const CategoriesNotCopied: Story = {
+  args: {
+    arrival: {
+      notice: connectCopyFailed("harness-categories-unread"),
+      onDismiss: () => {},
+    },
   },
 };
 
