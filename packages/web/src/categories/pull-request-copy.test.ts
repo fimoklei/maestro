@@ -8,13 +8,13 @@ import {
   COMPARED_WITH_NEXT_RELEASE,
   CREATE_PULL_REQUEST,
   CREATE_PULL_REQUEST_BODY,
-  comparedWithPullRequest,
   comparingWithPullRequest,
   createAfterCloseBody,
   DELETED_FROM_HARNESS,
   DELETED_FROM_PULL_REQUEST,
   MOVED_TO_ANOTHER_CATEGORY,
   NEXT_RELEASE_UNREADABLE,
+  notYetInPullRequest,
   PULL_REQUEST_NOT_OPENED,
   PULL_REQUEST_ROW,
   PULL_REQUEST_UNREADABLE,
@@ -151,7 +151,7 @@ describe("the Update pull request dialog", () => {
     expect(comparingWithPullRequest(45)).toBe(
       "Comparing with pull request #45…",
     );
-    expect(comparedWithPullRequest(45)).toBe("Compared with pull request #45");
+    expect(notYetInPullRequest(45)).toBe("Not yet in pull request #45");
     expect(ADDED_TO_PULL_REQUEST).toBe("Added to the pull request");
     expect(DELETED_FROM_PULL_REQUEST).toBe("Deleted from the pull request");
   });

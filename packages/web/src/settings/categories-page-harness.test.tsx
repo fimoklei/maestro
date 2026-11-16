@@ -19,12 +19,12 @@ const OWN: CategoryList = {
   assignments: [],
 };
 
-function stubServer(harness: HarnessCategories) {
+function stubServer(harness: HarnessCategories, own: CategoryList = OWN) {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === "/api/categories") return jsonResponse(OWN);
+      if (url === "/api/categories") return jsonResponse(own);
       if (url === "/api/categories/harness") return jsonResponse(harness);
       if (url === "/api/categories/proposal") {
         return jsonResponse({ state: "start" } satisfies CategoriesProposalRow);
@@ -87,17 +87,32 @@ describe("Settings › Categories, the Harness categories", () => {
     expect(screen.getByText("Planning")).toBeInTheDocument();
   });
 
-  // The section stays for its pull-request row.
-  it("states that a release without the file contains no categories", async () => {
+  // #1904: no release or no file states no count and no notice; the section
+  // stays for its pull-request row.
+  it("states nothing about a release without categories", async () => {
     stubServer({ kind: "none" });
     renderPage();
 
-    expect(
-      await within(await harnessSection()).findByText(
-        "The latest Harness release contains no categories.",
-      ),
-    ).toBeInTheDocument();
+    await ownListShown();
+    await within(await harnessSection()).findByText(PULL_REQUEST_ROW);
+    expect(screen.queryByText(/Harness release/)).toBeNull();
   });
+
+  it.each([
+    [
+      { kind: "listed", tag: "v1.5.0", count: 6, changed: false },
+      "Add a category or copy categories from the Harness.",
+    ],
+    [{ kind: "none" }, "Categories appear here."],
+  ] satisfies [HarnessCategories, string][])(
+    "invites an empty own list to begin, beside %j",
+    async (harness, text) => {
+      stubServer(harness, { categories: [], assignments: [] });
+      renderPage();
+
+      expect(await screen.findByText(text)).toBeInTheDocument();
+    },
+  );
 
   it("states nothing about the release where the Harness could not be read", async () => {
     stubServer({ kind: "unread" });

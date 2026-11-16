@@ -128,7 +128,7 @@ describe("the Update pull request dialog", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      await within(dialog).findByText("Compared with pull request #45"),
+      await within(dialog).findByText("Not yet in pull request #45"),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole("group", {
@@ -210,7 +210,7 @@ describe("the Update pull request dialog", () => {
     });
     renderPage();
     const dialog = await openDialog();
-    await within(dialog).findByText("Compared with pull request #45");
+    await within(dialog).findByText("Not yet in pull request #45");
 
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Update pull request" }),

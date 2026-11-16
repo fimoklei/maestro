@@ -244,7 +244,7 @@ describe("the Categories row under Pending release", () => {
     );
   });
 
-  it("offers Open Categories in Settings and Withdraw from release", async () => {
+  it("offers Withdraw from release alone", async () => {
     released("edit");
     renderHarness();
     await settled();
@@ -253,7 +253,7 @@ describe("the Categories row under Pending release", () => {
       within(await openRowMenu("Categories", "Pending release", "categories"))
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["Open Categories in Settings", "Withdraw from release"]);
+    ).toEqual(["Withdraw from release"]);
   });
 });
 

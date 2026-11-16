@@ -6,6 +6,7 @@ import {
   CATEGORIES_SENTENCE,
   CATEGORY_NOT_ADDED,
   NO_CATEGORIES,
+  NO_CATEGORIES_OR_COPY,
   NO_CATEGORIES_SENTENCE,
   REREAD_CATEGORIES,
 } from "../categories/categories-copy";
@@ -172,7 +173,11 @@ export function CategoriesPage() {
             {categories.isSuccess && list.length === 0 ? (
               <EmptyState
                 title={NO_CATEGORIES}
-                description={NO_CATEGORIES_SENTENCE}
+                description={
+                  harnessCategories.data?.kind === "listed"
+                    ? NO_CATEGORIES_OR_COPY
+                    : NO_CATEGORIES_SENTENCE
+                }
                 headingLevel={3}
               />
             ) : (

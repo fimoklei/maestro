@@ -46,11 +46,7 @@ describe("the row Pull request to the Harness", () => {
         "Propose your categories for the connected Harness. This creates a pull request for review.",
       ),
     ).toBeInTheDocument();
-    expect(
-      within(region).getByText(
-        "The latest Harness release contains no categories.",
-      ),
-    ).toBeInTheDocument();
+    expect(within(region).queryByText(/Harness release/)).toBeNull();
   });
 
   it.each<[string, CategoriesProposalRow | Response, string, string]>([

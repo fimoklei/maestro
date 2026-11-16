@@ -172,8 +172,8 @@ export const updatePullRequestBody = (number: number) =>
 export const comparingWithPullRequest = (number: number) =>
   `Comparing with pull request #${number}…`;
 
-export const comparedWithPullRequest = (number: number) =>
-  `Compared with pull request #${number}`;
+export const notYetInPullRequest = (number: number) =>
+  `Not yet in pull request #${number}`;
 export const ADDED_TO_PULL_REQUEST = "Added to the pull request";
 export const DELETED_FROM_PULL_REQUEST = "Deleted from the pull request";
 

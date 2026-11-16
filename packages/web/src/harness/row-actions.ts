@@ -200,14 +200,16 @@ function stageItems(
           : OWN_OPEN.has(row.status) && sole !== undefined
             ? [withdrawItem(row, handlers, enabled, sole.number)]
             : [];
-    return [
-      ...links,
-      { label: OPEN_CATEGORIES_IN_SETTINGS, onSelect: handlers.openCategories },
-      ...withdraws,
-      ...(row.stage === "pending-release"
-        ? [releaseWithdrawalItem(row, handlers, enabled)]
-        : []),
-    ];
+    return row.stage === "pending-release"
+      ? [...links, releaseWithdrawalItem(row, handlers, enabled)]
+      : [
+          ...links,
+          {
+            label: OPEN_CATEGORIES_IN_SETTINGS,
+            onSelect: handlers.openCategories,
+          },
+          ...withdraws,
+        ];
   }
 
   if (row.stage === "pending-proposal") {

@@ -18,12 +18,16 @@ export const CATEGORIES_SENTENCE =
   "Your categories are saved on this computer.";
 export const NO_CATEGORIES = "No categories yet";
 export const NO_CATEGORIES_SENTENCE = "Categories appear here.";
+/** The empty list's sentence while the Harness carries categories to copy. */
+export const NO_CATEGORIES_OR_COPY =
+  "Add a category or copy categories from the Harness.";
 
 /** The section of the categories the latest Harness release contains. */
 export const HARNESS_CATEGORIES = "Harness categories";
 
+/** Stated only for a release with categories (#1904). */
 export const harnessCategoriesCount = (count: number) =>
-  `The latest Harness release contains ${count === 0 ? "no" : count} ${count === 1 ? "category" : "categories"}.`;
+  `The latest Harness release contains ${count} ${count === 1 ? "category" : "categories"}.`;
 
 /** A file with an error never reads as no categories; the own list works on. */
 export const harnessCategoriesFaulty = (tag: string) =>

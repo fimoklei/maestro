@@ -31,6 +31,7 @@ import {
   harnessCategoriesFaulty,
   LOADING_HARNESS_CATEGORIES,
   NO_CATEGORIES,
+  NO_CATEGORIES_OR_COPY,
   NO_CATEGORIES_SENTENCE,
   NO_ITEMS,
   nameExistsError,
@@ -51,12 +52,14 @@ describe("Categories copy", () => {
     );
     expect(NO_CATEGORIES).toBe("No categories yet");
     expect(NO_CATEGORIES_SENTENCE).toBe("Categories appear here.");
+    expect(NO_CATEGORIES_OR_COPY).toBe(
+      "Add a category or copy categories from the Harness.",
+    );
   });
 
   it.each([
     [6, "The latest Harness release contains 6 categories."],
     [1, "The latest Harness release contains 1 category."],
-    [0, "The latest Harness release contains no categories."],
   ])("counts %i Harness categories", (count, sentence) => {
     expect(HARNESS_CATEGORIES).toBe("Harness categories");
     expect(harnessCategoriesCount(count)).toBe(sentence);

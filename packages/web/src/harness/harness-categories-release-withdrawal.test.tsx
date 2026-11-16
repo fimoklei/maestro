@@ -63,7 +63,8 @@ const confirmButton = (dialog: HTMLElement) =>
   within(dialog).getByRole("button", { name: /^Withdraw from release/ });
 
 describe("Withdraw from release on the Categories row", () => {
-  it("is the red item after Open Categories in Settings", async () => {
+  // The spec places Open Categories in Settings under Pending review only.
+  it("is the row's one item", async () => {
     stubHarnessServer({ read: { body: merged() } });
     renderHarness();
     await settled();
@@ -71,10 +72,9 @@ describe("Withdraw from release on the Categories row", () => {
     const items = within(await menu()).getAllByRole("menuitem");
 
     expect(items.map((item) => item.textContent)).toEqual([
-      "Open Categories in Settings",
       "Withdraw from release",
     ]);
-    expect(items[1]).not.toHaveAttribute("aria-disabled");
+    expect(items[0]).not.toHaveAttribute("aria-disabled");
   });
 
   it("states that every categories change merged since the latest release goes, naming the merged pull request", async () => {

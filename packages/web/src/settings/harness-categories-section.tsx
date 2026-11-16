@@ -15,8 +15,8 @@ import { SettingsRow } from "./settings-row";
 import { SettingsSection } from "./settings-section";
 
 // What the latest Harness release holds of the Harness categories, the copy
-// of them where it holds some, then the pull-request row. A release that
-// could not be read states nothing.
+// of them where it holds some, then the pull-request row. A release without
+// categories, or one that could not be read, states nothing.
 export function HarnessCategoriesSection({
   harness,
   onCopy,
@@ -33,9 +33,7 @@ export function HarnessCategoriesSection({
       description={
         harness?.kind === "listed"
           ? harnessCategoriesCount(harness.count)
-          : harness?.kind === "none"
-            ? harnessCategoriesCount(0)
-            : undefined
+          : undefined
       }
       notice={
         harness?.kind === "faulty" ? (
