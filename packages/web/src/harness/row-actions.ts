@@ -4,6 +4,7 @@
 
 import type { HarnessStageRow, ReviewRequestLink } from "@maestro/core";
 import {
+  CREATE_PULL_REQUEST,
   DELETE_LABEL,
   DISCARD_CHANGE,
   EDIT_PROMPT,
@@ -223,7 +224,7 @@ function stageItems(
       return [
         ...links,
         {
-          label: "Create pull request",
+          label: CREATE_PULL_REQUEST,
           disabled: !enabled,
           busy: busy("create", null),
           onSelect: () => handlers.create(row),

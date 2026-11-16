@@ -15,9 +15,8 @@ import {
 } from "./category-name";
 import type { CategoryRecord } from "./category-section";
 
-export const HARNESS_CATEGORIES_PATH = ".maestro/categories.yml";
 export const HARNESS_CATEGORIES_MAX_BYTES = 256 * 1024;
-const HARNESS_CATEGORIES_MAX_COUNT = 200;
+export const HARNESS_CATEGORIES_MAX_COUNT = 200;
 
 /** `skipped` counts the entries left out for an error in them. */
 export type HarnessCategoriesFile =
@@ -105,7 +104,6 @@ const assignmentsOf = (raw: readonly unknown[], names: readonly string[]) => {
 /**
  * The file text for a list within the file's limits; the serializer quotes
  * each name YAML would read as another value.
- * @internal Only tests write it until the categories pull request (#1910) does.
  */
 export const writeHarnessCategoriesFile = (record: CategoryRecord): string =>
   new Document({

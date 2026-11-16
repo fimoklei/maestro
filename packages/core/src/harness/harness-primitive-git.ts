@@ -300,17 +300,22 @@ export type SubjectChange = {
 };
 
 // Each base copy is dropped first: `read-tree --prefix` refuses a path the
-// index already holds. `parent` is the proposal branch's tip when one exists,
-// so the push fast-forwards (#578).
+// index already holds. `parents` leads with the proposal branch's tip when one
+// exists, so the push fast-forwards (#578).
 export async function commitSubjectsOnto(
   root: string,
   changes: readonly SubjectChange[],
   {
     treeBase,
-    parent,
+    parents,
     indexDir,
     message,
-  }: { treeBase: string; parent: string; indexDir: string; message: string },
+  }: {
+    treeBase: string;
+    parents: readonly string[];
+    indexDir: string;
+    message: string;
+  },
 ): Promise<string> {
   const options = indexOptions(join(indexDir, "promote"));
   await run("git", ["-C", root, "read-tree", treeBase], options);
@@ -353,7 +358,15 @@ export async function commitSubjectsOnto(
   // No author, no signing flag: the author's own git config applies (#574).
   const { stdout: commit } = await run(
     "git",
-    ["-C", root, "commit-tree", tree.trim(), "-p", parent, "-m", message],
+    [
+      "-C",
+      root,
+      "commit-tree",
+      tree.trim(),
+      ...parents.flatMap((parent) => ["-p", parent]),
+      "-m",
+      message,
+    ],
     options,
   );
   return commit.trim();

@@ -40,6 +40,7 @@ describe("Categories copy", () => {
   it.each([
     [6, "The latest Harness release contains 6 categories."],
     [1, "The latest Harness release contains 1 category."],
+    [0, "The latest Harness release contains no categories."],
   ])("counts %i Harness categories", (count, sentence) => {
     expect(HARNESS_CATEGORIES).toBe("Harness categories");
     expect(harnessCategoriesCount(count)).toBe(sentence);

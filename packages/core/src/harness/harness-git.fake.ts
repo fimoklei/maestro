@@ -1,9 +1,19 @@
 // One in-memory Harness clone behind `HarnessGitPort`: commits hold skill and
 // prompt contents, refs point at commits, and every read derives from them, so
 // a test states content and never a hash.
-import { createHash } from "node:crypto";
 import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
+import { HARNESS_CATEGORIES_FILE } from "../inventory/harness-layout";
 import { fileAtRef } from "./file-at-ref.fake";
+import {
+  blobHash,
+  type Content,
+  hashesOf,
+  objectsOf,
+  type Prompts,
+  type Skills,
+  textOf,
+  treesOf,
+} from "./harness-content.fake";
 import {
   type HarnessObject,
   type HarnessPrimitiveType,
@@ -32,6 +42,8 @@ import type {
   HarnessMovementTrees,
   HarnessPromoteRef,
   HarnessTag,
+  ListFilePush,
+  ListPushOutcome,
   PromoteSkillOutcome,
   PublishTagOutcome,
   SkillPushOutcome,
@@ -40,81 +52,23 @@ import type {
 } from "./read-harness-state";
 import type { HarnessSkillTree } from "./released-content";
 
-// Skill name → its SKILL.md text, which stands for the whole folder; null is
-// a folder with no SKILL.md.
-export type Skills = Record<string, string | null>;
-
-// Prompt name → its file text.
-export type Prompts = Record<string, string>;
-
-// `categories` is the categories file's text; absent where the commit has none.
-type Content = { skills: Skills; prompts: Prompts; categories?: string };
+export {
+  blobHash,
+  type Prompts,
+  type Skills,
+  treeHash,
+} from "./harness-content.fake";
 
 type Commit = Content & {
   parent: string | null;
   author: string;
   rootFiles: string[];
-  files: Record<string, string>;
 };
-
-// The tree hash git would give this content.
-export const treeHash = (content: string | null): string =>
-  createHash("sha1")
-    .update(content ?? "\0no-manifest")
-    .digest("hex");
 
 export const skillRef = (name: string): PrimitiveRef => ({
   type: "skill",
   name,
 });
-
-// The blob hash git would give this text; never a tree hash of the same text.
-export const blobHash = (text: string): string =>
-  createHash("sha1").update(`blob\0${text}`).digest("hex");
-
-const treesOf = (skills: Skills): HarnessSkillTree[] =>
-  Object.entries(skills).map(([name, content]) => ({
-    name,
-    treeHash: treeHash(content),
-  }));
-
-const hashesOf = (
-  content: Content,
-  type: HarnessPrimitiveType,
-): Record<string, string> =>
-  type === "skill"
-    ? Object.fromEntries(
-        Object.entries(content.skills).map(([name, text]) => [
-          name,
-          treeHash(text),
-        ]),
-      )
-    : Object.fromEntries(
-        Object.entries(content.prompts).map(([name, text]) => [
-          name,
-          blobHash(text),
-        ]),
-      );
-
-const objectsOf = (content: Content): HarnessObject[] => [
-  ...Object.entries(hashesOf(content, "skill")).map(([name, hash]) => ({
-    type: "skill" as const,
-    name,
-    hash,
-  })),
-  ...Object.entries(hashesOf(content, "prompt")).map(([name, hash]) => ({
-    type: "prompt" as const,
-    name,
-    hash,
-  })),
-];
-
-// `undefined` is a primitive the content lacks.
-const textOf = (
-  content: Content,
-  { type, name }: PrimitiveRef,
-): string | null | undefined =>
-  type === "skill" ? content.skills[name] : content.prompts[name];
 
 export class InMemoryHarnessGit implements HarnessGitPort {
   // The one clone this world holds; any other root is no clone at all.
@@ -180,6 +134,9 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     commit: string;
     into: string;
   }[] = [];
+  // Every list file pushed, with the parents its commit took.
+  readonly listPushes: { branch: string; parents: string[]; text: string }[] =
+    [];
   // Commits pushed to the default branch by a withdrawal.
   readonly withdrawals: { commit: string; message: string }[] = [];
   // Proposal branch names deleted on the remote.
@@ -198,7 +155,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       parent?: string;
       author?: string;
       prompts?: Prompts;
-      categories?: string;
       rootFiles?: string[];
       files?: Record<string, string>;
     } = {},
@@ -207,7 +163,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       parent: options.parent ?? null,
       skills,
       prompts: options.prompts ?? {},
-      categories: options.categories,
       author: options.author ?? "fimoklei",
       rootFiles: options.rootFiles ?? ["apm.yml"],
       files: options.files ?? {},
@@ -263,7 +218,11 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       return null;
     }
     if (ref === "working") {
-      return { skills: this.working, prompts: this.listedWorkingPrompts() };
+      return {
+        skills: this.working,
+        prompts: this.listedWorkingPrompts(),
+        files: {},
+      };
     }
     const id = this.resolve(ref);
     return id === null || this.unreadable.has(id)
@@ -599,6 +558,37 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return this.pushProposal(ref, base, "deletion", undefined);
   }
 
+  // As the adapter: the default-branch tree with the file; a branch that
+  // lacks the tip gains it as a second parent.
+  async pushListFile(
+    root: string,
+    { subject, text, defaultTip }: ListFilePush,
+  ): Promise<ListPushOutcome> {
+    this.at(root);
+    if (!this.pushesWhereItFetched) return "push-elsewhere";
+    const leaf = subjectBranchLeaf(subject);
+    const outcome = this.pushOutcomes[leaf] ?? this.pushOutcome ?? "pushed";
+    if (outcome === "source-changed") return "push-failed";
+    if (outcome !== "pushed") return outcome;
+    const at = this.contentAt(defaultTip);
+    if (at === null) return "push-failed";
+    const tip = this.promote[leaf] ?? null;
+    const parents =
+      tip === null
+        ? [defaultTip]
+        : this.history(tip).includes(defaultTip)
+          ? [tip]
+          : [tip, defaultTip];
+    const id = this.commit(`${leaf}-${this.listPushes.length + 1}`, at.skills, {
+      parent: parents[0],
+      prompts: at.prompts,
+      files: { ...at.files, [HARNESS_CATEGORIES_FILE]: text },
+    });
+    this.promote[leaf] = id;
+    this.listPushes.push({ branch: subjectBranch(subject), parents, text });
+    return "pushed";
+  }
+
   private pushProposal(
     ref: PrimitiveRef,
     base: string,
@@ -610,7 +600,7 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     if (outcome !== "pushed") {
       return outcome;
     }
-    const at = this.contentAt(base) ?? { skills: {}, prompts: {} };
+    const at = this.contentAt(base) ?? { skills: {}, prompts: {}, files: {} };
     const placed = <T>(map: Record<string, T>, value: T | undefined) => {
       const { [ref.name]: _replaced, ...rest } = map;
       return value === undefined ? rest : { ...rest, [ref.name]: value };
@@ -620,6 +610,7 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       ref.type === "skill" ? placed(at.skills, content) : at.skills,
       {
         parent: this.promote[leaf] ?? base,
+        files: at.files,
         prompts:
           ref.type === "prompt"
             ? placed(at.prompts, content ?? undefined)
@@ -652,17 +643,19 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     const at = this.contentAt(withdrawal.tip);
     const source =
       withdrawal.source === null
-        ? { skills: {}, prompts: {} }
+        ? { skills: {}, prompts: {}, files: {} }
         : this.contentAt(withdrawal.source);
     if (at === null || source === null) {
       return "push-failed";
     }
     const skills = { ...at.skills };
     const prompts = { ...at.prompts };
-    let { categories } = at;
+    const files = { ...at.files };
     for (const subject of withdrawal.refs) {
       if (subject.type === "categories") {
-        categories = source.categories;
+        const held = source.files[HARNESS_CATEGORIES_FILE];
+        delete files[HARNESS_CATEGORIES_FILE];
+        if (held !== undefined) files[HARNESS_CATEGORIES_FILE] = held;
         continue;
       }
       const held = textOf(source, subject);
@@ -676,7 +669,7 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     const id = this.commit(
       `withdrawal-${this.withdrawals.length + 1}`,
       skills,
-      { parent: withdrawal.tip, prompts, categories },
+      { parent: withdrawal.tip, prompts, files },
     );
     this.withdrawals.push({ commit: id, message: withdrawal.message });
     this.tip = id;

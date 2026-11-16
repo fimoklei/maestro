@@ -4,6 +4,8 @@ import { cn } from "../ui/cn";
 import { CURRENT_ROW } from "../ui/current-row";
 import { FOCUS_RING_INSET } from "../ui/focus-ring";
 import { GitHubFactLink } from "../ui/github-fact-link";
+import type { Copy } from "../ui/phrase";
+import { PhraseText } from "../ui/phrase-text";
 
 // One row of a Settings section (#995): the name and at most one sentence
 // left, a value or one control right. The row wraps, so the right side drops
@@ -11,8 +13,8 @@ import { GitHubFactLink } from "../ui/github-fact-link";
 
 export interface SettingsRowProps {
   name: string;
-  /** At most one sentence. */
-  description?: string;
+  /** At most one sentence; a name in it is set apart. */
+  description?: Copy;
   /** Truncated, with the whole value on hover. */
   value?: string;
   /** Links the value to its GitHub page. */
@@ -54,7 +56,9 @@ export function SettingsRow({
           {name}
         </span>
         {description === undefined ? null : (
-          <span className="font-ui text-gray-11 text-meta">{description}</span>
+          <span className="font-ui text-gray-11 text-meta">
+            <PhraseText copy={description} />
+          </span>
         )}
       </div>
       {value === undefined ? null : (

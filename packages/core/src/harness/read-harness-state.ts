@@ -51,6 +51,16 @@ export type PromoteSkillOutcome =
 
 export type SkillPushOutcome = Exclude<PromoteSkillOutcome, "skill-missing">;
 
+/** A list proposed as one file on its own branch, built on `defaultTip`. */
+export type ListFilePush = {
+  subject: Extract<ProposalSubject, { type: "categories" }>;
+  text: string;
+  defaultTip: string;
+  message: string;
+};
+
+export type ListPushOutcome = Exclude<SkillPushOutcome, "source-changed">;
+
 /** One commit on the default branch that puts the named subjects back as `source` holds them. */
 export type DefaultBranchWithdrawal = {
   defaultBranch: string;
@@ -197,6 +207,9 @@ export interface HarnessGitPort {
     ref: PrimitiveRef,
     baseCommit: string,
   ): Promise<SkillPushOutcome>;
+  // The commit's tree is `defaultTip`'s with the file; the adapter picks its
+  // parents. Never `--force`, and never touches the working tree.
+  pushListFile(root: string, push: ListFilePush): Promise<ListPushOutcome>;
   // Builds the commit in a throwaway index, pushes it with a lease on `tip`,
   // then moves the local branch and resets the named paths in the index. The
   // working tree is never touched; nothing is written before the checks pass.

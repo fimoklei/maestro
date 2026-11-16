@@ -8,6 +8,14 @@ export type {
   HarnessCategories,
   HarnessCategoriesResult,
 } from "./categories/categories";
+export type {
+  CategoriesProposalCreated,
+  CategoriesProposalError,
+  CategoriesProposalPreview,
+  CategoriesProposalRow,
+  CategoryCount,
+  MovedItem,
+} from "./categories/categories-proposal";
 export {
   composeUseCases,
   type UseCasePorts,

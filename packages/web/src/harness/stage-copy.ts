@@ -9,6 +9,7 @@ import type {
 import { BRANCH_FACT, NEXT_RELEASE } from "../ui/band-copy";
 import { type BandCount, countOf } from "../ui/band-summary";
 import {
+  CREATE_PULL_REQUEST,
   CREATE_RELEASE,
   DISCARD_CHANGE,
   EDIT_PROMPT,
@@ -89,18 +90,21 @@ const READINGS: Record<Exclude<StageStatus, "proposed-by-other">, string> = {
 
 // A stuck row is a warning, not a lag, so it carries ⚠ rather than ↑. Local
 // work behind another contributor's open request reads as that request.
-export const statusReading = (row: HarnessStageRow): StatusReading => {
-  const status =
-    row.waitingOn === null ? row.status : ("proposed-by-other" as const);
-  const family = FAMILIES[status];
-  return reading(
-    status === "proposed-by-other"
-      ? `Proposed by ${row.waitingOn ?? "another contributor"}`
-      : READINGS[status],
-    family,
-    family === "attention" ? WARNING_GLYPH : undefined,
-  );
-};
+export const statusReading = (row: HarnessStageRow): StatusReading =>
+  row.waitingOn === null && row.status !== "proposed-by-other"
+    ? stageStatusReading(row.status)
+    : withGlyph(
+        `Proposed by ${row.waitingOn ?? "another contributor"}`,
+        FAMILIES["proposed-by-other"],
+      );
+
+/** A status that names nobody, as every stage's row shows it. */
+export const stageStatusReading = (
+  status: Exclude<StageStatus, "proposed-by-other">,
+): StatusReading => withGlyph(READINGS[status], FAMILIES[status]);
+
+const withGlyph = (word: string, family: StatusFamily): StatusReading =>
+  reading(word, family, family === "attention" ? WARNING_GLYPH : undefined);
 
 // The facts a sentence substitutes into: both come from the same read the rows
 // did, so a Detail never names a release the rows were not read from.
@@ -199,7 +203,7 @@ export function detailSentence(
         ? `Pull request ${first(row)} proposes deleting this ${noun} and is approved. Select View pull request to merge it.`
         : `Pull request ${first(row)} is approved. Select View pull request to merge it.`;
     case "pull-request-missing":
-      return "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.";
+      return `The proposal branch is on GitHub without a pull request. Select ${CREATE_PULL_REQUEST} to open one.`;
     case "proposal-merged":
       return deletion
         ? `Pull request ${first(row)} merged the deletion. Select ${rereadLabel("Harness")} to read GitHub again.`
