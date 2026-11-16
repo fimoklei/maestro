@@ -14,6 +14,7 @@ import {
   CREATE_PULL_REQUEST_BODY,
   comparedWithPullRequest,
   comparingWithPullRequest,
+  createAfterCloseBody,
   DELETED_FROM_HARNESS,
   DELETED_FROM_PULL_REQUEST,
   groupLegend,
@@ -98,11 +99,13 @@ const textsFor = (update: number | null) =>
         unreadable: PULL_REQUEST_UNREADABLE,
       };
 
-// Proposes the operator's list to the Harness (#1910), or sends it to the
-// open pull request (#1912): what the write does, then its difference. The
+// Proposes the operator's list to the Harness (#1910), also after a close
+// without merging (#1913), or sends it to the open pull request (#1912):
+// what the write does, then its difference. The
 // host reads the difference and owns the write.
 export function CreatePullRequestDialog({
   update,
+  closed,
   preview,
   failure,
   running,
@@ -111,6 +114,8 @@ export function CreatePullRequestDialog({
 }: {
   /** The operator's open pull request; null to create one. */
   update: number | null;
+  /** The closed pull request a new one replaces; null for none. */
+  closed: number | null;
   /** Null while the difference is read. */
   preview: CategoriesProposalPreview | null;
   /** Why the difference could not be read or the write failed. */
@@ -121,7 +126,17 @@ export function CreatePullRequestDialog({
 }) {
   const bodyId = useId();
   const texts = textsFor(update);
-  const difference = preview?.kind === "update" ? preview.difference : preview;
+  const difference =
+    preview?.kind === "update" || preview?.kind === "after-close"
+      ? preview.difference
+      : preview;
+  // After a close, the body waits for the commit-author check.
+  const body =
+    closed === null
+      ? texts.body
+      : preview?.kind === "after-close"
+        ? createAfterCloseBody(preview.number, preview.deletesBranch)
+        : null;
   // The warning always counts against the next release.
   const deleted =
     preview?.kind === "update"
@@ -155,7 +170,9 @@ export function CreatePullRequestDialog({
         outcome: !creatable && (preview !== null || failure !== null),
       })}
       failure={failure}
-      describedBy={difference?.kind === "unchanged" ? null : bodyId}
+      describedBy={
+        difference?.kind === "unchanged" || body === null ? null : bodyId
+      }
       fieldsChanged={false}
       onClose={onClose}
     >
@@ -163,9 +180,9 @@ export function CreatePullRequestDialog({
         <div className="flex flex-col gap-panel">
           {difference?.kind === "unchanged" ? (
             <Notice trigger="load" notice={texts.same} />
-          ) : (
+          ) : body === null ? null : (
             <p id={bodyId} className="m-0 text-gray-11">
-              {texts.body}
+              {body}
             </p>
           )}
           {preview === null ? <StatusLine>{texts.comparing}</StatusLine> : null}

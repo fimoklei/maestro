@@ -52,6 +52,7 @@ export function PullRequestRow({
       {open ? (
         <CreatePullRequest
           update={row.state === "own-open" ? row.number : null}
+          closed={row.state === "closed" ? row.number : null}
           onCreated={({ number }) => {
             setOpen(false);
             report(

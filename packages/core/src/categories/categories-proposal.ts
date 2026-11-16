@@ -73,6 +73,16 @@ export type CategoriesProposalRow =
     }
   // The branch is pushed and no pull request opens it.
   | { state: "pull-request-missing" }
+  // The newest ended pull request was closed without merging; Create pull
+  // request opens a new one.
+  | {
+      state: "closed";
+      number: number;
+      url: string;
+      author: string;
+      byOther: boolean;
+      list: ListReadiness;
+    }
   | { state: "empty" }
   // Over the categories file's limits.
   | { state: "over-limits" }
@@ -80,6 +90,9 @@ export type CategoriesProposalRow =
 
 /** `empty` and `over-limits` block Update pull request as they block Create. */
 type OwnListAgainstRequest = "same" | "differs" | "empty" | "over-limits";
+
+/** Whether the write would take the operator's list. */
+type ListReadiness = "ready" | "empty" | "over-limits";
 
 /** A category and the skills and prompts the difference counts in it. */
 export type CategoryCount = { name: string; skills: number; prompts: number };
@@ -117,6 +130,14 @@ export type CategoriesProposalPreview =
       number: number;
       difference: CategoriesDifference;
       deleted: CategoryCount[];
+    }
+  // Create pull request after #`number` was closed: `deletesBranch` where
+  // every commit on its branch carries the operator's git email.
+  | {
+      kind: "after-close";
+      number: number;
+      deletesBranch: boolean;
+      difference: CategoriesDifference;
     };
 
 export type CategoriesProposalError =
@@ -132,6 +153,8 @@ export type CategoriesProposalError =
   | "request-unchanged"
   | "push-elsewhere"
   | "promote-failed"
+  // The closed pull request's branch is deleted; the new one was not pushed.
+  | "push-failed-after-delete"
   | "promote-in-progress";
 
 type Refused = { ok: false; error: CategoriesProposalError };
@@ -180,6 +203,7 @@ const rowRefusal = (
     case "over-limits":
       return LIST_REFUSAL[row.state];
     case "own-open":
+    case "closed":
       return row.list === "empty" || row.list === "over-limits"
         ? LIST_REFUSAL[row.list]
         : null;
@@ -349,6 +373,21 @@ export class CategoriesProposal {
     if (preview.kind === "update" && preview.difference.kind === "unchanged") {
       return { ok: false, error: "request-unchanged" };
     }
+    if (
+      preview.kind === "after-close" &&
+      preview.difference.kind === "unchanged"
+    ) {
+      return { ok: false, error: "list-unchanged" };
+    }
+    // A fresh branch from the tip; never a force push.
+    const deletes = preview.kind === "after-close" && preview.deletesBranch;
+    if (
+      deletes &&
+      (await this.deps.git.deleteProposalBranch(harness.root, SUBJECT)) !==
+        "deleted"
+    ) {
+      return { ok: false, error: "promote-failed" };
+    }
     const push = await this.deps.git.pushListFile(harness.root, {
       subject: SUBJECT,
       text: writeHarnessCategoriesFile(record),
@@ -358,8 +397,9 @@ export class CategoriesProposal {
     if (push !== "pushed") {
       return {
         ok: false,
-        error:
-          push === "offline"
+        error: deletes
+          ? "push-failed-after-delete"
+          : push === "offline"
             ? "no-answer"
             : push === "push-elsewhere"
               ? push
@@ -442,6 +482,16 @@ export class CategoriesProposal {
       harnessRow?.status === "pull-request-missing"
         ? { state: "pull-request-missing" }
         : null;
+    const [ended] = harnessRow?.requests ?? [];
+    const closed =
+      harnessRow?.status === "proposal-closed" && ended !== undefined
+        ? {
+            number: ended.number,
+            url: ended.url,
+            author: ended.author,
+            byOther: ended.byOther,
+          }
+        : null;
     const requests = open ?? missing;
 
     const next = await readHarnessCategoriesAt(this.deps.git, root, head);
@@ -505,6 +555,25 @@ export class CategoriesProposal {
             number: requests.number,
             difference,
             deleted: againstNext.kind === "changes" ? againstNext.deleted : [],
+          },
+        },
+      };
+    }
+    if (requests === null && closed !== null) {
+      return {
+        ok: true,
+        value: {
+          row: { state: "closed", ...closed, list: listState ?? "ready" },
+          origin,
+          base,
+          head,
+          record,
+          preview: {
+            kind: "after-close",
+            number: closed.number,
+            // The commit-author check; one that could not run stacks.
+            deletesBranch: branch.promote?.authorship === "own",
+            difference: againstNext,
           },
         },
       };

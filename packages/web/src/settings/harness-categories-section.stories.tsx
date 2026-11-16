@@ -129,6 +129,42 @@ export const DiffersFromPullRequest: Story = {
   },
 };
 
+export const ClosedWithoutMerging: Story = {
+  args: {
+    children: (
+      <PullRequestRow
+        row={{
+          state: "closed",
+          number: 45,
+          url: `${PULL}/45`,
+          author: "fimoklei",
+          byOther: false,
+          list: "ready",
+        }}
+        report={() => {}}
+      />
+    ),
+  },
+};
+
+export const AnotherContributorsClosedPullRequest: Story = {
+  args: {
+    children: (
+      <PullRequestRow
+        row={{
+          state: "closed",
+          number: 46,
+          url: `${PULL}/46`,
+          author: "mira",
+          byOther: true,
+          list: "ready",
+        }}
+        report={() => {}}
+      />
+    ),
+  },
+};
+
 export const EmptyWhilePullRequestOpen: Story = {
   args: {
     children: (

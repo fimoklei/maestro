@@ -33,6 +33,8 @@ const mergedRow = {
   headRepository: { id: "R_kgDOT_xZSw", name: "harness", nameWithOwner: "" },
   headRepositoryOwner: { id: "MDQ6VXNlcjE2OTU3MjU4", login: "fimoklei" },
   isDraft: false,
+  // From a real `gh pr list --json …,mergedAt` capture of #8 (gh 2.86.0).
+  mergedAt: "2026-09-04T17:30:12Z",
   number: 8,
   reviewDecision: "",
   reviewRequests: [],
@@ -61,6 +63,8 @@ const openForkRow = {
     login: "timmattison",
   },
   isDraft: false,
+  // gh prints null for a request nobody merged (gh 2.86.0).
+  mergedAt: null,
   number: 14398,
   reviewDecision: "REVIEW_REQUIRED",
   reviewRequests: [{ __typename: "User", login: "sergiou87" }],
@@ -88,6 +92,7 @@ const botRow = {
     name: "Merks",
   },
   isDraft: false,
+  mergedAt: null,
   number: 1307,
   reviewDecision: "",
   reviewRequests: [],
@@ -144,7 +149,7 @@ describe("GhCliAdapter", () => {
       "--limit",
       String(REVIEW_READ_LIMIT),
       "--json",
-      "number,url,state,isDraft,reviewDecision,reviewRequests,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner,author,title",
+      "number,url,state,mergedAt,isDraft,reviewDecision,reviewRequests,headRefName,headRefOid,baseRefName,headRepository,headRepositoryOwner,author,title",
     ]);
   });
 
@@ -364,6 +369,33 @@ describe("GhCliAdapter", () => {
 
     expect(result).toEqual({ outcome: "failed" });
   });
+
+  it("reads CLOSED without a merge time as closed", async () => {
+    const { run } = fakeRun(
+      JSON.stringify([{ ...mergedRow, state: "CLOSED", mergedAt: null }]),
+    );
+
+    const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+    expect(result).toMatchObject({ requests: [{ state: "closed" }] });
+  });
+
+  it.each([
+    ["MERGED", null],
+    ["CLOSED", "2026-09-04T17:30:12Z"],
+    ["OPEN", "2026-09-04T17:30:12Z"],
+  ])(
+    "fails the read where state %s and mergedAt %s disagree",
+    async (state, mergedAt) => {
+      const { run } = fakeRun(
+        JSON.stringify([{ ...mergedRow, state, mergedAt }]),
+      );
+
+      const result = await new GhCliAdapter({ run }).readReviews(origin);
+
+      expect(result).toEqual({ outcome: "failed" });
+    },
+  );
 
   it("fails the read on a request url outside github.com", async () => {
     const { run } = fakeRun(
