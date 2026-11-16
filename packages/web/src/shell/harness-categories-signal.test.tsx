@@ -1,4 +1,4 @@
-import type { CopyPreview, HarnessCategories } from "@maestro/core";
+import type { CopyFacts, CopyPreview, HarnessCategories } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -18,15 +18,21 @@ afterEach(() => {
 
 const SIGNAL = "Harness categories have changed";
 
+const ADDS_BOTH: CopyFacts = {
+  added: ["Planning", "Review"],
+  deleted: [],
+  unchanged: [],
+  respelled: [],
+  moved: { skills: 0, prompts: 0 },
+  uncategorised: { skills: 0, prompts: 0 },
+};
+
 const PREVIEW: CopyPreview = {
   tag: "v1.5.0",
   count: 2,
   skipped: 0,
   choice: false,
-  modes: {
-    add: { added: ["Planning", "Review"], deleted: [], unchanged: [] },
-    replace: { added: ["Planning", "Review"], deleted: [], unchanged: [] },
-  },
+  modes: { add: ADDS_BOTH, replace: ADDS_BOTH },
   fresh: [],
 };
 

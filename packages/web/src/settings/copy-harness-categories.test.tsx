@@ -27,6 +27,9 @@ const facts = (facts: Partial<CopyFacts>): CopyFacts => ({
   added: [],
   deleted: [],
   unchanged: [],
+  respelled: [],
+  moved: { skills: 0, prompts: 0 },
+  uncategorised: { skills: 0, prompts: 0 },
   ...facts,
 });
 
@@ -239,6 +242,114 @@ describe("Copy Harness categories", () => {
     ]);
     expect(groupNames(dialog, /^Unchanged · 2$/)).toEqual(["Drafts", "review"]);
   });
+
+  // The worked example of #1892, plus a name Replace respells.
+  const TAKES: CopyPreview = {
+    ...WITH_OWN,
+    modes: {
+      add: facts({ added: ["Planning"], unchanged: ["Drafts", "review"] }),
+      replace: facts({
+        added: ["Planning"],
+        deleted: ["Drafts"],
+        unchanged: ["Review"],
+        respelled: [{ name: "Review", was: "review" }],
+        moved: { skills: 2, prompts: 0 },
+        uncategorised: { skills: 0, prompts: 1 },
+      }),
+    },
+  };
+  const OWN = {
+    categories: [
+      { name: "Drafts", skills: 1, prompts: 1 },
+      { name: "review", skills: 1, prompts: 0 },
+    ],
+    assignments: [],
+  } satisfies CategoryList;
+
+  it("warns and asks for a danger confirm when Replace takes sorting, and copies with Replace", async () => {
+    const copies = stubServer({ own: OWN, preview: () => jsonResponse(TAKES) });
+    renderPage();
+
+    const dialog = await openDialog();
+    await userEvent.click(
+      await dialog.findByRole("radio", { name: "Replace" }),
+    );
+
+    expect(
+      dialog.getByText("Replace deletes 1 of your categories"),
+    ).toBeInTheDocument();
+    expect(
+      dialog.getByText(
+        sentence(
+          "Drafts isn't in the Harness categories. 2 skills will move to another category, and 1 prompt will have no category. They stay in the Harness. You can't undo Replace. Select Add to keep everything you have.",
+        ),
+      ),
+    ).toBeInTheDocument();
+    const confirm = dialog.getByRole("button", { name: "Copy categories" });
+    expect(confirm).toHaveClass("text-red-11");
+
+    await userEvent.click(confirm);
+
+    await waitFor(() => expect(copies).toEqual([{ mode: "replace" }]));
+  });
+
+  it("states how the operator spelled a name Replace respells, on its Unchanged row", async () => {
+    stubServer({ own: OWN, preview: () => jsonResponse(TAKES) });
+    renderPage();
+
+    const dialog = await openDialog();
+    await userEvent.click(
+      await dialog.findByRole("radio", { name: "Replace" }),
+    );
+
+    expect(groupNames(dialog, /^Unchanged · 1$/)).toEqual([
+      "ReviewSpelled review in your list",
+    ]);
+  });
+
+  it("drops the warning and the danger confirm when Add is selected again", async () => {
+    stubServer({ own: OWN, preview: () => jsonResponse(TAKES) });
+    renderPage();
+
+    const dialog = await openDialog();
+    await userEvent.click(
+      await dialog.findByRole("radio", { name: "Replace" }),
+    );
+    await userEvent.click(dialog.getByRole("radio", { name: "Add" }));
+
+    expect(dialog.queryByText(/^Replace deletes/)).toBeNull();
+    expect(
+      dialog.getByRole("button", { name: "Copy categories" }),
+    ).not.toHaveClass("text-red-11");
+  });
+
+  it.each<[string, CopyFacts]>([
+    ["only adds", facts({ added: ["Planning"], unchanged: ["Drafts"] })],
+    ["the lists are equal", facts({ unchanged: ["Drafts"] })],
+  ])(
+    "shows no warning and a normal confirm when Replace %s",
+    async (_, replace) => {
+      stubServer({
+        own: OWN,
+        preview: () =>
+          jsonResponse({
+            ...WITH_OWN,
+            modes: { ...WITH_OWN.modes, replace },
+          } satisfies CopyPreview),
+      });
+      renderPage();
+
+      const dialog = await openDialog();
+      await userEvent.click(
+        await dialog.findByRole("radio", { name: "Replace" }),
+      );
+
+      expect(dialog.queryByText(/^Replace (deletes|changes)/)).toBeNull();
+      expect(
+        dialog.getByRole("button", { name: "Copy categories" }),
+      ).not.toHaveClass("text-red-11");
+    },
+  );
 
   it.each([
     [1, "The categories file has 1 entry with an error. It won't be copied."],
