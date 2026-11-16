@@ -64,14 +64,17 @@ export function useCategoriesProposalPreview() {
   });
 }
 
-/** Create pull request; the row reads where it stands afterwards. */
+/**
+ * Create or Update pull request, from the preview the dialog showed, which
+ * the server checks again; the row reads where it stands afterwards.
+ */
 export function useCreatePullRequest() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () =>
+    mutationFn: (previewed: CategoriesProposalPreview["kind"]) =>
       requestJson<CategoriesProposalCreated>("/api/categories/proposal", {
         method: "POST",
-        body: "{}",
+        body: JSON.stringify({ previewed }),
       }),
     onSettled: () =>
       queryClient.invalidateQueries({ queryKey: PROPOSAL_KEY, exact: true }),

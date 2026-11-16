@@ -42,6 +42,7 @@ export function stubServer({
   harness?: HarnessCategories;
 }) {
   const posts: string[] = [];
+  const bodies: unknown[] = [];
   let read = 0;
   const answer = (value: Answer) =>
     typeof value === "function" ? value() : value.clone();
@@ -51,6 +52,7 @@ export function stubServer({
       const url = String(input);
       if (init?.method === "POST") {
         posts.push(url);
+        bodies.push(JSON.parse(String(init.body)));
         if (url === "/api/categories/proposal") return answer(create);
       }
       if (url === "/api/categories") return jsonResponse(OWN);
@@ -64,7 +66,7 @@ export function stubServer({
       throw new Error(`unexpected ${url}`);
     }),
   );
-  return { posts };
+  return { posts, bodies };
 }
 
 export const renderPage = () =>

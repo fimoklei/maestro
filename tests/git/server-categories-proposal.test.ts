@@ -11,6 +11,7 @@ import {
   rowsOf,
   useHarnessStages,
 } from "../helpers/harness-stages";
+import { proposeCategories } from "../helpers/propose-categories";
 
 const BRANCH = "refs/heads/maestro/list.categories";
 
@@ -42,7 +43,7 @@ describe("the categories pull request on a real Harness", {
     await ownList(app);
     const tip = await onRemote("rev-parse", "refs/heads/main");
 
-    const res = await post(app, "/api/categories/proposal", {});
+    const res = await proposeCategories(app);
 
     expect(res.status).toBe(200);
     expect(await onRemote("rev-parse", `${BRANCH}^@`)).toBe(tip);
@@ -75,7 +76,7 @@ describe("the categories pull request on a real Harness", {
       "utf8",
     );
 
-    await post(app, "/api/categories/proposal", {});
+    await proposeCategories(app);
 
     expect(await onRemote("show", `${BRANCH}:apm.yml`)).toBe(
       "name: agent-harness",
@@ -85,7 +86,7 @@ describe("the categories pull request on a real Harness", {
   it("is a branch no skill or prompt read picks up", async () => {
     const app = h.makeApp();
     await ownList(app);
-    await post(app, "/api/categories/proposal", {});
+    await proposeCategories(app);
 
     const state = await h.refresh(app);
 
@@ -103,7 +104,7 @@ describe("the categories pull request on a real Harness", {
   it("reads the pushed branch as the Categories row under Pending review", async () => {
     const app = h.makeApp();
     await ownList(app);
-    await post(app, "/api/categories/proposal", {});
+    await proposeCategories(app);
 
     const state = await h.refresh(app);
 
@@ -130,7 +131,7 @@ describe("the categories pull request on a real Harness", {
   it("adds a second parent where the branch lacks the default-branch tip", async () => {
     const app = h.makeApp();
     await ownList(app);
-    await post(app, "/api/categories/proposal", {});
+    await proposeCategories(app);
     const first = await onRemote("rev-parse", BRANCH);
     // A teammate's merge lands on the default branch after the push.
     await writeFile(join(h.root, "README.md"), "# harness\n", "utf8");
@@ -140,7 +141,7 @@ describe("the categories pull request on a real Harness", {
     const tip = await onRemote("rev-parse", "refs/heads/main");
     await post(app, "/api/categories", { name: "Writing" });
 
-    const res = await post(app, "/api/categories/proposal", {});
+    const res = await proposeCategories(app);
 
     expect(res.status).toBe(200);
     expect((await onRemote("rev-parse", `${BRANCH}^@`)).split("\n")).toEqual([
@@ -155,7 +156,7 @@ describe("the categories pull request on a real Harness", {
   it("compares with the open pull request's branch, then adds one commit to it", async () => {
     const app = h.makeApp();
     await ownList(app);
-    await post(app, "/api/categories/proposal", {});
+    await proposeCategories(app);
     const first = await onRemote("rev-parse", BRANCH);
     h.review.answer({
       outcome: "read",
@@ -176,7 +177,7 @@ describe("the categories pull request on a real Harness", {
     await post(app, "/api/categories", { name: "Writing" });
     const differs = await listOf();
 
-    const res = await post(app, "/api/categories/proposal", {});
+    const res = await proposeCategories(app);
 
     expect([same, differs]).toEqual(["same", "differs"]);
     expect(await res.json()).toMatchObject({

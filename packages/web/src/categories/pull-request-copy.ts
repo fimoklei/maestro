@@ -99,7 +99,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
     case "pull-request-missing":
       return {
         sentence: `The proposal branch is on GitHub without a pull request. Select ${CREATE_PULL_REQUEST} to open one.`,
-        blocked: null,
+        blocked: listCause(row.list),
         open: stageStatusReading("pull-request-missing"),
         action: CREATE_PULL_REQUEST,
       };
@@ -301,6 +301,11 @@ const headings = (
       level: "error",
       label: SAME_AS_PULL_REQUEST.label,
       message: `Nothing was pushed. ${SAME_AS_PULL_REQUEST.message}`,
+    },
+    "proposal-changed": {
+      level: "error",
+      label: "Pull request changed",
+      message: `Nothing was pushed. The pull request changed while this dialog was open. Select ${CLOSE}, then select ${REREAD_CATEGORIES} to see where it stands.`,
     },
     "push-elsewhere": {
       level: "error",

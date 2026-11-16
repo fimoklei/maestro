@@ -46,13 +46,14 @@ export function CreatePullRequest({
       preview={preview.data ?? null}
       failure={failure}
       running={create.isPending}
-      onCreate={() =>
-        create.mutate(undefined, {
+      onCreate={() => {
+        if (preview.data === undefined) return;
+        create.mutate(preview.data.kind, {
           onSuccess: ({ pullRequest }) => {
             if (pullRequest.state !== "missing") onCreated(pullRequest);
           },
-        })
-      }
+        });
+      }}
       onClose={() => {
         if (!create.isPending) onClose();
       }}

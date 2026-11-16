@@ -440,6 +440,7 @@ export const categoriesProposalErrorResponses: ErrorTable<CategoriesProposalErro
     "list-unchanged": { status: 409 },
     "proposed-by-other": { status: 409 },
     "request-unchanged": { status: 409 },
+    "proposal-changed": { status: 409 },
     "push-elsewhere": { status: 422 },
     "promote-failed": { status: 502 },
     "push-failed-after-delete": { status: 502 },

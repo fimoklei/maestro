@@ -15,6 +15,7 @@ import { describe, expect, it } from "vitest";
 import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
 import { InMemoryFileSystem } from "../../packages/core/src/registry/file-system.fake";
 import { inMemoryApp, unreachable } from "../helpers/in-memory-app";
+import { proposeCategories } from "../helpers/propose-categories";
 import { stubReview } from "../helpers/stub-review";
 
 const HARNESS = "/harness";
@@ -180,7 +181,7 @@ describe("the row on Categories in Settings after the merge", () => {
     w.review.answer(answered([merged()]));
 
     const shown = await row(w);
-    const created = await w.post("/api/categories/proposal", {});
+    const created = await proposeCategories(w.app);
 
     expect(shown).toMatchObject({
       state: "merged-not-released",

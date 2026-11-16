@@ -1,9 +1,14 @@
 // The categories pull request over HTTP, over an in-memory disk, Harness and
 // GitHub.
-import type { HarnessReviewRead, ReviewRequest } from "@maestro/core";
+import type {
+  CategoriesProposalPreview,
+  HarnessReviewRead,
+  ReviewRequest,
+} from "@maestro/core";
 import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
 import { InMemoryFileSystem } from "../../packages/core/src/registry/file-system.fake";
 import { inMemoryApp } from "./in-memory-app";
+import { proposeCategories } from "./propose-categories";
 import { stubReview } from "./stub-review";
 
 const HARNESS = "/harness";
@@ -103,8 +108,12 @@ export const world = () => {
     const res = await app.request("/api/categories/proposal/preview");
     return { status: res.status, body: await res.json() };
   };
-  const submit = async () => {
-    const res = await post("/api/categories/proposal", {});
+  // As the dialog confirms: the preview it read, or the one it showed earlier.
+  const submit = async (previewed?: CategoriesProposalPreview["kind"]) => {
+    const res =
+      previewed === undefined
+        ? await proposeCategories(app)
+        : await post("/api/categories/proposal", { previewed });
     return { status: res.status, body: await res.json() };
   };
   return { harness, review, tipHolds, own, draft, row, preview, submit };

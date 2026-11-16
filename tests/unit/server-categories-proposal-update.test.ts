@@ -223,4 +223,30 @@ describe("Update pull request", () => {
       expect(w.harness.listPushes).toEqual([]);
     },
   );
+
+  it("refuses when the pull request closed while the dialog stood, deleting and pushing nothing", async () => {
+    const w = opened(PLANNING);
+    await w.own(
+      ["Planning", "Review"],
+      [{ ...skill("tdd"), category: "Review" }],
+    );
+    w.review.answer(
+      answered([
+        request({
+          number: 45,
+          url: `${PULL}/45`,
+          state: "closed",
+          headCommit: "pr",
+        }),
+      ]),
+    );
+
+    expect(await w.submit("update")).toEqual({
+      status: 409,
+      body: { error: "proposal-changed" },
+    });
+    expect(w.harness.deletedBranches).toEqual([]);
+    expect(w.harness.listPushes).toEqual([]);
+    expect(w.review.created).toEqual([]);
+  });
 });

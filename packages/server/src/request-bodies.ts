@@ -2,6 +2,7 @@
 
 import {
   type BatchRequest,
+  CATEGORIES_PREVIEW_KINDS,
   COPY_MODES,
   HARNESS_PRIMITIVE_TYPES,
   type ImportSkillsInput,
@@ -106,6 +107,11 @@ export const assignCategoryBodySchema = z.object({
 
 export const copyCategoriesBodySchema = z.object({
   mode: z.enum(COPY_MODES),
+});
+
+// The preview the dialog showed; core refuses a write it did not show.
+export const categoriesProposalBodySchema = z.object({
+  previewed: z.enum(CATEGORIES_PREVIEW_KINDS),
 });
 
 // Global carries no path, so no untrusted path crosses the boundary on it.
@@ -411,6 +417,13 @@ export const COPY_CATEGORIES_BODY: RequestShape = {
   message:
     "Nothing was copied. Reload the page, then copy the Harness categories again.",
   detail: 'The request carries how to copy: { mode: "add" | "replace" }.',
+};
+
+export const CATEGORIES_PROPOSAL_BODY: RequestShape = {
+  message:
+    "Nothing was pushed. Reload the page, then propose your categories again.",
+  detail:
+    'The request carries the kind of preview the dialog showed: { previewed: "changes" | "unchanged" | "uncompared" | "update" | "after-close" }.',
 };
 
 export const PATH_BODY: RequestShape = {

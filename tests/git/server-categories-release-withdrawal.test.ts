@@ -11,6 +11,7 @@ import {
   rowsOf,
   useHarnessStages,
 } from "../helpers/harness-stages";
+import { proposeCategories } from "../helpers/propose-categories";
 
 const NAME = "maestro/list.categories";
 const BRANCH = `refs/heads/${NAME}`;
@@ -72,7 +73,7 @@ describe("Withdraw from release on the Categories row of a real Harness", {
     for (const name of names) {
       await post(app, "/api/categories", { name });
     }
-    expect((await post(app, "/api/categories/proposal", {})).status).toBe(200);
+    expect((await proposeCategories(app)).status).toBe(200);
     const head = await onRemote("rev-parse", BRANCH);
     await mergeOnGitHub();
     h.answer([
@@ -182,7 +183,7 @@ describe("Withdraw from release on the Categories row of a real Harness", {
           await post(app, "/api/categories", { name });
         }
 
-        const created = await post(app, "/api/categories/proposal", {});
+        const created = await proposeCategories(app);
         const shown = await shownChange();
         await mergeOnGitHub();
 

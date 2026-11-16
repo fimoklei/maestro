@@ -3,7 +3,11 @@
 import { type PrimitiveRef, primitiveKey } from "../harness/harness-primitive";
 import { withoutStale } from "./apply-change";
 import { compareCategoryNames, sameCategoryName } from "./category-name";
-import type { CategoryRecord } from "./category-section";
+import {
+  type CategoryRecord,
+  type ItemCount,
+  itemCount,
+} from "./category-section";
 import type { HeldItems } from "./held-items";
 
 /** `add` keeps everything the operator has; `replace` makes the list the Harness list. */
@@ -13,8 +17,6 @@ export const COPY_MODES = [
   "add",
   "replace",
 ] as const satisfies readonly CopyMode[];
-
-type ItemCount = { skills: number; prompts: number };
 
 /** What a copy does to the operator's categories, each group sorted by name. */
 export type CopyFacts = {
@@ -66,11 +68,6 @@ const add = (own: CategoryRecord, harness: CategoryRecord): CategoryRecord => {
   };
 };
 
-const counted = (refs: readonly PrimitiveRef[]): ItemCount => ({
-  skills: refs.filter((each) => each.type === "skill").length,
-  prompts: refs.filter((each) => each.type === "prompt").length,
-});
-
 // Only an item that had a category counts: one that gains a category loses nothing.
 const taken = (before: CategoryRecord, after: CategoryRecord) => {
   const landed = new Map(
@@ -83,7 +80,7 @@ const taken = (before: CategoryRecord, after: CategoryRecord) => {
     if (category === undefined) uncategorised.push(each);
     else if (!sameCategoryName(category, each.category)) moved.push(each);
   }
-  return { moved: counted(moved), uncategorised: counted(uncategorised) };
+  return { moved: itemCount(moved), uncategorised: itemCount(uncategorised) };
 };
 
 /** The operator's list after a copy of the Harness list, and what the copy changes. */

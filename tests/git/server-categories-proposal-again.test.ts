@@ -10,6 +10,7 @@ import {
   rowsOf,
   useHarnessStages,
 } from "../helpers/harness-stages";
+import { proposeCategories } from "../helpers/propose-categories";
 
 const NAME = "maestro/list.categories";
 const BRANCH = `refs/heads/${NAME}`;
@@ -44,7 +45,7 @@ describe("proposing the categories again on a real Harness", {
     (await git(h.remote, ...args)).stdout.trim();
 
   const create = async (app: HarnessStagesApp) => {
-    const res = await post(app, "/api/categories/proposal", {});
+    const res = await proposeCategories(app);
     expect(res.status).toBe(200);
     return onRemote("rev-parse", BRANCH);
   };

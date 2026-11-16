@@ -9,14 +9,15 @@ export type {
   HarnessCategories,
   HarnessCategoriesResult,
 } from "./categories/categories";
-export type {
-  CategoriesDifference,
-  CategoriesProposalCreated,
-  CategoriesProposalError,
-  CategoriesProposalPreview,
-  CategoriesProposalRow,
-  CategoryCount,
-  MovedItem,
+export {
+  CATEGORIES_PREVIEW_KINDS,
+  type CategoriesDifference,
+  type CategoriesProposalCreated,
+  type CategoriesProposalError,
+  type CategoriesProposalPreview,
+  type CategoriesProposalRow,
+  type CategoryCount,
+  type MovedItem,
 } from "./categories/categories-proposal";
 export {
   COPY_MODES,

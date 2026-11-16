@@ -10,6 +10,7 @@ import { compareCategoryNames, sameCategoryName } from "./category-name";
 import {
   type CategoryRecord,
   type HarnessKey,
+  itemCount,
   readCategorySection,
   recordOf,
   seenOf,
@@ -98,14 +99,10 @@ export type CopyPreview = {
 export type CopyPreviewResult = { ok: true; preview: CopyPreview } | Refused;
 
 const listOf = (record: CategoryRecord): CategoryList => ({
-  categories: [...record.names].sort(compareCategoryNames).map((name) => {
-    const carried = record.assignments.filter((each) => each.category === name);
-    return {
-      name,
-      skills: carried.filter((each) => each.type === "skill").length,
-      prompts: carried.filter((each) => each.type === "prompt").length,
-    };
-  }),
+  categories: [...record.names].sort(compareCategoryNames).map((name) => ({
+    name,
+    ...itemCount(record.assignments.filter((each) => each.category === name)),
+  })),
   assignments: record.assignments,
 });
 

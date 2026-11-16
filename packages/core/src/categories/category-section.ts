@@ -30,6 +30,16 @@ type CategorySection = z.infer<typeof sectionSchema>;
 /** One Harness's own list: its category names and what carries each. */
 export type CategoryRecord = z.infer<typeof recordSchema>;
 
+/** Skills and prompts, counted apart. */
+export type ItemCount = { skills: number; prompts: number };
+
+export const itemCount = (
+  items: readonly { type: CategoryRecord["assignments"][number]["type"] }[],
+): ItemCount => ({
+  skills: items.filter((item) => item.type === "skill").length,
+  prompts: items.filter((item) => item.type === "prompt").length,
+});
+
 /** Where the connected Harness lives, and the repository it names. */
 export type HarnessKey = { root: string; origin: GitOrigin | null };
 

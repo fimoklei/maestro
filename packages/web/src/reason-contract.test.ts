@@ -2,6 +2,11 @@ import type { BulkRemoveReport, RemoveDeployedSkillError } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { HttpError } from "./api/http";
 import {
+  CREATE_PULL_REQUEST,
+  pullRequestNotice,
+  UPDATE_PULL_REQUEST,
+} from "./categories/pull-request-copy";
+import {
   deployNotice,
   removeNotice,
   retryNotice,
@@ -29,6 +34,7 @@ const APPROVED: Record<string, string> = {
   "operation-unfinished": "Unfinished operation",
   "remove-incomplete": "Removal incomplete",
   "remove-failed": "Removal outcome unknown",
+  "proposal-changed": "Pull request changed",
 };
 
 const FALLBACKS = new Set([
@@ -36,6 +42,7 @@ const FALLBACKS = new Set([
   "Removal outcome unknown",
   "Preview outcome unknown",
   "Update outcome unknown",
+  "Pull request not confirmed",
 ]);
 
 const refusal = (code: string) => new HttpError(422, "unused", code);
@@ -46,7 +53,10 @@ function noticeLabels(code: string): string[] {
     deployNotice(error).label,
     updatePreviewNotice(error).label,
     updateNotice(error).label,
-  ].filter((label) => !FALLBACKS.has(label));
+    ...([CREATE_PULL_REQUEST, UPDATE_PULL_REQUEST] as const).map(
+      (action) => pullRequestNotice(error, action, null)?.label ?? "",
+    ),
+  ].filter((label) => label !== "" && !FALLBACKS.has(label));
   // "Removal outcome unknown" is both the fallback and remove-failed's reason.
   const removal = removeNotice(error).label;
   return code === "remove-failed" || !FALLBACKS.has(removal)

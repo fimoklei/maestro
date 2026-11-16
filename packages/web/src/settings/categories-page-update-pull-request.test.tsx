@@ -198,7 +198,7 @@ describe("the Update pull request dialog", () => {
   });
 
   it("updates the pull request, closes, and says so", async () => {
-    const { posts } = stubServer({
+    const { posts, bodies } = stubServer({
       rows: [ownOpen("differs"), ownOpen("same")],
       preview: update({
         kind: "changes",
@@ -218,6 +218,8 @@ describe("the Update pull request dialog", () => {
 
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(posts).toEqual(["/api/categories/proposal"]);
+    // The server refuses a write the dialog did not show.
+    expect(bodies).toEqual([{ previewed: "update" }]);
     expect(screen.getByRole("status")).toHaveTextContent(
       "Updated pull request #45.",
     );

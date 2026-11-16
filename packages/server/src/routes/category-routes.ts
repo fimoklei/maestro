@@ -10,7 +10,9 @@ import {
   ASSIGN_CATEGORY_BODY,
   addCategoryBodySchema,
   assignCategoryBodySchema,
+  CATEGORIES_PROPOSAL_BODY,
   COPY_CATEGORIES_BODY,
+  categoriesProposalBodySchema,
   copyCategoriesBodySchema,
   DELETE_CATEGORY_BODY,
   deleteCategoryBodySchema,
@@ -70,10 +72,16 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
     return result.ok ? c.json(result.preview) : refuse(c, result.error);
   });
 
-  // Takes nothing from the browser: the server reads the list and rechecks
-  // every refusal itself.
+  // Takes only the preview the dialog showed: the server reads the list and
+  // rechecks every refusal itself.
   app.post("/api/categories/proposal", async (c) => {
-    const result = await deps.categoriesProposal.submit();
+    const body = await parseBody(
+      c,
+      categoriesProposalBodySchema,
+      CATEGORIES_PROPOSAL_BODY,
+    );
+    if (!body.ok) return body.response;
+    const result = await deps.categoriesProposal.submit(body.data.previewed);
     return result.ok
       ? c.json({ pullRequest: result.pullRequest })
       : refuse(c, result.error);

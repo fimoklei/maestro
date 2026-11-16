@@ -16,7 +16,7 @@ import {
 import type { CategoryRecord } from "./category-section";
 
 export const HARNESS_CATEGORIES_MAX_BYTES = 256 * 1024;
-export const HARNESS_CATEGORIES_MAX_COUNT = 200;
+const HARNESS_CATEGORIES_MAX_COUNT = 200;
 
 /** `skipped` counts the entries left out for an error in them. */
 export type HarnessCategoriesFile =
@@ -115,6 +115,11 @@ export const writeHarnessCategoriesFile = (record: CategoryRecord): string =>
       category,
     })),
   }).toString({ lineWidth: 0 });
+
+/** Whether the file for `record` would break the reader's count or size limit. */
+export const exceedsHarnessCategoriesLimits = (record: CategoryRecord) =>
+  record.names.length > HARNESS_CATEGORIES_MAX_COUNT ||
+  byteLength(writeHarnessCategoriesFile(record)) > HARNESS_CATEGORIES_MAX_BYTES;
 
 export const readHarnessCategoriesFile = (
   read: FileAtRef,

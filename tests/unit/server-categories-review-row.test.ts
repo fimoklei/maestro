@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
 import { InMemoryFileSystem } from "../../packages/core/src/registry/file-system.fake";
 import { inMemoryApp } from "../helpers/in-memory-app";
+import { proposeCategories } from "../helpers/propose-categories";
 import { stubReview } from "../helpers/stub-review";
 
 const HARNESS = "/harness";
@@ -174,13 +175,34 @@ describe("the row on Categories in Settings follows the Harness row", () => {
     await w.post("/api/categories", { name: "Planning" });
 
     const row = await (await w.app.request("/api/categories/proposal")).json();
-    const created = await w.post("/api/categories/proposal", {});
+    const created = await proposeCategories(w.app);
 
     expect(row).toEqual({
       state: "pull-request-missing",
+      list: "ready",
     } satisfies CategoriesProposalRow);
     expect(created.status).toBe(200);
     expect(w.review.created).toMatchObject([{ head: BRANCH, base: "main" }]);
+  });
+
+  it("keeps Pull request missing with an empty list, and pushes nothing", async () => {
+    const w = world();
+    w.tipHolds();
+    w.branchHolds(LIST);
+
+    const row = await (await w.app.request("/api/categories/proposal")).json();
+    const created = await proposeCategories(w.app);
+
+    expect(row).toEqual({
+      state: "pull-request-missing",
+      list: "empty",
+    } satisfies CategoriesProposalRow);
+    expect({ status: created.status, body: await created.json() }).toEqual({
+      status: 409,
+      body: { error: "list-empty" },
+    });
+    expect(w.harness.listPushes).toEqual([]);
+    expect(w.review.created).toEqual([]);
   });
 
   it("reads the start state where the Harness shows no row for the branch", async () => {

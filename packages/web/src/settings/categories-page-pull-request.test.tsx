@@ -144,7 +144,7 @@ describe("the row Pull request to the Harness", () => {
   );
 
   it("states a pushed branch without a pull request and offers to finish it", async () => {
-    stubServer({ rows: [{ state: "pull-request-missing" }] });
+    stubServer({ rows: [{ state: "pull-request-missing", list: "ready" }] });
     renderPage();
 
     const region = await section();

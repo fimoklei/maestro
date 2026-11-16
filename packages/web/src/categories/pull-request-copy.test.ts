@@ -82,9 +82,14 @@ describe("the pull-request row", () => {
       null,
     ],
     [
-      { state: "pull-request-missing" },
+      { state: "pull-request-missing", list: "ready" },
       "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
       null,
+    ],
+    [
+      { state: "pull-request-missing", list: "empty" },
+      "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
+      "Add a category.",
     ],
     [
       {
@@ -200,6 +205,22 @@ describe("the Update pull request dialog", () => {
       label: "Your categories match the pull request",
       message:
         "Nothing was pushed. An update would change nothing in the pull request.",
+    });
+  });
+
+  // Provisional: no ticket wrote it.
+  it("says the pull request changed while the dialog stood", () => {
+    expect(
+      pullRequestNotice(
+        new HttpError(409, "", "proposal-changed"),
+        UPDATE_PULL_REQUEST,
+        null,
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Pull request changed",
+      message:
+        "Nothing was pushed. The pull request changed while this dialog was open. Select Close, then select Re-read Categories to see where it stands.",
     });
   });
 });
@@ -320,6 +341,7 @@ describe("the Create pull request dialog", () => {
     "list-unchanged",
     "proposed-by-other",
     "request-unchanged",
+    "proposal-changed",
     "push-elsewhere",
     "promote-failed",
     // Shares the heading of promote-failed; its detail differs.
@@ -346,6 +368,7 @@ describe("the Create pull request dialog", () => {
       "list-unchanged",
       "proposed-by-other",
       "request-unchanged",
+      "proposal-changed",
       "push-elsewhere",
       "promote-failed",
       "promote-in-progress",
