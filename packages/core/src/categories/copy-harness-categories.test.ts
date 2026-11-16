@@ -13,6 +13,16 @@ const record = (
   assignments: CategoryRecord["assignments"] = [],
 ): CategoryRecord => ({ names, assignments });
 
+// The facts of a copy that moves, respells and clears nothing.
+const nothingTaken = {
+  added: [],
+  deleted: [],
+  unchanged: [],
+  respelled: [],
+  moved: { skills: 0, prompts: 0 },
+  uncategorised: { skills: 0, prompts: 0 },
+};
+
 // Holds every item but the named ones.
 const heldBut = (...lacking: string[]): HeldItems => ({
   holds: (ref) => !lacking.includes(ref.name),
@@ -34,7 +44,7 @@ describe("copyHarnessCategories with Add", () => {
       }),
     ).toEqual({
       record: harness,
-      facts: { added: ["Planning", "Review"], deleted: [], unchanged: [] },
+      facts: { ...nothingTaken, added: ["Planning", "Review"] },
     });
   });
 
@@ -53,8 +63,8 @@ describe("copyHarnessCategories with Add", () => {
         [skill("tdd", "Review"), skill("idea", "Planning")],
       ),
       facts: {
+        ...nothingTaken,
         added: ["Planning"],
-        deleted: [],
         unchanged: ["Drafts", "Review"],
       },
     });
@@ -68,7 +78,7 @@ describe("copyHarnessCategories with Add", () => {
       copyHarnessCategories({ own, harness, mode: "add", held: heldBut() }),
     ).toEqual({
       record: record(["code review"], [skill("tdd", "code review")]),
-      facts: { added: [], deleted: [], unchanged: ["code review"] },
+      facts: { ...nothingTaken, unchanged: ["code review"] },
     });
   });
 
@@ -140,11 +150,14 @@ describe("copyHarnessCategories with Replace", () => {
         added: ["Planning"],
         deleted: ["Drafts"],
         unchanged: ["Review"],
+        respelled: [],
+        moved: { skills: 2, prompts: 0 },
+        uncategorised: { skills: 0, prompts: 1 },
       },
     });
   });
 
-  it("takes the Harness spelling of a name equal ignoring case", () => {
+  it("takes the Harness spelling of a name equal ignoring case, and states how the operator spelled it", () => {
     const own = record(["code review"], [skill("tdd", "code review")]);
     const harness = record(["Code Review"], [skill("tdd", "Code Review")]);
 
@@ -152,7 +165,68 @@ describe("copyHarnessCategories with Replace", () => {
       copyHarnessCategories({ own, harness, mode: "replace", held: heldBut() }),
     ).toEqual({
       record: harness,
-      facts: { added: [], deleted: [], unchanged: ["Code Review"] },
+      facts: {
+        ...nothingTaken,
+        unchanged: ["Code Review"],
+        respelled: [{ name: "Code Review", was: "code review" }],
+      },
     });
+  });
+
+  it("gives an item without a category its Harness category without counting it", () => {
+    const own = record(["Review"]);
+    const harness = record(["Review"], [prompt("notes", "Review")]);
+
+    expect(
+      copyHarnessCategories({ own, harness, mode: "replace", held: heldBut() })
+        .facts,
+    ).toEqual({ ...nothingTaken, unchanged: ["Review"] });
+  });
+
+  it("counts an item moved out of a category both lists have", () => {
+    const own = record(
+      ["Review", "Planning"],
+      [skill("tdd", "Review"), prompt("notes", "Review")],
+    );
+    const harness = record(["Review", "Planning"], [skill("tdd", "Planning")]);
+
+    expect(
+      copyHarnessCategories({ own, harness, mode: "replace", held: heldBut() })
+        .facts,
+    ).toMatchObject({
+      deleted: [],
+      moved: { skills: 1, prompts: 0 },
+      uncategorised: { skills: 0, prompts: 1 },
+    });
+  });
+
+  it("counts no item Inventory lacks", () => {
+    const own = record(["Drafts"], [skill("gone", "Drafts")]);
+    const harness = record(["Review"]);
+
+    expect(
+      copyHarnessCategories({
+        own,
+        harness,
+        mode: "replace",
+        held: heldBut("gone"),
+      }).facts,
+    ).toMatchObject({
+      deleted: ["Drafts"],
+      uncategorised: { skills: 0, prompts: 0 },
+    });
+  });
+
+  it("takes nothing from a list equal to the Harness list", () => {
+    const own = record(["Review"], [skill("tdd", "Review")]);
+
+    expect(
+      copyHarnessCategories({
+        own,
+        harness: own,
+        mode: "replace",
+        held: heldBut(),
+      }).facts,
+    ).toEqual({ ...nothingTaken, unchanged: ["Review"] });
   });
 });

@@ -1,3 +1,4 @@
+import type { CopyFacts } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { plainText } from "../ui/phrase";
 import {
@@ -36,7 +37,9 @@ import {
   notDeleted,
   notRenamed,
   renameHint,
+  replaceWarning,
   setCategoryFor,
+  spelledInYourList,
   WHAT_HAPPENS,
 } from "./categories-copy";
 
@@ -120,6 +123,110 @@ describe("Categories copy", () => {
     ["unchanged", 0, "Unchanged · 0"],
   ] as const)("names the %s group with its count", (group, count, legend) => {
     expect(copyGroupLegend(group, count)).toBe(legend);
+  });
+
+  it("states how the operator spelled a name Replace respells", () => {
+    expect(plainText(spelledInYourList("code review"))).toBe(
+      "Spelled code review in your list",
+    );
+  });
+
+  const UNDO =
+    "You can't undo Replace. Select Add to keep everything you have.";
+  const taken = (facts: Partial<CopyFacts>): CopyFacts => ({
+    added: [],
+    deleted: [],
+    unchanged: [],
+    respelled: [],
+    moved: { skills: 0, prompts: 0 },
+    uncategorised: { skills: 0, prompts: 0 },
+    ...facts,
+  });
+
+  it.each<[string, Partial<CopyFacts>, string, string]>([
+    [
+      "the worked example",
+      {
+        deleted: ["Drafts"],
+        moved: { skills: 2, prompts: 0 },
+        uncategorised: { skills: 0, prompts: 1 },
+      },
+      "Replace deletes 1 of your categories",
+      `Drafts isn't in the Harness categories. 2 skills will move to another category, and 1 prompt will have no category. They stay in the Harness. ${UNDO}`,
+    ],
+    [
+      "two empty deleted categories",
+      { deleted: ["Drafts", "Research"] },
+      "Replace deletes 2 of your categories",
+      `Drafts and Research aren't in the Harness categories. No skills or prompts are in these categories. ${UNDO}`,
+    ],
+    [
+      "one empty deleted category",
+      { deleted: ["Drafts"] },
+      "Replace deletes 1 of your categories",
+      `Drafts isn't in the Harness categories. No skills or prompts are in Drafts. ${UNDO}`,
+    ],
+    [
+      "three deleted categories",
+      {
+        deleted: ["Drafts", "Ideas", "Research"],
+        uncategorised: { skills: 0, prompts: 1 },
+      },
+      "Replace deletes 3 of your categories",
+      `Drafts, Ideas and Research aren't in the Harness categories. 1 prompt will have no category. It stays in the Harness. ${UNDO}`,
+    ],
+    [
+      "five deleted categories",
+      {
+        deleted: ["Drafts", "Ideas", "Notes", "Research", "Tools"],
+        uncategorised: { skills: 3, prompts: 2 },
+      },
+      "Replace deletes 5 of your categories",
+      `Drafts, Ideas and 3 more aren't in the Harness categories. 3 skills and 2 prompts will have no category. They stay in the Harness. ${UNDO}`,
+    ],
+    [
+      "moves and clears without a deleted category",
+      {
+        moved: { skills: 1, prompts: 0 },
+        uncategorised: { skills: 0, prompts: 2 },
+      },
+      "Replace changes the category of 1 skill and 2 prompts",
+      `1 skill will move to another category, and 2 prompts will have no category. They stay in the Harness. ${UNDO}`,
+    ],
+    [
+      "one move alone",
+      { moved: { skills: 1, prompts: 0 } },
+      "Replace changes the category of 1 skill",
+      `1 skill will move to another category. It stays in the Harness. ${UNDO}`,
+    ],
+    [
+      "a skill moved and a skill cleared",
+      {
+        moved: { skills: 1, prompts: 0 },
+        uncategorised: { skills: 1, prompts: 0 },
+      },
+      "Replace changes the category of 2 skills",
+      `1 skill will move to another category, and 1 skill will have no category. They stay in the Harness. ${UNDO}`,
+    ],
+  ])("warns what Replace takes: %s", (_, facts, label, message) => {
+    const notice = replaceWarning(taken(facts));
+    expect(notice?.level).toBe("warning");
+    expect(notice?.label).toBe(label);
+    expect(notice === null ? null : plainText(notice.message)).toBe(message);
+  });
+
+  it.each<[string, Partial<CopyFacts>]>([
+    ["only adds", { added: ["Planning"] }],
+    ["the lists are equal", { unchanged: ["Review"] }],
+    [
+      "only respells",
+      {
+        unchanged: ["Code Review"],
+        respelled: [{ name: "Code Review", was: "code review" }],
+      },
+    ],
+  ])("warns of nothing when Replace %s", (_, facts) => {
+    expect(replaceWarning(taken(facts))).toBeNull();
   });
 
   it.each([

@@ -11,7 +11,7 @@ import { ADD_CATEGORY, NO_CATEGORY } from "../ui/category-menu-copy";
 import { rereadLabel, SET_CATEGORY } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
-import { machine, named, type Phrase, phrase } from "../ui/phrase";
+import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
 
 const CATEGORIES = "Categories";
 export const CATEGORIES_SENTENCE =
@@ -69,14 +69,82 @@ export const COPY_MODE_COPY: Record<
 
 export const WHAT_HAPPENS = "What happens to your categories";
 
-const COPY_GROUPS: Record<keyof CopyFacts, string> = {
+type CopyGroup = "added" | "deleted" | "unchanged";
+
+const COPY_GROUPS: Record<CopyGroup, string> = {
   added: "Added",
   deleted: "Deleted",
   unchanged: "Unchanged",
 };
 
-export const copyGroupLegend = (group: keyof CopyFacts, count: number) =>
+export const copyGroupLegend = (group: CopyGroup, count: number) =>
   `${COPY_GROUPS[group]} · ${count}`;
+
+/** The row fact on a name Replace spells as the Harness does. */
+export const spelledInYourList = (was: string): Phrase =>
+  phrase`Spelled ${named(was)} in your list`;
+
+// `A`, `A and B`, `A, B and C`, from four names `A, B and 2 more`.
+const deletedNames = (names: readonly string[]): Phrase =>
+  names.length <= 3
+    ? namedList(names)
+    : phrase`${named(names[0] ?? "")}, ${named(names[1] ?? "")} and ${names.length - 2} more`;
+
+/** What Replace takes from the operator's sorting; null when it takes nothing. */
+export function replaceWarning({
+  deleted,
+  moved,
+  uncategorised,
+}: CopyFacts): NoticeContent | null {
+  const movedCount = moved.skills + moved.prompts;
+  const clearedCount = uncategorised.skills + uncategorised.prompts;
+  const items = movedCount + clearedCount;
+  if (deleted.length === 0 && items === 0) return null;
+  const willMove = `${carried(moved.skills, moved.prompts)} will move to another category`;
+  const willClear = `${carried(uncategorised.skills, uncategorised.prompts)} will have no category`;
+  const sentences: Phrase[] = [
+    ...(deleted.length === 0
+      ? []
+      : [
+          phrase`${deletedNames(deleted)} ${deleted.length === 1 ? "isn't" : "aren't"} in the Harness categories.`,
+        ]),
+    ...(deleted.length > 0 && items === 0
+      ? [
+          deleted.length === 1
+            ? emptyCategoryDeleted(deleted[0] ?? "")
+            : phrase`No skills or prompts are in these categories.`,
+        ]
+      : []),
+    ...(items === 0
+      ? []
+      : [
+          phrase`${
+            movedCount === 0
+              ? willClear
+              : clearedCount === 0
+                ? willMove
+                : `${willMove}, and ${willClear}`
+          }.`,
+          phrase`${items === 1 ? "It stays" : "They stay"} in the Harness.`,
+        ]),
+    phrase`You can't undo Replace. Select ${COPY_MODE_COPY.add.label} to keep everything you have.`,
+  ];
+  return {
+    level: "warning",
+    label:
+      deleted.length === 0
+        ? `Replace changes the category of ${carried(
+            moved.skills + uncategorised.skills,
+            moved.prompts + uncategorised.prompts,
+          )}`
+        : `Replace deletes ${deleted.length} of your categories`,
+    message: {
+      parts: sentences.flatMap((sentence, index) =>
+        index === 0 ? sentence.parts : [" ", ...sentence.parts],
+      ),
+    },
+  };
+}
 
 /** Heard while the copy dialog reads the release. */
 export const LOADING_HARNESS_CATEGORIES = loadingText(HARNESS_CATEGORIES);

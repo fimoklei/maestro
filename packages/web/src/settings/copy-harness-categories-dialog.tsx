@@ -9,11 +9,13 @@ import {
   copySkipped,
   HOW_TO_COPY,
   LOADING_HARNESS_CATEGORIES,
+  replaceWarning,
+  spelledInYourList,
   WHAT_HAPPENS,
 } from "../categories/categories-copy";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
-import type { NoticeContent } from "../ui/notice";
+import { Notice, type NoticeContent } from "../ui/notice";
 import { OptionRadios } from "../ui/option-radios";
 import { PhraseText } from "../ui/phrase-text";
 import { StatusLine } from "../ui/status-line";
@@ -46,6 +48,7 @@ export function CopyHarnessCategoriesDialog({
 }) {
   const introId = useId();
   const facts = preview?.modes[preview.choice ? mode : "add"];
+  const warning = facts === undefined ? null : replaceWarning(facts);
   const run = dialogRun({
     source:
       preview === null
@@ -53,7 +56,7 @@ export function CopyHarnessCategoriesDialog({
         : {
             label: COPY_CATEGORIES,
             verb: "copy",
-            tone: "primary",
+            tone: warning === null ? "primary" : "danger",
             unavailable: null,
             onRun: onCopy,
           },
@@ -105,11 +108,25 @@ export function CopyHarnessCategoriesDialog({
             groups={GROUPS.map((group) => ({
               tone: "neutral",
               legend: copyGroupLegend(group, facts[group].length),
-              rows: facts[group].map((name) => ({ key: name, name })),
+              rows: facts[group].map((name) => {
+                const was = facts.respelled.find(
+                  (each) => each.name === name,
+                )?.was;
+                return {
+                  key: name,
+                  name,
+                  ...(was === undefined
+                    ? {}
+                    : {
+                        sentence: <PhraseText copy={spelledInYourList(was)} />,
+                      }),
+                };
+              }),
             }))}
             checklist={null}
             live={null}
           />
+          <Notice trigger="load" notice={warning} />
         </>
       )}
     </Dialog>

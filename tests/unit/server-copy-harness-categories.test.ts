@@ -1,6 +1,6 @@
 // Copying the Harness categories into the operator's own list, over HTTP: the
 // composition over an in-memory disk and Harness.
-import type { CategoryList, CopyPreview } from "@maestro/core";
+import type { CategoryList, CopyFacts, CopyPreview } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { InMemoryHarnessGit } from "../../packages/core/src/harness/harness-git.fake";
 import { InMemoryFileSystem } from "../../packages/core/src/registry/file-system.fake";
@@ -20,6 +20,15 @@ const HARNESS_FILE = [
   "  - { type: skill, name: gone, category: Review }",
   "",
 ].join("\n");
+
+const NOTHING_TAKEN = {
+  added: [],
+  deleted: [],
+  unchanged: [],
+  respelled: [],
+  moved: { skills: 0, prompts: 0 },
+  uncategorised: { skills: 0, prompts: 0 },
+} satisfies CopyFacts;
 
 const post = (body: unknown) => ({
   method: "POST",
@@ -93,12 +102,8 @@ describe("copying the Harness categories over HTTP", () => {
         skipped: 0,
         choice: false,
         modes: {
-          add: { added: ["Planning", "Review"], deleted: [], unchanged: [] },
-          replace: {
-            added: ["Planning", "Review"],
-            deleted: [],
-            unchanged: [],
-          },
+          add: { ...NOTHING_TAKEN, added: ["Planning", "Review"] },
+          replace: { ...NOTHING_TAKEN, added: ["Planning", "Review"] },
         },
       } satisfies CopyPreview,
     });
@@ -112,17 +117,73 @@ describe("copying the Harness categories over HTTP", () => {
       choice: true,
       modes: {
         add: {
+          ...NOTHING_TAKEN,
           added: ["Planning"],
-          deleted: [],
           unchanged: ["Drafts", "review"],
         },
         replace: {
+          ...NOTHING_TAKEN,
           added: ["Planning"],
           deleted: ["Drafts"],
           unchanged: ["Review"],
+          respelled: [{ name: "Review", was: "review" }],
         },
       },
     } satisfies Partial<CopyPreview>);
+  });
+
+  it("counts what Replace takes from the operator's own sorting, and the names it respells", async () => {
+    const { own, preview } = world();
+    await own(
+      ["Drafts", "review"],
+      [
+        { type: "skill", name: "tdd", category: "Drafts" },
+        { type: "skill", name: "idea", category: "review" },
+      ],
+    );
+
+    expect((await preview()).body).toHaveProperty("modes", {
+      add: {
+        added: ["Planning"],
+        deleted: [],
+        unchanged: ["Drafts", "review"],
+        respelled: [],
+        moved: { skills: 0, prompts: 0 },
+        uncategorised: { skills: 0, prompts: 0 },
+      },
+      replace: {
+        added: ["Planning"],
+        deleted: ["Drafts"],
+        unchanged: ["Review"],
+        respelled: [{ name: "Review", was: "review" }],
+        moved: { skills: 1, prompts: 0 },
+        uncategorised: { skills: 1, prompts: 0 },
+      },
+    } satisfies CopyPreview["modes"]);
+  });
+
+  it("makes the list the Harness list with Replace, leaving an item the Harness does not sort without a category", async () => {
+    const { own, copy, list } = world();
+    await own(
+      ["Drafts", "review"],
+      [
+        { type: "skill", name: "tdd", category: "Drafts" },
+        { type: "skill", name: "idea", category: "review" },
+      ],
+    );
+
+    const expected = {
+      categories: [
+        { name: "Planning", skills: 1, prompts: 1 },
+        { name: "Review", skills: 0, prompts: 0 },
+      ],
+      assignments: [
+        { type: "skill", name: "tdd", category: "Planning" },
+        { type: "prompt", name: "notes", category: "Planning" },
+      ],
+    } satisfies CategoryList;
+    expect(await copy("replace")).toEqual({ status: 200, body: expected });
+    expect(await list()).toEqual(expected);
   });
 
   it("counts the entries the file skipped for an error", async () => {

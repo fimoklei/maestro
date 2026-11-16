@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type {
+  CopyMode,
   CopyPreview,
   ReleasePlan,
   SkillFolderScan,
@@ -461,8 +462,22 @@ const COPY_PREVIEW: CopyPreview = {
   skipped: 0,
   choice: true,
   modes: {
-    add: { added: ["Planning"], deleted: [], unchanged: ["Drafts"] },
-    replace: { added: ["Planning"], deleted: ["Drafts"], unchanged: [] },
+    add: {
+      added: ["Planning"],
+      deleted: [],
+      unchanged: ["Drafts"],
+      respelled: [],
+      moved: { skills: 0, prompts: 0 },
+      uncategorised: { skills: 0, prompts: 0 },
+    },
+    replace: {
+      added: ["Planning"],
+      deleted: ["Drafts"],
+      unchanged: [],
+      respelled: [],
+      moved: { skills: 0, prompts: 0 },
+      uncategorised: { skills: 1, prompts: 0 },
+    },
   },
 };
 
@@ -472,11 +487,12 @@ const copyCategoriesDialog = (
     running = false,
     onClose = vi.fn(),
     failure = null,
-  }: Options & { failure?: NoticeContent | null } = {},
+    mode = "add",
+  }: Options & { failure?: NoticeContent | null; mode?: CopyMode } = {},
 ) => (
   <CopyHarnessCategoriesDialog
     preview={preview}
-    mode="add"
+    mode={mode}
     onModeChange={vi.fn()}
     failure={failure}
     busy={running}
@@ -895,7 +911,12 @@ const ON_DIALOG: Row[] = [
       render: () => copyCategoriesDialog(null),
     },
     loadFailed: () => copyCategoriesDialog(null, { failure: FAILED }),
-    notices: [],
+    notices: [
+      {
+        label: "Replace deletes 1 of your categories",
+        render: () => copyCategoriesDialog(COPY_PREVIEW, { mode: "replace" }),
+      },
+    ],
   },
   {
     file: "settings/delete-category-dialog.tsx",
