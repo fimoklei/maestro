@@ -228,6 +228,9 @@ const primitiveRefShape = {
 
 export const primitiveRefBodySchema = z.object(primitiveRefShape);
 
+// The categories list, the proposal subject that carries no name.
+const listSubjectShape = { type: z.literal("categories") };
+
 // Each item proposed in order; core re-reads every one before its push. An
 // item with a seenRemoteTree is a deletion, confirmed against that tree (#580).
 export const proposeBatchBodySchema = z.object({
@@ -252,7 +255,7 @@ export const proposalBodySchema = z.object({
 const withdrawNumber = z.number().int().positive().nullable();
 export const withdrawBodySchema = z.union([
   z.object({ ...primitiveRefShape, number: withdrawNumber }),
-  z.object({ type: z.literal("categories"), number: withdrawNumber }),
+  z.object({ ...listSubjectShape, number: withdrawNumber }),
 ]);
 
 // The hash is compared against a freshly fetched remote, never used as the
@@ -280,12 +283,12 @@ export const discardBodySchema = z.object({
 // rename is read server-side, never taken from the body.
 export const releaseWithdrawalCheckBodySchema = z.union([
   primitiveRefBodySchema,
-  z.object({ type: z.literal("categories") }),
+  z.object(listSubjectShape),
 ]);
 
 export const releaseWithdrawalBodySchema = z.union([
   z.object({ ...primitiveRefShape, confirmation: z.string() }),
-  z.object({ type: z.literal("categories"), confirmation: z.string() }),
+  z.object({ ...listSubjectShape, confirmation: z.string() }),
 ]);
 
 // The commit is compared against a freshly read HEAD, never used as the thing

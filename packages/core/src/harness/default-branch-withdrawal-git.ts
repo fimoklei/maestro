@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { gitOptions, NO_HOOKS } from "../git/non-interactive";
-import { runGit, runGitText } from "../git/run-git-text";
+import { runGitText } from "../git/run-git-text";
 import { classifyGitError } from "./classify-git-error";
 import { classifyPushFailure } from "./classify-push-failure";
 import {
@@ -165,8 +165,8 @@ const setListBack = async (
     return;
   }
   const [before, after] = await Promise.all([
-    blobAt(root, withdrawn, path),
-    blobAt(root, commit, path),
+    blobAt(root, withdrawn, subject),
+    blobAt(root, commit, subject),
   ]);
   if (before === undefined || after === undefined || working !== before) {
     return;
@@ -191,18 +191,18 @@ const setListBack = async (
   ).catch(() => undefined);
 };
 
-// The blob id of `path` at `ref`; null where absent, undefined where unread.
+// The list file's blob id at `ref`; null where absent, undefined where unread.
 const blobAt = async (
   root: string,
   ref: string,
-  path: string,
+  subject: ListSubject,
 ): Promise<string | null | undefined> => {
-  const listed = await runGit(root, ["ls-tree", ref, "--", path]);
-  if (!listed.ok) {
-    return undefined;
-  }
-  return listed.stdout.match(/^\d+ blob ([0-9a-f]+)\t/)?.[1] ?? null;
+  const read = await readSubjectObject(root, ref, subject);
+  return read === null ? undefined : (read.object?.hash ?? null);
 };
+
+const isMissing = (error: unknown): boolean =>
+  error instanceof Error && "code" in error && error.code === "ENOENT";
 
 // The working file's blob id; null where absent, undefined where it is not a
 // plain file or could not be hashed.
@@ -211,7 +211,7 @@ const workingBlob = async (
   path: string,
 ): Promise<string | null | undefined> => {
   const stat = await lstat(join(root, path)).catch((error: unknown) =>
-    (error as { code?: unknown }).code === "ENOENT" ? null : undefined,
+    isMissing(error) ? null : undefined,
   );
   if (stat === null || stat === undefined) {
     return stat;

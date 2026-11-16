@@ -26,6 +26,7 @@ import type { ReadHeldItems } from "./held-items";
 import { newSinceSeen, ownEqualsHarness, sameCategories } from "./last-seen";
 import {
   type ReleasedCategoriesGitPort,
+  type ReleasedHarnessCategories,
   readReleasedHarnessCategories,
 } from "./released-harness-categories";
 
@@ -129,13 +130,9 @@ export class Categories {
 
   /** Also answers the change signal; a release equal to the own list is recorded as seen here. */
   async readHarness(): Promise<HarnessCategoriesResult> {
-    const harness = await this.harness();
-    if (harness === null) return { ok: false, error: "not-configured" };
-    const released = await readReleasedHarnessCategories(
-      this.git,
-      harness.root,
-    );
-    if (released.kind !== "listed") return { ok: true, harness: released };
+    const read = await this.releasedList();
+    if (!read.listed) return read.result;
+    const { harness, released } = read;
     return {
       ok: true,
       harness: {
@@ -152,13 +149,9 @@ export class Categories {
    * release without a valid category, or a broken section, records nothing.
    */
   async markHarnessSeen(): Promise<HarnessCategoriesResult> {
-    const harness = await this.harness();
-    if (harness === null) return { ok: false, error: "not-configured" };
-    const released = await readReleasedHarnessCategories(
-      this.git,
-      harness.root,
-    );
-    if (released.kind !== "listed") return { ok: true, harness: released };
+    const read = await this.releasedList();
+    if (!read.listed) return read.result;
+    const { harness, released } = read;
     await this.store.update<undefined>((config) => {
       const section = readCategorySection(config.categories);
       if (section === null) return { result: undefined };
@@ -179,6 +172,29 @@ export class Categories {
         changed: false,
       },
     };
+  }
+
+  // The connected Harness and its latest release's valid list; anything else
+  // is the answer as it stands.
+  private async releasedList(): Promise<
+    | { listed: false; result: HarnessCategoriesResult }
+    | {
+        listed: true;
+        harness: HarnessKey;
+        released: Extract<ReleasedHarnessCategories, { kind: "listed" }>;
+      }
+  > {
+    const harness = await this.harness();
+    if (harness === null) {
+      return { listed: false, result: { ok: false, error: "not-configured" } };
+    }
+    const released = await readReleasedHarnessCategories(
+      this.git,
+      harness.root,
+    );
+    return released.kind === "listed"
+      ? { listed: true, harness, released }
+      : { listed: false, result: { ok: true, harness: released } };
   }
 
   // Never a signal for a broken section: nothing could be recorded as seen.
@@ -353,7 +369,7 @@ export class Categories {
       ...own.assignments,
       ...released.record.assignments,
     ]);
-    return { ok: true, harness, released, own, held } as const;
+    return { ok: true, harness, released, held } as const;
   }
 
   private unreadable(): Refused {

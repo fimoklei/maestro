@@ -82,9 +82,7 @@ type Deps = Pick<
 const refOf = ({ type, name }: PrimitiveRef): PrimitiveRef => ({ type, name });
 
 // The categories list carries no name.
-const subjectOf = (
-  body: PrimitiveRef | { type: "categories" },
-): ProposalSubject =>
+const subjectOf = (body: ProposalSubject): ProposalSubject =>
   body.type === "categories" ? { type: body.type } : refOf(body);
 
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
