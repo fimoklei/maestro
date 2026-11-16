@@ -10,6 +10,7 @@ export type {
   HarnessCategoriesResult,
 } from "./categories/categories";
 export type {
+  CategoriesDifference,
   CategoriesProposalCreated,
   CategoriesProposalError,
   CategoriesProposalPreview,

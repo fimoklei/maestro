@@ -7,6 +7,7 @@ import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { HarnessFetchGate } from "../harness/harness-fetch-gate";
 import {
   type HarnessPrimitiveType,
+  PROPOSAL_REFS,
   type PrimitiveRef,
   primitiveKey,
 } from "../harness/harness-primitive";
@@ -22,7 +23,7 @@ import {
   type PullRequestOutcome,
   readOriginFacts,
 } from "../harness/proposal-request";
-import { subjectBranch } from "../harness/proposal-subject";
+import { subjectBranch, subjectBranchLeaf } from "../harness/proposal-subject";
 import type { HarnessGitPort } from "../harness/read-harness-state";
 import type { ConfigStore } from "../registry/config-store";
 import { compareCategoryNames } from "./category-name";
@@ -35,6 +36,7 @@ import {
 import {
   HARNESS_CATEGORIES_MAX_BYTES,
   HARNESS_CATEGORIES_MAX_COUNT,
+  type HarnessCategoriesFile,
   writeHarnessCategoriesFile,
 } from "./harness-categories-file";
 import { heldBeside } from "./held-items";
@@ -44,6 +46,12 @@ const SUBJECT = { type: "categories" } as const;
 // The pull request's title and the commit's subject.
 const TITLE = "Set Harness categories";
 const BODY = "Proposed from the Maestro cockpit.";
+const REQUEST_REF = `${PROPOSAL_REFS}/${subjectBranchLeaf(SUBJECT)}`;
+const EMPTY: CategoryRecord = { names: [], assignments: [] };
+
+// A file with an error compares as no categories; the caller says so.
+const recordIn = (file: HarnessCategoriesFile): CategoryRecord =>
+  file.kind === "valid" ? file.record : EMPTY;
 
 /** What the row Pull request to the Harness states; first match wins. */
 export type CategoriesProposalRow =
@@ -55,11 +63,16 @@ export type CategoriesProposalRow =
       status: "waiting-for-review" | "changes-requested";
       number: number;
       url: string;
+      // The operator's list against the file on the pull request's branch.
+      list: OwnListAgainstRequest;
     }
   | { state: "empty" }
   // Over the categories file's limits.
   | { state: "over-limits" }
   | { state: "start" };
+
+/** `empty` and `over-limits` block Update pull request as they block Create. */
+type OwnListAgainstRequest = "same" | "differs" | "empty" | "over-limits";
 
 /** A category and the skills and prompts the difference counts in it. */
 export type CategoryCount = { name: string; skills: number; prompts: number };
@@ -72,10 +85,10 @@ export type MovedItem = {
 };
 
 /**
- * The pull request against the next release. `deleted` counts the items that
- * end without a category; `uncompared`: the next release's file has an error.
+ * The operator's list against a categories file. `deleted` counts the items
+ * that end without a category; `uncompared`: the file has an error.
  */
-export type CategoriesProposalPreview =
+export type CategoriesDifference =
   | {
       kind: "changes";
       added: CategoryCount[];
@@ -84,6 +97,20 @@ export type CategoriesProposalPreview =
     }
   | { kind: "unchanged" }
   | { kind: "uncompared" };
+
+/**
+ * Create pull request compares with the next release. Update pull request
+ * compares with the file on the open pull request's branch; its `deleted`
+ * still counts against the next release.
+ */
+export type CategoriesProposalPreview =
+  | CategoriesDifference
+  | {
+      kind: "update";
+      number: number;
+      difference: CategoriesDifference;
+      deleted: CategoryCount[];
+    };
 
 export type CategoriesProposalError =
   | "not-configured"
@@ -94,7 +121,8 @@ export type CategoriesProposalError =
   | "list-too-large"
   | "list-unchanged"
   | "proposed-by-other"
-  | "request-exists"
+  // Update pull request: the list equals the file on its branch.
+  | "request-unchanged"
   | "push-elsewhere"
   | "promote-failed"
   | "promote-in-progress";
@@ -109,7 +137,7 @@ export type CategoriesProposalPreviewResult =
   | { ok: true; preview: CategoriesProposalPreview }
   | Refused;
 
-/** What Create pull request answers once the branch is pushed. */
+/** What Create or Update pull request answers once the branch is pushed. */
 export type CategoriesProposalCreated = { pullRequest: PullRequestOutcome };
 
 export type CategoriesProposalSubmitResult =
@@ -127,24 +155,45 @@ type Assessed = {
   preview: CategoriesProposalPreview;
 };
 
-const ROW_REFUSAL: Partial<
-  Record<CategoriesProposalRow["state"], CategoriesProposalError>
-> = {
-  unread: "no-answer",
-  "waiting-on-other": "proposed-by-other",
-  "own-open": "request-exists",
+const LIST_REFUSAL = {
   empty: "list-empty",
   "over-limits": "list-too-large",
+} as const satisfies Partial<Record<string, CategoriesProposalError>>;
+
+// The dialog may still open on a list equal to the pull request: it says so.
+const rowRefusal = (
+  row: CategoriesProposalRow,
+): CategoriesProposalError | null => {
+  switch (row.state) {
+    case "unread":
+      return "no-answer";
+    case "waiting-on-other":
+      return "proposed-by-other";
+    case "empty":
+    case "over-limits":
+      return LIST_REFUSAL[row.state];
+    case "own-open":
+      return row.list === "empty" || row.list === "over-limits"
+        ? LIST_REFUSAL[row.list]
+        : null;
+    case "start":
+      return null;
+  }
 };
 
 const byteLength = (text: string): number =>
   new TextEncoder().encode(text).byteLength;
 
+type OwnOpen = Extract<CategoriesProposalRow, { state: "own-open" }>;
+
 // Another contributor's open request outranks the operator's own.
 const requestRow = (
   requests: readonly ReviewRequest[],
   viewer: ViewerRead,
-): CategoriesProposalRow | null => {
+):
+  | Extract<CategoriesProposalRow, { state: "waiting-on-other" }>
+  | Omit<OwnOpen, "list">
+  | null => {
   const open = requests
     .filter((request) => request.state === "open")
     .sort((a, b) => b.number - a.number);
@@ -189,7 +238,7 @@ const byName = (a: { name: string }, b: { name: string }) =>
 const differenceOf = (
   own: CategoryRecord,
   next: CategoryRecord,
-): CategoriesProposalPreview => {
+): CategoriesDifference => {
   const addedNames = own.names.filter((name) => !next.names.includes(name));
   const deletedNames = next.names.filter((name) => !own.names.includes(name));
   const added = addedNames.map((name) =>
@@ -285,9 +334,12 @@ export class CategoriesProposal {
   ): Promise<CategoriesProposalSubmitResult> {
     const ready = await this.ready(harness);
     if (!ready.ok) return ready;
-    const { origin, base, head, record, preview } = ready.value;
+    const { origin, base, head, record, preview, row } = ready.value;
     if (preview.kind === "unchanged") {
       return { ok: false, error: "list-unchanged" };
+    }
+    if (preview.kind === "update" && preview.difference.kind === "unchanged") {
+      return { ok: false, error: "request-unchanged" };
     }
     const push = await this.deps.git.pushListFile(harness.root, {
       subject: SUBJECT,
@@ -306,8 +358,12 @@ export class CategoriesProposal {
               : "promote-failed",
       };
     }
-    // The new branch reaches the clone only through a fetch.
+    // The new commit reaches the clone only through a fetch.
     this.deps.fetchGate.invalidate(harness.root);
+    if (row.state === "own-open") {
+      const { number, url } = row;
+      return { ok: true, pullRequest: { state: "updated", number, url } };
+    }
     const created = await this.deps.review.createRequest(origin, {
       head: subjectBranch(SUBJECT),
       base,
@@ -331,8 +387,8 @@ export class CategoriesProposal {
     }
     const assessed = await this.assess(harness, this.deps.review);
     if (!assessed.ok) return assessed;
-    const refusal = ROW_REFUSAL[assessed.value.row.state];
-    return refusal === undefined ? assessed : { ok: false, error: refusal };
+    const refusal = rowRefusal(assessed.value.row);
+    return refusal === null ? assessed : { ok: false, error: refusal };
   }
 
   private async assess(
@@ -371,15 +427,24 @@ export class CategoriesProposal {
 
     const next = await readHarnessCategoriesAt(this.deps.git, root, head);
     const atTip = await this.deps.git.readPrimitives(root, head);
-    if (next === null || atTip === null) {
+    // The file as the operator's open pull request carries it now.
+    const sent =
+      requests?.state === "own-open"
+        ? await readHarnessCategoriesAt(this.deps.git, root, REQUEST_REF)
+        : undefined;
+    if (next === null || atTip === null || sent === null) {
       return { ok: false, error: "no-answer" };
     }
-    const nextRecord =
-      next.kind === "valid" ? next.record : { names: [], assignments: [] };
+    const nextRecord = recordIn(next);
+    const sentRecord = sent === undefined ? EMPTY : recordIn(sent);
     const held = await heldBeside(
       this.deps.fs,
       root,
-      [...own.assignments, ...nextRecord.assignments],
+      [
+        ...own.assignments,
+        ...nextRecord.assignments,
+        ...sentRecord.assignments,
+      ],
       new Set(atTip.map(primitiveKey)),
     );
     if (held === null) return { ok: false, error: "no-answer" };
@@ -392,24 +457,51 @@ export class CategoriesProposal {
       record.names.length > HARNESS_CATEGORIES_MAX_COUNT ||
       byteLength(writeHarnessCategoriesFile(record)) >
         HARNESS_CATEGORIES_MAX_BYTES;
+    const againstNext: CategoriesDifference =
+      next.kind === "faulty"
+        ? { kind: "uncompared" }
+        : differenceOf(record, holds(nextRecord));
+    const listState =
+      record.names.length === 0 ? "empty" : tooLarge ? "over-limits" : null;
+    if (requests?.state === "own-open" && sent !== undefined) {
+      const difference: CategoriesDifference =
+        sent.kind === "faulty"
+          ? { kind: "uncompared" }
+          : differenceOf(record, holds(sentRecord));
+      return {
+        ok: true,
+        value: {
+          row: {
+            ...requests,
+            list:
+              listState ??
+              (difference.kind === "unchanged" ? "same" : "differs"),
+          },
+          origin,
+          base,
+          head,
+          record,
+          preview: {
+            kind: "update",
+            number: requests.number,
+            difference,
+            deleted: againstNext.kind === "changes" ? againstNext.deleted : [],
+          },
+        },
+      };
+    }
     return {
       ok: true,
       value: {
         row:
-          requests ??
-          (record.names.length === 0
-            ? { state: "empty" }
-            : tooLarge
-              ? { state: "over-limits" }
-              : { state: "start" }),
+          requests?.state === "waiting-on-other"
+            ? requests
+            : { state: listState ?? "start" },
         origin,
         base,
         head,
         record,
-        preview:
-          next.kind === "faulty"
-            ? { kind: "uncompared" }
-            : differenceOf(record, holds(nextRecord)),
+        preview: againstNext,
       },
     };
   }

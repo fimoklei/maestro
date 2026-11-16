@@ -87,6 +87,7 @@ export const WaitingForReview: Story = {
           status: "waiting-for-review",
           number: 45,
           url: `${PULL}/45`,
+          list: "same",
         }}
         report={() => {}}
       />
@@ -103,6 +104,41 @@ export const ChangesRequested: Story = {
           status: "changes-requested",
           number: 45,
           url: `${PULL}/45`,
+          list: "same",
+        }}
+        report={() => {}}
+      />
+    ),
+  },
+};
+
+export const DiffersFromPullRequest: Story = {
+  args: {
+    children: (
+      <PullRequestRow
+        row={{
+          state: "own-open",
+          status: "waiting-for-review",
+          number: 45,
+          url: `${PULL}/45`,
+          list: "differs",
+        }}
+        report={() => {}}
+      />
+    ),
+  },
+};
+
+export const EmptyWhilePullRequestOpen: Story = {
+  args: {
+    children: (
+      <PullRequestRow
+        row={{
+          state: "own-open",
+          status: "waiting-for-review",
+          number: 45,
+          url: `${PULL}/45`,
+          list: "empty",
         }}
         report={() => {}}
       />

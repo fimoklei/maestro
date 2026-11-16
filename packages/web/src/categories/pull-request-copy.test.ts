@@ -4,17 +4,27 @@ import { HttpError } from "../api/http";
 import { plainText } from "../ui/phrase";
 import {
   ADDED_TO_HARNESS,
+  ADDED_TO_PULL_REQUEST,
   COMPARED_WITH_NEXT_RELEASE,
+  CREATE_PULL_REQUEST,
   CREATE_PULL_REQUEST_BODY,
+  comparedWithPullRequest,
+  comparingWithPullRequest,
   DELETED_FROM_HARNESS,
+  DELETED_FROM_PULL_REQUEST,
   MOVED_TO_ANOTHER_CATEGORY,
   NEXT_RELEASE_UNREADABLE,
   PULL_REQUEST_NOT_OPENED,
   PULL_REQUEST_ROW,
+  PULL_REQUEST_UNREADABLE,
   pullRequestDeletes,
   pullRequestNotice,
   pullRequestRow,
   SAME_AS_NEXT_RELEASE,
+  SAME_AS_PULL_REQUEST,
+  UPDATE_PULL_REQUEST,
+  updatePullRequestBody,
+  updatePullRequestTitle,
   VIEW_ON_HARNESS,
 } from "./pull-request-copy";
 
@@ -54,6 +64,7 @@ describe("the pull-request row", () => {
         status: "waiting-for-review",
         number: 45,
         url: `${PULL}/45`,
+        list: "same",
       },
       "Pull request #45 is open and waiting for a reviewer. Select Update pull request to send your current categories.",
       null,
@@ -64,14 +75,100 @@ describe("the pull-request row", () => {
         status: "changes-requested",
         number: 45,
         url: `${PULL}/45`,
+        list: "same",
       },
       "A reviewer asked for changes on pull request #45. Change your categories, then select Update pull request to send them.",
       null,
+    ],
+    // Provisional: the sentence for a list that differs (#1912).
+    [
+      {
+        state: "own-open",
+        status: "waiting-for-review",
+        number: 45,
+        url: `${PULL}/45`,
+        list: "differs",
+      },
+      "Pull request #45 is open and waiting for a reviewer. Select Update pull request to send your current categories. Your categories differ from the pull request.",
+      null,
+    ],
+    [
+      {
+        state: "own-open",
+        status: "changes-requested",
+        number: 45,
+        url: `${PULL}/45`,
+        list: "empty",
+      },
+      "A reviewer asked for changes on pull request #45. Change your categories, then select Update pull request to send them.",
+      "Add a category.",
     ],
   ])("states %j", (row, sentence, blocked) => {
     const view = pullRequestRow(row);
     expect(plainText(view.sentence)).toBe(sentence);
     expect(view.blocked).toBe(blocked);
+  });
+});
+
+// Provisional texts no ticket wrote (#1912), until the operator approves them.
+describe("the Update pull request dialog", () => {
+  it("states what the update does and what it compares with", () => {
+    expect(updatePullRequestTitle(45)).toBe("Update pull request #45");
+    expect(updatePullRequestBody(45)).toBe(
+      "This updates your open pull request #45 with your current categories. A curator reviews it and decides whether to merge it. Your categories stay as they are.",
+    );
+    expect(comparingWithPullRequest(45)).toBe(
+      "Comparing with pull request #45…",
+    );
+    expect(comparedWithPullRequest(45)).toBe("Compared with pull request #45");
+    expect(ADDED_TO_PULL_REQUEST).toBe("Added to the pull request");
+    expect(DELETED_FROM_PULL_REQUEST).toBe("Deleted from the pull request");
+  });
+
+  it("says when the list equals the pull request", () => {
+    expect(SAME_AS_PULL_REQUEST).toEqual({
+      level: "info",
+      label: "Your categories match the pull request",
+      message: "An update would change nothing in the pull request.",
+    });
+  });
+
+  it("says when it cannot compare with the pull request", () => {
+    expect(PULL_REQUEST_UNREADABLE).toEqual({
+      level: "warning",
+      label: "Couldn't compare with the pull request",
+      message:
+        "The categories file in the pull request contains an error. Your update replaces the whole file, so you can still send it.",
+    });
+  });
+
+  it("names the update in its failures", () => {
+    expect(
+      pullRequestNotice(new TypeError("fetch failed"), UPDATE_PULL_REQUEST),
+    ).toMatchObject({
+      message:
+        "The Maestro server did not respond, so the pull request may already be updated. Select Close, then check the Harness screen.",
+    });
+    expect(
+      pullRequestNotice(
+        new HttpError(502, "", "promote-failed"),
+        UPDATE_PULL_REQUEST,
+      ),
+    ).toMatchObject({
+      label: "Pull request not updated",
+      message:
+        "Your categories stay as they are. Select Close, then select Update pull request again.",
+    });
+    expect(
+      pullRequestNotice(
+        new HttpError(409, "", "request-unchanged"),
+        UPDATE_PULL_REQUEST,
+      ),
+    ).toMatchObject({
+      label: "Your categories match the pull request",
+      message:
+        "Nothing was pushed. An update would change nothing in the pull request.",
+    });
   });
 });
 
@@ -120,7 +217,9 @@ describe("the Create pull request dialog", () => {
   });
 
   it("claims nothing about GitHub when the server did not answer", () => {
-    expect(pullRequestNotice(new TypeError("fetch failed"))).toMatchObject({
+    expect(
+      pullRequestNotice(new TypeError("fetch failed"), CREATE_PULL_REQUEST),
+    ).toMatchObject({
       label: "Pull request not confirmed",
       message:
         "The Maestro server did not respond, so the pull request may already be open. Select Close, then check the Harness screen.",
@@ -129,7 +228,10 @@ describe("the Create pull request dialog", () => {
 
   it("reports a failed push", () => {
     expect(
-      pullRequestNotice(new HttpError(502, "", "promote-failed")),
+      pullRequestNotice(
+        new HttpError(502, "", "promote-failed"),
+        CREATE_PULL_REQUEST,
+      ),
     ).toMatchObject({
       label: "Pull request not created",
       message:
@@ -154,12 +256,15 @@ describe("the Create pull request dialog", () => {
     "list-too-large",
     "list-unchanged",
     "proposed-by-other",
-    "request-exists",
+    "request-unchanged",
     "push-elsewhere",
     "promote-failed",
     "promote-in-progress",
   ])("gives %s its own heading", (code) => {
-    const heading = pullRequestNotice(new HttpError(409, "", code))?.label;
+    const heading = pullRequestNotice(
+      new HttpError(409, "", code),
+      CREATE_PULL_REQUEST,
+    )?.label;
     expect(heading).toBeDefined();
     expect(heading).not.toBe("Pull request not confirmed");
   });
@@ -174,13 +279,15 @@ describe("the Create pull request dialog", () => {
       "list-too-large",
       "list-unchanged",
       "proposed-by-other",
-      "request-exists",
+      "request-unchanged",
       "push-elsewhere",
       "promote-failed",
       "promote-in-progress",
     ];
     const headings = codes.map(
-      (code) => pullRequestNotice(new HttpError(409, "", code))?.label,
+      (code) =>
+        pullRequestNotice(new HttpError(409, "", code), CREATE_PULL_REQUEST)
+          ?.label,
     );
     expect(new Set(headings).size).toBe(codes.length);
   });

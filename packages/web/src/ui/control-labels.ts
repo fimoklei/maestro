@@ -22,6 +22,7 @@ export const REMOVE_SKILL = "Remove skill";
 export const SET_CATEGORY = "Set category";
 const RESTORE_PROMPT = "Restore prompt";
 const RESTORE_SKILL = "Restore skill";
+export const UPDATE_PULL_REQUEST = "Update pull request";
 export const UPDATE_TARGET = "Update target";
 export const VIEW_DEPLOY_STATE = "View Deploy-state";
 export const WITHDRAW_FROM_RELEASE = "Withdraw from release";

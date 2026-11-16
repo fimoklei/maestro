@@ -8,7 +8,11 @@ import type {
 import { harnessHeadings } from "../harness/notice-copy";
 import { stageStatusReading } from "../harness/stage-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
-import { CREATE_PULL_REQUEST, rereadLabel } from "../ui/control-labels";
+import {
+  CREATE_PULL_REQUEST,
+  rereadLabel,
+  UPDATE_PULL_REQUEST,
+} from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
@@ -16,10 +20,14 @@ import { type Copy, machine, named, namedList, phrase } from "../ui/phrase";
 import type { StatusReading } from "../ui/status-reading";
 import { countWords } from "./categories-copy";
 
-export { CREATE_PULL_REQUEST };
+export { CREATE_PULL_REQUEST, UPDATE_PULL_REQUEST };
+
+/** The control while the operator's own pull request is open, or not. */
+export type PullRequestAction =
+  | typeof CREATE_PULL_REQUEST
+  | typeof UPDATE_PULL_REQUEST;
 
 const REREAD_CATEGORIES = rereadLabel("Categories");
-const UPDATE_PULL_REQUEST = "Update pull request";
 
 export const PULL_REQUEST_ROW = "Pull request to the Harness";
 
@@ -38,16 +46,22 @@ export type PullRequestRowView = {
   blocked: string | null;
   /** The operator's own open pull request: its chip and the link. */
   open: StatusReading | null;
-  /** Whether the row offers Create pull request at all. */
-  offers: boolean;
+  action: PullRequestAction;
 };
+
+const EMPTY_CAUSE = "Add a category.";
+const OVER_LIMITS_CAUSE = "Delete categories.";
 
 const blockedRow = (sentence: Copy, blocked: string): PullRequestRowView => ({
   sentence,
   blocked,
   open: null,
-  offers: true,
+  action: CREATE_PULL_REQUEST,
 });
+
+/** Beside the pull request's own sentence when the operator's list differs from it. */
+const DIFFERS_FROM_PULL_REQUEST =
+  "Your categories differ from the pull request.";
 
 export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
   switch (row.state) {
@@ -57,12 +71,12 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
           "Propose your categories for the connected Harness. This creates a pull request for review.",
         blocked: null,
         open: null,
-        offers: true,
+        action: CREATE_PULL_REQUEST,
       };
     case "empty":
-      return blockedRow(EMPTY_SENTENCE, "Add a category.");
+      return blockedRow(EMPTY_SENTENCE, EMPTY_CAUSE);
     case "over-limits":
-      return blockedRow(OVER_LIMITS_SENTENCE, "Delete categories.");
+      return blockedRow(OVER_LIMITS_SENTENCE, OVER_LIMITS_CAUSE);
     case "unread":
       return blockedRow(
         `Maestro couldn't read the Harness or GitHub. Select ${REREAD_CATEGORIES} to try again.`,
@@ -73,16 +87,26 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
         phrase`${named(row.author)} has pull request #${row.number} open for the Harness categories. Wait until it is merged or closed.`,
         `Wait for pull request #${row.number}.`,
       );
-    case "own-open":
+    case "own-open": {
+      const state =
+        row.status === "changes-requested"
+          ? `A reviewer asked for changes on pull request #${row.number}. Change your categories, then select ${UPDATE_PULL_REQUEST} to send them.`
+          : `Pull request #${row.number} is open and waiting for a reviewer. Select ${UPDATE_PULL_REQUEST} to send your current categories.`;
       return {
         sentence:
-          row.status === "changes-requested"
-            ? `A reviewer asked for changes on pull request #${row.number}. Change your categories, then select ${UPDATE_PULL_REQUEST} to send them.`
-            : `Pull request #${row.number} is open and waiting for a reviewer. Select ${UPDATE_PULL_REQUEST} to send your current categories.`,
-        blocked: null,
+          row.list === "differs"
+            ? `${state} ${DIFFERS_FROM_PULL_REQUEST}`
+            : state,
+        blocked:
+          row.list === "empty"
+            ? EMPTY_CAUSE
+            : row.list === "over-limits"
+              ? OVER_LIMITS_CAUSE
+              : null,
         open: stageStatusReading(row.status),
-        offers: false,
+        action: UPDATE_PULL_REQUEST,
       };
+    }
   }
 }
 
@@ -96,6 +120,35 @@ export const COMPARED_WITH_NEXT_RELEASE = "Compared with the next release";
 export const ADDED_TO_HARNESS = "Added to the Harness";
 export const DELETED_FROM_HARNESS = "Deleted from the Harness";
 export const MOVED_TO_ANOTHER_CATEGORY = "Moved to another category";
+
+/** The Update pull request dialog's title. */
+export const updatePullRequestTitle = (number: number) =>
+  `${UPDATE_PULL_REQUEST} #${number}`;
+
+export const updatePullRequestBody = (number: number) =>
+  `This updates your open pull request #${number} with your current categories. A curator reviews it and decides whether to merge it. Your categories stay as they are.`;
+
+/** Heard while the difference against the pull request is read. */
+export const comparingWithPullRequest = (number: number) =>
+  `Comparing with pull request #${number}…`;
+
+export const comparedWithPullRequest = (number: number) =>
+  `Compared with pull request #${number}`;
+export const ADDED_TO_PULL_REQUEST = "Added to the pull request";
+export const DELETED_FROM_PULL_REQUEST = "Deleted from the pull request";
+
+export const SAME_AS_PULL_REQUEST = {
+  level: "info",
+  label: "Your categories match the pull request",
+  message: "An update would change nothing in the pull request.",
+} as const satisfies NoticeContent;
+
+export const PULL_REQUEST_UNREADABLE = {
+  level: "warning",
+  label: "Couldn't compare with the pull request",
+  message:
+    "The categories file in the pull request contains an error. Your update replaces the whole file, so you can still send it.",
+} as const satisfies NoticeContent;
 
 /** A group's legend with its count. */
 export const groupLegend = (group: string, count: number) =>
@@ -146,10 +199,10 @@ export const NEXT_RELEASE_UNREADABLE = {
 } as const satisfies NoticeContent;
 
 /** A request the server never answered: GitHub may hold the pull request. */
-const NOT_CONFIRMED: NoticeCopy = {
+const notConfirmed = (action: PullRequestAction): NoticeCopy => ({
   label: "Pull request not confirmed",
-  message: `The Maestro server did not respond, so the pull request may already be open. Select ${CLOSE}, then check the Harness screen.`,
-};
+  message: `The Maestro server did not respond, so the pull request may already be ${action === UPDATE_PULL_REQUEST ? "updated" : "open"}. Select ${CLOSE}, then check the Harness screen.`,
+});
 
 /** The branch is pushed and GitHub opened no pull request for it. */
 export const PULL_REQUEST_NOT_OPENED = {
@@ -158,65 +211,75 @@ export const PULL_REQUEST_NOT_OPENED = {
   message: phrase`Maestro pushed your categories to the branch ${machine("maestro/list.categories")}, but GitHub opened no pull request. Select ${CLOSE}, then check the Harness screen.`,
 } as const satisfies NoticeContent;
 
-const AGAIN = `select ${CREATE_PULL_REQUEST} again.`;
-
-const HEADINGS: NoticeTable<CategoriesProposalError> = {
-  "not-configured": harnessHeadings["not-configured"],
-  "no-usable-origin": harnessHeadings["no-usable-origin"],
-  "categories-unreadable": {
-    level: "error",
-    label: "Categories not read",
-    message: `Select ${CLOSE}, then select ${REREAD_CATEGORIES}.`,
-  },
-  "no-answer": {
-    level: "error",
-    label: "GitHub did not respond",
-    message: `Select ${CLOSE}, then select ${REREAD_CATEGORIES} to see where the pull request stands.`,
-  },
-  "list-empty": {
-    level: "error",
-    label: "No categories to propose",
-    message: EMPTY_SENTENCE,
-  },
-  "list-too-large": {
-    level: "error",
-    label: "Too many categories",
-    message: OVER_LIMITS_SENTENCE,
-  },
-  "list-unchanged": {
-    level: "error",
-    label: SAME_AS_NEXT_RELEASE.label,
-    message: SAME_AS_NEXT_RELEASE.message,
-  },
-  "proposed-by-other": {
-    level: "error",
-    label: "Another contributor's pull request is open",
-    message: `Nothing was pushed. Wait until it is merged or closed, then ${AGAIN}`,
-  },
-  "request-exists": {
-    level: "error",
-    label: "Pull request already open",
-    message: `Nothing was pushed. Select ${CLOSE} to see your open pull request.`,
-  },
-  "push-elsewhere": {
-    level: "error",
-    label: "Different push remote",
-    message: "Nothing was pushed. Point the clone's push remote at its origin.",
-    detail: "Maestro publishes only to the origin it reads from.",
-  },
-  "promote-failed": {
-    level: "error",
-    label: "Pull request not created",
-    message: `Your categories stay as they are. Select ${CLOSE}, then ${AGAIN}`,
-  },
-  "promote-in-progress": {
-    level: "error",
-    label: HARNESS_BUSY,
-    message: `Wait for that change to finish, then ${AGAIN}`,
-    detail: "Maestro proposes one change at a time.",
-  },
+const headings = (
+  action: PullRequestAction,
+): NoticeTable<CategoriesProposalError> => {
+  const AGAIN = `select ${action} again.`;
+  return {
+    "not-configured": harnessHeadings["not-configured"],
+    "no-usable-origin": harnessHeadings["no-usable-origin"],
+    "categories-unreadable": {
+      level: "error",
+      label: "Categories not read",
+      message: `Select ${CLOSE}, then select ${REREAD_CATEGORIES}.`,
+    },
+    "no-answer": {
+      level: "error",
+      label: "GitHub did not respond",
+      message: `Select ${CLOSE}, then select ${REREAD_CATEGORIES} to see where the pull request stands.`,
+    },
+    "list-empty": {
+      level: "error",
+      label: "No categories to propose",
+      message: EMPTY_SENTENCE,
+    },
+    "list-too-large": {
+      level: "error",
+      label: "Too many categories",
+      message: OVER_LIMITS_SENTENCE,
+    },
+    "list-unchanged": {
+      level: "error",
+      label: SAME_AS_NEXT_RELEASE.label,
+      message: SAME_AS_NEXT_RELEASE.message,
+    },
+    "proposed-by-other": {
+      level: "error",
+      label: "Another contributor's pull request is open",
+      message: `Nothing was pushed. Wait until it is merged or closed, then ${AGAIN}`,
+    },
+    "request-unchanged": {
+      level: "error",
+      label: SAME_AS_PULL_REQUEST.label,
+      message: `Nothing was pushed. ${SAME_AS_PULL_REQUEST.message}`,
+    },
+    "push-elsewhere": {
+      level: "error",
+      label: "Different push remote",
+      message:
+        "Nothing was pushed. Point the clone's push remote at its origin.",
+      detail: "Maestro publishes only to the origin it reads from.",
+    },
+    "promote-failed": {
+      level: "error",
+      label:
+        action === UPDATE_PULL_REQUEST
+          ? "Pull request not updated"
+          : "Pull request not created",
+      message: `Your categories stay as they are. Select ${CLOSE}, then ${AGAIN}`,
+    },
+    "promote-in-progress": {
+      level: "error",
+      label: HARNESS_BUSY,
+      message: `Wait for that change to finish, then ${AGAIN}`,
+      detail: "Maestro proposes one change at a time.",
+    },
+  };
 };
 
-/** Why the dialog could not compare or create; never a claim about GitHub it cannot make. */
-export const pullRequestNotice = (error: unknown): NoticeContent | null =>
-  noticeFromTable(HEADINGS, error, NOT_CONFIRMED);
+/** Why the dialog could not compare, create or update; never a claim about GitHub it cannot make. */
+export const pullRequestNotice = (
+  error: unknown,
+  action: PullRequestAction,
+): NoticeContent | null =>
+  noticeFromTable(headings(action), error, notConfirmed(action));
