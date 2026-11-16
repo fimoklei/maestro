@@ -105,7 +105,7 @@ export const readOriginFacts = async (
   };
 };
 
-export const openProposals = (
+const openProposals = (
   requests: ReviewRequest[],
   target: ProposalTarget,
 ): ReviewRequest[] =>

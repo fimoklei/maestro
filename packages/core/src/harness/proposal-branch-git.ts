@@ -8,9 +8,13 @@ import {
   primitiveEntry,
   primitivePath,
   primitivePathspec,
-  proposalBranch,
   proposalBranchLeaf,
 } from "./harness-primitive";
+import {
+  type ProposalSubject,
+  subjectBranch,
+  subjectBranchLeaf,
+} from "./proposal-subject";
 import type { BranchAuthorship } from "./read-harness-state";
 
 const run = promisify(execFile);
@@ -76,7 +80,7 @@ export async function readCommitEmail(root: string): Promise<string | null> {
 // request (#1639).
 export async function readBranchAuthorship(
   root: string,
-  ref: PrimitiveRef,
+  subject: ProposalSubject,
   base: string,
   email: string | null,
 ): Promise<BranchAuthorship> {
@@ -86,7 +90,7 @@ export async function readBranchAuthorship(
   const authors = await runGit(root, [
     "log",
     "--format=%ae",
-    `${base}..${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
+    `${base}..${PROPOSAL_REFS}/${subjectBranchLeaf(subject)}`,
     "--",
   ]);
   if (!authors.ok) {
@@ -105,14 +109,15 @@ export async function readBranchAuthorship(
 // asked after a failure: a branch already gone is the outcome the caller wants.
 export async function deleteProposalBranch(
   root: string,
-  ref: PrimitiveRef,
+  subject: ProposalSubject,
 ): Promise<"deleted" | "failed"> {
-  const branch = `refs/heads/${proposalBranch(ref)}`;
+  const branch = `refs/heads/${subjectBranch(subject)}`;
+  const fetched = `${PROPOSAL_REFS}/${subjectBranchLeaf(subject)}`;
   const checked = await runGit(root, [
     "rev-parse",
     "--verify",
     "--quiet",
-    `${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}^{commit}`,
+    `${fetched}^{commit}`,
   ]);
   try {
     if (!checked.ok) {
@@ -139,10 +144,6 @@ export async function deleteProposalBranch(
     }
   }
   // The fetched copy would keep the row on screen until the next fetch.
-  await runGit(root, [
-    "update-ref",
-    "-d",
-    `${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
-  ]);
+  await runGit(root, ["update-ref", "-d", fetched]);
   return "deleted";
 }

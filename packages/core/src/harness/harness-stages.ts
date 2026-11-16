@@ -8,8 +8,6 @@ import {
   type HarnessPrimitiveType,
   type PrimitiveRef,
   primitiveKey,
-  primitivePath,
-  proposalBranch,
 } from "./harness-primitive";
 import {
   type HarnessReviewRead,
@@ -20,7 +18,17 @@ import {
   type ViewerRead,
   waitingOn,
 } from "./harness-review-port";
-import type { HarnessHashes, HarnessMovementTrees } from "./read-harness-state";
+import {
+  type ProposalSubject,
+  subjectBranch,
+  subjectKey,
+  subjectPath,
+} from "./proposal-subject";
+import type {
+  HarnessHashes,
+  HarnessMovementTrees,
+  HarnessPromoteRef,
+} from "./read-harness-state";
 
 export type HarnessStage =
   | "pending-proposal"
@@ -181,8 +189,18 @@ export const buildStages = (input: StageInput): HarnessStages => {
   return withCrossStage({ proposal, review, release }, input, matches);
 };
 
-// Keyed by `primitiveKey`.
+// Keyed by `subjectKey`.
 type Matches = Map<string, ReviewRequest[]>;
+
+// Whether a request is the proposal of `subject` into the default branch.
+const proposes =
+  (origin: GitOrigin, defaultBranch: string, subject: ProposalSubject) =>
+  (request: ReviewRequest): boolean =>
+    matchesProposal(request, {
+      ownerRepo: origin.ownerRepo,
+      branch: subjectBranch(subject),
+      base: defaultBranch,
+    });
 
 const matchRequests = ({
   origin,
@@ -197,14 +215,8 @@ const matchRequests = ({
   }
   for (const ref of everyPrimitive(trees, release)) {
     matches.set(
-      primitiveKey(ref),
-      review.requests.filter((request) =>
-        matchesProposal(request, {
-          ownerRepo: origin.ownerRepo,
-          branch: proposalBranch(ref),
-          base: defaultBranch,
-        }),
-      ),
+      subjectKey(ref),
+      review.requests.filter(proposes(origin, defaultBranch, ref)),
     );
   }
   return matches;
@@ -250,8 +262,8 @@ const linkFor =
     byOther: isOthers(request, viewer),
   });
 
-const openOf = (matches: Matches, ref: PrimitiveRef): ReviewRequest[] =>
-  (matches.get(primitiveKey(ref)) ?? []).filter(
+const openOf = (matches: Matches, subject: ProposalSubject): ReviewRequest[] =>
+  (matches.get(subjectKey(subject)) ?? []).filter(
     (request) => request.state === "open",
   );
 
@@ -259,9 +271,9 @@ const openOf = (matches: Matches, ref: PrimitiveRef): ReviewRequest[] =>
 const waitFor = (
   { review, viewer }: StageInput,
   matches: Matches,
-  ref: PrimitiveRef,
+  subject: ProposalSubject,
 ): string | null =>
-  isCompleteRead(review) ? waitingOn(openOf(matches, ref), viewer) : null;
+  isCompleteRead(review) ? waitingOn(openOf(matches, subject), viewer) : null;
 
 const blankRow = (
   stage: HarnessStage,
@@ -272,8 +284,8 @@ const blankRow = (
   stage,
   type: ref.type,
   name: ref.name,
-  path: primitivePath(ref),
-  branch: proposalBranch(ref),
+  path: subjectPath(ref),
+  branch: subjectBranch(ref),
   status,
   change,
   requests: [],
@@ -310,7 +322,7 @@ const isOnDisk = (
 // Without gh no proposal can be open; any other unread answer is unknown.
 const openRequestsFor = (
   { origin, defaultBranch, review }: StageInput,
-  refs: PrimitiveRef[],
+  subjects: ProposalSubject[],
 ): number[] | null => {
   if (review.outcome === "unavailable") {
     return review.reason === "no-gh" ? [] : null;
@@ -322,12 +334,8 @@ const openRequestsFor = (
     .filter(
       (request) =>
         request.state === "open" &&
-        refs.some((ref) =>
-          matchesProposal(request, {
-            ownerRepo: origin.ownerRepo,
-            branch: proposalBranch(ref),
-            base: defaultBranch,
-          }),
+        subjects.some((subject) =>
+          proposes(origin, defaultBranch, subject)(request),
         ),
     )
     .map((request) => request.number)
@@ -337,7 +345,7 @@ const openRequestsFor = (
 
 const mergedRequestFor = (
   { origin, defaultBranch, review }: StageInput,
-  ref: PrimitiveRef,
+  subject: ProposalSubject,
 ): number | null => {
   if (review.outcome !== "read" || defaultBranch === null) {
     return null;
@@ -346,11 +354,7 @@ const mergedRequestFor = (
     .filter(
       (request) =>
         request.state === "merged" &&
-        matchesProposal(request, {
-          ownerRepo: origin.ownerRepo,
-          branch: proposalBranch(ref),
-          base: defaultBranch,
-        }),
+        proposes(origin, defaultBranch, subject)(request),
     )
     .map((request) => request.number);
   return merged.length === 0 ? null : Math.max(...merged);
@@ -388,18 +392,17 @@ const releaseStage = (input: StageInput): HarnessStageRead => {
 // review read proving that, content that landed on or equals origin/HEAD is
 // the fallback: a merged branch left behind after a withdrawal from release
 // differs from origin/HEAD. A bounded (incomplete) read proves nothing spent.
+// `remote` is the subject's object on origin/HEAD; null where absent.
 const currentProposal = (
-  hashes: HarnessHashes,
-  ref: PrimitiveRef,
-  matches: Matches,
+  branch: HarnessPromoteRef | undefined,
+  remote: string | null,
+  matching: ReviewRequest[],
   completeRead: boolean,
 ): { tree: string | null } | null => {
-  const branch = hashes.promote[ref.name];
   if (branch === undefined) {
     return null;
   }
   const { tree } = branch;
-  const matching = matches.get(primitiveKey(ref)) ?? [];
   // An open request outranks everything.
   if (matching.some((request) => request.state === "open")) {
     return { tree };
@@ -415,8 +418,22 @@ const currentProposal = (
   if (spent || branch.landed) {
     return null;
   }
-  return tree !== (hashes.remote[ref.name] ?? null) ? { tree } : null;
+  return tree !== remote ? { tree } : null;
 };
+
+// The primitive's own branch and requests, for `currentProposal`.
+const primitiveProposal = (
+  hashes: HarnessHashes,
+  ref: PrimitiveRef,
+  matches: Matches,
+  completeRead: boolean,
+): { tree: string | null } | null =>
+  currentProposal(
+    hashes.promote[ref.name],
+    hashes.remote[ref.name] ?? null,
+    matches.get(subjectKey(ref)) ?? [],
+    completeRead,
+  );
 
 const isCompleteRead = (review: HarnessReviewRead): boolean =>
   review.outcome === "read" && review.complete;
@@ -440,7 +457,7 @@ const proposalStage = (
       local: typed.local[ref.name] ?? null,
       working: typed.working[ref.name] ?? null,
     };
-    const proposal = currentProposal(typed, ref, matches, complete);
+    const proposal = primitiveProposal(typed, ref, matches, complete);
     // Against the default branch, also differing from local HEAD separates an
     // own edit from a clone merely behind.
     const waiting =
@@ -518,9 +535,67 @@ export const newestEnded = (
       undefined,
     );
 
+// What Pending review shows for one subject; null where it holds no row.
+// `proposed` is whether the subject's branch still carries a live proposal.
+type ReviewReading = {
+  status: ReviewStatus;
+  requests: ReviewRequestLink[];
+  reviewers: RequestedReviewer[];
+  waitingOn: string | null;
+  // The newest ended request is another contributor's.
+  endedByOther: boolean;
+};
+
+const reviewReading = (
+  input: StageInput,
+  matches: Matches,
+  subject: ProposalSubject,
+  proposed: boolean,
+): ReviewReading | null => {
+  const link = linkFor(input.viewer);
+  const matching = matches.get(subjectKey(subject)) ?? [];
+  const open = matching.filter((request) => request.state === "open");
+  const none = { reviewers: [], waitingOn: null, endedByOther: false };
+  if (open.length > 1) {
+    return {
+      ...none,
+      status: "multiple-pull-requests",
+      requests: open.map(link),
+    };
+  }
+  const sole = open.length === 1 ? open[0] : undefined;
+  if (sole !== undefined) {
+    const waiting = waitFor(input, matches, subject);
+    return {
+      ...none,
+      status: waiting === null ? openStatus(sole) : "proposed-by-other",
+      requests: [link(sole)],
+      reviewers: sole.reviewers,
+      waitingOn: waiting,
+    };
+  }
+  if (!proposed) {
+    return null;
+  }
+  // Any ended request holds the row: origin/HEAD lagging one read behind a
+  // merge must not read as a missing request.
+  const ended = newestEnded(matching);
+  if (ended !== undefined) {
+    return {
+      ...none,
+      status: ENDED_STATUS[ended.state],
+      requests: [link(ended)],
+      endedByOther: isOthers(ended, input.viewer),
+    };
+  }
+  // A bounded read cannot prove a request absent.
+  return isCompleteRead(input.review)
+    ? { ...none, status: "pull-request-missing", requests: [] }
+    : null;
+};
+
 const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
   const { trees, review } = input;
-  const link = linkFor(input.viewer);
   if (review.outcome === "unavailable") {
     return { outcome: "unavailable" };
   }
@@ -531,66 +606,29 @@ const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
   const rows: HarnessStageRow[] = [];
   for (const ref of everyPrimitive(trees, null)) {
     const typed = trees[ref.type];
-    const matching = matches.get(primitiveKey(ref)) ?? [];
-    const open = matching.filter((request) => request.state === "open");
-    const proposal = currentProposal(typed, ref, matches, complete);
-    // The branch's deletion fact and the disk's can disagree, so both travel.
-    const change = changeOf(
-      proposal !== null && proposal.tree === null,
-      typed.remote[ref.name] ?? null,
-    );
-    const local = {
+    const proposal = primitiveProposal(typed, ref, matches, complete);
+    const reading = reviewReading(input, matches, ref, proposal !== null);
+    if (reading === null) {
+      continue;
+    }
+    const { status, endedByOther, ...shown } = reading;
+    rows.push({
+      ...blankRow(
+        "pending-review",
+        ref,
+        status,
+        // The branch's deletion fact and the disk's can disagree, so both travel.
+        changeOf(
+          proposal !== null && proposal.tree === null,
+          typed.remote[ref.name] ?? null,
+        ),
+      ),
+      ...shown,
       restorable: isRestorable(trees, ref),
       onDisk: isOnDisk(trees, ref),
-      ownsBranch: typed.promote[ref.name]?.authorship === "own",
-    };
-    if (open.length > 1) {
-      rows.push({
-        ...blankRow("pending-review", ref, "multiple-pull-requests", change),
-        ...local,
-        requests: open.map(link),
-      });
-      continue;
-    }
-    const sole = open.length === 1 ? open[0] : undefined;
-    if (sole !== undefined) {
-      const waiting = waitFor(input, matches, ref);
-      rows.push({
-        ...blankRow(
-          "pending-review",
-          ref,
-          waiting === null ? openStatus(sole) : "proposed-by-other",
-          change,
-        ),
-        ...local,
-        requests: [link(sole)],
-        reviewers: sole.reviewers,
-        waitingOn: waiting,
-      });
-      continue;
-    }
-    if (proposal === null) {
-      continue;
-    }
-    // Any ended request holds the row: origin/HEAD lagging one read behind a
-    // merge must not read as a missing request.
-    const ended = newestEnded(matching);
-    if (ended !== undefined) {
-      rows.push({
-        ...blankRow("pending-review", ref, ENDED_STATUS[ended.state], change),
-        ...local,
-        ownsBranch: local.ownsBranch && !isOthers(ended, input.viewer),
-        requests: [link(ended)],
-      });
-      continue;
-    }
-    // A bounded read cannot prove a request absent.
-    if (review.complete) {
-      rows.push({
-        ...blankRow("pending-review", ref, "pull-request-missing", change),
-        ...local,
-      });
-    }
+      ownsBranch:
+        typed.promote[ref.name]?.authorship === "own" && !endedByOther,
+    });
   }
   return {
     outcome: "read",
@@ -613,7 +651,7 @@ const withCrossStage = (
       continue;
     }
     for (const row of stage.rows) {
-      const key = primitiveKey(row);
+      const key = subjectKey(row);
       const held = holders.get(key) ?? new Set<HarnessStage>();
       held.add(row.stage);
       holders.set(key, held);
@@ -627,7 +665,7 @@ const withCrossStage = (
       ...stage,
       rows: stage.rows.map((row) => {
         // A bounded read proves membership only where it found a request.
-        const key = primitiveKey(row);
+        const key = subjectKey(row);
         const known =
           allRead && (!bounded || (matches.get(key)?.length ?? 0) > 0);
         return {

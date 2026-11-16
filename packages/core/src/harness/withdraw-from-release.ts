@@ -3,11 +3,11 @@
 // Harness is never written, so the author's copy waits under Pending proposal.
 import { createHash } from "node:crypto";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
-import { isValidSkillSlug } from "../deploy/package-ref";
 import type { HarnessObject, PrimitiveRef } from "./harness-primitive";
 import type { HarnessStageRow, HarnessStages } from "./harness-stages";
 import { readLatestRelease } from "./latest-release";
 import { withdrawalTitle } from "./proposal-request";
+import { hasValidName, type ProposalSubject } from "./proposal-subject";
 import type {
   HarnessFreshnessPort,
   HarnessGitPort,
@@ -69,8 +69,8 @@ type WithdrawalPlan = {
   message: string;
 };
 
-const sameRef = (a: PrimitiveRef) => (b: PrimitiveRef) =>
-  a.type === b.type && a.name === b.name;
+const sameRef = (a: ProposalSubject) => (b: PrimitiveRef) =>
+  a.type !== "categories" && a.type === b.type && a.name === b.name;
 
 // The Change decides only the names: a rename touches its previous name too.
 const namesOf = (row: HarnessStageRow): PrimitiveRef[] =>
@@ -108,12 +108,12 @@ export class WithdrawFromRelease {
   }
 
   /** The token the press must carry back. */
-  async inspect(ref: PrimitiveRef): Promise<WithdrawFromReleaseCheck> {
-    const root = await this.rootFor(ref);
+  async inspect(subject: ProposalSubject): Promise<WithdrawFromReleaseCheck> {
+    const root = await this.rootFor(subject);
     if (typeof root !== "string") {
       return root;
     }
-    const plan = await this.readPlan(root, ref);
+    const plan = await this.readPlan(root, subject);
     return "error" in plan
       ? { ok: false, error: plan.error }
       : { ok: true, confirmation: plan.confirmation };
@@ -121,23 +121,23 @@ export class WithdrawFromRelease {
 
   // Shares the harness-root lock with every other Harness write.
   async execute(
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
     confirmation: string,
   ): Promise<WithdrawFromReleaseResult> {
-    const root = await this.rootFor(ref);
+    const root = await this.rootFor(subject);
     if (typeof root !== "string") {
       return root;
     }
     const run = await this.deps.locks.run(root, () =>
-      this.withdraw(root, ref, confirmation),
+      this.withdraw(root, subject, confirmation),
     );
     return run.ok ? run.value : { ok: false, error: "withdraw-in-progress" };
   }
 
   private async rootFor(
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
   ): Promise<string | { ok: false; error: WithdrawFromReleaseError }> {
-    if (!isValidSkillSlug(ref.name)) {
+    if (!hasValidName(subject)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();
@@ -146,11 +146,11 @@ export class WithdrawFromRelease {
 
   private async withdraw(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
     confirmation: string,
   ): Promise<WithdrawFromReleaseResult> {
     // Re-read at the press, never taken from the request.
-    const plan = await this.readPlan(root, ref);
+    const plan = await this.readPlan(root, subject);
     if ("error" in plan) {
       return { ok: false, error: plan.error };
     }
@@ -172,7 +172,7 @@ export class WithdrawFromRelease {
   // The worktree check runs first, for the confirmation and the push alike.
   private async readPlan(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
   ): Promise<WithdrawalPlan | { error: WithdrawFromReleaseError }> {
     const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
     if (ambiguity !== null) {
@@ -182,7 +182,7 @@ export class WithdrawFromRelease {
     if (stages === null || stages.release.outcome !== "read") {
       return { error: "no-answer" };
     }
-    const row = stages.release.rows.find(sameRef(ref));
+    const row = stages.release.rows.find(sameRef(subject));
     if (row === undefined) {
       return { error: "not-pending-release" };
     }

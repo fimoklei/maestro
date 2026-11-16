@@ -11,6 +11,7 @@ import type { HarnessReviewPort, ViewerRead } from "./harness-review-port";
 import { buildStages, type HarnessStages } from "./harness-stages";
 import { type LatestRelease, readLatestRelease } from "./latest-release";
 import type { ProposalKind } from "./proposal-request";
+import type { ProposalSubject } from "./proposal-subject";
 import {
   proposeReleaseVersion,
   type SemverStep,
@@ -50,14 +51,14 @@ export type PromoteSkillOutcome =
 
 export type SkillPushOutcome = Exclude<PromoteSkillOutcome, "skill-missing">;
 
-/** One commit on the default branch that puts the named primitives back as `source` holds them. */
+/** One commit on the default branch that puts the named subjects back as `source` holds them. */
 export type DefaultBranchWithdrawal = {
   defaultBranch: string;
   // The tip the confirmation read: the push's lease.
   tip: string;
   // The latest release's commit; null where the Harness has no release.
   source: string | null;
-  refs: readonly PrimitiveRef[];
+  refs: readonly ProposalSubject[];
   message: string;
 };
 
@@ -223,13 +224,13 @@ export interface HarnessGitPort {
   readPushesWhereItFetched(root: string): Promise<boolean>;
   readAuthoredHere(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
     base: string,
   ): Promise<BranchAuthorship>;
   // Never `--force`. A branch already gone counts as deleted.
   deleteProposalBranch(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
   ): Promise<"deleted" | "failed">;
 }
 

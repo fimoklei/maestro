@@ -27,7 +27,7 @@ import {
   proposalBranchLeaf,
 } from "./harness-primitive";
 import {
-  commitPrimitivesOnto,
+  commitSubjectsOnto,
   hashWorkingPrimitive,
   listPrimitivesAt,
   listWorkingPrimitives,
@@ -46,6 +46,7 @@ import {
   readUnproposedFiles,
 } from "./proposal-branch-git";
 import { type ProposalKind, proposalTitle } from "./proposal-request";
+import type { ProposalSubject } from "./proposal-subject";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
   BranchAuthorship,
@@ -224,12 +225,16 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitivesOnto(root, [{ ref, object }], {
-        treeBase: base,
-        parent: existingTip ?? base,
-        indexDir,
-        message: proposalTitle(ref, kind),
-      });
+      const commit = await commitSubjectsOnto(
+        root,
+        [{ subject: ref, object }],
+        {
+          treeBase: base,
+          parent: existingTip ?? base,
+          indexDir,
+          message: proposalTitle(ref, kind),
+        },
+      );
       // A save halfway through `git add` mixes two revisions: refuse content
       // that moved, since a pushed branch cannot be taken back.
       if (
@@ -271,12 +276,16 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitivesOnto(root, [{ ref, object: null }], {
-        treeBase: base,
-        parent: existingTip ?? base,
-        indexDir,
-        message: proposalTitle(ref, "deletion"),
-      });
+      const commit = await commitSubjectsOnto(
+        root,
+        [{ subject: ref, object: null }],
+        {
+          treeBase: base,
+          parent: existingTip ?? base,
+          indexDir,
+          message: proposalTitle(ref, "deletion"),
+        },
+      );
       // Reappeared since the guard: refuse, a pushed branch cannot be taken back.
       if (await primitiveOnDisk(root, ref)) {
         return "source-changed";
@@ -315,12 +324,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
   async readAuthoredHere(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
     base: string,
   ): Promise<BranchAuthorship> {
     return await readBranchAuthorship(
       root,
-      ref,
+      subject,
       base,
       await readCommitEmail(root),
     );
@@ -332,12 +341,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
   async deleteProposalBranch(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
   ): Promise<"deleted" | "failed"> {
     if (!(await this.pushLandsWhereItFetched(root))) {
       return "failed";
     }
-    return await deleteProposalBranch(root, ref);
+    return await deleteProposalBranch(root, subject);
   }
 
   // Fixed order, so a tree that is several at once always refuses under the
