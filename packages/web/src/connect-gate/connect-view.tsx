@@ -6,7 +6,7 @@ import { useInventoryConfig } from "../inventory/use-inventory";
 import { Card } from "../ui/card";
 import { ConnectFlow } from "./connect-flow";
 import { CONNECT_TITLE } from "./connect-gate-copy";
-import { ConnectSuccessView } from "./connect-success-view";
+import { ConnectSuccess } from "./connect-success";
 
 // Lands on an explicit "Continue" so the confirmation stays long enough to read.
 export function ConnectView() {
@@ -38,10 +38,8 @@ export function ConnectView() {
         <ConnectFlow
           onSuccess={() => setHasConnected(true)}
           renderSuccess={(result) => (
-            <ConnectSuccessView
-              outcome={result.outcome}
-              primitiveCount={result.primitiveCount}
-              inventoryPath={result.inventoryPath}
+            <ConnectSuccess
+              result={result}
               onContinue={() =>
                 navigate(
                   result.outcome === "scaffolded"

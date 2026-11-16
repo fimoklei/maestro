@@ -55,6 +55,9 @@ describe("ConnectSuccessView", () => {
         outcome="found"
         primitiveCount={null}
         inventoryPath="/home/me/agent-harness"
+        copyOffer={null}
+        copying={false}
+        failure={null}
         onContinue={vi.fn()}
       />,
     );
@@ -90,6 +93,9 @@ function renderSuccess(outcome: ConnectOutcome, onContinue = vi.fn()) {
       outcome={outcome}
       primitiveCount={7}
       inventoryPath="/home/me/agent-harness"
+      copyOffer={null}
+      copying={false}
+      failure={null}
       onContinue={onContinue}
     />,
   );

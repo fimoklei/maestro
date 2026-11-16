@@ -63,7 +63,15 @@ const world = () => {
   const write = async (path: string, body: unknown) => {
     expect((await app.request(path, post(body))).status).toBe(200);
   };
-  return { harness, release, read, changed, preview, write };
+  const markSeen = async () => {
+    const response = await app.request(
+      "/api/categories/harness/seen",
+      post({}),
+    );
+    expect(response.status).toBe(200);
+    return (await response.json()) as HarnessCategories;
+  };
+  return { harness, release, read, changed, preview, write, markSeen };
 };
 
 describe("the Harness categories change signal over HTTP", () => {
@@ -96,6 +104,35 @@ describe("the Harness categories change signal over HTTP", () => {
 
     expect(await changed()).toBe(false);
   });
+
+  it("clears the signal once the Connect gate offered the copy", async () => {
+    const { release, changed, markSeen } = world();
+    release("v1.5.0", REVIEW_PLANNING);
+
+    expect(await markSeen()).toEqual({
+      kind: "listed",
+      tag: "v1.5.0",
+      count: 2,
+      changed: false,
+    } satisfies HarnessCategories);
+    expect(await changed()).toBe(false);
+  });
+
+  it.each([
+    ["has no categories", null, { kind: "none" }],
+    ["has a broken file", "categories: [\n", { kind: "faulty", tag: "v1.5.0" }],
+  ] as const)(
+    "records nothing as seen when the release %s",
+    async (_, text, offered) => {
+      const { release, changed, markSeen } = world();
+      release("v1.5.0", text);
+
+      expect(await markSeen()).toEqual(offered satisfies HarnessCategories);
+      release("v1.6.0", REVIEW_PLANNING);
+
+      expect(await changed()).toBe(true);
+    },
+  );
 
   it("signals a release that changed the Harness categories since the operator saw them", async () => {
     const { release, changed, preview } = world();
