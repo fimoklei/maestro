@@ -12,6 +12,7 @@ import {
   objectsOf,
   type Prompts,
   type Skills,
+  subjectTextOf,
   textOf,
   treesOf,
   withSubjectsFrom,
@@ -23,7 +24,6 @@ import {
   parsePrimitiveListing,
   parseProposalBranch,
   primitiveEntry,
-  primitiveKey,
   primitivePath,
   proposalBranchLeaf,
 } from "./harness-primitive";
@@ -33,6 +33,7 @@ import {
   type ProposalSubject,
   subjectBranch,
   subjectBranchLeaf,
+  subjectKey,
 } from "./proposal-subject";
 import type {
   BranchAuthorship,
@@ -345,20 +346,26 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return commit === undefined ? null : this.readSkillTrees(root, commit);
   }
 
-  // The newest commit in `ref`'s history that changed the primitive, as
-  // `git log -1 -- <path>`. Keyed by `primitiveKey`.
+  async readListHash(root: string, ref: string, _subject: ListSubject) {
+    this.at(root);
+    const content = this.contentAt(ref);
+    return content === null ? null : { hash: listFileHash(content) };
+  }
+
+  // The newest commit in `ref`'s history that changed the subject, as
+  // `git log -1 -- <path>`. Keyed by `subjectKey`.
   async readAuthors(
     root: string,
     ref: string,
-    refs: PrimitiveRef[],
+    refs: ProposalSubject[],
   ): Promise<Record<string, string | null>> {
     this.at(root);
     return Object.fromEntries(
-      refs.map((each) => [primitiveKey(each), this.lastAuthor(ref, each)]),
+      refs.map((each) => [subjectKey(each), this.lastAuthor(ref, each)]),
     );
   }
 
-  private lastAuthor(ref: string, primitive: PrimitiveRef): string | null {
+  private lastAuthor(ref: string, subject: ProposalSubject): string | null {
     let id: string | null = ref === "HEAD" ? this.head : ref;
     while (id !== null) {
       const commit = this.commits.get(id);
@@ -368,8 +375,8 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       const parent =
         commit.parent === null ? undefined : this.commits.get(commit.parent);
       const before =
-        parent === undefined ? undefined : textOf(parent, primitive);
-      if (textOf(commit, primitive) !== before) {
+        parent === undefined ? undefined : subjectTextOf(parent, subject);
+      if (subjectTextOf(commit, subject) !== before) {
         return commit.author;
       }
       id = commit.parent;
@@ -511,17 +518,13 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     this.at(root);
     const commit = this.tags?.find((t) => t.name === tag)?.commit;
     const content = commit === undefined ? null : this.contentAt(commit);
-    if (content === null) {
-      return null;
-    }
-    const texts: Record<string, string> = {};
-    for (const name of names) {
-      const text = content.prompts[name];
-      if (text !== undefined) {
-        texts[name] = text;
-      }
-    }
-    return texts;
+    if (content === null) return null;
+    return Object.fromEntries(
+      names.flatMap((name) => {
+        const text = content.prompts[name];
+        return text === undefined ? [] : [[name, text]];
+      }),
+    );
   }
 
   async readTags(root: string): Promise<HarnessTag[] | null> {

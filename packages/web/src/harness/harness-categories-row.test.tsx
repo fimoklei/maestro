@@ -196,6 +196,67 @@ describe("the Categories row under Pending review", () => {
   });
 });
 
+describe("the Categories row under Pending release", () => {
+  const released = (change: HarnessStageRow["change"]) =>
+    stubHarnessServer({
+      read: {
+        body: withStages(CONNECTED, {
+          release: [
+            stageRow("pending-release", "categories", "not-yet-released", {
+              type: "categories",
+              path: ".maestro/categories.yml",
+              branch: "maestro/list.categories",
+              change,
+              mergedRequest: 45,
+            }),
+          ],
+        }),
+      },
+    });
+
+  it.each([
+    ["edit", "Changed"],
+    ["addition", "Added"],
+    ["deletion", "Deleted"],
+  ] as const)(
+    "reads Name Categories, Type List and Change %s",
+    async (change, word) => {
+      released(change);
+      renderHarness();
+
+      const [row] = await stageRows("Pending release");
+
+      expect(row).toHaveTextContent("Categories");
+      expect(row).toHaveTextContent("List");
+      expect(row).toHaveTextContent(word);
+      expect(row).toHaveTextContent("Not yet released");
+    },
+  );
+
+  it("opens the detail pane with the release it waits for", async () => {
+    released("edit");
+    renderHarness();
+
+    const pane = await openPane("Categories", "Pending release");
+
+    expect(pane).toHaveTextContent(
+      `This list changed after release ${CONNECTED.releasedVersion}. Select Create a release to publish it.`,
+    );
+  });
+
+  it("offers Open Categories in Settings", async () => {
+    released("edit");
+    renderHarness();
+    await settled();
+
+    expect(
+      within(await openRowMenu("Categories", "Pending release", "categories"))
+        .getAllByRole("menuitem")
+        .map((item) => item.textContent),
+    ).toEqual(["Open Categories in Settings"]);
+  });
+});
+
 describe("Withdraw proposal on the Categories row", () => {
   const withdrawing = async () => {
     await settled();

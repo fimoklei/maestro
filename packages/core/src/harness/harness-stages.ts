@@ -2,7 +2,7 @@
 // stage. A primitive is a type plus a name, so a skill and a prompt with one
 // name never share a row, a request or an "Also in".
 import type { GitOrigin } from "../deploy/git-origin";
-import type { HarnessMovement } from "./harness-movements";
+import type { SubjectMovement } from "./harness-movements";
 import {
   HARNESS_PRIMITIVE_TYPES,
   type PrimitiveRef,
@@ -62,7 +62,7 @@ type ReleaseStatus = "not-yet-released";
 // folders read as an addition and a deletion.
 export type HarnessChange = "addition" | "edit" | "deletion" | "rename";
 
-type ReleaseMovement = HarnessMovement & { change: HarnessChange };
+type ReleaseMovement = SubjectMovement & { change: HarnessChange };
 
 // `null` is a skill absent at that ref; it compares like any other value.
 type SkillTreeHashes = {
@@ -109,7 +109,7 @@ type ProposalComparison =
 
 export type HarnessStageRow = {
   stage: HarnessStage;
-  // A primitive, or the categories list, which only Pending review holds.
+  // A primitive, or the categories list, which Pending proposal never holds.
   type: ProposalSubject["type"];
   // The list's is its type: the cockpit names it.
   name: string;
@@ -254,7 +254,9 @@ const everyPrimitive = (
     }
   }
   for (const movement of release ?? []) {
-    add(movement);
+    if (movement.type !== "categories") {
+      add(movement);
+    }
   }
   // Code-unit order by name, as the skill-only listing sorted.
   return [...refs.values()].sort((a, b) =>
@@ -329,10 +331,14 @@ const isRestorable = (
     working: trees[type].working[name] ?? null,
   });
 
+// The list is built from the config, never from a file in the clone.
 const isOnDisk = (
   trees: HarnessMovementTrees | null,
-  { type, name }: PrimitiveRef,
-): boolean => trees !== null && Object.hasOwn(trees[type].working, name);
+  subject: ProposalSubject,
+): boolean =>
+  trees !== null &&
+  subject.type !== "categories" &&
+  Object.hasOwn(trees[subject.type].working, subject.name);
 
 // Without gh no proposal can be open; any other unread answer is unknown.
 const openRequestsFor = (
@@ -358,22 +364,29 @@ const openRequestsFor = (
   return open.length === 0 && !review.complete ? null : open;
 };
 
+/** The highest-numbered merged request; a Pending release row names it. */
+export const newestMerged = (
+  matching: readonly ReviewRequest[],
+): ReviewRequest | undefined =>
+  matching
+    .filter((request) => request.state === "merged")
+    .reduce<ReviewRequest | undefined>(
+      (newest, request) =>
+        newest === undefined || request.number > newest.number
+          ? request
+          : newest,
+      undefined,
+    );
+
 const mergedRequestFor = (
   { origin, defaultBranch, review }: StageInput,
   subject: ProposalSubject,
-): number | null => {
-  if (review.outcome !== "read" || defaultBranch === null) {
-    return null;
-  }
-  const merged = review.requests
-    .filter(
-      (request) =>
-        request.state === "merged" &&
-        proposes(origin, defaultBranch, subject)(request),
-    )
-    .map((request) => request.number);
-  return merged.length === 0 ? null : Math.max(...merged);
-};
+): number | null =>
+  review.outcome !== "read" || defaultBranch === null
+    ? null
+    : (newestMerged(
+        review.requests.filter(proposes(origin, defaultBranch, subject)),
+      )?.number ?? null);
 
 const releaseStage = (input: StageInput): HarnessStageRead => {
   const { release, trees } = input;
@@ -394,7 +407,8 @@ const releaseStage = (input: StageInput): HarnessStageRead => {
       previousName: movement.previousName ?? null,
       openRequests: openRequestsFor(input, [
         movement,
-        ...(movement.previousName === undefined
+        ...(movement.type === "categories" ||
+        movement.previousName === undefined
           ? []
           : [{ type: movement.type, name: movement.previousName }]),
       ]),

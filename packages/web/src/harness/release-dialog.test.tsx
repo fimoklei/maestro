@@ -201,6 +201,28 @@ describe("ReleaseDialog", () => {
     ).toBeInTheDocument();
   });
 
+  it("lists a categories-only change as the Categories list under Changed, and suggests a patch", () => {
+    renderReady({
+      delta: [
+        {
+          type: "categories",
+          kind: "changed",
+          change: "edit",
+          name: "categories",
+          author: "Ada",
+        },
+      ],
+      proposedStep: "patch",
+      reason: "No skill was added, deleted or renamed.",
+    });
+
+    expect(row("Categories")).toHaveTextContent(/^CategoriesListAda$/);
+    expect(
+      screen.getByRole("button", { name: "Changed · 1" }),
+    ).toBeInTheDocument();
+    expect(releasingAs()).toHaveTextContent(/^v1\.2\.4$/);
+  });
+
   // Moved from the retired PendingRelease (#1045).
   it("shows a rename as one movement, naming the name it had", () => {
     renderReady({

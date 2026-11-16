@@ -164,6 +164,52 @@ describe("the row Pull request to the Harness", () => {
     ).not.toHaveAttribute("aria-disabled");
   });
 
+  it("states a merged pull request that is not released yet, with View on Harness", async () => {
+    stubServer({
+      rows: [
+        {
+          state: "merged-not-released",
+          number: 45,
+          url: `${PULL}/45`,
+          list: "ready",
+        },
+      ],
+    });
+    renderPage();
+
+    const region = await section();
+    expect(
+      await within(region).findByText(
+        "Pull request #45 was merged. Teammates get these categories with the next Harness release.",
+      ),
+    ).toBeInTheDocument();
+    expect(within(region).getByText("Not yet released")).toBeInTheDocument();
+    expect(
+      within(region).getByRole("link", { name: "View on Harness" }),
+    ).toBeInTheDocument();
+    expect(await createButton()).not.toHaveAttribute("aria-disabled");
+  });
+
+  it("keeps the merged sentence and blocks Create pull request for an empty list", async () => {
+    stubServer({
+      rows: [
+        {
+          state: "merged-not-released",
+          number: 45,
+          url: `${PULL}/45`,
+          list: "empty",
+        },
+      ],
+    });
+    renderPage();
+
+    const region = await section();
+    expect(
+      await within(region).findByText(sentence(/Pull request #45 was merged/)),
+    ).toBeInTheDocument();
+    expectTooltipCause(await createButton(), "Add a category.");
+  });
+
   it("reads the row again with Re-read Categories", async () => {
     stubServer({ rows: [{ state: "unread" }, { state: "start" }] });
     renderPage();

@@ -6,12 +6,37 @@ import {
   type HarnessObject,
   type PrimitiveRef,
 } from "./harness-primitive";
+import type { ListSubject } from "./proposal-subject";
 
 export type HarnessMovementKind = "added" | "changed" | "removed" | "renamed";
 
 export type HarnessMovement = PrimitiveRef & {
   kind: HarnessMovementKind;
   previousName?: string;
+};
+
+/** The categories list's movement, named by its type as its row is. One file is never renamed. */
+export type ListMovement = ListSubject & {
+  name: ListSubject["type"];
+  kind: Exclude<HarnessMovementKind, "renamed">;
+  previousName?: never;
+};
+
+/** A primitive's movement, or the categories list's. */
+export type SubjectMovement = HarnessMovement | ListMovement;
+
+/** The list file's movement from its blob hashes; null where it did not move. */
+export const diffListFile = (
+  subject: ListSubject,
+  previous: string | null,
+  current: string | null,
+): ListMovement | null => {
+  if (previous === current) {
+    return null;
+  }
+  const kind =
+    previous === null ? "added" : current === null ? "removed" : "changed";
+  return { ...subject, name: subject.type, kind };
 };
 
 const groupByHash = (objects: HarnessObject[]) => {

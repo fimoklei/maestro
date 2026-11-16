@@ -19,7 +19,7 @@ import {
   type ReviewRequest,
   type ViewerRead,
 } from "../harness/harness-review-port";
-import { listReviewRow } from "../harness/harness-stages";
+import { listReviewRow, newestMerged } from "../harness/harness-stages";
 import {
   type PullRequestOutcome,
   readOriginFacts,
@@ -29,7 +29,9 @@ import {
   subjectBranch,
   subjectBranchLeaf,
 } from "../harness/proposal-subject";
-import type { HarnessGitPort } from "../harness/read-harness-state";
+import type { HarnessGitPort, HarnessTag } from "../harness/read-harness-state";
+import { readListMovements } from "../harness/release-delta";
+import { highestReleaseTag } from "../harness/release-tag";
 import type { ConfigStore } from "../registry/config-store";
 import { compareCategoryNames } from "./category-name";
 import {
@@ -73,6 +75,14 @@ export type CategoriesProposalRow =
     }
   // The branch is pushed and no pull request opens it.
   | { state: "pull-request-missing" }
+  // The Categories row is under Pending release; `number` is its newest
+  // merged pull request. `list` blocks Create pull request as `empty` would.
+  | {
+      state: "merged-not-released";
+      number: number;
+      url: string;
+      list: "ready" | "empty" | "over-limits";
+    }
   | { state: "empty" }
   // Over the categories file's limits.
   | { state: "over-limits" }
@@ -180,6 +190,7 @@ const rowRefusal = (
     case "over-limits":
       return LIST_REFUSAL[row.state];
     case "own-open":
+    case "merged-not-released":
       return row.list === "empty" || row.list === "over-limits"
         ? LIST_REFUSAL[row.list]
         : null;
@@ -193,6 +204,10 @@ const byteLength = (text: string): number =>
   new TextEncoder().encode(text).byteLength;
 
 type OwnOpen = Extract<CategoriesProposalRow, { state: "own-open" }>;
+type MergedRow = Extract<
+  CategoriesProposalRow,
+  { state: "merged-not-released" }
+>;
 
 // Another contributor's open request outranks the operator's own.
 const requestRow = (
@@ -410,7 +425,7 @@ export class CategoriesProposal {
     const own = recordOf(section, { root, ...key });
     const facts = await readOriginFacts(this.deps.git, root);
     if (!facts.ok) return facts;
-    const { origin, base, head } = facts;
+    const { origin, base, head, tags } = facts;
     if (head === null) return { ok: false, error: "no-answer" };
 
     const reviews = await review.readReviews(origin);
@@ -443,6 +458,7 @@ export class CategoriesProposal {
         ? { state: "pull-request-missing" }
         : null;
     const requests = open ?? missing;
+    const merged = await this.mergedNotReleased(root, tags, head, matching);
 
     const next = await readHarnessCategoriesAt(this.deps.git, root, head);
     const atTip = await this.deps.git.readPrimitives(root, head);
@@ -509,16 +525,19 @@ export class CategoriesProposal {
         },
       };
     }
+    const rest = (): CategoriesProposalRow => {
+      if (requests?.state === "waiting-on-other") return requests;
+      if (missing === null && merged !== null) {
+        return { ...merged, list: listState ?? "ready" };
+      }
+      // A list the write refuses blocks finishing a pushed branch too.
+      if (listState !== null) return { state: listState };
+      return missing ?? { state: "start" };
+    };
     return {
       ok: true,
       value: {
-        row:
-          requests?.state === "waiting-on-other"
-            ? requests
-            : // A list the write refuses blocks finishing a pushed branch too.
-              listState !== null
-              ? { state: listState }
-              : (missing ?? { state: "start" }),
+        row: rest(),
         origin,
         base,
         head,
@@ -526,5 +545,26 @@ export class CategoriesProposal {
         preview: againstNext,
       },
     };
+  }
+
+  // The Harness row's own rule: the release diff's list part, and the newest
+  // merged request. Tags nobody could read claim nothing.
+  private async mergedNotReleased(
+    root: string,
+    tags: HarnessTag[] | null,
+    head: string,
+    matching: readonly ReviewRequest[],
+  ): Promise<Omit<MergedRow, "list"> | null> {
+    const request = newestMerged(matching);
+    if (tags === null || request === undefined) return null;
+    const moved = await readListMovements(
+      this.deps.git,
+      root,
+      highestReleaseTag(tags),
+      head,
+    );
+    if (moved === null || moved.length === 0) return null;
+    const { number, url } = request;
+    return { state: "merged-not-released", number, url };
   }
 }

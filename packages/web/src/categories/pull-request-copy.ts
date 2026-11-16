@@ -52,6 +52,14 @@ export type PullRequestRowView = {
 const EMPTY_CAUSE = "Add a category.";
 const OVER_LIMITS_CAUSE = "Delete categories.";
 
+// A list the write refuses blocks the button in any state that keeps its own sentence.
+const listCause = (list: string): string | null =>
+  list === "empty"
+    ? EMPTY_CAUSE
+    : list === "over-limits"
+      ? OVER_LIMITS_CAUSE
+      : null;
+
 const blockedRow = (sentence: Copy, blocked: string): PullRequestRowView => ({
   sentence,
   blocked,
@@ -95,6 +103,15 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
         open: stageStatusReading("pull-request-missing"),
         action: CREATE_PULL_REQUEST,
       };
+    // The Harness row's chip under Pending release; a new pull request
+    // compares with the next release, which now holds the merged list.
+    case "merged-not-released":
+      return {
+        sentence: `Pull request #${row.number} was merged. Teammates get these categories with the next Harness release.`,
+        blocked: listCause(row.list),
+        open: stageStatusReading("not-yet-released"),
+        action: CREATE_PULL_REQUEST,
+      };
     case "own-open": {
       const state =
         row.status === "changes-requested"
@@ -105,12 +122,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
           row.list === "differs"
             ? `${state} ${DIFFERS_FROM_PULL_REQUEST}`
             : state,
-        blocked:
-          row.list === "empty"
-            ? EMPTY_CAUSE
-            : row.list === "over-limits"
-              ? OVER_LIMITS_CAUSE
-              : null,
+        blocked: listCause(row.list),
         open: stageStatusReading(row.status),
         action: UPDATE_PULL_REQUEST,
       };

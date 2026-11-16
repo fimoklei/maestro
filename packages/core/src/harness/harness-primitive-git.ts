@@ -18,7 +18,6 @@ import {
   parseProposalBranch,
   primitiveDir,
   primitiveEntry,
-  primitiveKey,
   primitiveObject,
   primitivePath,
   primitivePathspec,
@@ -28,6 +27,7 @@ import {
   type ListSubject,
   type ProposalSubject,
   subjectBranchLeaf,
+  subjectKey,
   subjectObject,
   subjectPath,
   subjectPathspec,
@@ -491,26 +491,36 @@ export async function readListProposal(
   };
 }
 
-// The newest commit on `ref` that touched each primitive, keyed by `primitiveKey`.
+// The newest commit on `ref` that touched each subject, keyed by `subjectKey`.
 export async function readAuthors(
   root: string,
   ref: string,
-  refs: PrimitiveRef[],
+  refs: ProposalSubject[],
 ): Promise<Record<string, string | null>> {
   const authors = await Promise.all(
     refs.map(async (each) => [
-      primitiveKey(each),
+      subjectKey(each),
       await runGitText(root, [
         "log",
         "-1",
         "--format=%an",
         ref,
         "--",
-        primitivePath(each),
+        subjectPathspec(each),
       ]),
     ]),
   );
   return Object.fromEntries(authors);
+}
+
+/** The list file's blob hash on a ref; `hash: null` where it lacks the file, null on a failed read. */
+export async function readListHash(
+  root: string,
+  ref: string,
+  subject: ListSubject,
+): Promise<{ hash: string | null } | null> {
+  const read = await readSubjectObject(root, ref, subject);
+  return read === null ? null : { hash: read.object?.hash ?? null };
 }
 
 // Exit 1 is a staged difference; anything but 0 or 1, a killed run included, is no answer (#888).

@@ -113,3 +113,12 @@ export const textOf = (
   { type, name }: PrimitiveRef,
 ): string | null | undefined =>
   type === "skill" ? content.skills[name] : content.prompts[name];
+
+// `undefined` is a subject the content lacks.
+export const subjectTextOf = (
+  content: Content,
+  subject: ProposalSubject,
+): string | null | undefined =>
+  subject.type === "categories"
+    ? content.files[HARNESS_CATEGORIES_FILE]
+    : textOf(content, subject);

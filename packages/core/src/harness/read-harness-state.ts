@@ -6,6 +6,7 @@ import type {
   HarnessPrimitiveType,
   PrimitiveRef,
 } from "./harness-primitive";
+
 import { primitiveKey } from "./harness-primitive";
 import type { HarnessReviewPort, ViewerRead } from "./harness-review-port";
 import { buildStages, type HarnessStages } from "./harness-stages";
@@ -183,11 +184,18 @@ export interface HarnessGitPort {
     path: string,
     maxBytes: number,
   ): Promise<FileAtRef | null>;
-  // Keyed by `primitiveKey`.
+  // The list file's blob hash at `ref`; `hash: null` where `ref` lacks the
+  // file. Null is an unreadable ref.
+  readListHash(
+    root: string,
+    ref: string,
+    subject: ListSubject,
+  ): Promise<{ hash: string | null } | null>;
+  // Keyed by `subjectKey`.
   readAuthors(
     root: string,
     ref: string,
-    refs: PrimitiveRef[],
+    refs: ProposalSubject[],
   ): Promise<Record<string, string | null>>;
   readMovementTrees(root: string): Promise<HarnessMovementTrees | null>;
   // Null is an unreadable ref, never an absent file or branch.

@@ -85,6 +85,26 @@ describe("the pull-request row", () => {
       "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
       null,
     ],
+    [
+      {
+        state: "merged-not-released",
+        number: 45,
+        url: `${PULL}/45`,
+        list: "ready",
+      },
+      "Pull request #45 was merged. Teammates get these categories with the next Harness release.",
+      null,
+    ],
+    [
+      {
+        state: "merged-not-released",
+        number: 45,
+        url: `${PULL}/45`,
+        list: "over-limits",
+      },
+      "Pull request #45 was merged. Teammates get these categories with the next Harness release.",
+      "Delete categories.",
+    ],
     // Provisional: the sentence for a list that differs (#1912).
     [
       {

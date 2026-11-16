@@ -33,6 +33,7 @@ import {
   listWorkingPrimitives,
   primitiveOnDisk,
   readAuthors,
+  readListHash,
   readListProposal,
   readPrimitiveHash,
   readProposalRefs,
@@ -581,6 +582,7 @@ export class HarnessGitAdapter implements HarnessGitPort {
   }
 
   readAuthors = readAuthors;
+  readListHash = readListHash;
   readStagedDifference = readStagedDifference;
   writePrimitiveInto = writePrimitiveInto;
 
