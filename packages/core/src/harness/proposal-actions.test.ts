@@ -11,6 +11,8 @@ import type {
 } from "./harness-review-port";
 import { ProposalActions } from "./proposal-actions";
 
+const CATEGORIES_SUBJECT = { type: "categories" } as const;
+
 const request = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
   number: 45,
   url: "https://github.com/fimoklei/agent-harness/pull/45",
@@ -654,6 +656,46 @@ describe("ProposalActions · withdraw without an open request", () => {
       ok: true,
     });
     expect(git.deletedBranches).toEqual(["maestro/tdd"]);
+  });
+});
+
+describe("ProposalActions · withdraw the categories proposal", () => {
+  const categoriesRequest = (over: Partial<ReviewRequest> = {}) =>
+    request({ headBranch: "maestro/list.categories", ...over });
+  const withCategoriesBranch = (git: InMemoryHarnessGit) => {
+    git.commit("categories-tip", PROMOTE_TREE, { parent: "head" });
+    git.promote = { "list.categories": "categories-tip" };
+  };
+
+  it("closes the request and deletes the branch, the Working Harness untouched", async () => {
+    const { actions, calls, git, moved } = build({
+      review: readOf([categoriesRequest()]),
+      world: withCategoriesBranch,
+    });
+
+    expect(await actions.withdraw(CATEGORIES_SUBJECT, 45)).toEqual({
+      ok: true,
+    });
+    expect(calls.closed).toEqual([45]);
+    expect(git.deletedBranches).toEqual(["maestro/list.categories"]);
+    expect(git.written).toEqual([]);
+    expect(moved).toEqual([]);
+  });
+
+  it("refuses a categories branch that holds another contributor's commit", async () => {
+    const { actions, git } = build({
+      review: readOf([categoriesRequest({ state: "closed" })]),
+      world: (git) => {
+        withCategoriesBranch(git);
+        git.authorship = { "list.categories": "others" };
+      },
+    });
+
+    expect(await actions.withdraw(CATEGORIES_SUBJECT, null)).toEqual({
+      ok: false,
+      error: "branch-by-other",
+    });
+    expect(git.deletedBranches).toEqual([]);
   });
 });
 

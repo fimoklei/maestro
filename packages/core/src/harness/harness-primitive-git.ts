@@ -1,5 +1,6 @@
 // The git steps that differ by primitive type: a skill is a folder (a tree),
-// a prompt one file (a blob). Nothing leaves as stdout or stderr.
+// a prompt one file (a blob), as is the categories list. Nothing leaves as
+// stdout or stderr.
 import { execFile } from "node:child_process";
 import { access, lstat, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -23,6 +24,11 @@ import {
   primitivePathspec,
 } from "./harness-primitive";
 import { readBranchAuthorship, readCommitEmail } from "./proposal-branch-git";
+import {
+  type ProposalSubject,
+  subjectObject,
+  subjectPath,
+} from "./proposal-subject";
 import type { HarnessPromoteRef } from "./read-harness-state";
 
 const run = promisify(execFile);
@@ -271,13 +277,13 @@ const readObjectAt = async (
   return { object: mode && hash ? { hash, mode } : null };
 };
 
-/** The primitive's object on a commit; `object: null` where it lacks it, null on a failed read. */
-export const readPrimitiveObject = (
+/** The subject's object on a commit; `object: null` where it lacks it, null on a failed read. */
+export const readSubjectObject = (
   root: string,
   commit: string,
-  ref: PrimitiveRef,
+  subject: ProposalSubject,
 ): Promise<{ object: PrimitiveObject | null } | null> =>
-  readObjectAt(root, commit, primitivePath(ref));
+  readObjectAt(root, commit, subjectPath(subject));
 
 /** The primitive's hash on a ref, or null where the ref lacks it. */
 export const readPrimitiveHash = (
@@ -287,18 +293,18 @@ export const readPrimitiveHash = (
 ): Promise<string | null> =>
   runGitText(root, ["rev-parse", `${treeish}:${primitivePath(ref)}`]);
 
-/** One primitive's content in a new commit; `object: null` removes it. */
-export type PrimitiveChange = {
-  ref: PrimitiveRef;
+/** One subject's content in a new commit; `object: null` removes it. */
+export type SubjectChange = {
+  subject: ProposalSubject;
   object: PrimitiveObject | null;
 };
 
 // Each base copy is dropped first: `read-tree --prefix` refuses a path the
 // index already holds. `parent` is the proposal branch's tip when one exists,
 // so the push fast-forwards (#578).
-export async function commitPrimitivesOnto(
+export async function commitSubjectsOnto(
   root: string,
-  changes: readonly PrimitiveChange[],
+  changes: readonly SubjectChange[],
   {
     treeBase,
     parent,
@@ -309,7 +315,7 @@ export async function commitPrimitivesOnto(
   const options = indexOptions(join(indexDir, "promote"));
   await run("git", ["-C", root, "read-tree", treeBase], options);
   for (const change of changes) {
-    const path = primitivePath(change.ref);
+    const path = subjectPath(change.subject);
     await run(
       "git",
       [
@@ -328,7 +334,7 @@ export async function commitPrimitivesOnto(
     );
     if (change.object !== null) {
       const add =
-        primitiveObject(change.ref.type) === "tree"
+        subjectObject(change.subject) === "tree"
           ? ["read-tree", `--prefix=${path}/`, change.object.hash]
           : [
               "update-index",

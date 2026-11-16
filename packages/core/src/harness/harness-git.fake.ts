@@ -12,10 +12,14 @@ import {
   primitiveEntry,
   primitiveKey,
   primitivePath,
-  proposalBranch,
   proposalBranchLeaf,
 } from "./harness-primitive";
 import type { ProposalKind } from "./proposal-request";
+import {
+  type ProposalSubject,
+  subjectBranch,
+  subjectBranchLeaf,
+} from "./proposal-subject";
 import type {
   BranchAuthorship,
   CloneSync,
@@ -43,7 +47,8 @@ export type Skills = Record<string, string | null>;
 // Prompt name → its file text.
 export type Prompts = Record<string, string>;
 
-type Content = { skills: Skills; prompts: Prompts };
+// `categories` is the categories file's text; absent where the commit has none.
+type Content = { skills: Skills; prompts: Prompts; categories?: string };
 
 type Commit = Content & {
   parent: string | null;
@@ -194,6 +199,7 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       parent?: string;
       author?: string;
       prompts?: Prompts;
+      categories?: string;
       rootFiles?: string[];
       files?: Record<string, string>;
     } = {},
@@ -202,6 +208,7 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       parent: options.parent ?? null,
       skills,
       prompts: options.prompts ?? {},
+      categories: options.categories,
       author: options.author ?? "fimoklei",
       rootFiles: options.rootFiles ?? ["apm.yml"],
       files: options.files ?? {},
@@ -665,19 +672,24 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     }
     const skills = { ...at.skills };
     const prompts = { ...at.prompts };
-    for (const ref of withdrawal.refs) {
-      const held = textOf(source, ref);
+    let { categories } = at;
+    for (const subject of withdrawal.refs) {
+      if (subject.type === "categories") {
+        categories = source.categories;
+        continue;
+      }
+      const held = textOf(source, subject);
       const map: Record<string, string | null> =
-        ref.type === "skill" ? skills : prompts;
-      delete map[ref.name];
+        subject.type === "skill" ? skills : prompts;
+      delete map[subject.name];
       if (held !== undefined) {
-        map[ref.name] = held;
+        map[subject.name] = held;
       }
     }
     const id = this.commit(
       `withdrawal-${this.withdrawals.length + 1}`,
       skills,
-      { parent: withdrawal.tip, prompts },
+      { parent: withdrawal.tip, prompts, categories },
     );
     this.withdrawals.push({ commit: id, message: withdrawal.message });
     this.tip = id;
@@ -729,14 +741,14 @@ export class InMemoryHarnessGit implements HarnessGitPort {
 
   async deleteProposalBranch(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
   ): Promise<"deleted" | "failed"> {
     this.at(root);
     if (this.deleteOutcome === "failed") {
       return "failed";
     }
-    delete this.promote[proposalBranchLeaf(ref)];
-    this.deletedBranches.push(proposalBranch(ref));
+    delete this.promote[subjectBranchLeaf(subject)];
+    this.deletedBranches.push(subjectBranch(subject));
     return "deleted";
   }
 
@@ -782,11 +794,11 @@ export class InMemoryHarnessGit implements HarnessGitPort {
 
   async readAuthoredHere(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
     _base: string,
   ): Promise<BranchAuthorship> {
     this.at(root);
-    return this.authorshipOf(proposalBranchLeaf(ref));
+    return this.authorshipOf(subjectBranchLeaf(subject));
   }
 
   async readPushesWhereItFetched(root: string): Promise<boolean> {

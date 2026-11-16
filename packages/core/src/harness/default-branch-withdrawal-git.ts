@@ -9,12 +9,12 @@ import { gitOptions, NO_HOOKS } from "../git/non-interactive";
 import { runGitText } from "../git/run-git-text";
 import { classifyGitError } from "./classify-git-error";
 import { classifyPushFailure } from "./classify-push-failure";
-import { primitivePathspec } from "./harness-primitive";
 import {
-  commitPrimitivesOnto,
-  type PrimitiveChange,
-  readPrimitiveObject,
+  commitSubjectsOnto,
+  readSubjectObject,
+  type SubjectChange,
 } from "./harness-primitive-git";
+import { subjectPathspec } from "./proposal-subject";
 import type {
   DefaultBranchWithdrawal,
   WithdrawalPushOutcome,
@@ -27,18 +27,18 @@ const run = promisify(execFile);
 const changesFrom = async (
   root: string,
   { source, refs }: DefaultBranchWithdrawal,
-): Promise<PrimitiveChange[] | null> => {
-  const changes: PrimitiveChange[] = [];
-  for (const ref of refs) {
+): Promise<SubjectChange[] | null> => {
+  const changes: SubjectChange[] = [];
+  for (const subject of refs) {
     if (source === null) {
-      changes.push({ ref, object: null });
+      changes.push({ subject, object: null });
       continue;
     }
-    const read = await readPrimitiveObject(root, source, ref);
+    const read = await readSubjectObject(root, source, subject);
     if (read === null) {
       return null;
     }
-    changes.push({ ref, object: read.object });
+    changes.push({ subject, object: read.object });
   }
   return changes;
 };
@@ -65,7 +65,7 @@ export async function withdrawOnDefaultBranch(
     if (changes === null) {
       return "push-failed";
     }
-    commit = await commitPrimitivesOnto(root, changes, {
+    commit = await commitSubjectsOnto(root, changes, {
       treeBase: withdrawal.tip,
       parent: withdrawal.tip,
       indexDir,
@@ -139,5 +139,5 @@ const follow = async (
     return;
   }
   await step(["update-ref", `refs/remotes/origin/${defaultBranch}`, commit]);
-  await step(["reset", "-q", commit, "--", ...refs.map(primitivePathspec)]);
+  await step(["reset", "-q", commit, "--", ...refs.map(subjectPathspec)]);
 };
