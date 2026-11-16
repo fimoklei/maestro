@@ -49,6 +49,7 @@ describe("the Harness categories over HTTP", () => {
         kind: "listed",
         tag: "v1.0.0",
         count: 3,
+        changed: true,
       } satisfies HarnessCategories,
     });
   });
@@ -64,6 +65,7 @@ describe("the Harness categories over HTTP", () => {
       kind: "listed",
       tag: "v1.0.0",
       count: 1,
+      changed: true,
     } satisfies HarnessCategories);
   });
 

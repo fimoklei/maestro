@@ -9,6 +9,7 @@ import {
   copySkipped,
   HOW_TO_COPY,
   LOADING_HARNESS_CATEGORIES,
+  newIn,
   WHAT_HAPPENS,
 } from "../categories/categories-copy";
 import { Dialog, dialogRun } from "../ui/dialog";
@@ -105,7 +106,13 @@ export function CopyHarnessCategoriesDialog({
             groups={GROUPS.map((group) => ({
               tone: "neutral",
               legend: copyGroupLegend(group, facts[group].length),
-              rows: facts[group].map((name) => ({ key: name, name })),
+              rows: facts[group].map((name) => ({
+                key: name,
+                name,
+                ...(preview.fresh.includes(name)
+                  ? { sentence: <PhraseText copy={newIn(preview.tag)} /> }
+                  : {}),
+              })),
             }))}
             checklist={null}
             live={null}

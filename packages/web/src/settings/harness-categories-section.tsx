@@ -4,6 +4,7 @@ import {
   COPY_HARNESS_CATEGORIES,
   COPY_ROW_SENTENCE,
   HARNESS_CATEGORIES,
+  harnessCategoriesChanged,
   harnessCategoriesCount,
   harnessCategoriesFaulty,
 } from "../categories/categories-copy";
@@ -27,6 +28,14 @@ export function HarnessCategoriesSection({
       <SettingsSection
         title={HARNESS_CATEGORIES}
         description={harnessCategoriesCount(harness.count)}
+        notice={
+          harness.changed ? (
+            <Notice
+              trigger="load"
+              notice={harnessCategoriesChanged(harness.tag)}
+            />
+          ) : null
+        }
       >
         <SettingsRow
           name={COPY_HARNESS_CATEGORIES}

@@ -100,6 +100,7 @@ describe("copying the Harness categories over HTTP", () => {
             unchanged: [],
           },
         },
+        fresh: [],
       } satisfies CopyPreview,
     });
   });

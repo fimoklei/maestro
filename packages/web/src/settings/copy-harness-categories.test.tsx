@@ -16,7 +16,12 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const LISTED: HarnessCategories = { kind: "listed", tag: "v1.5.0", count: 2 };
+const LISTED: HarnessCategories = {
+  kind: "listed",
+  tag: "v1.5.0",
+  count: 2,
+  changed: false,
+};
 
 const facts = (facts: Partial<CopyFacts>): CopyFacts => ({
   added: [],
@@ -34,6 +39,7 @@ const EMPTY_OWN: CopyPreview = {
     add: facts({ added: ["Planning", "Review"] }),
     replace: facts({ added: ["Planning", "Review"] }),
   },
+  fresh: [],
 };
 
 const WITH_OWN: CopyPreview = {
@@ -217,6 +223,21 @@ describe("Copy Harness categories", () => {
     );
 
     await waitFor(() => expect(copies).toEqual([{ mode: "add" }]));
+  });
+
+  it("marks only the categories new since the operator last looked with their release", async () => {
+    stubServer({
+      preview: () => jsonResponse({ ...WITH_OWN, fresh: ["Planning"] }),
+    });
+    renderPage();
+
+    const dialog = await openDialog();
+
+    expect(await dialog.findByText(sentence("New in v1.5.0"))).toBeVisible();
+    expect(groupNames(dialog, /^Added · 1$/)).toEqual([
+      "PlanningNew in v1.5.0",
+    ]);
+    expect(groupNames(dialog, /^Unchanged · 2$/)).toEqual(["Drafts", "review"]);
   });
 
   it.each([

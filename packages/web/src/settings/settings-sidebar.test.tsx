@@ -11,6 +11,7 @@ function renderSidebar(active = "/settings/harness-location") {
     <SettingsSidebar
       pages={SETTINGS_PAGES}
       active={active}
+      signal={null}
       onNavigate={onNavigate}
       onBack={onBack}
     />,

@@ -1,8 +1,9 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Fragment, type ReactNode, useRef } from "react";
+import { Fragment, type ReactNode, useId, useRef } from "react";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 import type { RowMenuControl } from "./row-menu-control";
+import { SignalDot } from "./signal-dot";
 
 export interface ActionsMenuItem {
   label: string;
@@ -13,6 +14,8 @@ export interface ActionsMenuItem {
   danger?: boolean;
   /** Moves focus on itself, such as into a pane; else focus returns to the trigger. */
   movesFocus?: boolean;
+  /** A dot after the label; its text is the item's description. */
+  signal?: string;
 }
 
 export const orderedItems = <T extends ActionsMenuItem>(
@@ -45,6 +48,7 @@ export function ActionsMenu({
   // moves focus elsewhere would lose it, and a dialog it opens would remember
   // the vanished item as its opener (#1124).
   const pending = useRef<ActionsMenuItem | null>(null);
+  const signalId = useId();
   return (
     <DropdownMenu.Root
       open={control?.open}
@@ -108,6 +112,11 @@ export function ActionsMenu({
                 {/* Not Radix's `disabled`: that drops the item from the keyboard (#1067). */}
                 <DropdownMenu.Item
                   aria-disabled={item.disabled || undefined}
+                  aria-describedby={
+                    item.signal === undefined
+                      ? undefined
+                      : `${signalId}-${index}`
+                  }
                   data-disabled={item.disabled ? "" : undefined}
                   onSelect={(event) => {
                     if (item.disabled) {
@@ -130,7 +139,17 @@ export function ActionsMenu({
                   )}
                 >
                   {item.href === undefined ? (
-                    item.label
+                    item.signal === undefined ? (
+                      item.label
+                    ) : (
+                      <span className="flex grow items-center gap-inline">
+                        <span className="grow">{item.label}</span>
+                        <SignalDot
+                          id={`${signalId}-${index}`}
+                          text={item.signal}
+                        />
+                      </span>
+                    )
                   ) : (
                     <a href={item.href} target="_blank" rel="noreferrer">
                       {item.label}

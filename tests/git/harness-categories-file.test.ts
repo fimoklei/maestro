@@ -88,6 +88,7 @@ describe("the Harness categories at a release tag", { timeout: 30_000 }, () => {
       kind: "listed",
       tag: "v1.0.0",
       count: 2,
+      changed: true,
     } satisfies HarnessCategories);
   });
 

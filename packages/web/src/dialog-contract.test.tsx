@@ -464,6 +464,7 @@ const COPY_PREVIEW: CopyPreview = {
     add: { added: ["Planning"], deleted: [], unchanged: ["Drafts"] },
     replace: { added: ["Planning"], deleted: ["Drafts"], unchanged: [] },
   },
+  fresh: [],
 };
 
 const copyCategoriesDialog = (

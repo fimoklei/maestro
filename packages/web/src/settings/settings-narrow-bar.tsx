@@ -4,17 +4,19 @@ import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
 import { Icon } from "../ui/icon";
 import { BACK_TO_APP } from "./settings-copy";
-import type { SettingsPage } from "./settings-pages";
+import type { SettingsPage, SettingsPageSignal } from "./settings-pages";
 
 // Below 1024px the Settings sidebar folds into this 48px bar (#995): Back to
 // app left, one menu button right carrying the pages the sidebar lists.
 export function SettingsNarrowBar({
   pages,
+  signal,
   onNavigate,
   onBack,
   className,
 }: {
   pages: readonly SettingsPage[];
+  signal: SettingsPageSignal;
   onNavigate: (to: string) => void;
   onBack: () => void;
   className?: string;
@@ -36,6 +38,7 @@ export function SettingsNarrowBar({
           items={pages.map((page) => ({
             label: page.label,
             onSelect: () => onNavigate(page.to),
+            ...(signal?.to === page.to ? { signal: signal.text } : {}),
           }))}
           trigger={
             <Button size="icon" variant="quiet">

@@ -33,6 +33,20 @@ export const harnessCategoriesFaulty = (tag: string) =>
     message: phrase`The categories file in Harness release ${machine(tag)} contains an error. You can still propose your own categories for review.`,
   }) as const satisfies NoticeContent;
 
+/** The dot's accessible text, and the notice's heading on Categories in Settings. */
+export const HARNESS_CATEGORIES_CHANGED = "Harness categories have changed";
+
+/** A release changed the Harness categories since the operator last saw them; the Copy row below acts on it. */
+export const harnessCategoriesChanged = (tag: string) =>
+  ({
+    level: "info",
+    label: HARNESS_CATEGORIES_CHANGED,
+    message: phrase`Release ${machine(tag)} changed the Harness categories. Select ${COPY} to compare them with your list before anything changes.`,
+  }) as const satisfies NoticeContent;
+
+/** The copy dialog's row fact for a category absent from the list the operator last saw. */
+export const newIn = (tag: string): Phrase => phrase`New in ${machine(tag)}`;
+
 /** The row, its button's accessible name and the copy dialog's title. */
 export const COPY_HARNESS_CATEGORIES = "Copy Harness categories";
 /** The row's button, short as asked; its accessible name says what it copies. */

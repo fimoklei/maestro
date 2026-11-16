@@ -44,7 +44,7 @@ describe("Settings › Categories, the Harness categories", () => {
     [6, "The latest Harness release contains 6 categories."],
     [1, "The latest Harness release contains 1 category."],
   ])("states the %i categories of the latest release", async (count, text) => {
-    stubServer({ kind: "listed", tag: "v1.5.0", count });
+    stubServer({ kind: "listed", tag: "v1.5.0", count, changed: false });
     renderPage();
 
     const section = await screen.findByRole("region", {

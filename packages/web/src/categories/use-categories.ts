@@ -5,7 +5,12 @@ import type {
   HarnessCategories,
   PrimitiveRef,
 } from "@maestro/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
 const CATEGORIES_KEY = ["categories"] as const;
@@ -23,26 +28,43 @@ export function useCategoriesWhile(enabled: boolean) {
   });
 }
 
-/** What the latest Harness release holds of the Harness categories. */
+const HARNESS_KEY = [...CATEGORIES_KEY, "harness"] as const;
+
+/** What the latest Harness release holds of the Harness categories, and whether it changed since the operator last saw it. */
 export function useHarnessCategories() {
   return useQuery({
-    queryKey: [...CATEGORIES_KEY, "harness"],
+    queryKey: HARNESS_KEY,
     queryFn: () => requestJson<HarnessCategories>("/api/categories/harness"),
   });
 }
 
+/** The dot's condition: a release changed the Harness categories. */
+export function useHarnessCategoriesChanged(): boolean {
+  const { data } = useHarnessCategories();
+  return data?.kind === "listed" && data.changed;
+}
+
+// The server recorded the release as seen, so the dot and the notice go.
+const refreshSignal = (queryClient: QueryClient) =>
+  queryClient.invalidateQueries({ queryKey: HARNESS_KEY, exact: true });
+
 /**
  * What a copy of the Harness categories would do, read while the copy dialog
  * stands. Fresh every open: the release or the own list may have changed.
+ * The read records the release as seen.
  */
 export function useCopyPreview() {
+  const queryClient = useQueryClient();
   return useQuery({
-    queryKey: [...CATEGORIES_KEY, "harness", "preview"],
-    queryFn: () =>
-      requestJson<CopyPreview>("/api/categories/harness/preview", {
-        method: "POST",
-        body: JSON.stringify({}),
-      }),
+    queryKey: [...HARNESS_KEY, "preview"],
+    queryFn: async () => {
+      const preview = await requestJson<CopyPreview>(
+        "/api/categories/harness/preview",
+        { method: "POST", body: JSON.stringify({}) },
+      );
+      void refreshSignal(queryClient);
+      return preview;
+    },
     gcTime: 0,
     staleTime: 0,
   });
@@ -59,6 +81,7 @@ export function useCopyHarnessCategories() {
       }),
     onSuccess: (list) => {
       queryClient.setQueryData(CATEGORIES_KEY, list);
+      void refreshSignal(queryClient);
     },
   });
 }
