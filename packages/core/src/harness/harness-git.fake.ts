@@ -3,6 +3,7 @@
 // a test states content and never a hash.
 import { createHash } from "node:crypto";
 import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
+import { fileAtRef } from "./file-at-ref.fake";
 import {
   type HarnessObject,
   type HarnessPrimitiveType,
@@ -24,7 +25,6 @@ import type {
   BranchAuthorship,
   CloneSync,
   DefaultBranchWithdrawal,
-  FileAtRef,
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
@@ -54,7 +54,6 @@ type Commit = Content & {
   parent: string | null;
   author: string;
   rootFiles: string[];
-  // Any other file by its path from the root, such as the categories file.
   files: Record<string, string>;
 };
 
@@ -358,23 +357,11 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return this.commits.get(id)?.rootFiles ?? null;
   }
 
-  async readFileAt(
-    root: string,
-    ref: string,
-    path: string,
-    maxBytes: number,
-  ): Promise<FileAtRef | null> {
+  async readFileAt(root: string, ref: string, path: string, maxBytes: number) {
     this.at(root);
-    const id = this.resolve(ref);
-    const commit = id === null ? undefined : this.commits.get(id);
-    if (id === null || this.unreadable.has(id) || commit === undefined) {
-      return null;
-    }
-    const text = commit.files[path];
-    if (text === undefined) return { kind: "absent" };
-    return new TextEncoder().encode(text).byteLength > maxBytes
-      ? { kind: "too-large" }
-      : { kind: "text", text };
+    const id = this.resolve(ref) ?? "";
+    const commit = this.unreadable.has(id) ? null : this.commits.get(id);
+    return commit ? fileAtRef(commit.files[path], maxBytes) : null;
   }
 
   async readPrimitivesAtTag(
