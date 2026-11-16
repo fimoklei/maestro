@@ -212,6 +212,27 @@ describe("the row Pull request to the Harness", () => {
     },
   );
 
+  it("states a pushed branch without a pull request and offers to finish it", async () => {
+    stubServer({ rows: [{ state: "pull-request-missing" }] });
+    renderPage();
+
+    const region = await section();
+    expect(
+      await within(region).findByText(
+        "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(region).getByText("Pull request missing"),
+    ).toBeInTheDocument();
+    expect(
+      within(region).getByRole("link", { name: "View on Harness" }),
+    ).toBeInTheDocument();
+    expect(
+      within(region).getByRole("button", { name: "Create pull request" }),
+    ).not.toHaveAttribute("aria-disabled");
+  });
+
   it("reads the row again with Re-read Categories", async () => {
     stubServer({ rows: [{ state: "unread" }, { state: "start" }] });
     renderPage();

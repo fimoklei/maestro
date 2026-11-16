@@ -11,6 +11,7 @@ import {
   discardTitle,
   FINDING_TEXT,
   inFlightNotice,
+  listWithdrawBody,
   RELEASE_WITHDRAWAL_CHECKING,
   RESTORE_KEEPS_PROPOSAL,
   RESTORED_FROM_HINT,
@@ -22,6 +23,20 @@ import {
   withdrawBody,
   withdrawTitle,
 } from "./dialog-copy";
+
+describe("withdrawing the categories list", () => {
+  it("states that the branch goes, with any open pull request, and the categories stay", () => {
+    expect(withdrawTitle("Categories")).toBe(
+      "Withdraw proposal for Categories",
+    );
+    expect(listWithdrawBody(null)).toBe(
+      "This deletes the proposal branch on GitHub. Your categories stay as they are.",
+    );
+    expect(listWithdrawBody(45)).toBe(
+      "This closes pull request #45 and deletes the proposal branch on GitHub. Your categories stay as they are.",
+    );
+  });
+});
 
 describe("Harness dialog copy", () => {
   it("titles each confirmation with its act and the item's name", () => {

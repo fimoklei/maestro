@@ -8,6 +8,7 @@ import { NEXT_RELEASE, NOT_RELEASED_YET } from "../ui/band-copy";
 import { freshnessLine, OFFLINE, READ_FAILED } from "../ui/freshness";
 import type { NoticeContent } from "../ui/notice";
 import { type Copy, machine, phrase } from "../ui/phrase";
+import { CATEGORIES_NAME } from "./item-words";
 import { NOTHING_TO_RELEASE } from "./notice-copy";
 import { STAGE_NAMES } from "./stage-copy";
 
@@ -69,6 +70,26 @@ const releaseMeta = (read: HarnessStageRead, state: HarnessState): Copy => {
     ? NOT_RELEASED_YET
     : phrase`Compared with ${machine(state.releasedVersion)}`;
 };
+
+const namedRead = (read: HarnessStageRead): HarnessStageRead =>
+  read.outcome === "read"
+    ? {
+        ...read,
+        rows: read.rows.map((row) =>
+          row.type === "categories" ? { ...row, name: CATEGORIES_NAME } : row,
+        ),
+      }
+    : read;
+
+/** The read with the categories list under its Name; core names it by its type. */
+export const withListNames = (state: HarnessState): HarnessState => ({
+  ...state,
+  stages: {
+    proposal: namedRead(state.stages.proposal),
+    review: namedRead(state.stages.review),
+    release: namedRead(state.stages.release),
+  },
+});
 
 // The three stages in journey order. A confirmed empty stage still comes back;
 // the view drops it.

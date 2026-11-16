@@ -8,7 +8,11 @@ import type {
 import { harnessHeadings } from "../harness/notice-copy";
 import { stageStatusReading } from "../harness/stage-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
-import { CREATE_PULL_REQUEST, rereadLabel } from "../ui/control-labels";
+import {
+  CREATE_PULL_REQUEST,
+  rereadLabel,
+  UPDATE_PULL_REQUEST,
+} from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
@@ -19,7 +23,6 @@ import { countWords } from "./categories-copy";
 export { CREATE_PULL_REQUEST };
 
 const REREAD_CATEGORIES = rereadLabel("Categories");
-const UPDATE_PULL_REQUEST = "Update pull request";
 
 export const PULL_REQUEST_ROW = "Pull request to the Harness";
 
@@ -36,7 +39,7 @@ export type PullRequestRowView = {
   sentence: Copy;
   /** The blocked button's tooltip; null where it can run. */
   blocked: string | null;
-  /** The operator's own open pull request: its chip and the link. */
+  /** The chip of the state the Harness row shows, beside the link; null for none. */
   open: StatusReading | null;
   /** Whether the row offers Create pull request at all. */
   offers: boolean;
@@ -73,6 +76,14 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
         phrase`${named(row.author)} has pull request #${row.number} open for the Harness categories. Wait until it is merged or closed.`,
         `Wait for pull request #${row.number}.`,
       );
+    // The Harness row's own sentence, with the control this row carries.
+    case "pull-request-missing":
+      return {
+        sentence: `The proposal branch is on GitHub without a pull request. Select ${CREATE_PULL_REQUEST} to open one.`,
+        blocked: null,
+        open: stageStatusReading("pull-request-missing"),
+        offers: true,
+      };
     case "own-open":
       return {
         sentence:

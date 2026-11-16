@@ -105,6 +105,7 @@ const withMenu = (row: ReturnType<typeof stageRow>) =>
         create: noop,
         reopen: noop,
         withdraw: noop,
+        openCategories: noop,
         deleteLocal: noop,
         discard: noop,
         restore: noop,

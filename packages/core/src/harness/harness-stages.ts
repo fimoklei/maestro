@@ -5,7 +5,6 @@ import type { GitOrigin } from "../deploy/git-origin";
 import type { HarnessMovement } from "./harness-movements";
 import {
   HARNESS_PRIMITIVE_TYPES,
-  type HarnessPrimitiveType,
   type PrimitiveRef,
   primitiveKey,
 } from "./harness-primitive";
@@ -19,6 +18,7 @@ import {
   waitingOn,
 } from "./harness-review-port";
 import {
+  CATEGORIES_SUBJECT,
   type ProposalSubject,
   subjectBranch,
   subjectKey,
@@ -28,6 +28,7 @@ import type {
   HarnessHashes,
   HarnessMovementTrees,
   HarnessPromoteRef,
+  ListProposalRefs,
 } from "./read-harness-state";
 
 export type HarnessStage =
@@ -108,7 +109,9 @@ type ProposalComparison =
 
 export type HarnessStageRow = {
   stage: HarnessStage;
-  type: HarnessPrimitiveType;
+  // A primitive, or the categories list, which only Pending review holds.
+  type: ProposalSubject["type"];
+  // The list's is its type: the cockpit names it.
   name: string;
   // The primitive's folder or file in the Harness.
   path: string;
@@ -174,12 +177,20 @@ export type StageInput = {
   defaultBranch: string | null;
   // Null makes the two local stages unknown, never empty.
   trees: HarnessMovementTrees | null;
+  // Null makes Pending review unknown, never empty.
+  list: ListProposalRefs | null;
   // Keyed by `primitiveKey`.
   atMergeBase: Record<string, string> | null;
   review: HarnessReviewRead;
   viewer: ViewerRead;
   release: ReleaseMovement[] | null;
 };
+
+/** What a Pending review reading needs beyond the subject's own refs. */
+export type ReviewInput = Pick<
+  StageInput,
+  "origin" | "defaultBranch" | "review" | "viewer"
+>;
 
 export const buildStages = (input: StageInput): HarnessStages => {
   const release = releaseStage(input);
@@ -213,10 +224,14 @@ const matchRequests = ({
   if (review.outcome !== "read" || defaultBranch === null) {
     return matches;
   }
-  for (const ref of everyPrimitive(trees, release)) {
+  const subjects: ProposalSubject[] = [
+    ...everyPrimitive(trees, release),
+    CATEGORIES_SUBJECT,
+  ];
+  for (const subject of subjects) {
     matches.set(
-      subjectKey(ref),
-      review.requests.filter(proposes(origin, defaultBranch, ref)),
+      subjectKey(subject),
+      review.requests.filter(proposes(origin, defaultBranch, subject)),
     );
   }
   return matches;
@@ -269,7 +284,7 @@ const openOf = (matches: Matches, subject: ProposalSubject): ReviewRequest[] =>
 
 // A bounded read may hide a second open request, so it holds nothing.
 const waitFor = (
-  { review, viewer }: StageInput,
+  { review, viewer }: ReviewInput,
   matches: Matches,
   subject: ProposalSubject,
 ): string | null =>
@@ -277,13 +292,13 @@ const waitFor = (
 
 const blankRow = (
   stage: HarnessStage,
-  ref: PrimitiveRef,
+  ref: ProposalSubject,
   status: StageStatus,
   change: HarnessChange,
 ): HarnessStageRow => ({
   stage,
   type: ref.type,
-  name: ref.name,
+  name: ref.type === "categories" ? ref.type : ref.name,
   path: subjectPath(ref),
   branch: subjectBranch(ref),
   status,
@@ -547,7 +562,7 @@ type ReviewReading = {
 };
 
 const reviewReading = (
-  input: StageInput,
+  input: ReviewInput,
   matches: Matches,
   subject: ProposalSubject,
   proposed: boolean,
@@ -595,11 +610,11 @@ const reviewReading = (
 };
 
 const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
-  const { trees, review } = input;
+  const { trees, list, review } = input;
   if (review.outcome === "unavailable") {
     return { outcome: "unavailable" };
   }
-  if (review.outcome === "failed" || trees === null) {
+  if (review.outcome === "failed" || trees === null || list === null) {
     return { outcome: "unknown" };
   }
   const complete = isCompleteRead(review);
@@ -630,10 +645,56 @@ const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
         typed.promote[ref.name]?.authorship === "own" && !endedByOther,
     });
   }
+  const listRow = listReviewRow(input, list);
   return {
     outcome: "read",
-    rows,
+    rows: listRow === null ? rows : [...rows, listRow],
     bound: review.complete ? null : review.limit,
+  };
+};
+
+/**
+ * The Categories row under Pending review; null where it holds none. The row
+ * on Categories in Settings reads the same rule, so the two never disagree.
+ * The list is built from the config, never the clone, so it has no local
+ * trees and never waits under Pending proposal.
+ */
+export const listReviewRow = (
+  input: ReviewInput,
+  { remote, promote }: ListProposalRefs,
+): HarnessStageRow | null => {
+  const subject = CATEGORIES_SUBJECT;
+  const matches: Matches =
+    input.review.outcome === "read" && input.defaultBranch !== null
+      ? new Map([
+          [
+            subjectKey(subject),
+            input.review.requests.filter(
+              proposes(input.origin, input.defaultBranch, subject),
+            ),
+          ],
+        ])
+      : new Map();
+  const proposal = currentProposal(
+    promote ?? undefined,
+    remote,
+    matches.get(subjectKey(subject)) ?? [],
+    isCompleteRead(input.review),
+  );
+  const reading = reviewReading(input, matches, subject, proposal !== null);
+  if (reading === null) {
+    return null;
+  }
+  const { status, endedByOther, ...shown } = reading;
+  return {
+    ...blankRow(
+      "pending-review",
+      subject,
+      status,
+      changeOf(proposal !== null && proposal.tree === null, remote),
+    ),
+    ...shown,
+    ownsBranch: promote?.authorship === "own" && !endedByOther,
   };
 };
 

@@ -264,9 +264,13 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!body.ok) {
       return body.response;
     }
+    const { number, ...subject } = body.data;
     return proposalResponse(
       c,
-      await deps.proposals.withdraw(refOf(body.data), body.data.number),
+      await deps.proposals.withdraw(
+        subject.type === "categories" ? { type: subject.type } : refOf(subject),
+        number,
+      ),
       withdrawErrorResponses,
     );
   });

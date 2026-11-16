@@ -1,10 +1,12 @@
 // What one in-memory commit holds, and the hashes git would give it.
 import { createHash } from "node:crypto";
+import { HARNESS_CATEGORIES_FILE } from "../inventory/harness-layout";
 import type {
   HarnessObject,
   HarnessPrimitiveType,
   PrimitiveRef,
 } from "./harness-primitive";
+import type { ProposalSubject } from "./proposal-subject";
 import type { HarnessSkillTree } from "./released-content";
 
 // Skill name → its SKILL.md text, which stands for the whole folder; null is
@@ -69,6 +71,41 @@ export const objectsOf = (
     hash,
   })),
 ];
+
+/** The categories file's blob hash; null where the content lacks it. */
+export const listFileHash = (content: Content): string | null => {
+  const text = content.files[HARNESS_CATEGORIES_FILE];
+  return text === undefined ? null : blobHash(text);
+};
+
+/** `at` with each subject put back as `source` holds it, or removed. */
+export const withSubjectsFrom = (
+  at: Content,
+  source: Content,
+  subjects: readonly ProposalSubject[],
+): Content => {
+  const skills = { ...at.skills };
+  const prompts = { ...at.prompts };
+  const files = { ...at.files };
+  const putBack = (
+    map: Record<string, string | null>,
+    key: string,
+    held: string | null | undefined,
+  ) => {
+    delete map[key];
+    if (held !== undefined) map[key] = held;
+  };
+  for (const subject of subjects) {
+    if (subject.type === "categories") {
+      const key = HARNESS_CATEGORIES_FILE;
+      putBack(files, key, source.files[key]);
+    } else {
+      const map = subject.type === "skill" ? skills : prompts;
+      putBack(map, subject.name, textOf(source, subject));
+    }
+  }
+  return { skills, prompts, files };
+};
 
 // `undefined` is a primitive the content lacks.
 export const textOf = (

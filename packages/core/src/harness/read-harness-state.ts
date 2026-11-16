@@ -11,7 +11,11 @@ import type { HarnessReviewPort, ViewerRead } from "./harness-review-port";
 import { buildStages, type HarnessStages } from "./harness-stages";
 import { type LatestRelease, readLatestRelease } from "./latest-release";
 import type { ProposalKind } from "./proposal-request";
-import type { ProposalSubject } from "./proposal-subject";
+import {
+  CATEGORIES_SUBJECT,
+  type ListSubject,
+  type ProposalSubject,
+} from "./proposal-subject";
 import {
   proposeReleaseVersion,
   type SemverStep,
@@ -53,7 +57,7 @@ export type SkillPushOutcome = Exclude<PromoteSkillOutcome, "skill-missing">;
 
 /** A list proposed as one file on its own branch, built on `defaultTip`. */
 export type ListFilePush = {
-  subject: Extract<ProposalSubject, { type: "categories" }>;
+  subject: ListSubject;
   text: string;
   defaultTip: string;
   message: string;
@@ -151,6 +155,12 @@ export type HarnessHashes = {
 
 export type HarnessMovementTrees = Record<HarnessPrimitiveType, HarnessHashes>;
 
+/** A list's file at origin/HEAD and on its proposal branch; null where absent. */
+export type ListProposalRefs = {
+  remote: string | null;
+  promote: HarnessPromoteRef | null;
+};
+
 export interface HarnessGitPort {
   fetch(root: string): Promise<HarnessFetchOutcome>;
   readFacts(root: string): Promise<HarnessFacts>;
@@ -180,6 +190,11 @@ export interface HarnessGitPort {
     refs: PrimitiveRef[],
   ): Promise<Record<string, string | null>>;
   readMovementTrees(root: string): Promise<HarnessMovementTrees | null>;
+  // Null is an unreadable ref, never an absent file or branch.
+  readListProposal(
+    root: string,
+    subject: ListFilePush["subject"],
+  ): Promise<ListProposalRefs | null>;
   // Takes the exact commit, never `origin/HEAD`, which can move under a concurrent fetch (#579).
   mergeBaseCommit(root: string, remoteCommit: string): Promise<string | null>;
   // Null where the file is absent; an empty string is a present-but-blank manifest.
@@ -447,6 +462,7 @@ export class ReadHarnessState {
         : null;
     const movements = delta?.movements ?? null;
     const trees = await this.deps.git.readMovementTrees(root);
+    const list = await this.deps.git.readListProposal(root, CATEGORIES_SUBJECT);
     const atMergeBase =
       head === null ? null : await this.hashesAtMergeBase(root, head);
     // One batched read for the whole Harness, never one per skill.
@@ -474,6 +490,7 @@ export class ReadHarnessState {
           origin,
           defaultBranch: facts.defaultBranch,
           trees,
+          list,
           atMergeBase,
           review,
           viewer,

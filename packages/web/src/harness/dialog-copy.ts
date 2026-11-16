@@ -116,6 +116,13 @@ export const withdrawBody = (
       : phrase`${replacesInClone(type)} It deletes the proposal branch.`,
   );
 
+// The list is built from the operator's own categories, never the clone, so
+// nothing in the clone changes.
+export const listWithdrawBody = (number: number | null): string =>
+  number === null
+    ? "This deletes the proposal branch on GitHub. Your categories stay as they are."
+    : `This closes pull request #${number} and deletes the proposal branch on GitHub. Your categories stay as they are.`;
+
 export const WITHDRAW_CHECKING = "Checking for changes not yet proposed…";
 
 const KEEP_OUTSIDE_CLONE = "To keep them, copy them outside your clone first.";

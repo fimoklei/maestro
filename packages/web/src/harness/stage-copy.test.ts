@@ -842,3 +842,65 @@ describe("harnessCounts", () => {
     ]);
   });
 });
+
+// Approved and drafted sentences for the categories list, as exact strings.
+describe("the Categories row", () => {
+  const list = (status: StageStatus, over: Partial<HarnessStageRow> = {}) =>
+    row("pending-review", status, {
+      type: "categories",
+      name: "Categories",
+      requests: [request],
+      ...over,
+    });
+
+  it.each<[HarnessChange, string]>([
+    [
+      "addition",
+      "This change adds your categories to github.com/fimoklei/agent-harness.",
+    ],
+    [
+      "edit",
+      "This change replaces the categories in github.com/fimoklei/agent-harness with your categories.",
+    ],
+    [
+      "deletion",
+      "This change deletes the categories from github.com/fimoklei/agent-harness.",
+    ],
+  ])("states a %s of the list", (change, text) => {
+    expect(
+      plainText(
+        changeSentence(list("waiting-for-review", { change }), CONTEXT),
+      ),
+    ).toBe(text);
+  });
+
+  it.each<[StageStatus, Partial<HarnessStageRow>, string]>([
+    [
+      "changes-requested",
+      {},
+      "A reviewer asked for changes on pull request #45. To send your current categories, open Categories in Settings and select Update pull request.",
+    ],
+    [
+      "pull-request-missing",
+      { requests: [] },
+      "The proposal branch is on GitHub without a pull request. To open one, open Categories in Settings and select Create pull request.",
+    ],
+    [
+      "proposal-closed",
+      {},
+      "Pull request #45 was closed without merging. To propose your current categories as a new pull request, open Categories in Settings and select Create pull request.",
+    ],
+    [
+      "proposal-closed",
+      { requests: [{ ...pullRequest(46), author: "mira", byOther: true }] },
+      "mira's pull request #46 was closed without merging. To propose your own categories, open Categories in Settings and select Create pull request.",
+    ],
+    [
+      "proposed-by-other",
+      { waitingOn: "mira", requests: [pullRequest(46)] },
+      "mira has pull request #46 open for the Harness categories. Wait until it is merged or closed.",
+    ],
+  ])("says what a %s list waits for", (status, over, text) => {
+    expect(plainText(detailSentence(list(status, over), CONTEXT))).toBe(text);
+  });
+});

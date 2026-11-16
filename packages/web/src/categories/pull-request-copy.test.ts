@@ -68,6 +68,11 @@ describe("the pull-request row", () => {
       "A reviewer asked for changes on pull request #45. Change your categories, then select Update pull request to send them.",
       null,
     ],
+    [
+      { state: "pull-request-missing" },
+      "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
+      null,
+    ],
   ])("states %j", (row, sentence, blocked) => {
     const view = pullRequestRow(row);
     expect(plainText(view.sentence)).toBe(sentence);

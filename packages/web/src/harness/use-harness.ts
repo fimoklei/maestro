@@ -8,6 +8,7 @@ import type {
   BatchRequest,
   HarnessChange,
   HarnessPrimitiveType,
+  HarnessStageRow,
   HarnessState,
   ImportPromptCheck,
   ImportPromptsAnswer,
@@ -360,6 +361,15 @@ export function useProposeBatch(onItem: (outcome: BatchItemOutcome) => void) {
 // read before closing or reopening anything (#827).
 type ProposalAction = "create" | "reopen" | "withdraw";
 
+/** What a proposal press names: a primitive, or the categories list, which has no name. */
+export type ProposalTarget = PrimitiveRef | { type: "categories" };
+
+export const proposalTargetOf = ({
+  type,
+  name,
+}: Pick<HarnessStageRow, "type" | "name">): ProposalTarget =>
+  type === "categories" ? { type } : { type, name };
+
 export function useProposalAction() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -369,7 +379,7 @@ export function useProposalAction() {
     }: {
       action: ProposalAction;
       number?: number | null;
-    } & PrimitiveRef) =>
+    } & ProposalTarget) =>
       requestJson<{ ok: true }>(`/api/harness/proposal/${action}`, {
         method: "POST",
         body: JSON.stringify(body),

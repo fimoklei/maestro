@@ -48,7 +48,8 @@ export type LocalDeletionTarget = PrimitiveRef & {
 };
 
 // A null number withdraws a branch with no open request (#1639).
-export type WithdrawTarget = PrimitiveRef & {
+// `name` is the row's Name; the categories list sends none.
+export type WithdrawTarget = Pick<HarnessStageRow, "type" | "name"> & {
   branch: string;
   number: number | null;
 };
@@ -70,7 +71,7 @@ type Presses = ReturnType<typeof useHarnessPresses>;
 
 export type HarnessDialogsProps = {
   origin: string;
-  deletionRow: HarnessStageRow | null;
+  deletionRow: (HarnessStageRow & PrimitiveRef) | null;
   deletion: Presses["deletionWrite"];
   onDeletionClose: () => void;
   localDeletion: LocalDeletionTarget | null;

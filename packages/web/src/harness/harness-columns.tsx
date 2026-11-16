@@ -1,5 +1,4 @@
 import type { HarnessStageRow } from "@maestro/core";
-import { TYPE_WORD } from "../inventory/type-filter";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
 import type { FootItem } from "../ui/foot-actions";
@@ -9,7 +8,7 @@ import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
 import { CHANGE_WORD } from "./change-words";
-import { ITEM_WORDS } from "./item-words";
+import { rowWords } from "./item-words";
 import { pullRequestCard } from "./pull-request-card";
 import { PullRequestLinks } from "./pull-request-links";
 import {
@@ -37,7 +36,7 @@ export const rowId = (row: Pick<HarnessStageRow, "stage" | "type" | "name">) =>
 // The ⋮ trigger is named by its type and stage too: a skill and a prompt
 // called tdd, in three stages, would otherwise share one name.
 const rowMenuLabel = (row: HarnessStageRow) =>
-  `Actions for ${row.name} ${ITEM_WORDS[row.type].noun} in ${STAGE_NAMES[row.stage]}`;
+  `Actions for ${row.name} ${rowWords(row.type).noun} in ${STAGE_NAMES[row.stage]}`;
 
 // The Status cell's hover card: the row's sentences in short, and in full in
 // the pane (#994). The keyboard opens this card alone, so it also says what
@@ -82,7 +81,7 @@ export const harnessColumns = ({
       id: "type",
       header: "Type",
       cell: ({ row }) => (
-        <span className="text-gray-11">{TYPE_WORD[row.original.type]}</span>
+        <span className="text-gray-11">{rowWords(row.original.type).Noun}</span>
       ),
       meta: { width: 22, priority: 1 },
     }),

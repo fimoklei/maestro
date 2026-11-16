@@ -18,11 +18,12 @@ import {
   type ReviewRequest,
   type ViewerRead,
 } from "../harness/harness-review-port";
+import { listReviewRow } from "../harness/harness-stages";
 import {
   type PullRequestOutcome,
   readOriginFacts,
 } from "../harness/proposal-request";
-import { subjectBranch } from "../harness/proposal-subject";
+import { CATEGORIES_SUBJECT, subjectBranch } from "../harness/proposal-subject";
 import type { HarnessGitPort } from "../harness/read-harness-state";
 import type { ConfigStore } from "../registry/config-store";
 import { compareCategoryNames } from "./category-name";
@@ -40,7 +41,7 @@ import {
 import { heldBeside } from "./held-items";
 import { readHarnessCategoriesAt } from "./released-harness-categories";
 
-const SUBJECT = { type: "categories" } as const;
+const SUBJECT = CATEGORIES_SUBJECT;
 // The pull request's title and the commit's subject.
 const TITLE = "Set Harness categories";
 const BODY = "Proposed from the Maestro cockpit.";
@@ -56,6 +57,8 @@ export type CategoriesProposalRow =
       number: number;
       url: string;
     }
+  // The branch is pushed and no pull request opens it.
+  | { state: "pull-request-missing" }
   | { state: "empty" }
   // Over the categories file's limits.
   | { state: "over-limits" }
@@ -358,16 +361,27 @@ export class CategoriesProposal {
         base,
       }),
     );
-    const requests = requestRow(
-      matching,
+    const viewer: ViewerRead =
       matching.length === 0
         ? { outcome: "unavailable" }
-        : await review.readViewer(origin),
-    );
+        : await review.readViewer(origin);
     // A bounded read cannot prove that nobody's request is open.
-    if (requests === null && !reviews.complete) {
+    const open = requestRow(matching, viewer);
+    if (open === null && !reviews.complete) {
       return { ok: false, error: "no-answer" };
     }
+    const branch = await this.deps.git.readListProposal(root, SUBJECT);
+    if (branch === null) return { ok: false, error: "no-answer" };
+    // The Harness row's own rule, so Settings shows a state exactly as long.
+    const harnessRow = listReviewRow(
+      { origin, defaultBranch: base, review: reviews, viewer },
+      branch,
+    );
+    const missing: CategoriesProposalRow | null =
+      harnessRow?.status === "pull-request-missing"
+        ? { state: "pull-request-missing" }
+        : null;
+    const requests = open ?? missing;
 
     const next = await readHarnessCategoriesAt(this.deps.git, root, head);
     const atTip = await this.deps.git.readPrimitives(root, head);

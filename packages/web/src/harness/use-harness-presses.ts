@@ -15,6 +15,7 @@ import {
 import { type Confirmation, closed, targetOf } from "./confirmation";
 import { rowId } from "./harness-columns";
 import type { ReleaseWithdrawalItem } from "./harness-dialogs";
+import { CATEGORIES_NAME } from "./item-words";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
   deletionNotice,
@@ -30,6 +31,7 @@ import {
   type RunningPress,
 } from "./row-actions";
 import {
+  type ProposalTarget,
   useDeleteLocalPrimitive,
   useDiscardChange,
   usePromoteDeletion,
@@ -40,17 +42,26 @@ import {
 } from "./use-harness";
 import { withdrawNotice } from "./withdraw-notice-copy";
 
+// The Name a press's row shows, as `withListNames` gives the list.
+const pressedName = (pressed: ProposalTarget): string =>
+  pressed.type === "categories" ? CATEGORIES_NAME : pressed.name;
+
 // The row a press lands on, named by the request it sent.
-const pressedRow = (stage: HarnessStage, { type, name }: PrimitiveRef) =>
-  rowId({ stage, type, name });
+const pressedRow = (stage: HarnessStage, pressed: ProposalTarget) =>
+  rowId({ stage, type: pressed.type, name: pressedName(pressed) });
 
 // A press names its primitive, and the row in the stage it lands in.
 const landsIn =
   (stage: HarnessStage) =>
-  (_data: unknown, pressed: PrimitiveRef): Subject => ({
-    name: pressed.name,
+  (_data: unknown, pressed: ProposalTarget): Subject => ({
+    name: pressedName(pressed),
     row: pressedRow(stage, pressed),
   });
+
+// Only the list's own presses reach the categories row: View pull request,
+// Open Categories in Settings and Withdraw proposal.
+const primitiveOf = ({ type, name }: HarnessStageRow): PrimitiveRef | null =>
+  type === "categories" ? null : { type, name };
 
 export function useHarnessPresses(
   state: HarnessState | undefined,
@@ -262,28 +273,27 @@ export function useHarnessPresses(
       : pressedRow("pending-review", movedSkill);
 
   // Edit prompt opens a dialog flow the view holds.
-  const handlers: Omit<RowActionHandlers, "edit"> = {
+  const handlers: Omit<RowActionHandlers, "edit" | "openCategories"> = {
     promote: (row) => {
+      const item = primitiveOf(row);
+      if (item === null) return;
       setPromotedFrom(row.stage);
       if (row.change === "deletion") {
         deletion.reset();
-        setOpen({
-          kind: "deletion",
-          target: { type: row.type, name: row.name },
-        });
+        setOpen({ kind: "deletion", target: item });
         return;
       }
-      promoteWrite.run({ type: row.type, name: row.name });
+      promoteWrite.run(item);
     },
-    create: (row) =>
-      proposalWrite.run({ action: "create", type: row.type, name: row.name }),
-    reopen: (row, number) =>
-      proposalWrite.run({
-        action: "reopen",
-        type: row.type,
-        name: row.name,
-        number,
-      }),
+    create: (row) => {
+      const item = primitiveOf(row);
+      if (item !== null) proposalWrite.run({ action: "create", ...item });
+    },
+    reopen: (row, number) => {
+      const item = primitiveOf(row);
+      if (item !== null)
+        proposalWrite.run({ action: "reopen", ...item, number });
+    },
     withdraw: (row, number) => {
       proposalAction.reset();
       setOpen({
@@ -292,21 +302,19 @@ export function useHarnessPresses(
       });
     },
     deleteLocal: (row) => {
+      const item = primitiveOf(row);
+      if (item === null) return;
       deleteLocal.reset();
       // Frozen at the press: two stages carry Delete skill, and the row it
       // came from turns into a Deletion once the folder is gone.
       setOpen({
         kind: "local-deletion",
-        target: {
-          type: row.type,
-          name: row.name,
-          path: row.path,
-          localOnly: row.localOnly,
-        },
+        target: { ...item, path: row.path, localOnly: row.localOnly },
       });
     },
     discard: (row) => {
-      if (!offersDiscard(row)) {
+      const item = primitiveOf(row);
+      if (item === null || !offersDiscard(row)) {
         return;
       }
       discard.reset();
@@ -314,22 +322,18 @@ export function useHarnessPresses(
       // tree the author confirms.
       setOpen({
         kind: "discard",
-        target: {
-          type: row.type,
-          name: row.name,
-          path: row.path,
-          seenRemoteTree: row.remoteTree,
-        },
+        target: { ...item, path: row.path, seenRemoteTree: row.remoteTree },
       });
     },
     withdrawFromRelease: (row) => {
+      const item = primitiveOf(row);
+      if (item === null) return;
       releaseWithdrawal.reset();
       // Frozen at the press: the dialog's copy follows the row it was opened from.
       setOpen({
         kind: "release-withdrawal",
         target: {
-          type: row.type,
-          name: row.name,
+          ...item,
           path: row.path,
           change: row.change,
           previousName: row.previousName,
@@ -337,12 +341,13 @@ export function useHarnessPresses(
       });
     },
     restore: (row, commit) => {
+      const item = primitiveOf(row);
+      if (item === null) return;
       restore.reset();
       setOpen({
         kind: "restore",
         target: {
-          type: row.type,
-          name: row.name,
+          ...item,
           path: row.path,
           commit,
           hasRequest: row.requests.length > 0,
@@ -392,7 +397,13 @@ function releaseRows(state: HarnessState | undefined): HarnessStageRow[] {
 
 // Pending proposal's rows, or none where the stage could not be read: a press
 // aimed at a row nobody read is refused here rather than sent.
-function proposalRows(state: HarnessState | undefined): HarnessStageRow[] {
+function proposalRows(
+  state: HarnessState | undefined,
+): (HarnessStageRow & PrimitiveRef)[] {
   const stage = state?.stages.proposal;
-  return stage?.outcome === "read" ? stage.rows : [];
+  return stage?.outcome === "read" ? stage.rows.filter(isPrimitiveRow) : [];
 }
+
+const isPrimitiveRow = (
+  row: HarnessStageRow,
+): row is HarnessStageRow & PrimitiveRef => row.type !== "categories";

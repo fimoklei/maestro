@@ -1,11 +1,11 @@
-import type { PrimitiveRef, WithdrawError } from "@maestro/core";
+import type { HarnessStageRow, WithdrawError } from "@maestro/core";
 import { NEXT_RELEASE } from "../ui/band-copy";
 import { HARNESS_BUSY } from "../ui/busy-copy";
 import { rereadLabel, WITHDRAW_PROPOSAL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, phrase } from "../ui/phrase";
-import { ITEM_WORDS } from "./item-words";
+import { rowWords } from "./item-words";
 import {
   deletionHeadings,
   invalidNameHeading,
@@ -21,10 +21,17 @@ const withdrawHeadings = ({
   branch,
   number,
 }: WithdrawContext): NoticeTable<WithdrawError> => {
-  const w = ITEM_WORDS[type];
+  const w = rowWords(type);
   const deletion = deletionHeadings(w);
-  const matches = phrase`Your ${w.noun} ${w.holder} now matches its copy in ${NEXT_RELEASE}.`;
-  const replaced = phrase`Your ${w.noun} ${w.holder} matches its copy in ${NEXT_RELEASE}.`;
+  // The list's withdrawal never touches the clone.
+  const matches =
+    type === "categories"
+      ? LIST_STAYS
+      : phrase`Your ${w.noun} ${w.holder} now matches its copy in ${NEXT_RELEASE}.`;
+  const replaced =
+    type === "categories"
+      ? LIST_STAYS
+      : phrase`Your ${w.noun} ${w.holder} matches its copy in ${NEXT_RELEASE}.`;
   return {
     ...proposalHeadingsFor(w),
     "invalid-skill": invalidNameHeading(w),
@@ -116,8 +123,10 @@ const withdrawHeadings = ({
   };
 };
 
+const LIST_STAYS = "Your categories stay as they are.";
+
 /** What a withdrawal's notice names: the item, its branch and its request. */
-export type WithdrawContext = PrimitiveRef & {
+export type WithdrawContext = Pick<HarnessStageRow, "type" | "name"> & {
   branch: string;
   // Null where no request was open to close.
   number: number | null;

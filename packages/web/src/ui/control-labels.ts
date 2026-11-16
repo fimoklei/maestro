@@ -15,6 +15,9 @@ export const IMPORT = "Import";
 export const IMPORT_LOCAL_EDITS = "Import local edits";
 export const IMPORT_PROMPTS = "Import prompts";
 export const IMPORT_SKILLS = "Import skills";
+/** The page name in a sentence, never with "›". */
+export const CATEGORIES_IN_SETTINGS = "Categories in Settings";
+export const OPEN_CATEGORIES_IN_SETTINGS = `Open ${CATEGORIES_IN_SETTINGS}`;
 export const PROPOSE_CHANGE = "Propose change";
 export const PUBLISH_RELEASE = "Publish release";
 export const REGISTER_REPOSITORY = "Register repository";
@@ -22,6 +25,7 @@ export const REMOVE_SKILL = "Remove skill";
 export const SET_CATEGORY = "Set category";
 const RESTORE_PROMPT = "Restore prompt";
 const RESTORE_SKILL = "Restore skill";
+export const UPDATE_PULL_REQUEST = "Update pull request";
 export const UPDATE_TARGET = "Update target";
 export const VIEW_DEPLOY_STATE = "View Deploy-state";
 export const WITHDRAW_FROM_RELEASE = "Withdraw from release";

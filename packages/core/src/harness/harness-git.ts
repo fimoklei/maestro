@@ -33,6 +33,7 @@ import {
   listWorkingPrimitives,
   primitiveOnDisk,
   readAuthors,
+  readListProposal,
   readPrimitiveHash,
   readProposalRefs,
   readStagedDifference,
@@ -47,7 +48,7 @@ import {
   readUnproposedFiles,
 } from "./proposal-branch-git";
 import { type ProposalKind, proposalTitle } from "./proposal-request";
-import type { ProposalSubject } from "./proposal-subject";
+import type { ListSubject, ProposalSubject } from "./proposal-subject";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
   BranchAuthorship,
@@ -59,6 +60,7 @@ import type {
   HarnessMovementTrees,
   HarnessTag,
   ListFilePush,
+  ListProposalRefs,
   ListPushOutcome,
   PromoteSkillOutcome,
   PublishTagOutcome,
@@ -511,6 +513,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
       working: hashesOf(working, type),
     });
     return { skill: typed("skill"), prompt: typed("prompt") };
+  }
+
+  readListProposal(
+    root: string,
+    subject: ListSubject,
+  ): Promise<ListProposalRefs | null> {
+    return readListProposal(root, subject, REMOTE_HEAD);
   }
 
   // Takes the exact commit, never `origin/HEAD`: a concurrent fetch can re-point

@@ -13,6 +13,10 @@ import {
 
 export type ProposalSubject = PrimitiveRef | { type: "categories" };
 
+export type ListSubject = Extract<ProposalSubject, { type: "categories" }>;
+
+export const CATEGORIES_SUBJECT: ListSubject = { type: "categories" };
+
 // Dotted outside the prompt family, so no skill or prompt read takes it.
 const CATEGORIES_BRANCH_LEAF = "list.categories";
 

@@ -1,9 +1,9 @@
-import { TYPE_WORD } from "../inventory/type-filter";
 import { DetailPane } from "../ui/detail-pane";
 import type { NoticeContent } from "../ui/notice";
 import { StatusBadge } from "../ui/status-badge";
 import { CHANGE_WORD } from "./change-words";
 import type { HarnessTableRow } from "./harness-columns";
+import { rowWords } from "./item-words";
 import { CONCURRENT_CHANGE_NOTICE } from "./notice-copy";
 import { PullRequestLinks } from "./pull-request-links";
 import {
@@ -47,7 +47,7 @@ export function StageDetailPane({
       onClose={onClose}
       getTriggerElement={getTriggerElement}
       facts={[
-        { label: "Type", value: TYPE_WORD[row.type] },
+        { label: "Type", value: rowWords(row.type).Noun },
         { label: "Stage", value: STAGE_NAMES[row.stage] },
         { label: "Change", value: CHANGE_WORD[row.change] },
         { label: "Status", value: <StatusBadge reading={row.reading} /> },

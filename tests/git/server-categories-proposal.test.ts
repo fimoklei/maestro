@@ -92,8 +92,37 @@ describe("the categories pull request on a real Harness", {
         ...rowsOf(state.stages.proposal),
         ...rowsOf(state.stages.review),
         ...rowsOf(state.stages.release),
-      ].map((row) => row.name),
+      ]
+        .filter((row) => row.type !== "categories")
+        .map((row) => row.name),
     ).toEqual([]);
+  });
+
+  it("reads the pushed branch as the Categories row under Pending review", async () => {
+    const app = h.makeApp();
+    await ownList(app);
+    await post(app, "/api/categories/proposal", {});
+
+    const state = await h.refresh(app);
+
+    expect(rowsOf(state.stages.proposal)).toEqual([]);
+    expect(
+      rowsOf(state.stages.review).map(
+        ({ type, change, status, ownsBranch }) => ({
+          type,
+          change,
+          status,
+          ownsBranch,
+        }),
+      ),
+    ).toEqual([
+      {
+        type: "categories",
+        change: "addition",
+        status: "pull-request-missing",
+        ownsBranch: true,
+      },
+    ]);
   });
 
   it("adds a second parent where the branch lacks the default-branch tip", async () => {

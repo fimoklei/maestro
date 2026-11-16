@@ -39,7 +39,7 @@ describe("POST body parsing", () => {
     message:
       "Nothing was withdrawn. Reload the page, then withdraw the proposal again.",
     detail:
-      'The request carries a type, a name and a pull-request number or null: { type: "skill" | "prompt", name: string, number: number | null }.',
+      'The request carries a type, a name and a pull-request number or null: { type: "skill" | "prompt", name: string, number: number | null }, or the categories list and a number or null: { type: "categories", number: number | null }.',
   };
 
   const PROMPT_CHECK_SHAPE = {

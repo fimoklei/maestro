@@ -69,11 +69,15 @@ type WithdrawalPlan = {
   message: string;
 };
 
-const sameRef = (a: ProposalSubject) => (b: PrimitiveRef) =>
-  a.type !== "categories" && a.type === b.type && a.name === b.name;
+type PrimitiveRow = HarnessStageRow & PrimitiveRef;
+
+const sameRef =
+  (a: ProposalSubject) =>
+  <T extends { type: string; name: string }>(b: T): b is T & PrimitiveRef =>
+    a.type !== "categories" && a.type === b.type && a.name === b.name;
 
 // The Change decides only the names: a rename touches its previous name too.
-const namesOf = (row: HarnessStageRow): PrimitiveRef[] =>
+const namesOf = (row: PrimitiveRow): PrimitiveRef[] =>
   row.change === "rename" && row.previousName !== null
     ? [
         { type: row.type, name: row.name },
@@ -81,7 +85,7 @@ const namesOf = (row: HarnessStageRow): PrimitiveRef[] =>
       ]
     : [{ type: row.type, name: row.name }];
 
-const messageOf = (row: HarnessStageRow): string => {
+const messageOf = (row: PrimitiveRow): string => {
   const subject = withdrawalTitle(row);
   return row.mergedRequest === null
     ? subject

@@ -25,11 +25,14 @@ import {
 } from "./harness-primitive";
 import { readBranchAuthorship, readCommitEmail } from "./proposal-branch-git";
 import {
+  type ListSubject,
   type ProposalSubject,
+  subjectBranchLeaf,
   subjectObject,
   subjectPath,
+  subjectPathspec,
 } from "./proposal-subject";
-import type { HarnessPromoteRef } from "./read-harness-state";
+import type { HarnessPromoteRef, ListProposalRefs } from "./read-harness-state";
 
 const run = promisify(execFile);
 
@@ -382,7 +385,7 @@ const emptyByType = <T>(): Record<HarnessPrimitiveType, Record<string, T>> => ({
 // never proof.
 const hasLanded = async (
   root: string,
-  ref: PrimitiveRef,
+  ref: ProposalSubject,
   branch: string,
   tree: string | null,
   base: string,
@@ -401,13 +404,13 @@ const hasLanded = async (
     "--full-history",
     `${branch}..${base}`,
     "--",
-    primitivePathspec(ref),
+    subjectPathspec(ref),
   ]);
   if (commits === null) {
     return false;
   }
   for (const commit of commits.split("\n")) {
-    const read = await readObjectAt(root, commit, primitivePath(ref));
+    const read = await readObjectAt(root, commit, subjectPath(ref));
     if (read !== null && (read.object?.hash ?? null) === tree) {
       return true;
     }
@@ -449,6 +452,43 @@ export async function readProposalRefs(
     }),
   );
   return refs;
+}
+
+// A list's branch is read apart: no primitive family takes its leaf.
+export async function readListProposal(
+  root: string,
+  subject: ListSubject,
+  base: string,
+): Promise<ListProposalRefs | null> {
+  const remote = await readSubjectObject(root, base, subject);
+  if (remote === null) {
+    return null;
+  }
+  const branch = `${PROPOSAL_REFS}/${subjectBranchLeaf(subject)}`;
+  const tip = await runGit(root, [
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${branch}^{commit}`,
+  ]);
+  if (!tip.ok) {
+    return { remote: remote.object?.hash ?? null, promote: null };
+  }
+  const tree = (await readSubjectObject(root, branch, subject))?.object ?? null;
+  return {
+    remote: remote.object?.hash ?? null,
+    promote: {
+      tree: tree?.hash ?? null,
+      commit: tip.stdout,
+      authorship: await readBranchAuthorship(
+        root,
+        subject,
+        base,
+        await readCommitEmail(root),
+      ),
+      landed: await hasLanded(root, subject, branch, tree?.hash ?? null, base),
+    },
+  };
 }
 
 // The newest commit on `ref` that touched each primitive, keyed by `primitiveKey`.

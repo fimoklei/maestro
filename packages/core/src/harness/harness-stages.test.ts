@@ -89,9 +89,12 @@ const CHANGE_OF = {
   removed: "deletion",
 } as const;
 
+const NO_LIST = { remote: null, promote: null };
+
 const stages = (over: Partial<SkillStageInput> = {}) => {
-  const { trees = SETTLED, release = [], ...rest } = over;
+  const { trees = SETTLED, release = [], list = NO_LIST, ...rest } = over;
   return buildStages({
+    list,
     origin: ORIGIN,
     defaultBranch: "main",
     atMergeBase: null,
@@ -1275,6 +1278,7 @@ describe("a skill and a prompt with one name", () => {
 
   it("hold their own rows, branches and requests, and never name each other in Also in", () => {
     const read = buildStages({
+      list: NO_LIST,
       origin: ORIGIN,
       defaultBranch: "main",
       trees: { skill: edited, prompt: edited },
@@ -1312,6 +1316,7 @@ describe("a prompt imported under a deleted name", () => {
       working: { "review-pr": "imported" },
     };
     const read = buildStages({
+      list: NO_LIST,
       origin: ORIGIN,
       defaultBranch: "main",
       trees: { skill: NO_PROMPTS, prompt },
