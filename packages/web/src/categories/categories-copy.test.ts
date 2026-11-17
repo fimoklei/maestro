@@ -77,7 +77,7 @@ describe("Categories copy", () => {
     expect(COPY_FROM_HARNESS).toBe("Copy from Harness");
     expect(COPY_CATEGORIES).toBe("Copy categories");
     expect(COPY_ROW_SENTENCE).toBe(
-      "Copies the Harness categories into your list. Your list stays as it is when the Harness changes.",
+      "Copies the Harness categories into your list.",
     );
     expect(COPY_MODE_COPY).toEqual({
       add: {

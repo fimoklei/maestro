@@ -143,6 +143,36 @@ describe("the row Propose to Harness", () => {
     },
   );
 
+  it("sets the status and View on Harness under the sentence, and only the quiet button on the right", async () => {
+    stubServer({
+      rows: [
+        {
+          state: "own-open",
+          status: "waiting-for-review",
+          number: 45,
+          url: `${PULL}/45`,
+          list: "differs",
+        },
+      ],
+    });
+    renderPage();
+
+    const region = await section();
+    const button = await within(region).findByRole("button", {
+      name: "Update pull request",
+    });
+    // The name's column holds the sentence, the status and the link.
+    const left = within(region).getByText("Propose to Harness").parentElement;
+    if (left === null) throw new Error("the row name has no column");
+    expect(within(left).getByText("Waiting for review")).toBeInTheDocument();
+    expect(
+      within(left).getByRole("link", { name: "View on Harness" }),
+    ).toBeInTheDocument();
+    expect(left).not.toContainElement(button);
+    expect(button).toHaveClass("border-edge");
+    expect(button).not.toHaveClass("bg-gray-12");
+  });
+
   it("states a pushed branch without a pull request and offers to finish it", async () => {
     stubServer({ rows: [{ state: "pull-request-missing", list: "ready" }] });
     renderPage();

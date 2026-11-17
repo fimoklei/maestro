@@ -7,14 +7,16 @@ import { GitHubFactLink } from "../ui/github-fact-link";
 import type { Copy } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 
-// One row of a Settings section (#995): the name and at most one sentence
-// left, a value or one control right. The row wraps, so the right side drops
+// One row of a Settings section (#995): the name, at most one sentence and its
+// detail left, a value or one control right. The row wraps, so the right side drops
 // under the name when narrow.
 
 export interface SettingsRowProps {
   name: string;
   /** At most one sentence; a name in it is set apart. */
   description?: Copy;
+  /** Marks that describe the row, such as a status and a link, under the sentence. */
+  detail?: ReactNode;
   /** Truncated, with the whole value on hover. */
   value?: string;
   /** Links the value to its GitHub page. */
@@ -35,6 +37,7 @@ export function SettingsRow({
   name,
   nameId,
   description,
+  detail,
   value,
   github,
   machine = true,
@@ -59,6 +62,11 @@ export function SettingsRow({
           <span className="font-ui text-gray-11 text-meta">
             <PhraseText copy={description} />
           </span>
+        )}
+        {detail === undefined ? null : (
+          <div className="mt-tight flex flex-wrap items-center gap-inline font-ui text-row">
+            {detail}
+          </div>
         )}
       </div>
       {value === undefined ? null : (

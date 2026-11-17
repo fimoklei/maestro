@@ -128,7 +128,7 @@ describe("Copy Harness categories", () => {
     });
     expect(
       await within(section).findByText(
-        "Copies the Harness categories into your list. Your list stays as it is when the Harness changes.",
+        "Copies the Harness categories into your list.",
       ),
     ).toBeInTheDocument();
     expect(

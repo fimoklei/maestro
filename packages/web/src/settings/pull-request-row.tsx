@@ -31,21 +31,21 @@ export function PullRequestRow({
       <SettingsRow
         name={PULL_REQUEST_ROW}
         description={view.sentence}
+        detail={
+          view.open === null ? undefined : (
+            <>
+              <StatusBadge reading={view.open} />
+              <TextLink to="/harness">{VIEW_ON_HARNESS}</TextLink>
+            </>
+          )
+        }
         control={
-          // One group, so the button never wraps apart from its chip.
-          <div className="flex flex-wrap items-center gap-inline font-ui text-row">
-            {view.open === null ? null : (
-              <>
-                <StatusBadge reading={view.open} />
-                <TextLink to="/harness">{VIEW_ON_HARNESS}</TextLink>
-              </>
-            )}
-            <GatedButton
-              label={PULL_REQUEST_LABEL[view.mode]}
-              unavailable={view.blocked}
-              onClick={() => setOpen(true)}
-            />
-          </div>
+          <GatedButton
+            variant="quiet"
+            label={PULL_REQUEST_LABEL[view.mode]}
+            unavailable={view.blocked}
+            onClick={() => setOpen(true)}
+          />
         }
       />
       {open ? (

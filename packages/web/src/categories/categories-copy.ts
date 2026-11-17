@@ -55,7 +55,7 @@ export const COPY_HARNESS_CATEGORIES = "Copy Harness categories";
 /** The row's button. */
 export const COPY_FROM_HARNESS = "Copy from Harness";
 export const COPY_ROW_SENTENCE =
-  "Copies the Harness categories into your list. Your list stays as it is when the Harness changes.";
+  "Copies the Harness categories into your list.";
 export const COPY_CATEGORIES = "Copy categories";
 
 export const copyIntro = (tag: string, count: number): Phrase =>
