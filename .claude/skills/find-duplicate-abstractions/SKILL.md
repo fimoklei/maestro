@@ -36,7 +36,7 @@ Enumerate the code to sweep. Maestro's product code is three packages
 (`CODING_STANDARDS.md` → Architecture): `packages/core` (domain), `packages/server` (transport),
 `packages/web` (UI). Glob the source files:
 ```bash
-git -C ~/Projects/maestro ls-files 'packages/**/*.ts' 'packages/**/*.tsx' | grep -v -E '\.(test|stories)\.'
+git -C "$(git rev-parse --show-toplevel)" ls-files 'packages/**/*.ts' 'packages/**/*.tsx' | grep -v -E '\.(test|stories)\.'
 ```
 Group the paths by concern — types, schemas, hooks, components, helpers/utils,
 adapters/ports, HTTP routes. Duplicates cluster within a concern and across the

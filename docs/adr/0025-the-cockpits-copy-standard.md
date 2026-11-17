@@ -1,6 +1,6 @@
 # ADR-0025 — The cockpit's copy standard
 
-- **Status:** Accepted, amended 2026-09-08, 2026-10-02, 2026-10-04 and 2026-11-13
+- **Status:** Accepted, amended 2026-09-08, 2026-10-02, 2026-10-04, 2026-11-13 and 2026-11-17
 - **Date:** 2026-08-31
 - **Amends:** ADR-0018's ownership of user-facing messages.
 - **Resolves:** [Cockpit language map #646](https://github.com/fimoklei/maestro/issues/646).
@@ -24,7 +24,9 @@ anchor tie-breaker and checklist with the short guidance in `copy.md`.
    and what they can do next. Copy is written one screen at a time, from a
    term table that gives each action and each thing one word across that
    screen. ASD-STE100, GOV.UK and Polaris remain background, rather than
-   mandatory rules.
+   mandatory rules. Where the copy rule is silent, the Microsoft Writing Style
+   Guide decides; the copy rule and `GLOSSARY.md` win where they differ from
+   it.
 2. The repo's copy rule for agents is the writing and review guide for every word the
    cockpit shows. Review the whole message in context for first-reading
    comprehension and agreement with the implemented behaviour. Enforcement
@@ -78,6 +80,27 @@ string-by-string review left one action with three verbs on one screen. The
 guide now starts from what the reader must understand, and a control label
 names its result. Shipped strings written under the older guidance stay
 until their screen is next written.
+
+The 2026-11-17 amendment settles five points the guide stated two ways or not
+at all, each decided by the owner: a negative is contracted (`Couldn't`); a
+sentence names a control only when the reader cannot see it beside that
+sentence, except in a failure notice, whose body names the control that
+recovers; a cause is given only when the reader needs it to act or to choose;
+an empty state names one first step; and the heading of a failed read is
+`Couldn't read {the thing}`, which replaces `{the thing} not read` in
+`GLOSSARY.md`. It also names the Microsoft Writing Style Guide as the
+tie-breaker of decision 1. The 2026-09-08 amendment removed an anchor
+tie-breaker together with the mandatory rules; this one restores a tie-breaker
+only, because the owner's choices matched that guide on every point it covers.
+
+The guide was changed against a comparison: the writer wrote six screens under
+the old and the new guide, three of them on the code as it stood before their
+approved text shipped, and the owner chose between the two versions of five
+texts without knowing which guide wrote which. The first version lost three of
+five; the choices showed the control rule was too broad for failure notices
+and that an empty state named two routes. After those two corrections the
+writer reproduced four of the five choices. Each case ran once per guide, so
+the comparison catches a regression and proves little more.
 
 The 2026-09-08 amendment changes agent guidance, not rendered copy or the Notice
 component. Existing copy implementation and any remaining migration work are

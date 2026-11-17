@@ -67,7 +67,7 @@ Then hand off to the `implement` skill to build the issue — it runs the work t
 
 ## Cleaning up
 
-Shipping a branch handles its own worktree (`workflow-ship` step 9). This is for the leftovers — a worktree
+Shipping a branch handles its own worktree (`workflow-ship` → "Clean up the branch, and the worktree it lives in"). This is for the leftovers — a worktree
 whose issue was abandoned, or whose branch was merged elsewhere.
 
 ```bash

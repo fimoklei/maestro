@@ -57,7 +57,7 @@ const RETIRED = [
   // A control is selected: never clicked or tapped, never `Press Close`.
   /\b(?:click|tap)(?:s|ped|ping|ed|ing)?\b/i,
   /\b(?:[Pp]ress|[Hh]it) [A-Z]\w*/,
-  // A failed read is `{the thing} not read`; a deploy never installs; a running
+  // A failed read is `Couldn't read {the thing}`; a deploy never installs; a running
   // operation reads Target busy or Harness busy (#1459).
   /\bCould not read\b/,
   /\bCommitted copy unreadable\b/i,

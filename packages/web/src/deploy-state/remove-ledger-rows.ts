@@ -65,7 +65,7 @@ export function removeLedgerLeadIn(type: DeployableType): string {
   return `Removes the ${REMOVED_THING[type]} from:`;
 }
 
-// What a removal leaves alone, and the way back (copy.md → Dialog).
+// What a removal leaves alone, and the way back.
 export const REMOVE_KEEPS = `The Harness keeps the skill. To add it back, select ${DEPLOY_SKILL}.`;
 
 const OUTCOME_GROUPS: {
