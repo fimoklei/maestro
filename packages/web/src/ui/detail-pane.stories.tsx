@@ -59,3 +59,43 @@ export const Retry: Story = {
     ],
   },
 };
+
+const BEHIND_TARGET = {
+  title: "…/me/project",
+  activeKey: "…/me/project",
+  leadsWithNextStep: false,
+  facts: [
+    { label: "Target", value: "Repository" },
+    { label: "Release", value: "v0.3.2", machine: true },
+    { label: "Latest release", value: "v0.3.4", machine: true },
+  ],
+};
+
+// A behind target: Update target is the primary at the foot.
+export const Behind: Story = {
+  args: {
+    ...BEHIND_TARGET,
+    paragraph: [
+      "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+    ],
+    foot: [
+      { label: "Deploy skill", onSelect: () => {} },
+      { label: "Update target", step: "update", onSelect: () => {} },
+    ],
+  },
+};
+
+// Behind with Local edits: Import local edits is primary, Update target waits behind ⋯.
+export const BehindWithLocalEdits: Story = {
+  args: {
+    ...BEHIND_TARGET,
+    paragraph: [
+      "1 skill has changes that are not in the latest release: tdd. To keep them, select Import local edits before you update.",
+    ],
+    foot: [
+      { label: "Import local edits", step: "import", onSelect: () => {} },
+      { label: "Deploy skill", onSelect: () => {} },
+      { label: "Update target", step: "update", onSelect: () => {} },
+    ],
+  },
+};

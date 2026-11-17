@@ -227,7 +227,7 @@ describe("Deploy-state — Global pane paragraph", () => {
     const behindLine =
       "1 of 4 deployed skills changed in v0.4.3. Select Update target to move this target to v0.4.3.";
     expect(paragraphLines(pane, behindLine)).toEqual([behindLine]);
-    // Update target sits beside the Latest release fact, not in the foot.
+    // #1813: Update target is the foot's primary, never beside a fact.
     const foot = within(pane)
       .getByRole("button", { name: "Actions for Global" })
       .closest("div") as HTMLElement;
@@ -235,13 +235,15 @@ describe("Deploy-state — Global pane paragraph", () => {
       within(foot)
         .getAllByRole("button")
         .map((button) => button.textContent),
-    ).toEqual(["⋯"]);
+    ).toEqual(["Update target", "⋯"]);
     expect(
-      within(factValue(pane, "Latest release") as HTMLElement).getByRole(
+      within(foot).getByRole("button", { name: "Update target Global" }),
+    ).toHaveClass("bg-gray-12");
+    expect(
+      within(factValue(pane, "Latest release") as HTMLElement).queryByRole(
         "button",
-        { name: "Update target Global" },
       ),
-    ).toBeInTheDocument();
+    ).toBeNull();
   });
 
   it("shows no paragraph on a Global that is not behind and holds no local edits", async () => {

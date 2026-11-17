@@ -62,6 +62,12 @@ const footLabels = (pane: HTMLElement) =>
     .getAllByRole("button")
     .map((button) => button.textContent);
 
+// #1813: no control sits beside the Latest release fact.
+const latestReleaseControl = (pane: HTMLElement) =>
+  within(factValue(pane, "Latest release") as HTMLElement).queryByRole(
+    "button",
+  );
+
 const repoWith = (body: object, drift: object = { behind: [] }) =>
   stubServer(() => ({
     repos: [REPO],
@@ -391,12 +397,14 @@ describe("Deploy-state pane — facts", () => {
     ).toBeInTheDocument();
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
     expect(fact(pane, "Changed")).toBe("2 of 5 skills: tdd and grill");
-    expect(
-      within(pane).getByRole("button", { name: /^Update target/ }),
-    ).toBeInTheDocument();
     expect(fact(pane, "Compared")).toMatch(/^Read /);
     expect(
       await within(pane).findByRole("img", { name: "Behind" }),
+    ).toBeInTheDocument();
+    expect(
+      (await openFootMenu(pane, LABEL)).getByRole("menuitem", {
+        name: "Update target",
+      }),
     ).toBeInTheDocument();
   });
 
@@ -1029,21 +1037,21 @@ describe("Deploy-state pane — where each action sits", () => {
     }
   });
 
-  it("puts Update target beside Latest release, and makes Import local edits the primary it would otherwise discard", async () => {
+  // #1813: Update target never sits above the sentence that says to import first.
+  it("puts Update target behind the foot's ⋯, and makes Import local edits the primary it would otherwise discard", async () => {
     repoWith({ primitives: [edited("tdd")], releaseHead: BEHIND });
     renderDeployState();
 
     const pane = await openPane(LABEL);
-    expect(
-      within(factValue(pane, "Latest release") as HTMLElement).getByRole(
-        "button",
-        { name: `Update target ${LABEL}` },
-      ),
-    ).not.toHaveClass("bg-gray-12");
+    expect(latestReleaseControl(pane)).toBeNull();
     expect(footLabels(pane)).toEqual(["Import local edits", "⋯"]);
     expect(
       within(footOf(pane)).getByRole("button", { name: "Import local edits" }),
     ).toHaveClass("bg-gray-12");
+    const menu = await openFootMenu(pane, LABEL);
+    expect(
+      menu.getAllByRole("menuitem").map((item) => item.textContent),
+    ).toEqual(["Deploy skill", "Update target"]);
     expect(
       within(pane).getByText(
         sentence(
@@ -1051,6 +1059,52 @@ describe("Deploy-state pane — where each action sits", () => {
         ),
       ),
     ).toBeInTheDocument();
+  });
+
+  it("opens the Update dialog from Update target behind the foot's ⋯", async () => {
+    repoWith({ primitives: [edited("tdd")], releaseHead: BEHIND });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    const menu = await openFootMenu(pane, LABEL);
+    await userEvent.click(
+      menu.getByRole("menuitem", { name: "Update target" }),
+    );
+    expect(
+      await screen.findByRole("dialog", { name: `Update ${LABEL}` }),
+    ).toBeInTheDocument();
+  });
+
+  it("makes Update target the primary at the foot of a behind target without Local edits", async () => {
+    repoWith({ primitives: [skill("tdd", "v0.3.2")], releaseHead: BEHIND });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(latestReleaseControl(pane)).toBeNull();
+    expect(footLabels(pane)).toEqual(["Update target", "⋯"]);
+    expect(
+      within(footOf(pane)).getByRole("button", {
+        name: `Update target ${LABEL}`,
+      }),
+    ).toHaveClass("bg-gray-12");
+  });
+
+  it("keeps the notice's retry the one primary on a behind target while an operation stands", async () => {
+    repoWith({
+      primitives: [skill("tdd", "v0.3.2")],
+      releaseHead: BEHIND,
+      pendingOperation: { kind: "deploy", release: "v0.3.2", desired: ["tdd"] },
+    });
+    renderDeployState();
+
+    const pane = await openPane(LABEL);
+    expect(
+      within(pane).getByRole("button", { name: "Retry deploy" }),
+    ).toHaveClass("bg-gray-12");
+    expect(footLabels(pane)).toEqual(["⋯"]);
+    expect(
+      within(pane).queryByRole("button", { name: /^Update target/ }),
+    ).toBeNull();
   });
 
   it("explains a plain behind target and names the control that moves it", async () => {

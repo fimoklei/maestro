@@ -256,23 +256,6 @@ describe("DetailPane slots", () => {
       unmount();
     }
   });
-
-  // A clamp shortens the long last line, never the state above it.
-  it("puts a fact's action beside its value", () => {
-    renderPane({
-      facts: [
-        {
-          label: "Latest release",
-          value: "v0.3.4",
-          action: { label: "Update target", onSelect: () => {} },
-        },
-      ],
-    });
-
-    expect(
-      screen.getByText("Latest release").nextElementSibling,
-    ).toContainElement(button("Update target"));
-  });
 });
 
 describe("DetailPane clamped line", () => {
@@ -358,29 +341,18 @@ describe("DetailPane clamped line", () => {
 });
 
 describe("DetailPane primary", () => {
-  const steps = {
-    facts: [
-      {
-        label: "Latest release",
-        value: "v0.3.4",
-        action: {
-          label: "Update target",
-          step: "update" as const,
-          onSelect: () => {},
-        },
-      },
-    ],
-    foot: [
-      { label: "Import local edits", step: "import" as const },
-      { label: "Deploy skill" },
-    ],
-  };
+  const UPDATE = { label: "Update target", step: "update" as const };
+  const NOT_BEHIND = [
+    { label: "Import local edits", step: "import" as const },
+    { label: "Deploy skill" },
+  ];
+  const steps = { foot: [...NOT_BEHIND, UPDATE] };
 
   it("makes a notice's retry the one primary", () => {
     renderPane({ ...steps, notices: [RETRY] });
 
     expect(button("Retry deploy")).toHaveClass(PRIMARY);
-    expect(button("Update target")).not.toHaveClass(PRIMARY);
+    expect(screen.queryByRole("button", { name: "Update target" })).toBeNull();
     // #1744: without a primary in the foot, its items sit behind the ⋯.
     expect(button("Actions for tdd")).not.toHaveClass(PRIMARY);
     expect(
@@ -392,17 +364,17 @@ describe("DetailPane primary", () => {
     renderPane(steps);
 
     expect(button("Import local edits")).toHaveClass(PRIMARY);
-    expect(button("Update target")).not.toHaveClass(PRIMARY);
+    expect(screen.queryByRole("button", { name: "Update target" })).toBeNull();
   });
 
   it("makes Update target primary where nothing reads Local edits", () => {
-    renderPane({ facts: steps.facts, foot: [{ label: "Deploy skill" }] });
+    renderPane({ foot: [{ label: "Deploy skill" }, UPDATE] });
 
     expect(button("Update target")).toHaveClass(PRIMARY);
   });
 
   it("makes Import local edits primary where nothing is behind", () => {
-    renderPane({ foot: steps.foot });
+    renderPane({ foot: NOT_BEHIND });
 
     expect(button("Import local edits")).toHaveClass(PRIMARY);
     expect(screen.queryByRole("button", { name: "Deploy skill" })).toBeNull();

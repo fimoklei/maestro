@@ -1,7 +1,6 @@
 import { X } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 import { orderedItems } from "./actions-menu";
-import { Button } from "./button";
 import { cn } from "./cn";
 import { FactList, FactRow } from "./fact-list";
 import { FOCUS_RING } from "./focus-ring";
@@ -34,8 +33,6 @@ export type Fact = {
   fullValue?: string;
   /** A link beside the value, such as the GitHub mark. */
   link?: ReactNode;
-  /** The one action beside the value, for an action that changes this fact. */
-  action?: FootItem;
 };
 
 export type PaneNotice = {
@@ -122,11 +119,7 @@ export function DetailPane({
   const shown = facts.filter((fact) => fact !== null);
   const clamped = clampParagraph ? (paragraph.at(-1) ?? null) : null;
   const whole = clamped === null ? paragraph : paragraph.slice(0, -1);
-  const primary = choosePrimary(
-    notices,
-    [...shown.flatMap((fact) => (fact.action ? [fact.action] : [])), ...foot],
-    leadsWithNextStep,
-  );
+  const primary = choosePrimary(notices, foot, leadsWithNextStep);
   const { paneRef, headingRef } = useDetailPaneFocus({
     activeKey,
     getTriggerElement,
@@ -190,19 +183,7 @@ export function DetailPane({
                   label={fact.label}
                   machine={fact.machine}
                   fullValue={fact.fullValue}
-                  action={
-                    fact.action ? (
-                      <Button
-                        variant={fact.action === primary ? "primary" : "quiet"}
-                        aria-label={fact.action.name}
-                        onClick={fact.action.onSelect}
-                      >
-                        {fact.action.label}
-                      </Button>
-                    ) : (
-                      fact.link
-                    )
-                  }
+                  action={fact.link}
                 >
                   {fact.value}
                 </FactRow>
