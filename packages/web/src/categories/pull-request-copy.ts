@@ -150,7 +150,9 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
           ? `A reviewer asked for changes on pull request #${row.number}. Change your categories, then select ${UPDATE_PULL_REQUEST} to send them.`
           : row.list === "same"
             ? `${waiting} It already contains your current categories.`
-            : `${waiting} Select ${UPDATE_PULL_REQUEST} to send your current categories.`;
+            : listCause(row.list) !== null
+              ? waiting
+              : `${waiting} Select ${UPDATE_PULL_REQUEST} to send your current categories.`;
       const against = againstPullRequest(row.list, row.number);
       return {
         sentence: against === null ? state : `${state} ${against}`,

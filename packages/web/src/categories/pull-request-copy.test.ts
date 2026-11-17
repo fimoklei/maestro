@@ -81,7 +81,7 @@ describe("the pull-request row", () => {
         url: `${PULL}/45`,
         list: "empty",
       },
-      "Pull request #45 is open and waiting for a reviewer. Select Update pull request to send your current categories. Add or copy at least one category before updating the pull request.",
+      "Pull request #45 is open and waiting for a reviewer. Add or copy at least one category before updating the pull request.",
       "Add a category.",
     ],
     [
@@ -92,7 +92,7 @@ describe("the pull-request row", () => {
         url: `${PULL}/45`,
         list: "over-limits",
       },
-      "Pull request #45 is open and waiting for a reviewer. Select Update pull request to send your current categories. Your list is too large for the Harness categories file. Delete categories before creating a pull request.",
+      "Pull request #45 is open and waiting for a reviewer. Your list is too large for the Harness categories file. Delete categories before creating a pull request.",
       "Delete categories.",
     ],
     [

@@ -107,7 +107,9 @@ describe("the row while the operator's own pull request is open", () => {
       renderPage();
 
       expect(
-        await within(await section()).findByText(`${WAITING} ${first}`),
+        await within(await section()).findByText(
+          `Pull request #45 is open and waiting for a reviewer. ${first}`,
+        ),
       ).toBeInTheDocument();
       expectTooltipCause(await updateButton(), cause);
     },
