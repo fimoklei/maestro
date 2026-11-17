@@ -32,7 +32,7 @@ that repeats gets a check in the same change.
 | Rule | Enforced by |
 | --- | --- |
 | Merge only after CI is green | `workflow-ship` → `wait-for-checks.sh`; ruleset on `main` |
-| Product copy reads natural and states traced facts | judgement: `.claude/rules/copy.md`, `copy-reviewer` |
+| Product copy reads natural and states traced facts | judgement: `.claude/rules/copy.md`, `.claude/agents/copy-reviewer.md` |
 
 ## Where to look
 
