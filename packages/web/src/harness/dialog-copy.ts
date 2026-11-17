@@ -169,7 +169,7 @@ export const releaseWithdrawalBody = (
 export const listReleaseWithdrawalBody = (
   change: HarnessChange,
   mergedRequest: number | null,
-): { changes: string; stays: string } => {
+): { changes: string; stays: null } => {
   const including =
     mergedRequest === null ? "" : `, including pull request #${mergedRequest}`;
   const out = `This takes every categories change merged since the latest release out of the next release on GitHub${including}.`;
@@ -177,12 +177,11 @@ export const listReleaseWithdrawalBody = (
     // Only a hand edit deletes the file: a pull request always writes one.
     changes:
       change === "deletion"
-        ? "This takes the deletion of the categories file out of the next release on GitHub. The next release then carries the Harness categories again."
+        ? "This takes the deletion of the categories file out of the next release on GitHub."
         : change === "addition"
           ? `${out} The latest release has no categories, so the next release then has none either.`
-          : `${out} The next release then carries the Harness categories again.`,
-    stays:
-      "Your categories stay as they are. You can propose them from Categories in Settings.",
+          : out,
+    stays: null,
   };
 };
 

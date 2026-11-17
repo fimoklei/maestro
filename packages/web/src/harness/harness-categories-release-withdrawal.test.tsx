@@ -90,17 +90,11 @@ describe("Withdraw from release on the Categories row", () => {
     expect(
       within(dialog).getByText(
         sentence(
-          "This takes every categories change merged since the latest release out of the next release on GitHub, including pull request #45. The next release then carries the Harness categories again.",
+          "This takes every categories change merged since the latest release out of the next release on GitHub, including pull request #45.",
         ),
       ),
     ).toBeVisible();
-    expect(
-      within(dialog).getByText(
-        sentence(
-          "Your categories stay as they are. You can propose them from Categories in Settings.",
-        ),
-      ),
-    ).toBeVisible();
+    expect(within(dialog).queryByText(/stay as they are/)).toBeNull();
     expect(dialog).toHaveTextContent("File.maestro/categories.yml");
     expect(dialog).not.toHaveTextContent("Pending proposal");
     expect(withdrawals).toEqual([]);
@@ -115,7 +109,7 @@ describe("Withdraw from release on the Categories row", () => {
     expect(
       within(dialog).getByText(
         sentence(
-          "This takes every categories change merged since the latest release out of the next release on GitHub. The next release then carries the Harness categories again.",
+          "This takes every categories change merged since the latest release out of the next release on GitHub.",
         ),
       ),
     ).toBeVisible();
@@ -132,7 +126,7 @@ describe("Withdraw from release on the Categories row", () => {
     expect(
       within(dialog).getByText(
         sentence(
-          "This takes the deletion of the categories file out of the next release on GitHub. The next release then carries the Harness categories again.",
+          "This takes the deletion of the categories file out of the next release on GitHub.",
         ),
       ),
     ).toBeVisible();
