@@ -32,6 +32,10 @@ function field(error: unknown, key: string): string | null {
   return typeof value === "string" ? value : null;
 }
 
+/** The refusal's code; null for anything the server did not answer with one. */
+export const refusalCode = (error: unknown): string | null =>
+  field(error, "error");
+
 /**
  * The notice for a refused category read or write. The refusals every route
  * shares are stated here; `fallback` states the rest, by the refusal's code.

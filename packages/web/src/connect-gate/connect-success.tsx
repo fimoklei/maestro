@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { HARNESS_CATEGORIES } from "../categories/categories-copy";
-import { categoryNotice } from "../categories/category-refusals";
+import { refusalCode } from "../categories/category-refusals";
 import {
   useCopyHarnessCategories,
   useHarnessCategoriesOffer,
@@ -52,8 +52,7 @@ export function ConnectSuccess({
         }
         copy.run("add", {
           onSuccess: () => onContinue(null),
-          onError: (error) =>
-            onContinue(categoryNotice(error, connectCopyFailed)),
+          onError: (error) => onContinue(connectCopyFailed(refusalCode(error))),
         });
       }}
     />

@@ -173,17 +173,60 @@ describe("the Connect gate's Harness categories offer", () => {
     await continueToSkills();
 
     await landedOnSkills();
-    expect(screen.getByText("Categories not copied")).toBeInTheDocument();
+    expect(
+      screen.getByText("Couldn't copy Harness categories"),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Maestro couldn't read the latest Harness release, so nothing was copied. You can also copy them later in Categories in Settings.",
+        "Maestro couldn't read the latest Harness release. You can copy the categories later in Categories in Settings.",
       ),
     ).toBeInTheDocument();
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Close Categories not copied" }),
+      screen.getByRole("button", {
+        name: "Close Couldn't copy Harness categories",
+      }),
     );
-    expect(screen.queryByText("Categories not copied")).toBeNull();
+    expect(screen.queryByText("Couldn't copy Harness categories")).toBeNull();
     expect(document.activeElement).toHaveAccessibleName("Re-read Skills");
   });
+
+  // Refusals other screens state in their own words point the reader to
+  // Settings here, where Skills offers no control for them.
+  it.each([
+    [
+      "an unreadable categories section",
+      {
+        error: "categories-unreadable",
+        configPath: "/Users/me/.maestro/config.json",
+      },
+      500,
+    ],
+    [
+      "a request the server refused for its shape",
+      { error: "invalid-body" },
+      400,
+    ],
+    ["no Harness configured", { error: "not-configured" }, 409],
+  ] as const)(
+    "states %s on Skills as a failed copy",
+    async (_, body, status) => {
+      stubServer({
+        seen: () => jsonResponse(LISTED),
+        copy: () => jsonResponse(body, status),
+      });
+      await connect();
+      await screen.findByRole("checkbox", { name: "Copy Harness categories" });
+
+      await continueToSkills();
+
+      await landedOnSkills();
+      expect(
+        screen.getByText("Couldn't copy Harness categories"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("You can copy them later in Categories in Settings."),
+      ).toBeInTheDocument();
+    },
+  );
 });
