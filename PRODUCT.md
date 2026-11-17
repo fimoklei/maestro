@@ -55,11 +55,8 @@ read, and how directly it can be changed. Character comes from restraint: calm
 near-black surfaces, one signal colour that means *act*, another that means
 *rest*.
 
-Voice inside the cockpit is terse and technical, closer to terminal output than
-to product copy. No "you" or "we", no marketing tone, no emoji. Data-like text
-is lowercase mono; chrome is sentence case. Domain words are fixed —
-primitive, bundle, target, deploy-state, drift, in sync — and never given
-synonyms.
+The words the cockpit shows follow `.claude/rules/copy.md`, and their terms
+follow `GLOSSARY.md`.
 
 ## Anti-references
 

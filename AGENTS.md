@@ -32,13 +32,13 @@ that repeats gets a check in the same change.
 | Rule | Enforced by |
 | --- | --- |
 | Merge only after CI is green | `workflow-ship` → `wait-for-checks.sh`; ruleset on `main` |
-| Product copy reads natural and states traced facts | judgement: `.claude/rules/copy.md`, `copy-reviewer` |
+| Product copy reads natural and states traced facts | judgement: `.claude/rules/copy.md`, `.claude/agents/copy-reviewer.md` |
 
 ## Where to look
 
 - Designing a screen, dialog or use case → read `.claude/rules/design.md`
   whole. Drafting user-facing copy, in code, a spec, a ticket or a grill
-  option → `.claude/rules/copy.md`; complete its copy review.
+  option → `.claude/rules/copy.md`; follow its Write a screen steps.
 - Where code lives → `docs/agents/codebase-map.md`. Before measuring anything
   → `docs/research/`; `head -n1 docs/research/*.md` lists each note's
   question. Domain terms → `GLOSSARY.md`; decisions → `docs/adr/`
