@@ -205,6 +205,27 @@ describe("the difference against the next release", () => {
     expect((await preview()).body).toEqual({ kind: "unchanged" });
   });
 
+  it("matches a name spelled in another case as the same category", async () => {
+    const { tipHolds, own, preview } = world();
+    tipHolds(["tdd"], {
+      files: {
+        [FILE]:
+          "version: 1\ncategories: [planning, Writing]\nassignments:\n  - { type: skill, name: tdd, category: planning }\n",
+      },
+    });
+    await own(
+      ["Planning", "Writing"],
+      [{ ...skill("tdd"), category: "Planning" }],
+    );
+
+    expect((await preview()).body).toEqual({
+      kind: "changes",
+      added: [],
+      deleted: [],
+      moved: [],
+    });
+  });
+
   it("cannot compare with a next-release file that has an error", async () => {
     const { tipHolds, own, preview } = world();
     tipHolds(["tdd"], { files: { [FILE]: "categories: [\n" } });

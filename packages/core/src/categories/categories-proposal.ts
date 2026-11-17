@@ -37,7 +37,7 @@ import type { HarnessGitPort, HarnessTag } from "../harness/read-harness-state";
 import { readListMovements } from "../harness/release-delta";
 import { highestReleaseTag } from "../harness/release-tag";
 import type { ConfigStore } from "../registry/config-store";
-import { compareCategoryNames } from "./category-name";
+import { compareCategoryNames, sameCategoryName } from "./category-name";
 import {
   type CategoryRecord,
   type HarnessKey,
@@ -320,13 +320,25 @@ const counted = (
 const byName = (a: { name: string }, b: { name: string }) =>
   compareCategoryNames(a.name, b.name);
 
-/** The difference a pull request with `own` makes to `next`. */
+const hasName = (names: readonly string[], name: string) =>
+  names.some((each) => sameCategoryName(each, name));
+
+const sameCategory = (a: string | null, b: string | null) =>
+  a === null || b === null ? a === b : sameCategoryName(a, b);
+
+/**
+ * The difference a pull request with `own` makes to `next`. A name spelled in
+ * another case is the same category; the respelling alone is still a change.
+ */
 const differenceOf = (
   own: CategoryRecord,
   next: CategoryRecord,
 ): CategoriesDifference => {
-  const addedNames = own.names.filter((name) => !next.names.includes(name));
-  const deletedNames = next.names.filter((name) => !own.names.includes(name));
+  const addedNames = own.names.filter((name) => !hasName(next.names, name));
+  const deletedNames = next.names.filter((name) => !hasName(own.names, name));
+  const respelled = own.names.some(
+    (name) => hasName(next.names, name) && !next.names.includes(name),
+  );
   const added = addedNames.map((name) =>
     counted(
       name,
@@ -352,9 +364,9 @@ const differenceOf = (
     const counts =
       (from === null && to !== null && addedNames.includes(to)) ||
       (to === null && from !== null && deletedNames.includes(from));
-    return from === to || counts ? [] : [{ ...item, category: to }];
+    return sameCategory(from, to) || counts ? [] : [{ ...item, category: to }];
   });
-  if (added.length + deleted.length + moved.length === 0) {
+  if (added.length + deleted.length + moved.length === 0 && !respelled) {
     return { kind: "unchanged" };
   }
   return {
