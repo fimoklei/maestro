@@ -230,7 +230,7 @@ describe("the Create pull request dialog", () => {
 
     expect(
       within(dialog).getByText(
-        "This creates a pull request on GitHub that replaces the Harness categories with your list. A curator reviews it and decides whether to merge it. Your categories stay as they are.",
+        "This creates a pull request on GitHub that replaces the Harness categories with your list.",
       ),
     ).toBeInTheDocument();
     expect(

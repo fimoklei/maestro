@@ -136,7 +136,7 @@ describe("the Update pull request dialog", () => {
 
     expect(
       within(dialog).getByText(
-        "This updates your open pull request #45 with your current categories. A curator reviews it and decides whether to merge it. Your categories stay as they are.",
+        "This updates your open pull request #45 with your current categories.",
       ),
     ).toBeInTheDocument();
     expect(

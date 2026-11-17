@@ -169,7 +169,7 @@ describe("the Update pull request dialog", () => {
   it("states what the update does and what it compares with", () => {
     expect(updatePullRequestTitle(45)).toBe("Update pull request #45");
     expect(updatePullRequestBody(45)).toBe(
-      "This updates your open pull request #45 with your current categories. A curator reviews it and decides whether to merge it. Your categories stay as they are.",
+      "This updates your open pull request #45 with your current categories.",
     );
     expect(comparingWithPullRequest(45)).toBe(
       "Comparing with pull request #45…",
@@ -246,7 +246,7 @@ describe("the Update pull request dialog", () => {
 describe("the Create pull request dialog", () => {
   it("states what the pull request does and what stays", () => {
     expect(CREATE_PULL_REQUEST_BODY).toBe(
-      "This creates a pull request on GitHub that replaces the Harness categories with your list. A curator reviews it and decides whether to merge it. Your categories stay as they are.",
+      "This creates a pull request on GitHub that replaces the Harness categories with your list.",
     );
     expect(COMPARED_WITH_NEXT_RELEASE).toBe("Compared with the next release");
     expect(ADDED_TO_HARNESS).toBe("Added to the Harness");
@@ -326,10 +326,10 @@ describe("the Create pull request dialog", () => {
 
   it("states the body after a close, with the branch deletion only where Maestro deletes it", () => {
     expect(createAfterCloseBody(45, true)).toBe(
-      "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed, and Maestro deletes its branch. A curator reviews the new pull request and decides whether to merge it. Your categories stay as they are.",
+      "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed, and Maestro deletes its branch.",
     );
     expect(createAfterCloseBody(45, false)).toBe(
-      "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed. A curator reviews the new pull request and decides whether to merge it. Your categories stay as they are.",
+      "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed.",
     );
   });
 

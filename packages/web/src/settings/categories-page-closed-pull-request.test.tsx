@@ -108,7 +108,7 @@ describe("the Create pull request dialog after a close without merging", () => {
 
     expect(
       await within(dialog).findByText(
-        "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed, and Maestro deletes its branch. A curator reviews the new pull request and decides whether to merge it. Your categories stay as they are.",
+        "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed, and Maestro deletes its branch.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -124,7 +124,7 @@ describe("the Create pull request dialog after a close without merging", () => {
 
     expect(
       await within(dialog).findByText(
-        "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed. A curator reviews the new pull request and decides whether to merge it. Your categories stay as they are.",
+        "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed.",
       ),
     ).toBeInTheDocument();
   });

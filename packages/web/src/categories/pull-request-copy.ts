@@ -165,7 +165,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
 }
 
 export const CREATE_PULL_REQUEST_BODY =
-  "This creates a pull request on GitHub that replaces the Harness categories with your list. A curator reviews it and decides whether to merge it. Your categories stay as they are.";
+  "This creates a pull request on GitHub that replaces the Harness categories with your list.";
 
 /** Create pull request after pull request #`number` was closed without merging. */
 export const createAfterCloseBody = (
@@ -173,7 +173,7 @@ export const createAfterCloseBody = (
   deletesBranch: boolean,
 ) => {
   const deletion = deletesBranch ? ", and Maestro deletes its branch" : "";
-  return `This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #${number} stays closed${deletion}. A curator reviews the new pull request and decides whether to merge it. Your categories stay as they are.`;
+  return `This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #${number} stays closed${deletion}.`;
 };
 
 /** Heard while the difference is read; shown inside the dialog. */
@@ -189,7 +189,7 @@ export const updatePullRequestTitle = (number: number) =>
   `${UPDATE_PULL_REQUEST} #${number}`;
 
 export const updatePullRequestBody = (number: number) =>
-  `This updates your open pull request #${number} with your current categories. A curator reviews it and decides whether to merge it. Your categories stay as they are.`;
+  `This updates your open pull request #${number} with your current categories.`;
 
 /** Heard while the difference against the pull request is read. */
 export const comparingWithPullRequest = (number: number) =>
