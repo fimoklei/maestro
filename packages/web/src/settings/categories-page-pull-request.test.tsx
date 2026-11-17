@@ -287,6 +287,11 @@ describe("the Create pull request dialog", () => {
         ),
       ),
     ).toBeInTheDocument();
+    // The group is neutral, as in the Copy dialog's Replace view.
+    const deleted = within(dialog).getByRole("group", {
+      name: "Deleted from the Harness · 2",
+    });
+    expect(deleted.outerHTML).not.toMatch(/amber/);
     expect(
       within(dialog).getByRole("button", { name: "Create pull request" }),
     ).toBeInTheDocument();

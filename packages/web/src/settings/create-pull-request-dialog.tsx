@@ -54,7 +54,7 @@ const groupsOf = (
     rows: categoryRows(added),
   },
   {
-    tone: "attention",
+    tone: "neutral",
     legend: groupLegend(legends.deleted, deleted.length),
     rows: categoryRows(deleted),
   },
