@@ -1,4 +1,8 @@
-import type { ImportPromptsAnswer, PrimitiveRef } from "@maestro/core";
+import type {
+  ImportPromptsAnswer,
+  PrimitiveRef,
+  ProposalSubject,
+} from "@maestro/core";
 import type { PromptFile } from "@maestro/core/prompt-file";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
@@ -52,6 +56,7 @@ import {
   RELEASE_WITHDRAWAL_CHECK_BODY,
   RESTORE_BODY,
   releaseWithdrawalBodySchema,
+  releaseWithdrawalCheckBodySchema,
   restoreBodySchema,
   WITHDRAW_BODY,
   WITHDRAW_CHECK_BODY,
@@ -75,6 +80,10 @@ type Deps = Pick<
 
 // A body carries more than the item; the use cases take the item alone.
 const refOf = ({ type, name }: PrimitiveRef): PrimitiveRef => ({ type, name });
+
+// The categories list carries no name.
+const subjectOf = (body: ProposalSubject): ProposalSubject =>
+  body.type === "categories" ? { type: body.type } : refOf(body);
 
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   // Takes the primitive's type and name only; the harness is resolved server-side (#577).
@@ -184,13 +193,13 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
   app.post("/api/harness/release/withdraw/check", async (c) => {
     const body = await parseBody(
       c,
-      primitiveRefBodySchema,
+      releaseWithdrawalCheckBodySchema,
       RELEASE_WITHDRAWAL_CHECK_BODY,
     );
     if (!body.ok) {
       return body.response;
     }
-    const result = await deps.withdrawFromRelease.inspect(refOf(body.data));
+    const result = await deps.withdrawFromRelease.inspect(subjectOf(body.data));
     if (!result.ok) {
       const { status } = releaseWithdrawalErrorResponses[result.error];
       return c.json({ error: result.error }, status);
@@ -208,7 +217,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
     const result = await deps.withdrawFromRelease.execute(
-      refOf(body.data),
+      subjectOf(body.data),
       body.data.confirmation,
     );
     if (!result.ok) {
@@ -266,7 +275,7 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     return proposalResponse(
       c,
-      await deps.proposals.withdraw(refOf(body.data), body.data.number),
+      await deps.proposals.withdraw(subjectOf(body.data), body.data.number),
       withdrawErrorResponses,
     );
   });

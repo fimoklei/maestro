@@ -1,6 +1,6 @@
 # ADR-0034 — A category is the operator's own record, one list per Harness
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR-0036 (a Harness may carry one list of categories)
 - **Date:** 2026-10-30 (decided in #1581 and #1713; spec #1717)
 
 ## Context

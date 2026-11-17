@@ -7,6 +7,7 @@ const CODE_REVIEW = {
   path: ".apm/skills/code-review",
   change: "edit",
   previousName: null,
+  mergedRequest: null,
 } as const;
 
 const meta = {
@@ -50,6 +51,39 @@ export const DeletedPrompt: Story = {
       path: ".maestro/prompts/pr-review.md",
       change: "deletion",
       previousName: null,
+      mergedRequest: null,
+    },
+  },
+};
+
+const CATEGORIES = {
+  type: "categories",
+  name: "Categories",
+  path: ".maestro/categories.yml",
+  change: "edit",
+  previousName: null,
+  mergedRequest: 45,
+} as const;
+
+export const Categories: Story = {
+  args: { target: CATEGORIES },
+};
+
+export const CategoriesNotInLatestRelease: Story = {
+  args: { target: { ...CATEGORIES, change: "addition" } },
+};
+
+export const CategoriesBlocked: Story = {
+  args: {
+    target: CATEGORIES,
+    check: {
+      kind: "refused",
+      notice: {
+        level: "error",
+        label: "Withdrawal blocked",
+        message:
+          "Nothing was withdrawn. Merge or close pull request #46 on GitHub.",
+      },
     },
   },
 };
@@ -92,4 +126,8 @@ export const ConfirmationOutOfDate: Story = {
       detail: "GitHub changed after this confirmation.",
     },
   },
+};
+
+export const CategoriesFileDeleted: Story = {
+  args: { target: { ...CATEGORIES, change: "deletion" } },
 };

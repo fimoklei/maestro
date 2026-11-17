@@ -1,23 +1,37 @@
 import type { ConnectOutcome } from "@maestro/core";
+import { COPY_HARNESS_CATEGORIES } from "../categories/categories-copy";
 import { harnessName } from "../shell/target-name";
+import { ACTIONS } from "../ui/busy-copy";
 import { Button } from "../ui/button";
+import { CheckboxField } from "../ui/checkbox-field";
 import { Fact } from "../ui/fact";
 import { Notice } from "../ui/notice";
 import {
   CONNECTED_TITLE,
   CONTINUE_TO_FIRST_VIEW,
   CONTINUE_TO_HARNESS,
+  COPY_LATER_HINT,
   CREATED_TITLE,
   connectedMessage,
   NO_SKILLS_YET,
   PRIVATE_HARNESS_ACCESS,
 } from "./connect-gate-copy";
 
+/** The checkbox that copies the Harness categories on continue. */
+type CategoriesCopyOffer = {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+};
+
 export type ConnectSuccessViewProps = {
   outcome: ConnectOutcome;
   // Null where the released count could not be read (#841).
   primitiveCount: number | null;
   inventoryPath: string;
+  /** Null where the latest release holds no valid category. */
+  copyOffer: CategoriesCopyOffer | null;
+  /** The copy that continue runs. */
+  copying: boolean;
   onContinue: () => void;
 };
 
@@ -60,6 +74,8 @@ export function ConnectSuccessView({
   outcome,
   primitiveCount,
   inventoryPath,
+  copyOffer,
+  copying,
   onContinue,
 }: ConnectSuccessViewProps) {
   const copy = completionCopy(outcome, primitiveCount);
@@ -84,9 +100,18 @@ export function ConnectSuccessView({
           title={inventoryPath}
         />
       </dl>
+      {copyOffer === null ? null : (
+        <CheckboxField
+          label={COPY_HARNESS_CATEGORIES}
+          hint={COPY_LATER_HINT}
+          checked={copyOffer.checked}
+          onChange={copyOffer.onCheckedChange}
+          disabled={copying}
+        />
+      )}
       <div>
-        <Button variant="primary" onClick={onContinue}>
-          {copy.continueLabel}
+        <Button variant="primary" busy={copying} onClick={onContinue}>
+          {copying ? ACTIONS.copy.busy : copy.continueLabel}
         </Button>
       </div>
     </div>

@@ -5,7 +5,25 @@ export type {
   CategoryError,
   CategoryList,
   CategoryResult,
+  CopyPreview,
+  HarnessCategories,
+  HarnessCategoriesResult,
 } from "./categories/categories";
+export {
+  CATEGORIES_PREVIEW_KINDS,
+  type CategoriesDifference,
+  type CategoriesProposalCreated,
+  type CategoriesProposalError,
+  type CategoriesProposalPreview,
+  type CategoriesProposalRow,
+  type CategoryCount,
+  type MovedItem,
+} from "./categories/categories-proposal";
+export {
+  COPY_MODES,
+  type CopyFacts,
+  type CopyMode,
+} from "./categories/copy-harness-categories";
 export {
   composeUseCases,
   type UseCasePorts,
@@ -203,6 +221,7 @@ export {
   ProposalActions,
   type WithdrawError,
 } from "./harness/proposal-actions";
+export type { ProposalSubject } from "./harness/proposal-subject";
 export type {
   BatchItemError,
   BatchItemOutcome,

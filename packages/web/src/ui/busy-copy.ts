@@ -14,6 +14,7 @@ export type ActionKey =
   | "discard"
   | "propose"
   | "withdraw"
+  | "withdrawListProposal"
   | "withdrawFromRelease"
   | "reopen"
   | "create"
@@ -46,6 +47,8 @@ export const ACTIONS: Record<
   discard: { busy: "Discarding…", done: "Discarded change to" },
   propose: { busy: "Proposing…", done: "Proposed" },
   withdraw: { busy: "Withdrawing…", done: "Withdrew" },
+  // "Withdrew Categories." would read as the list gone.
+  withdrawListProposal: { busy: "Withdrawing…", done: "Withdrew proposal for" },
   // "Withdrew tdd." would read as Withdraw proposal.
   withdrawFromRelease: {
     busy: "Withdrawing…",

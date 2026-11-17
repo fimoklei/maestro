@@ -458,7 +458,7 @@ describe("Prompts — Edit prompt refusals", () => {
       readRefusal: ["prompt-missing", 404],
     });
     renderPrompts();
-    await screen.findByText("github.com/fimoklei/agent-harness");
+    await screen.findByText("fimoklei/agent-harness");
     const menu = await openRowMenu();
     await userEvent.click(
       await menu.findByRole("menuitem", { name: "Edit prompt" }),
@@ -473,7 +473,7 @@ describe("Prompts — Edit prompt refusals", () => {
   it("states a clone that is behind instead of opening the dialog", async () => {
     stubServer({ readRefusal: ["prompt-missing", 404] });
     renderPrompts();
-    await screen.findByText("github.com/fimoklei/agent-harness");
+    await screen.findByText("fimoklei/agent-harness");
     const pane = await openPane();
 
     await userEvent.click(pane.getByRole("button", { name: "Edit prompt" }));

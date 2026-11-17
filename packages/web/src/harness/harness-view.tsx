@@ -5,10 +5,17 @@ import type {
 } from "@maestro/core";
 import { FolderGit2, FolderInput, Tag } from "lucide-react";
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { Navigate } from "react-router";
+import { CATEGORIES_PAGE } from "../settings/settings-pages";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { ActionsMenu } from "../ui/actions-menu";
 import { BandAction } from "../ui/band-action";
-import { NOT_RELEASED_YET, ORIGIN_FACT, RELEASE_FACT } from "../ui/band-copy";
+import {
+  NOT_RELEASED_YET,
+  ORIGIN_FACT,
+  originName,
+  RELEASE_FACT,
+} from "../ui/band-copy";
 import { setStagedMany, toggleStaged } from "../ui/bulk-selection";
 import { Button } from "../ui/button";
 import {
@@ -42,6 +49,7 @@ import {
   releaseEnabled,
   type StageSection,
   stageSections,
+  withListNames,
 } from "./harness-view-model";
 import { ImportPromptsAction } from "./import-prompts-action";
 import { ImportSkillsAction } from "./import-skills-action";
@@ -94,7 +102,9 @@ export function HarnessView({
   written: WriteResult | null;
 }) {
   const harness = useHarness();
-  const state = harness.data;
+  // The list under its Name here alone: other screens read primitives only.
+  const state =
+    harness.data === undefined ? undefined : withListNames(harness.data);
   const refresh = useRefreshHarness();
   const { mutate: fetchRemote } = refresh;
   const reading = refresh.isPending || harness.isFetching;
@@ -163,10 +173,13 @@ export function HarnessView({
   const [importingPrompts, setImportingPrompts] = useState(false);
   const presses = useHarnessPresses(state, table);
   const editing = useEditPromptOpening();
+  // Rendered on the press only, so the view needs a router only once it leaves.
+  const [leaving, setLeaving] = useState(false);
   const handlers: RowActionHandlers = {
     ...presses.handlers,
     // A read that finds nothing opens no dialog; the row's pane says why.
     edit: (row) => editing.start(row.name, () => open(rowId(row))),
+    openCategories: () => setLeaving(true),
   };
   const readRefusal = editing.readRefusal;
   const readNotice = (row: HarnessTableRow) =>
@@ -217,7 +230,7 @@ export function HarnessView({
   );
   const context = {
     releasedVersion: state?.releasedVersion ?? null,
-    origin: state?.origin ?? "",
+    origin: originName(state?.origin ?? ""),
   };
   const columns = useMemo(
     () =>
@@ -387,7 +400,7 @@ export function HarnessView({
                 {
                   label: ORIGIN_FACT,
                   icon: <GitHubMark />,
-                  value: state.origin,
+                  value: context.origin,
                   github: state.github,
                   machine: true,
                   drop: { rank: 2, belowRem: 48 },
@@ -464,14 +477,14 @@ export function HarnessView({
             <ProposeBatchAction
               chosen={rows
                 .filter((row) => chosen.has(row.id))
-                .map(({ type, name, change, remoteTree }) => ({
-                  type,
-                  name,
-                  change,
-                  seenRemoteTree: remoteTree,
-                }))}
+                // Only Pending proposal rows are chosen, and the list never shows there.
+                .flatMap(({ type, name, change, remoteTree }) =>
+                  type === "categories"
+                    ? []
+                    : [{ type, name, change, seenRemoteTree: remoteTree }],
+                )}
               // The host is dropped: owner/repo names it.
-              origin={state?.origin.replace(/^[^/]+\//, "") ?? ""}
+              origin={context.origin}
               onSelectionSpent={() => setStaged(new Set())}
             />
           </SelectionBar>
@@ -511,6 +524,7 @@ export function HarnessView({
         />
       }
     >
+      {leaving ? <Navigate to={CATEGORIES_PAGE.to} /> : null}
       {state !== undefined && editing.opened !== null ? (
         <EditPromptAction
           key={editing.opened.name}

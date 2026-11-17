@@ -1,4 +1,5 @@
 // The three proposal mutations, each rechecked against a fresh read.
+import type { GitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import {
@@ -16,12 +17,15 @@ import {
 } from "./harness-review-port";
 import { newestEnded } from "./harness-stages";
 import {
-  openProposals,
   type ProposalKind,
-  type ProposalTarget,
   readOriginFacts,
   requestProposal,
 } from "./proposal-request";
+import {
+  hasValidName,
+  type ProposalSubject,
+  subjectBranch,
+} from "./proposal-subject";
 import type {
   BranchAuthorship,
   HarnessGitPort,
@@ -80,7 +84,8 @@ type Ready = {
   root: string;
   // The fetched default-branch tip; null where it could not be read.
   head: string | null;
-  target: ProposalTarget;
+  origin: GitOrigin;
+  base: string;
   matching: ReviewRequest[];
   open: ReviewRequest[];
   viewer: ViewerRead;
@@ -135,21 +140,22 @@ export class ProposalActions {
     if (pushed === null) {
       return { ok: false, error: "no-answer" };
     }
-    const kind = await this.kindOf(checked, pushed);
+    const kind = await this.kindOf(checked, ref, pushed);
     if (kind === null) {
       return { ok: false, error: "no-answer" };
     }
+    const { origin, base } = checked;
     return settle(
-      await requestProposal(this.deps.review, checked.target, kind),
+      await requestProposal(this.deps.review, { origin, base, ref }, kind),
     );
   }
 
   // Judged against the default branch, as the Change column is.
   private async kindOf(
     checked: Ready,
+    ref: PrimitiveRef,
     pushed: HarnessObject[],
   ): Promise<ProposalKind | null> {
-    const { ref } = checked.target;
     const holds = (objects: HarnessObject[]) =>
       objects.some(
         (object) => object.type === ref.type && object.name === ref.name,
@@ -188,20 +194,20 @@ export class ProposalActions {
     if (checked.waiting !== null || isOthers(closed, checked.viewer)) {
       return { ok: false, error: "proposed-by-other" };
     }
-    return settle(
-      await this.deps.review.reopenRequest(checked.target.origin, number),
-    );
+    return settle(await this.deps.review.reopenRequest(checked.origin, number));
   }
 
   // Gives the proposal up: the Working Harness takes the default branch's copy,
   // then the request closes, then the branch goes. Closing first keeps GitHub
   // from closing the request itself when the branch disappears. A null number
-  // withdraws a branch with no open request, so nothing closes (#1639).
+  // withdraws a branch with no open request, so nothing closes (#1639). The
+  // categories list is built from the config, never the clone, so no copy
+  // comes back for it.
   async withdraw(
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
     number: number | null,
   ): Promise<WithdrawResult> {
-    if (!isValidSkillSlug(ref.name)) {
+    if (!hasValidName(subject)) {
       return { ok: false, error: "invalid-skill" };
     }
     const root = await this.deps.resolveRoot();
@@ -209,7 +215,7 @@ export class ProposalActions {
       return { ok: false, error: "not-configured" };
     }
     const run = await this.deps.locks.run(root, () =>
-      this.withdrawAt(root, ref, number),
+      this.withdrawAt(root, subject, number),
     );
     return run.ok ? run.value : { ok: false, error: "withdraw-in-progress" };
   }
@@ -231,10 +237,10 @@ export class ProposalActions {
 
   private async withdrawAt(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
     number: number | null,
   ): Promise<WithdrawResult> {
-    const checked = await this.factsAt(root, ref);
+    const checked = await this.factsAt(root, subject);
     if (!checked.ok) {
       return checked;
     }
@@ -250,43 +256,49 @@ export class ProposalActions {
     if (!(await this.deps.git.readPushesWhereItFetched(root))) {
       return { ok: false, error: "push-elsewhere" };
     }
+    const { head } = checked;
+    // The list has no copy in the clone to replace.
     const atHead =
-      checked.head === null
+      head === null
         ? null
-        : await this.deps.git.readPrimitives(root, checked.head);
-    if (checked.head === null || atHead === null) {
+        : subject.type === "categories"
+          ? []
+          : await this.deps.git.readPrimitives(root, head);
+    if (head === null || atHead === null) {
       return { ok: false, error: "no-answer" };
     }
     // With no open request naming its author, the commits do (#1639).
     if (number === null) {
       const authorship = await this.deps.git.readAuthoredHere(
         root,
-        ref,
-        checked.head,
+        subject,
+        head,
       );
       if (authorship !== "own") {
         return { ok: false, error: AUTHORSHIP_ERROR[authorship] };
       }
     }
-    const replaced = await replaceFromCommit(this.deps, {
-      root,
-      commit: checked.head,
-      atCommit: atHead,
-      refs: [ref],
-    });
-    if (replaced !== "replaced") {
-      return { ok: false, error: REPLACE_ERROR[replaced] };
+    if (subject.type !== "categories") {
+      const replaced = await replaceFromCommit(this.deps, {
+        root,
+        commit: head,
+        atCommit: atHead,
+        refs: [subject],
+      });
+      if (replaced !== "replaced") {
+        return { ok: false, error: REPLACE_ERROR[replaced] };
+      }
     }
     if (number !== null) {
       const closed = await this.deps.review.closeRequest(
-        checked.target.origin,
+        checked.origin,
         number,
       );
       if (!closed.ok) {
         return { ok: false, error: "close-failed" };
       }
     }
-    const deleted = await this.deps.git.deleteProposalBranch(root, ref);
+    const deleted = await this.deps.git.deleteProposalBranch(root, subject);
     return deleted === "deleted"
       ? { ok: true }
       : { ok: false, error: "branch-delete-failed" };
@@ -305,7 +317,7 @@ export class ProposalActions {
 
   private async factsAt(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
   ): Promise<CheckedFacts> {
     const facts = await readOriginFacts(this.deps.git, root);
     if (!facts.ok) {
@@ -319,18 +331,19 @@ export class ProposalActions {
     if (review.outcome === "failed" || !review.complete) {
       return { ok: false, error: "review-unknown" };
     }
-    const branch = proposalBranch(ref);
-    const target = { origin, base, ref };
-    const open = openProposals(review.requests, target);
+    const branch = subjectBranch(subject);
+    const matching = review.requests.filter((request) =>
+      matchesProposal(request, { ownerRepo: origin.ownerRepo, branch, base }),
+    );
+    const open = matching.filter((request) => request.state === "open");
     const viewer = await this.deps.review.readViewer(origin);
     return {
       ok: true,
       root,
       head,
-      target,
-      matching: review.requests.filter((request) =>
-        matchesProposal(request, { ownerRepo: origin.ownerRepo, branch, base }),
-      ),
+      origin,
+      base,
+      matching,
       open,
       viewer,
       waiting: waitingOn(open, viewer),

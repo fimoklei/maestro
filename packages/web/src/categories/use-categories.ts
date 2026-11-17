@@ -1,8 +1,91 @@
-import type { CategoryList, PrimitiveRef } from "@maestro/core";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type {
+  CategoriesProposalCreated,
+  CategoriesProposalPreview,
+  CategoriesProposalRow,
+  CategoryList,
+  CopyMode,
+  CopyPreview,
+  HarnessCategories,
+  PrimitiveRef,
+} from "@maestro/core";
+import {
+  type QueryClient,
+  queryOptions,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
 const CATEGORIES_KEY = ["categories"] as const;
+const HARNESS_KEY = [...CATEGORIES_KEY, "harness"] as const;
+const PROPOSAL_KEY = [...CATEGORIES_KEY, "proposal"] as const;
+
+// The server recorded the release as seen, so the dot and the notice go.
+const refreshSignal = (queryClient: QueryClient) =>
+  queryClient.invalidateQueries({ queryKey: HARNESS_KEY, exact: true });
+
+// A read that records the release as seen: a POST, fresh every open.
+const seenQuery = <T>(queryClient: QueryClient, name: string, path: string) =>
+  queryOptions({
+    queryKey: [...HARNESS_KEY, name] as const,
+    queryFn: async () => {
+      const answer = await requestJson<T>(path, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+      void refreshSignal(queryClient);
+      return answer;
+    },
+    gcTime: 0,
+    staleTime: 0,
+  });
+
+/** Every categories read, each with its key. */
+const categoriesQueries = {
+  list: () =>
+    queryOptions({
+      queryKey: CATEGORIES_KEY,
+      queryFn: () => requestJson<CategoryList>("/api/categories"),
+    }),
+  /** What the latest Harness release holds of the Harness categories, and whether it changed since the operator last saw it. */
+  harness: () =>
+    queryOptions({
+      queryKey: HARNESS_KEY,
+      queryFn: () => requestJson<HarnessCategories>("/api/categories/harness"),
+    }),
+  /** The row Propose to Harness: where the categories pull request stands. */
+  proposal: () =>
+    queryOptions({
+      queryKey: PROPOSAL_KEY,
+      queryFn: () =>
+        requestJson<CategoriesProposalRow>("/api/categories/proposal"),
+    }),
+  /** The pull request's difference, read fresh per dialog. */
+  proposalPreview: () =>
+    queryOptions({
+      queryKey: [...PROPOSAL_KEY, "preview"] as const,
+      queryFn: () =>
+        requestJson<CategoriesProposalPreview>(
+          "/api/categories/proposal/preview",
+        ),
+      gcTime: 0,
+    }),
+  /** What a copy would do, read while the copy dialog stands; records the release as seen. */
+  copyPreview: (queryClient: QueryClient) =>
+    seenQuery<CopyPreview>(
+      queryClient,
+      "preview",
+      "/api/categories/harness/preview",
+    ),
+  /** What the Connect gate offers to copy; offering it records the release as seen. */
+  offer: (queryClient: QueryClient) =>
+    seenQuery<HarnessCategories>(
+      queryClient,
+      "offer",
+      "/api/categories/harness/seen",
+    ),
+};
 
 export function useCategories() {
   return useCategoriesWhile(true);
@@ -10,10 +93,71 @@ export function useCategories() {
 
 /** The categories query, read only while `enabled`, as while a dialog is open. */
 export function useCategoriesWhile(enabled: boolean) {
-  return useQuery({
-    queryKey: CATEGORIES_KEY,
-    queryFn: () => requestJson<CategoryList>("/api/categories"),
-    enabled,
+  return useQuery({ ...categoriesQueries.list(), enabled });
+}
+
+export function useHarnessCategories() {
+  return useQuery(categoriesQueries.harness());
+}
+
+export function useCategoriesProposal() {
+  return useQuery(categoriesQueries.proposal());
+}
+
+export function useCategoriesProposalPreview() {
+  return useQuery(categoriesQueries.proposalPreview());
+}
+
+/**
+ * Create or Update pull request, from the preview the dialog showed, which
+ * the server checks again; the row reads where it stands afterwards.
+ */
+export function useCreatePullRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (previewed: CategoriesProposalPreview["kind"]) =>
+      requestJson<CategoriesProposalCreated>("/api/categories/proposal", {
+        method: "POST",
+        body: JSON.stringify({ previewed }),
+      }),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: PROPOSAL_KEY, exact: true }),
+  });
+}
+
+// The row's empty state follows the list, so it is read again.
+const listChanged = (queryClient: QueryClient, list: CategoryList) => {
+  queryClient.setQueryData(CATEGORIES_KEY, list);
+  void queryClient.invalidateQueries({ queryKey: PROPOSAL_KEY, exact: true });
+};
+
+/** The dot's condition: a release changed the Harness categories. */
+export function useHarnessCategoriesChanged(): boolean {
+  const { data } = useHarnessCategories();
+  return data?.kind === "listed" && data.changed;
+}
+
+export function useCopyPreview() {
+  return useQuery(categoriesQueries.copyPreview(useQueryClient()));
+}
+
+export function useHarnessCategoriesOffer() {
+  return useQuery(categoriesQueries.offer(useQueryClient()));
+}
+
+/** The server recomputes the copy from the release as it stands on confirm. */
+export function useCopyHarnessCategories() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (mode: CopyMode) =>
+      requestJson<CategoryList>("/api/categories/harness/copy", {
+        method: "POST",
+        body: JSON.stringify({ mode }),
+      }),
+    onSuccess: (list) => {
+      listChanged(queryClient, list);
+      void refreshSignal(queryClient);
+    },
   });
 }
 
@@ -29,7 +173,7 @@ export function useAddCategory() {
         body: JSON.stringify({ name }),
       }),
     onSuccess: ({ added: _added, ...list }) => {
-      queryClient.setQueryData(CATEGORIES_KEY, list);
+      listChanged(queryClient, list);
     },
   });
 }
@@ -43,7 +187,7 @@ export function useRenameCategory() {
         body: JSON.stringify(rename),
       }),
     onSuccess: (list) => {
-      queryClient.setQueryData(CATEGORIES_KEY, list);
+      listChanged(queryClient, list);
     },
   });
 }
@@ -63,7 +207,7 @@ export function useDeleteCategory() {
         body: JSON.stringify(deletion),
       }),
     onSuccess: (list) => {
-      queryClient.setQueryData(CATEGORIES_KEY, list);
+      listChanged(queryClient, list);
     },
   });
 }
@@ -83,7 +227,7 @@ export function useAssignCategory() {
         body: JSON.stringify(assignment),
       }),
     onSuccess: (list) => {
-      queryClient.setQueryData(CATEGORIES_KEY, list);
+      listChanged(queryClient, list);
     },
   });
 }

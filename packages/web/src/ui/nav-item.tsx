@@ -1,7 +1,8 @@
-import type { MouseEventHandler, ReactNode } from "react";
+import { type MouseEventHandler, type ReactNode, useId } from "react";
 import { UNKNOWN_COUNT } from "../shell/sidebar-copy";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
+import { SignalDot } from "./signal-dot";
 
 // No left-edge bar on the active row: blue is reserved for focus and selection (#991).
 
@@ -14,6 +15,8 @@ export interface NavItemProps {
   disabled?: boolean;
   /** What waits on this screen (#1115); `unknown` is a read that failed. */
   counter?: { text: string; unknown: boolean } | null;
+  /** A dot after the label; its text is the row's description. */
+  signal?: string | null;
   onClick?: MouseEventHandler<HTMLButtonElement>;
   className?: string;
 }
@@ -24,15 +27,18 @@ export function NavItem({
   active = false,
   disabled = false,
   counter = null,
+  signal = null,
   onClick,
   className,
 }: NavItemProps) {
+  const signalId = useId();
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
       aria-current={active ? "page" : undefined}
+      aria-describedby={signal === null ? undefined : signalId}
       className={cn(
         "flex h-control w-full items-center gap-inline rounded-control px-inline text-left font-ui text-row",
         HOVER_TRANSITION,
@@ -49,6 +55,7 @@ export function NavItem({
         </span>
       )}
       <span className="grow truncate">{label}</span>
+      {signal === null ? null : <SignalDot id={signalId} text={signal} />}
       {counter === null ? null : counter.unknown ? (
         <span className="shrink-0 text-gray-11 text-meta">
           <span aria-hidden="true">{counter.text}</span>

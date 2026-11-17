@@ -1,5 +1,8 @@
 // The Harness facts every screen states, in band 2 and the detail panes.
 export const ORIGIN_FACT = "Origin";
+/** The Harness as every screen names it: `owner/repo`, without the host. */
+export const originName = (origin: string): string =>
+  origin.replace(/^[^/]+\//, "");
 export const RELEASE_FACT = "Release";
 export const LATEST_RELEASE_FACT = "Latest release";
 export const BRANCH_FACT = "Branch";

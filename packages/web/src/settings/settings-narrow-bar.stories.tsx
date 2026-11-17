@@ -5,7 +5,12 @@ import { SETTINGS_PAGES } from "./settings-pages";
 const meta = {
   title: "Settings/SettingsNarrowBar",
   component: SettingsNarrowBar,
-  args: { pages: SETTINGS_PAGES, onNavigate: () => {}, onBack: () => {} },
+  args: {
+    pages: SETTINGS_PAGES,
+    signal: null,
+    onNavigate: () => {},
+    onBack: () => {},
+  },
   decorators: [
     (Story) => (
       <div style={{ maxWidth: 720 }}>

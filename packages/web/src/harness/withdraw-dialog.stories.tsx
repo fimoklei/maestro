@@ -51,6 +51,16 @@ export const NoOpenPullRequest: Story = {
   args: { number: null },
 };
 
+// The categories list: nothing in the clone changes, so no file check runs.
+export const Categories: Story = {
+  args: {
+    type: "categories",
+    name: "Categories",
+    branch: "maestro/list.categories",
+    unproposed: { kind: "read", files: [] },
+  },
+};
+
 export const Withdrawing: Story = {
   args: { withdrawing: true },
 };

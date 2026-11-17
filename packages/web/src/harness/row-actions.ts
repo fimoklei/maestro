@@ -4,9 +4,11 @@
 
 import type { HarnessStageRow, ReviewRequestLink } from "@maestro/core";
 import {
+  CREATE_PULL_REQUEST,
   DELETE_LABEL,
   DISCARD_CHANGE,
   EDIT_PROMPT,
+  OPEN_CATEGORIES_IN_SETTINGS,
   PROPOSE_CHANGE,
   RESTORE_LABEL,
   WITHDRAW_FROM_RELEASE,
@@ -33,6 +35,8 @@ export type RowActionHandlers = {
   edit: (row: HarnessStageRow) => void;
   // Takes the row: its Change picks the dialog's copy.
   withdrawFromRelease: (row: HarnessStageRow) => void;
+  // Navigates only: the list is proposed from there.
+  openCategories: () => void;
 };
 
 // Only over a default-branch copy of an edit: on a skill nothing else holds,
@@ -89,7 +93,7 @@ export function rowItems(
     ...stage.filter((item) => item.danger),
     // Last of every menu that carries it. A row that cannot come back shows no
     // item at all, not a disabled one: there is nothing for the author to fix.
-    ...(row.restorable && commit !== null
+    ...(row.restorable && commit !== null && row.type !== "categories"
       ? [
           {
             label: RESTORE_LABEL[row.type],
@@ -109,10 +113,11 @@ function deleteItem(
   enabled: boolean,
   allowed: boolean,
 ): FootItem[] {
-  return allowed && row.onDisk
+  const { type } = row;
+  return allowed && row.onDisk && type !== "categories"
     ? [
         {
-          label: DELETE_LABEL[row.type],
+          label: DELETE_LABEL[type],
           disabled: !enabled,
           danger: true,
           onSelect: () => handlers.deleteLocal(row),
@@ -136,6 +141,33 @@ function withdrawItem(
   };
 }
 
+// Red, in place of Delete skill or Delete prompt: it replaces or removes the
+// Working Harness copy (#1642). Two changes to one item never cross: an open
+// proposal, or an unknown read of one, blocks it (#1689).
+function releaseWithdrawalItem(
+  row: HarnessStageRow,
+  handlers: RowActionHandlers,
+  enabled: boolean,
+): FootItem {
+  const cause = openProposalCause(row);
+  return {
+    label: WITHDRAW_FROM_RELEASE,
+    danger: true,
+    ...(cause === null
+      ? { disabled: !enabled }
+      : { disabled: true as const, cause }),
+    onSelect: () => handlers.withdrawFromRelease(row),
+  };
+}
+
+// The statuses of the author's own sole open request, which a withdrawal closes.
+const OWN_OPEN: ReadonlySet<HarnessStageRow["status"]> = new Set([
+  "draft",
+  "waiting-for-review",
+  "changes-requested",
+  "approved-awaiting-merge",
+]);
+
 function stageItems(
   row: HarnessStageRow,
   handlers: RowActionHandlers,
@@ -152,6 +184,33 @@ function stageItems(
     href: request.url,
   }));
   const sole = row.requests.length === 1 ? row.requests[0] : undefined;
+
+  // Proposed from Categories in Settings alone, so the row offers no step of
+  // its own: no Reopen proposal, Create pull request or Propose change. Under
+  // Pending release it offers Withdraw from release.
+  if (row.type === "categories") {
+    const withdraws =
+      row.stage !== "pending-review"
+        ? []
+        : row.status === "pull-request-missing" ||
+            row.status === "proposal-closed"
+          ? row.ownsBranch
+            ? [withdrawItem(row, handlers, enabled, null)]
+            : []
+          : OWN_OPEN.has(row.status) && sole !== undefined
+            ? [withdrawItem(row, handlers, enabled, sole.number)]
+            : [];
+    return row.stage === "pending-release"
+      ? [...links, releaseWithdrawalItem(row, handlers, enabled)]
+      : [
+          ...links,
+          {
+            label: OPEN_CATEGORIES_IN_SETTINGS,
+            onSelect: handlers.openCategories,
+          },
+          ...withdraws,
+        ];
+  }
 
   if (row.stage === "pending-proposal") {
     return [
@@ -195,23 +254,8 @@ function stageItems(
     ];
   }
 
-  // In place of Delete skill or Delete prompt, and red: it replaces or removes
-  // the Working Harness copy (#1642).
   if (row.stage === "pending-release") {
-    // Two changes to one item never cross: an open proposal, or an unknown
-    // read of one, blocks it (#1689).
-    const cause = openProposalCause(row.openRequests);
-    return [
-      ...links,
-      {
-        label: WITHDRAW_FROM_RELEASE,
-        danger: true,
-        ...(cause === null
-          ? { disabled: !enabled }
-          : { disabled: true as const, cause }),
-        onSelect: () => handlers.withdrawFromRelease(row),
-      },
-    ];
+    return [...links, releaseWithdrawalItem(row, handlers, enabled)];
   }
 
   switch (row.status) {
@@ -223,7 +267,7 @@ function stageItems(
       return [
         ...links,
         {
-          label: "Create pull request",
+          label: CREATE_PULL_REQUEST,
           disabled: !enabled,
           busy: busy("create", null),
           onSelect: () => handlers.create(row),

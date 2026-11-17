@@ -10,12 +10,17 @@ const assignmentSchema = z.object({
   category: z.string(),
 });
 
-const entrySchema = z.object({
+const recordSchema = z.object({
+  names: z.array(z.string()),
+  assignments: z.array(assignmentSchema),
+});
+
+const entrySchema = recordSchema.extend({
   // `host/ownerRepo`; null for a Harness with no GitHub origin.
   origin: z.string().nullable(),
   root: z.string(),
-  names: z.array(z.string()),
-  assignments: z.array(assignmentSchema),
+  // The Harness categories the operator last saw; absent: never seen.
+  seen: recordSchema.optional(),
 });
 
 const sectionSchema = z.array(entrySchema);
@@ -23,10 +28,17 @@ const sectionSchema = z.array(entrySchema);
 type CategorySection = z.infer<typeof sectionSchema>;
 
 /** One Harness's own list: its category names and what carries each. */
-export type CategoryRecord = Pick<
-  z.infer<typeof entrySchema>,
-  "names" | "assignments"
->;
+export type CategoryRecord = z.infer<typeof recordSchema>;
+
+/** Skills and prompts, counted apart. */
+export type ItemCount = { skills: number; prompts: number };
+
+export const itemCount = (
+  items: readonly { type: CategoryRecord["assignments"][number]["type"] }[],
+): ItemCount => ({
+  skills: items.filter((item) => item.type === "skill").length,
+  prompts: items.filter((item) => item.type === "prompt").length,
+});
 
 /** Where the connected Harness lives, and the repository it names. */
 export type HarnessKey = { root: string; origin: GitOrigin | null };
@@ -64,19 +76,43 @@ export const recordOf = (
     : { names: entry.names, assignments: entry.assignments };
 };
 
-/** The section with this Harness's record saved, under its current origin and root. */
-export const withRecord = (
+/** The Harness categories the operator last saw; null: never seen. */
+export const seenOf = (
   section: CategorySection,
   harness: HarnessKey,
-  record: CategoryRecord,
+): CategoryRecord | null => section[entryIndex(section, harness)]?.seen ?? null;
+
+// Saved under the Harness's current origin and root.
+const withEntry = (
+  section: CategorySection,
+  harness: HarnessKey,
+  change: (entry: CategorySection[number]) => CategorySection[number],
 ): CategorySection => {
-  const entry = {
+  const index = entryIndex(section, harness);
+  const entry = change({
+    names: [],
+    assignments: [],
+    ...section[index],
     origin: originKey(harness.origin),
     root: harness.root,
-    ...record,
-  };
-  const index = entryIndex(section, harness);
+  });
   return index === -1
     ? [...section, entry]
     : section.map((each, at) => (at === index ? entry : each));
 };
+
+/** The section with this Harness's own list saved; last seen stays. */
+export const withRecord = (
+  section: CategorySection,
+  harness: HarnessKey,
+  record: CategoryRecord,
+): CategorySection =>
+  withEntry(section, harness, (entry) => ({ ...entry, ...record }));
+
+/** The section with the Harness categories recorded as seen; the own list stays. */
+export const withSeen = (
+  section: CategorySection,
+  harness: HarnessKey,
+  seen: CategoryRecord,
+): CategorySection =>
+  withEntry(section, harness, (entry) => ({ ...entry, seen }));

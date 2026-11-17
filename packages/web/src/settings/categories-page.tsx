@@ -6,6 +6,7 @@ import {
   CATEGORIES_SENTENCE,
   CATEGORY_NOT_ADDED,
   NO_CATEGORIES,
+  NO_CATEGORIES_OR_COPY,
   NO_CATEGORIES_SENTENCE,
   REREAD_CATEGORIES,
 } from "../categories/categories-copy";
@@ -15,7 +16,12 @@ import {
   categoryNotice,
   refusedForName,
 } from "../categories/category-refusals";
-import { useAddCategory, useCategories } from "../categories/use-categories";
+import {
+  useAddCategory,
+  useCategories,
+  useCategoriesProposal,
+  useHarnessCategories,
+} from "../categories/use-categories";
 import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { EmptyState } from "../ui/empty-state";
 import { GatedButton } from "../ui/gated-button";
@@ -28,6 +34,9 @@ import { rowActionsLabel } from "../ui/row-menu-copy";
 import { ScreenFocusContext } from "../ui/screen-focus";
 import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
 import { AddCategoryDialog } from "./add-category-dialog";
+import { CopyHarnessCategoriesAction } from "./copy-harness-categories-action";
+import { HarnessCategoriesSection } from "./harness-categories-section";
+import { PullRequestRow } from "./pull-request-row";
 import { CATEGORIES_PAGE } from "./settings-pages";
 import { SettingsPanel } from "./settings-panel";
 import { SettingsRow } from "./settings-row";
@@ -40,8 +49,11 @@ const SCREEN = CATEGORIES_PAGE.label;
 // Harness, alphabetical, each with its counts.
 export function CategoriesPage() {
   const categories = useCategories();
+  const harnessCategories = useHarnessCategories();
+  const proposal = useCategoriesProposal();
   const add = useAddCategory();
   const [open, setOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
   const [name, setName] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -137,6 +149,8 @@ export function CategoriesPage() {
                   onClick={() => {
                     status.press();
                     void categories.refetch();
+                    void harnessCategories.refetch();
+                    void proposal.refetch();
                   }}
                 >
                   <Icon of={RefreshCw} />
@@ -159,7 +173,11 @@ export function CategoriesPage() {
             {categories.isSuccess && list.length === 0 ? (
               <EmptyState
                 title={NO_CATEGORIES}
-                description={NO_CATEGORIES_SENTENCE}
+                description={
+                  harnessCategories.data?.kind === "listed"
+                    ? NO_CATEGORIES_OR_COPY
+                    : NO_CATEGORIES_SENTENCE
+                }
                 headingLevel={3}
               />
             ) : (
@@ -195,6 +213,27 @@ export function CategoriesPage() {
               ))
             )}
           </SettingsSection>
+          <HarnessCategoriesSection
+            harness={harnessCategories.data}
+            onCopy={() => setCopying(true)}
+          >
+            <PullRequestRow
+              row={
+                proposal.isError
+                  ? { state: "unread" }
+                  : proposal.isPending
+                    ? undefined
+                    : proposal.data
+              }
+              report={status.report}
+            />
+          </HarnessCategoriesSection>
+          {copying ? (
+            <CopyHarnessCategoriesAction
+              report={status.report}
+              onClose={() => setCopying(false)}
+            />
+          ) : null}
           {open ? (
             <AddCategoryDialog
               name={name}

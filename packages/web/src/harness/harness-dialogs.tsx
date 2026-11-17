@@ -6,6 +6,7 @@ import type {
   SemverStep,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { originName } from "../ui/band-copy";
 import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { DiscardDialog } from "./discard-dialog";
@@ -48,29 +49,32 @@ export type LocalDeletionTarget = PrimitiveRef & {
 };
 
 // A null number withdraws a branch with no open request (#1639).
-export type WithdrawTarget = PrimitiveRef & {
+// `name` is the row's Name; the categories list sends none.
+export type WithdrawTarget = Pick<HarnessStageRow, "type" | "name"> & {
   branch: string;
   number: number | null;
 };
 
-// The row's path, Change and previous name, frozen at the press: they pick
-// the dialog's facts and copy. The server reads them again; none is sent.
-export type ReleaseWithdrawalTarget = PrimitiveRef & {
+// The row's path, Change, previous name and merged pull request, frozen at
+// the press: they pick the dialog's facts and copy. The server reads them
+// again; none is sent. `name` is the row's Name; the categories list sends
+// none.
+export type ReleaseWithdrawalTarget = Pick<HarnessStageRow, "type" | "name"> & {
   path: string;
   change: HarnessChange;
   previousName: string | null;
+  mergedRequest: number | null;
 };
 
 // The frozen target plus the open pull requests the latest read found.
-export type ReleaseWithdrawalItem = ReleaseWithdrawalTarget & {
-  openRequests: readonly number[] | null;
-};
+export type ReleaseWithdrawalItem = ReleaseWithdrawalTarget &
+  Pick<HarnessStageRow, "openRequests" | "openByOther">;
 
 type Presses = ReturnType<typeof useHarnessPresses>;
 
 export type HarnessDialogsProps = {
   origin: string;
-  deletionRow: HarnessStageRow | null;
+  deletionRow: (HarnessStageRow & PrimitiveRef) | null;
   deletion: Presses["deletionWrite"];
   onDeletionClose: () => void;
   localDeletion: LocalDeletionTarget | null;
@@ -240,7 +244,10 @@ export function LocalDeletionDialog({
         kind: "local",
         // Both screens read the Harness already; the plain word stands in
         // until that read lands. The host is dropped: owner/repo names it.
-        origin: harness.data?.origin.replace(/^[^/]+\//, "") ?? "the Harness",
+        origin:
+          harness.data === undefined
+            ? "the Harness"
+            : originName(harness.data.origin),
         screen,
         path,
         check: check.isFetching

@@ -17,7 +17,7 @@ export type HarnessObject = PrimitiveRef & { hash: string };
 
 const PROMPT_EXTENSION = ".md";
 
-const PROPOSAL_NAMESPACE = "maestro";
+export const PROPOSAL_NAMESPACE = "maestro";
 
 // A skill name holds no dot, so no prompt branch can clash with a skill branch.
 const PROMPT_BRANCH_PREFIX = "prompt.";

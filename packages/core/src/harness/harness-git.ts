@@ -27,18 +27,21 @@ import {
   proposalBranchLeaf,
 } from "./harness-primitive";
 import {
-  commitPrimitivesOnto,
+  commitSubjectsOnto,
   hashWorkingPrimitive,
   listPrimitivesAt,
   listWorkingPrimitives,
   primitiveOnDisk,
   readAuthors,
+  readListHash,
+  readListProposal,
   readPrimitiveHash,
   readProposalRefs,
   readStagedDifference,
   readWorkingDifferences,
   writePrimitiveInto,
 } from "./harness-primitive-git";
+import { pushListFile } from "./list-file-git";
 import {
   deleteProposalBranch,
   readBranchAuthorship,
@@ -46,15 +49,20 @@ import {
   readUnproposedFiles,
 } from "./proposal-branch-git";
 import { type ProposalKind, proposalTitle } from "./proposal-request";
+import type { ListSubject, ProposalSubject } from "./proposal-subject";
 import { pushesWhereItFetched } from "./push-destination";
 import type {
   BranchAuthorship,
   DefaultBranchWithdrawal,
+  FileAtRef,
   HarnessFacts,
   HarnessFetchOutcome,
   HarnessGitPort,
   HarnessMovementTrees,
   HarnessTag,
+  ListFilePush,
+  ListProposalRefs,
+  ListPushOutcome,
   PromoteSkillOutcome,
   PublishTagOutcome,
   SkillPushOutcome,
@@ -224,12 +232,16 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitivesOnto(root, [{ ref, object }], {
-        treeBase: base,
-        parent: existingTip ?? base,
-        indexDir,
-        message: proposalTitle(ref, kind),
-      });
+      const commit = await commitSubjectsOnto(
+        root,
+        [{ subject: ref, object }],
+        {
+          treeBase: base,
+          parents: [existingTip ?? base],
+          indexDir,
+          message: proposalTitle(ref, kind),
+        },
+      );
       // A save halfway through `git add` mixes two revisions: refuse content
       // that moved, since a pushed branch cannot be taken back.
       if (
@@ -271,12 +283,16 @@ export class HarnessGitAdapter implements HarnessGitPort {
         }
       }
 
-      const commit = await commitPrimitivesOnto(root, [{ ref, object: null }], {
-        treeBase: base,
-        parent: existingTip ?? base,
-        indexDir,
-        message: proposalTitle(ref, "deletion"),
-      });
+      const commit = await commitSubjectsOnto(
+        root,
+        [{ subject: ref, object: null }],
+        {
+          treeBase: base,
+          parents: [existingTip ?? base],
+          indexDir,
+          message: proposalTitle(ref, "deletion"),
+        },
+      );
       // Reappeared since the guard: refuse, a pushed branch cannot be taken back.
       if (await primitiveOnDisk(root, ref)) {
         return "source-changed";
@@ -298,6 +314,15 @@ export class HarnessGitAdapter implements HarnessGitPort {
     });
   }
 
+  async pushListFile(
+    root: string,
+    push: ListFilePush,
+  ): Promise<ListPushOutcome> {
+    return await pushListFile(root, push, {
+      pushLandsWhereItFetched: () => this.pushLandsWhereItFetched(root),
+    });
+  }
+
   async readUnproposedFiles(
     root: string,
     ref: PrimitiveRef,
@@ -315,12 +340,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
   async readAuthoredHere(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
     base: string,
   ): Promise<BranchAuthorship> {
     return await readBranchAuthorship(
       root,
-      ref,
+      subject,
       base,
       await readCommitEmail(root),
     );
@@ -332,12 +357,12 @@ export class HarnessGitAdapter implements HarnessGitPort {
 
   async deleteProposalBranch(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
   ): Promise<"deleted" | "failed"> {
     if (!(await this.pushLandsWhereItFetched(root))) {
       return "failed";
     }
-    return await deleteProposalBranch(root, ref);
+    return await deleteProposalBranch(root, subject);
   }
 
   // Fixed order, so a tree that is several at once always refuses under the
@@ -491,6 +516,13 @@ export class HarnessGitAdapter implements HarnessGitPort {
     return { skill: typed("skill"), prompt: typed("prompt") };
   }
 
+  readListProposal(
+    root: string,
+    subject: ListSubject,
+  ): Promise<ListProposalRefs | null> {
+    return readListProposal(root, subject, REMOTE_HEAD);
+  }
+
   // Takes the exact commit, never `origin/HEAD`: a concurrent fetch can re-point
   // that ref and mix two snapshots of the remote (#579).
   async mergeBaseCommit(
@@ -523,7 +555,34 @@ export class HarnessGitAdapter implements HarnessGitPort {
         });
   }
 
+  async readFileAt(
+    root: string,
+    ref: string,
+    path: string,
+    maxBytes: number,
+  ): Promise<FileAtRef | null> {
+    // `-l` gives the blob's size, so a large file is never loaded.
+    const listing = await this.readOutput(root, [
+      "ls-tree",
+      "-z",
+      "-l",
+      ref,
+      "--",
+      path,
+    ]);
+    if (listing === null) return null;
+    const [meta = "", name] = listing.split("\0")[0]?.split("\t") ?? [];
+    const [, type, hash, size] = meta.split(/\s+/);
+    if (name !== path || type !== "blob" || hash === undefined) {
+      return { kind: "absent" };
+    }
+    if (Number(size) > maxBytes) return { kind: "too-large" };
+    const text = await this.readOutput(root, ["cat-file", "blob", hash]);
+    return text === null ? null : { kind: "text", text };
+  }
+
   readAuthors = readAuthors;
+  readListHash = readListHash;
   readStagedDifference = readStagedDifference;
   writePrimitiveInto = writePrimitiveInto;
 

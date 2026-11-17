@@ -58,7 +58,7 @@ describe("Harness home base", () => {
       await screen.findByRole("heading", { level: 1, name: /harness/i }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText("github.com/fimoklei/agent-harness"),
+      await screen.findByText("fimoklei/agent-harness"),
     ).toBeInTheDocument();
   });
 
@@ -808,7 +808,7 @@ describe("Harness home base", () => {
 
     const band = await band2();
     for (const [label, value] of [
-      ["Origin", "github.com/fimoklei/agent-harness"],
+      ["Origin", "fimoklei/agent-harness"],
       ["Release", "v0.5.0"],
     ]) {
       expect(within(band).getByText(label as string)).toBeInTheDocument();
@@ -856,7 +856,7 @@ describe("Harness home base", () => {
 
     const band = await band2();
     expect(
-      within(band).getByText("github.com/fimoklei/agent-harness"),
+      within(band).getByText("fimoklei/agent-harness"),
     ).toBeInTheDocument();
     expect(within(band).queryByRole("link")).not.toBeInTheDocument();
   });
@@ -1025,7 +1025,7 @@ describe("Harness home base", () => {
       expect(
         await screen.findByText(
           sentence(
-            "This change renames explore to research in github.com/fimoklei/agent-harness.",
+            "This change renames explore to research in fimoklei/agent-harness.",
           ),
         ),
       ).toBeInTheDocument();
@@ -1041,9 +1041,7 @@ describe("Harness home base", () => {
 
       expect(
         await screen.findByText(
-          sentence(
-            "This change adds tdd to github.com/fimoklei/agent-harness.",
-          ),
+          sentence("This change adds tdd to fimoklei/agent-harness."),
         ),
       ).toBeInTheDocument();
     });
@@ -1056,7 +1054,7 @@ describe("Harness home base", () => {
       focusByKeyboard(screen.getByRole("grid"));
 
       const change = await screen.findByText(
-        sentence("This change adds tdd to github.com/fimoklei/agent-harness."),
+        sentence("This change adds tdd to fimoklei/agent-harness."),
       );
       const card = change.parentElement as HTMLElement;
       expect(card.firstElementChild).toHaveTextContent("Not yet proposed");
@@ -1064,7 +1062,7 @@ describe("Harness home base", () => {
         Array.from(card.querySelectorAll("p"), (line) => line.textContent),
       ).toEqual([
         "This skill is not in the next release yet. Select Propose change to send it for review.",
-        "This change adds tdd to github.com/fimoklei/agent-harness.",
+        "This change adds tdd to fimoklei/agent-harness.",
         "Not read yet",
       ]);
     });
@@ -1121,9 +1119,7 @@ describe("Harness home base", () => {
       );
 
       const line = await screen.findByText(
-        sentence(
-          "This change edits code-review in github.com/fimoklei/agent-harness.",
-        ),
+        sentence("This change edits code-review in fimoklei/agent-harness."),
       );
       expect(cardOf(line).textContent).toBe(line.textContent);
     });

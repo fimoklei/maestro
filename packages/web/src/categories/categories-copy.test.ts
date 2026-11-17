@@ -1,3 +1,4 @@
+import type { CopyFacts } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { plainText } from "../ui/phrase";
 import {
@@ -7,31 +8,255 @@ import {
   CATEGORY_NAME_ERRORS,
   CATEGORY_NOT_ADDED,
   CATEGORY_NOT_SET_AFTER_EDIT,
+  COPY_CATEGORIES,
+  COPY_FROM_HARNESS,
+  COPY_HARNESS_CATEGORIES,
+  COPY_MODE_COPY,
+  COPY_ROW_SENTENCE,
   categoriesUnreadable,
   categoryNotSet,
   categoryNotSetAfterImport,
+  copyFailed,
+  copyGroupLegend,
+  copyIntro,
+  copyPreviewFailed,
+  copySkipped,
   countInCategory,
   countWords,
   deleteMoves,
   emptyCategoryDeleted,
+  HARNESS_CATEGORIES,
+  harnessCategoriesCount,
+  harnessCategoriesFaulty,
+  LOADING_CATEGORIES,
   NO_CATEGORIES,
+  NO_CATEGORIES_OR_COPY,
   NO_CATEGORIES_SENTENCE,
   NO_ITEMS,
   nameExistsError,
   notDeleted,
   notRenamed,
   renameHint,
+  replaceWarning,
   setCategoryFor,
+  spelledInYourList,
 } from "./categories-copy";
 
 // Approved sentences, as exact strings.
 describe("Categories copy", () => {
   it("says where categories live, and what the empty list holds", () => {
     expect(CATEGORIES_SENTENCE).toBe(
-      "Categories stay on this computer. Only you see them.",
+      "Your categories are saved on this computer.",
     );
     expect(NO_CATEGORIES).toBe("No categories yet");
     expect(NO_CATEGORIES_SENTENCE).toBe("Categories appear here.");
+    expect(NO_CATEGORIES_OR_COPY).toBe(
+      "Add a category or copy categories from the Harness.",
+    );
+  });
+
+  it.each([
+    [6, "The latest Harness release contains 6 categories."],
+    [1, "The latest Harness release contains 1 category."],
+  ])("counts %i Harness categories", (count, sentence) => {
+    expect(HARNESS_CATEGORIES).toBe("Harness categories");
+    expect(harnessCategoriesCount(count)).toBe(sentence);
+  });
+
+  it("names the release whose categories file contains an error", () => {
+    const notice = harnessCategoriesFaulty("v1.5.0");
+    expect(notice.level).toBe("warning");
+    expect(notice.label).toBe("Couldn't load Harness categories");
+    expect(plainText(notice.message)).toBe(
+      "The categories file in Harness release v1.5.0 contains an error. You can still propose your own categories for review.",
+    );
+  });
+
+  it("offers the copy of the Harness categories in the approved words", () => {
+    expect(COPY_HARNESS_CATEGORIES).toBe("Copy Harness categories");
+    expect(COPY_FROM_HARNESS).toBe("Copy from Harness");
+    expect(COPY_CATEGORIES).toBe("Copy categories");
+    expect(COPY_ROW_SENTENCE).toBe(
+      "Copies the Harness categories into your list.",
+    );
+    expect(COPY_MODE_COPY).toEqual({
+      add: {
+        label: "Add",
+        description:
+          "Adds the categories you don't have and gives each skill or prompt without a category its Harness category.",
+      },
+      replace: {
+        label: "Replace",
+        description:
+          "Deletes the categories only you have. Every skill and prompt gets its Harness category, or none.",
+      },
+    });
+    expect(LOADING_CATEGORIES).toBe("Loading categories…");
+  });
+
+  it.each([
+    [6, "Harness release v1.5.0 has 6 categories."],
+    [1, "Harness release v1.5.0 has 1 category."],
+  ])(
+    "opens the copy dialog on the %i categories of the release",
+    (count, text) => {
+      expect(plainText(copyIntro("v1.5.0", count))).toBe(text);
+    },
+  );
+
+  it.each([
+    [1, "The categories file has 1 entry with an error. It won't be copied."],
+    [2, "The categories file has 2 entries with errors. They won't be copied."],
+  ])("counts %i skipped entries", (count, text) => {
+    expect(copySkipped(count)).toBe(text);
+  });
+
+  it.each([
+    ["added", 2, "Added · 2"],
+    ["deleted", 1, "Deleted · 1"],
+    ["unchanged", 0, "Unchanged · 0"],
+  ] as const)("names the %s group with its count", (group, count, legend) => {
+    expect(copyGroupLegend(group, count)).toBe(legend);
+  });
+
+  it("states how the operator spelled a name Replace respells", () => {
+    expect(plainText(spelledInYourList("code review"))).toBe(
+      "Spelled code review in your list",
+    );
+  });
+
+  const UNDO =
+    "You can't undo Replace. Select Add to keep everything you have.";
+  const taken = (facts: Partial<CopyFacts>): CopyFacts => ({
+    added: [],
+    deleted: [],
+    unchanged: [],
+    respelled: [],
+    moved: { skills: 0, prompts: 0 },
+    uncategorised: { skills: 0, prompts: 0 },
+    ...facts,
+  });
+
+  it.each<[string, Partial<CopyFacts>, string, string]>([
+    [
+      "the worked example",
+      {
+        deleted: ["Drafts"],
+        moved: { skills: 2, prompts: 0 },
+        uncategorised: { skills: 0, prompts: 1 },
+      },
+      "Replace deletes 1 of your categories",
+      `Drafts isn't in the Harness categories. 2 skills will move to another category, and 1 prompt will have no category. They stay in the Harness. ${UNDO}`,
+    ],
+    [
+      "two empty deleted categories",
+      { deleted: ["Drafts", "Research"] },
+      "Replace deletes 2 of your categories",
+      `Drafts and Research aren't in the Harness categories. No skills or prompts are in these categories. ${UNDO}`,
+    ],
+    [
+      "one empty deleted category",
+      { deleted: ["Drafts"] },
+      "Replace deletes 1 of your categories",
+      `Drafts isn't in the Harness categories. No skills or prompts are in Drafts. ${UNDO}`,
+    ],
+    [
+      "three deleted categories",
+      {
+        deleted: ["Drafts", "Ideas", "Research"],
+        uncategorised: { skills: 0, prompts: 1 },
+      },
+      "Replace deletes 3 of your categories",
+      `Drafts, Ideas and Research aren't in the Harness categories. 1 prompt will have no category. It stays in the Harness. ${UNDO}`,
+    ],
+    [
+      "five deleted categories",
+      {
+        deleted: ["Drafts", "Ideas", "Notes", "Research", "Tools"],
+        uncategorised: { skills: 3, prompts: 2 },
+      },
+      "Replace deletes 5 of your categories",
+      `Drafts, Ideas and 3 more aren't in the Harness categories. 3 skills and 2 prompts will have no category. They stay in the Harness. ${UNDO}`,
+    ],
+    [
+      "moves and clears without a deleted category",
+      {
+        moved: { skills: 1, prompts: 0 },
+        uncategorised: { skills: 0, prompts: 2 },
+      },
+      "Replace changes the category of 1 skill and 2 prompts",
+      `1 skill will move to another category, and 2 prompts will have no category. They stay in the Harness. ${UNDO}`,
+    ],
+    [
+      "one move alone",
+      { moved: { skills: 1, prompts: 0 } },
+      "Replace changes the category of 1 skill",
+      `1 skill will move to another category. It stays in the Harness. ${UNDO}`,
+    ],
+    [
+      "a skill moved and a skill cleared",
+      {
+        moved: { skills: 1, prompts: 0 },
+        uncategorised: { skills: 1, prompts: 0 },
+      },
+      "Replace changes the category of 2 skills",
+      `1 skill will move to another category, and 1 skill will have no category. They stay in the Harness. ${UNDO}`,
+    ],
+  ])("warns what Replace takes: %s", (_, facts, label, message) => {
+    const notice = replaceWarning(taken(facts));
+    expect(notice?.level).toBe("warning");
+    expect(notice?.label).toBe(label);
+    expect(notice === null ? null : plainText(notice.message)).toBe(message);
+  });
+
+  it.each<[string, Partial<CopyFacts>]>([
+    ["only adds", { added: ["Planning"] }],
+    ["the lists are equal", { unchanged: ["Review"] }],
+    [
+      "only respells",
+      {
+        unchanged: ["Code Review"],
+        respelled: [{ name: "Code Review", was: "code review" }],
+      },
+    ],
+  ])("warns of nothing when Replace %s", (_, facts) => {
+    expect(replaceWarning(taken(facts))).toBeNull();
+  });
+
+  it.each([
+    [
+      "no-harness-categories",
+      "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
+    ],
+    [
+      "harness-categories-unread",
+      "Maestro couldn't read the latest Harness release. Select Close, then select Copy from Harness to try again.",
+    ],
+    [null, "Select Close, then select Copy from Harness to try again."],
+  ])("states a copy dialog with nothing to show: %s", (code, message) => {
+    expect(copyPreviewFailed(code)).toEqual({
+      level: "error",
+      label: "Couldn't load Harness categories",
+      message,
+    });
+  });
+
+  it.each([
+    [
+      "no-harness-categories",
+      "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
+    ],
+    [
+      "harness-categories-unread",
+      "Maestro couldn't read the latest Harness release. Select Copy categories to try again.",
+    ],
+    [null, "Select Copy categories to try again."],
+  ])("states why Copy categories did not land: %s", (code, message) => {
+    expect(copyFailed(code)).toEqual({
+      level: "error",
+      label: "Couldn't copy Harness categories",
+      message,
+    });
   });
 
   it.each([

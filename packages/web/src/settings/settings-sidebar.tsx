@@ -3,7 +3,7 @@ import { cn } from "../ui/cn";
 import { Icon } from "../ui/icon";
 import { NavItem } from "../ui/nav-item";
 import { BACK_TO_APP, PERSONAL, SETTINGS } from "./settings-copy";
-import type { SettingsPage } from "./settings-pages";
+import type { SettingsPage, SettingsPageSignal } from "./settings-pages";
 
 // Inside Settings the cockpit's sidebar is replaced, not extended (#995):
 // Back to app, then the pages under the heading Personal. Presentational: the
@@ -12,11 +12,13 @@ import type { SettingsPage } from "./settings-pages";
 export function SettingsSidebar({
   pages,
   active,
+  signal,
   onNavigate,
   onBack,
   className,
 }: {
   pages: readonly SettingsPage[];
+  signal: SettingsPageSignal;
   /** The open page's path. */
   active: string;
   onNavigate: (to: string) => void;
@@ -46,6 +48,7 @@ export function SettingsSidebar({
               key={page.to}
               label={page.label}
               active={page.to === active}
+              signal={signal?.to === page.to ? signal.text : null}
               onClick={() => onNavigate(page.to)}
             />
           ))}

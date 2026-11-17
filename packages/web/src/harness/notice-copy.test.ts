@@ -280,7 +280,12 @@ const SURFACES: Surface[] = [
   ...byType(
     "releaseWithdrawalNotice",
     (error, type) =>
-      releaseWithdrawalNotice(error, { type, name: "tdd", openRequests: null }),
+      releaseWithdrawalNotice(error, {
+        type,
+        name: "tdd",
+        openRequests: null,
+        openByOther: false,
+      }),
     codes<WithdrawFromReleaseError>({
       "not-configured": true,
       "invalid-skill": true,
@@ -839,29 +844,61 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
       "Your skill folder matches its copy in the next release.",
     );
   });
+
+  it("states only GitHub's refusal when the categories pull request stays open", () => {
+    expect(
+      readNotice(
+        withdrawNotice(refusal("close-failed"), {
+          type: "categories",
+          name: "Categories",
+          branch: "maestro/list.categories",
+          number: 45,
+        }),
+      )?.detail,
+    ).toBe("GitHub did not close the pull request.");
+    expect(notice("close-failed")?.detail).toBe(
+      "Your skill folder now matches its copy in the next release. GitHub did not close the pull request.",
+    );
+  });
 });
 
 describe("Withdraw from release while a proposal is open", () => {
+  const skillOpen = (openRequests: number[] | null) => ({
+    type: "skill" as const,
+    openRequests,
+    openByOther: false,
+  });
+
   it("names the one pull request to merge", () => {
-    expect(openProposalCause([52])).toBe(
+    expect(openProposalCause(skillOpen([52]))).toBe(
       "Merge pull request #52 on GitHub, or select Withdraw proposal.",
     );
   });
 
   it("names every pull request to merge", () => {
-    expect(openProposalCause([45, 51, 52])).toBe(
+    expect(openProposalCause(skillOpen([45, 51, 52]))).toBe(
       "Merge pull requests #45, #51 and #52 on GitHub, or select Withdraw proposal.",
     );
   });
 
+  // Withdraw proposal closes one categories pull request, never several.
+  it("asks to merge or close several own categories pull requests", () => {
+    expect(
+      openProposalCause({ ...skillOpen([45, 46]), type: "categories" }),
+    ).toBe("Merge or close pull requests #45 and #46 on GitHub.");
+    expect(openProposalCause({ ...skillOpen([45]), type: "categories" })).toBe(
+      "Merge pull request #45 on GitHub, or select Withdraw proposal.",
+    );
+  });
+
   it("sends an unknown read to Re-read Harness", () => {
-    expect(openProposalCause(null)).toBe(
+    expect(openProposalCause(skillOpen(null))).toBe(
       "Select Re-read Harness to read GitHub again.",
     );
   });
 
   it("states no cause while no pull request is open", () => {
-    expect(openProposalCause([])).toBeNull();
+    expect(openProposalCause(skillOpen([]))).toBeNull();
   });
 
   it("refuses a withdrawal while the pull request read is unknown", () => {
@@ -871,6 +908,7 @@ describe("Withdraw from release while a proposal is open", () => {
           type: "skill",
           name: "tdd",
           openRequests: null,
+          openByOther: false,
         }),
       ),
     ).toEqual({
@@ -890,6 +928,7 @@ describe("Withdraw from release while a proposal is open", () => {
           type: "skill",
           name: "tdd",
           openRequests: [45, 52],
+          openByOther: false,
         }),
       ),
     ).toEqual({
@@ -908,6 +947,7 @@ describe("Withdraw from release refused on GitHub (#1729)", () => {
         type: "skill",
         name: "tdd",
         openRequests: [],
+        openByOther: false,
       }),
     );
 

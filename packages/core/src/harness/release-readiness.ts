@@ -30,7 +30,10 @@ type ReleaseReadinessResult =
 
 // A release nobody can know is not a first release (#519).
 export const readReleaseReadiness = async (
-  git: Pick<HarnessGitPort, "readPrimitives" | "readAuthors" | "readRootFiles">,
+  git: Pick<
+    HarnessGitPort,
+    "readPrimitives" | "readListHash" | "readAuthors" | "readRootFiles"
+  >,
   root: string,
   facts: HarnessFacts,
   latest: LatestRelease,

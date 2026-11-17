@@ -1,5 +1,6 @@
 import { useIsFetching } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { HttpError } from "../api/http";
 import { useCategories } from "../categories/use-categories";
 import { useCategoryParam } from "../categories/use-category-param";
@@ -9,6 +10,7 @@ import { harnessHeadings } from "../harness/notice-copy";
 import { useDeletionCheck, useHarness } from "../harness/use-harness";
 import { cloneReading } from "../inventory/clone-reading";
 import { INVENTORY_NOT_READ } from "../inventory/inventory-copy";
+import { inventoryArrival } from "../inventory/inventory-views";
 import { useInventoryOf } from "../inventory/use-inventory";
 import { useRegistry } from "../registry/use-registry";
 import { useRereadInventory } from "../shell/use-reread-inventory";
@@ -39,6 +41,9 @@ export function SkillsPanel() {
   const categories = useCategories();
   const check = useDeletionCheck();
   const initialCategory = useCategoryParam();
+  // Read on arrival only; dismissing it forgets it.
+  const { state } = useLocation();
+  const [arrival, setArrival] = useState(() => inventoryArrival(state));
   // Drift is left out, as on Deploy-state: its apm run is slow, so the rows
   // never wait for it; the Status cell shows its own skeleton meanwhile. The
   // deletion check is left out too: Delete skill states its own wait.
@@ -84,6 +89,11 @@ export function SkillsPanel() {
         inventory.isFetching || registry.isFetching || readingDeployState
       }
       onReread={invalidate}
+      arrival={
+        arrival === null
+          ? null
+          : { notice: arrival, onDismiss: () => setArrival(null) }
+      }
       onOpenHarness={() => navigate("/harness")}
       // Deploy-state is the index route; it opens the row it is sent (#1065).
       onShowTarget={(rowId) => navigate("/", { state: { openTarget: rowId } })}

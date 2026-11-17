@@ -318,6 +318,7 @@ const renderSkillsRow = () => {
       failure={null}
       reading={false}
       onReread={() => {}}
+      arrival={null}
       clone={{ kind: "checking" }}
       onDeleted={() => {}}
     />,
@@ -390,6 +391,10 @@ const TDD = {
   pendingRelease: null,
   description: "Test first.",
 };
+
+// The Harness read the Skills band states its facts from.
+const harnessRead = (input: RequestInfo | URL): Response | null =>
+  String(input) === "/api/harness" ? jsonResponse(RELEASED) : null;
 
 const ON_TABLE_SCREEN: Row[] = [
   {
@@ -565,6 +570,7 @@ const ON_TABLE_SCREEN: Row[] = [
         vi.fn(
           async (input: RequestInfo | URL) =>
             noCategories(input) ??
+            harnessRead(input) ??
             (String(input).startsWith("/api/registry")
               ? jsonResponse({ repos: [] })
               : jsonResponse({ primitives: [], unreadTypes: [] })),
@@ -583,6 +589,7 @@ const ON_TABLE_SCREEN: Row[] = [
           vi.fn(
             async (input: RequestInfo | URL) =>
               noCategories(input) ??
+              harnessRead(input) ??
               (String(input).startsWith("/api/registry")
                 ? jsonResponse({ repos: [] })
                 : jsonResponse({ primitives: [], unreadTypes: [] })),
@@ -635,6 +642,7 @@ const ON_TABLE_SCREEN: Row[] = [
             failure={null}
             reading={false}
             onReread={() => {}}
+            arrival={null}
             clone={{ kind: "checking" }}
             onDeleted={() => {}}
           />,

@@ -1,13 +1,20 @@
 // The one diff between the latest release and the default branch. The Pending
 // release stage, the release plan and the empty-delta refusal all read it, so
 // they never disagree (#845).
-import { diffPrimitives, type HarnessMovement } from "./harness-movements";
-import { type HarnessObject, primitiveKey } from "./harness-primitive";
+import {
+  diffListFile,
+  diffPrimitives,
+  type HarnessMovement,
+  type ListMovement,
+  type SubjectMovement,
+} from "./harness-movements";
+import type { HarnessObject } from "./harness-primitive";
 import type { HarnessChange } from "./harness-stages";
+import { CATEGORIES_SUBJECT, subjectKey } from "./proposal-subject";
 import type { HarnessGitPort, HarnessTag } from "./read-harness-state";
 
 /** A movement with the Change its Pending release row shows. */
-export type PendingMovement = HarnessMovement & {
+export type PendingMovement = SubjectMovement & {
   change: HarnessChange;
   author: string | null;
 };
@@ -25,11 +32,38 @@ export type ReleaseDelta = {
   current: HarnessObject[];
 };
 
+type DeltaGit = Pick<
+  HarnessGitPort,
+  "readPrimitives" | "readListHash" | "readAuthors"
+>;
+
+/**
+ * The categories file's part of the diff: one change at most. Empty where it
+ * did not move; null where either side could not be read.
+ */
+export const readListMovements = async (
+  git: Pick<HarnessGitPort, "readListHash">,
+  root: string,
+  released: HarnessTag | null,
+  head: string,
+): Promise<ListMovement[] | null> => {
+  const current = await git.readListHash(root, head, CATEGORIES_SUBJECT);
+  const previous =
+    released === null
+      ? { hash: null }
+      : await git.readListHash(root, released.commit, CATEGORIES_SUBJECT);
+  if (current === null || previous === null) {
+    return null;
+  }
+  const moved = diffListFile(CATEGORIES_SUBJECT, previous.hash, current.hash);
+  return moved === null ? [] : [moved];
+};
+
 // Null where either side could not be read: a delta nobody could compute is
 // never empty. Content, not reachability: a tag off the default branch
 // compares like any other.
 export const readReleaseDelta = async (
-  git: Pick<HarnessGitPort, "readPrimitives" | "readAuthors">,
+  git: DeltaGit,
   root: string,
   released: HarnessTag | null,
   head: string,
@@ -43,13 +77,21 @@ export const readReleaseDelta = async (
   if (previous === null) {
     return null;
   }
-  const movements = diffPrimitives(previous, current);
+  // After every primitive.
+  const list = await readListMovements(git, root, released, head);
+  if (list === null) {
+    return null;
+  }
+  const movements: SubjectMovement[] = [
+    ...diffPrimitives(previous, current),
+    ...list,
+  ];
 
   const authored = await git.readAuthors(root, head, movements);
-  // A primitive the default branch never saw has its author on the release ref.
+  // A subject the default branch never saw has its author on the release ref.
   const orphaned = movements.filter(
     (movement) =>
-      movement.kind === "removed" && authored[primitiveKey(movement)] == null,
+      movement.kind === "removed" && authored[subjectKey(movement)] == null,
   );
   const atRelease =
     released !== null && orphaned.length > 0
@@ -62,8 +104,8 @@ export const readReleaseDelta = async (
       ...movement,
       change: RELEASE_CHANGE[movement.kind],
       author:
-        authored[primitiveKey(movement)] ??
-        atRelease[primitiveKey(movement)] ??
+        authored[subjectKey(movement)] ??
+        atRelease[subjectKey(movement)] ??
         null,
     })),
   };

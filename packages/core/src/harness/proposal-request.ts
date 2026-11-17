@@ -81,7 +81,13 @@ const proposalText = (
 });
 
 export type OriginFacts =
-  | { ok: true; origin: GitOrigin; base: string; head: string | null }
+  | {
+      ok: true;
+      origin: GitOrigin;
+      base: string;
+      head: string | null;
+      tags: HarnessFacts["tags"];
+    }
   | { ok: false; error: "no-usable-origin" | "no-answer" };
 
 export const readOriginFacts = async (
@@ -102,10 +108,11 @@ export const readOriginFacts = async (
     origin,
     base: facts.defaultBranch,
     head: facts.defaultBranchCommit,
+    tags: facts.tags,
   };
 };
 
-export const openProposals = (
+const openProposals = (
   requests: ReviewRequest[],
   target: ProposalTarget,
 ): ReviewRequest[] =>

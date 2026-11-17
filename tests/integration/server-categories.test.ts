@@ -2,7 +2,11 @@
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CategoryList, UseCasePorts } from "@maestro/core";
+import type {
+  CategoryList,
+  HarnessCategories,
+  UseCasePorts,
+} from "@maestro/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { unreachable } from "../helpers/in-memory-app";
 import { nodeApp } from "../helpers/node-app";
@@ -18,8 +22,9 @@ describe("categories on a real filesystem", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  // A fresh composition each call, as a restart builds one.
-  const startMaestro = async () => {
+  // A fresh composition each call, as a restart builds one. `released`: the
+  // categories file of release v1.0.0, which holds no skill or prompt.
+  const startMaestro = async (released: string | null = null) => {
     const harness = join(dir, "harness");
     // Not released yet: `tdd` sits in the Working harness only.
     await mkdir(join(harness, ".apm", "skills", "tdd"), { recursive: true });
@@ -36,7 +41,13 @@ describe("categories on a real filesystem", () => {
               host: "github.com",
               ownerRepo: "fimoklei/agent-harness",
             }),
-            readTags: async () => [],
+            readTags: async () =>
+              released === null ? [] : [{ name: "v1.0.0", commit: "c1" }],
+            readFileAt: async () =>
+              released === null
+                ? { kind: "absent" }
+                : { kind: "text", text: released },
+            readPrimitivesAtTag: async () => [],
           }),
         },
       },
@@ -64,6 +75,56 @@ describe("categories on a real filesystem", () => {
       ],
       assignments: [],
     } satisfies CategoryList);
+  });
+
+  it("keeps a copy of the Harness categories after a restart", async () => {
+    const released = [
+      "version: 1",
+      "categories: [Planning, Review]",
+      "assignments:",
+      "  - { type: skill, name: tdd, category: Planning }",
+      "",
+    ].join("\n");
+    const before = await startMaestro(released);
+    const copied = await before.request("/api/categories/harness/copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: "add" }),
+    });
+    expect(copied.status).toBe(200);
+
+    const after = await startMaestro();
+    const res = await after.request("/api/categories");
+
+    expect(await res.json()).toEqual({
+      categories: [
+        { name: "Planning", skills: 1, prompts: 0 },
+        { name: "Review", skills: 0, prompts: 0 },
+      ],
+      assignments: [{ type: "skill", name: "tdd", category: "Planning" }],
+    } satisfies CategoryList);
+  });
+
+  it("keeps the Harness categories the operator last saw after a restart", async () => {
+    const released =
+      "version: 1\ncategories: [Planning, Review]\nassignments: []\n";
+    const before = await startMaestro(released);
+    const opened = await before.request("/api/categories/harness/preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(opened.status).toBe(200);
+
+    const after = await startMaestro(released);
+    const res = await after.request("/api/categories/harness");
+
+    expect(await res.json()).toEqual({
+      kind: "listed",
+      tag: "v1.0.0",
+      count: 2,
+      changed: false,
+    } satisfies HarnessCategories);
   });
 
   it("keeps a skill's category after a restart", async () => {

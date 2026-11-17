@@ -130,6 +130,7 @@ const baseProps: Props = {
   failure: null,
   reading: false,
   onReread: () => {},
+  arrival: null,
   clone: { kind: "checking" },
   onDeleted: () => {},
 };
@@ -596,7 +597,7 @@ describe("SkillsView — band 2 facts", () => {
       />,
     );
     expect(facts()).toEqual([
-      "Origin github.com/acme/harness",
+      "Origin acme/harness",
       "Release Not released yet",
       "Skills 2",
     ]);

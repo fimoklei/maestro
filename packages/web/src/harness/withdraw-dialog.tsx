@@ -1,8 +1,9 @@
-import type { HarnessPrimitiveType } from "@maestro/core";
+import type { HarnessStageRow } from "@maestro/core";
 import { BRANCH_FACT } from "../ui/band-copy";
 import { WITHDRAW_PROPOSAL } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import {
+  listWithdrawBody,
   PULL_REQUEST_FACT,
   UNPROPOSED_UNKNOWN_NOTICE,
   unproposedNotice,
@@ -32,7 +33,7 @@ export function WithdrawDialog({
   withdrawing,
   withdrawError,
 }: {
-  type: HarnessPrimitiveType;
+  type: HarnessStageRow["type"];
   name: string;
   branch: string;
   // Null where no request is open: there is nothing to close.
@@ -56,7 +57,11 @@ export function WithdrawDialog({
       }}
       running={withdrawing}
       failure={withdrawError}
-      changes={withdrawBody(type, number !== null)}
+      changes={
+        type === "categories"
+          ? listWithdrawBody(number)
+          : withdrawBody(type, number !== null)
+      }
       stays={null}
       facts={[
         { label: BRANCH_FACT, value: branch },

@@ -8,6 +8,7 @@ import type {
   BatchRequest,
   HarnessChange,
   HarnessPrimitiveType,
+  HarnessStageRow,
   HarnessState,
   ImportPromptCheck,
   ImportPromptsAnswer,
@@ -360,6 +361,15 @@ export function useProposeBatch(onItem: (outcome: BatchItemOutcome) => void) {
 // read before closing or reopening anything (#827).
 type ProposalAction = "create" | "reopen" | "withdraw";
 
+/** What a proposal press names: a primitive, or the categories list, which has no name. */
+export type ProposalTarget = PrimitiveRef | { type: "categories" };
+
+export const proposalTargetOf = ({
+  type,
+  name,
+}: Pick<HarnessStageRow, "type" | "name">): ProposalTarget =>
+  type === "categories" ? { type } : { type, name };
+
 export function useProposalAction() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -369,7 +379,7 @@ export function useProposalAction() {
     }: {
       action: ProposalAction;
       number?: number | null;
-    } & PrimitiveRef) =>
+    } & ProposalTarget) =>
       requestJson<{ ok: true }>(`/api/harness/proposal/${action}`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -465,13 +475,13 @@ export function useDiscardChange() {
 
 // The token the server rebuilds at the press, read when a withdrawal from
 // release opens its confirmation.
-export function useReleaseWithdrawalCheck(ref: PrimitiveRef) {
+export function useReleaseWithdrawalCheck(ref: ProposalTarget) {
   return useQuery({
     queryKey: [
       "harness",
       "release-withdrawal-check",
       ref.type,
-      ref.name,
+      ref.type === "categories" ? null : ref.name,
     ] as const,
     queryFn: () =>
       requestJson<{ confirmation: string }>(
@@ -488,7 +498,7 @@ export function useReleaseWithdrawalCheck(ref: PrimitiveRef) {
 export function useWithdrawFromRelease() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (request: PrimitiveRef & { confirmation: string }) =>
+    mutationFn: (request: ProposalTarget & { confirmation: string }) =>
       requestJson<{ name: string }>("/api/harness/release/withdraw", {
         method: "POST",
         body: JSON.stringify(request),

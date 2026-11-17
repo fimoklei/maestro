@@ -2,6 +2,7 @@ import type { InventoryPrimitive } from "@maestro/core";
 import { MessageSquare, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { Icon } from "../ui/icon";
+import type { NoticeContent } from "../ui/notice";
 
 // The Inventory views. Each names one primitive type of the Inventory. A view
 // holds no screen, so the sidebar, routes and landings read this list without
@@ -47,3 +48,18 @@ export const inventoryPathFor = (type: InventoryPrimitive["type"]): string =>
 
 /** The route the connect gate and the fallback open. */
 export const FIRST_INVENTORY_PATH = inventoryPathFor(FIRST_INVENTORY_VIEW.type);
+
+/** What a screen of the Inventory is handed on arrival from the Connect gate. */
+export type InventoryArrival = {
+  /** The copy of the Harness categories that Continue ran, refused; null for none. */
+  categoriesNotCopied: NoticeContent | null;
+};
+
+/**
+ * The arrival state, read once; anything else reads as no arrival. The cast
+ * holds because only the Connect gate sets this key, typed as InventoryArrival.
+ */
+export const inventoryArrival = (state: unknown): NoticeContent | null =>
+  typeof state === "object" && state !== null && "categoriesNotCopied" in state
+    ? ((state as InventoryArrival).categoriesNotCopied ?? null)
+    : null;

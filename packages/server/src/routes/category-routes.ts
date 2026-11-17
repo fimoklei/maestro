@@ -1,12 +1,23 @@
-import type { CategoryResult } from "@maestro/core";
+import type {
+  CategoriesProposalError,
+  CategoryResult,
+  HarnessCategoriesResult,
+} from "@maestro/core";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../app-deps";
-import { categoryErrorResponses } from "../error-responses";
+import {
+  categoriesProposalErrorResponses,
+  categoryErrorResponses,
+} from "../error-responses";
 import {
   ADD_CATEGORY_BODY,
   ASSIGN_CATEGORY_BODY,
   addCategoryBodySchema,
   assignCategoryBodySchema,
+  CATEGORIES_PROPOSAL_BODY,
+  COPY_CATEGORIES_BODY,
+  categoriesProposalBodySchema,
+  copyCategoriesBodySchema,
   DELETE_CATEGORY_BODY,
   deleteCategoryBodySchema,
   parseBody,
@@ -14,7 +25,10 @@ import {
   renameCategoryBodySchema,
 } from "../request-bodies";
 
-type Deps = Pick<AppDeps, "categories">;
+type Deps = Pick<AppDeps, "categories" | "categoriesProposal">;
+
+const refuse = (c: Context, error: CategoriesProposalError) =>
+  c.json({ error }, categoriesProposalErrorResponses[error].status);
 
 // Every route answers the whole list, so the cockpit replaces its cache from it.
 const respond = (c: Context, result: CategoryResult) => {
@@ -26,10 +40,70 @@ const respond = (c: Context, result: CategoryResult) => {
   return c.json(refusal, categoryErrorResponses[result.error].status);
 };
 
+const respondHarness = (c: Context, result: HarnessCategoriesResult) =>
+  result.ok
+    ? c.json(result.harness)
+    : c.json(
+        { error: result.error },
+        categoryErrorResponses[result.error].status,
+      );
+
 export function registerCategoryRoutes(app: Hono, deps: Deps) {
   app.get("/api/categories", async (c) =>
     respond(c, await deps.categories.read()),
   );
+
+  app.get("/api/categories/harness", async (c) =>
+    respondHarness(c, await deps.categories.readHarness()),
+  );
+
+  // The Connect gate's read: offering the copy records the release as seen.
+  app.post("/api/categories/harness/seen", async (c) =>
+    respondHarness(c, await deps.categories.markHarnessSeen()),
+  );
+
+  app.get("/api/categories/proposal", async (c) => {
+    const result = await deps.categoriesProposal.read();
+    return result.ok ? c.json(result.row) : refuse(c, result.error);
+  });
+
+  app.get("/api/categories/proposal/preview", async (c) => {
+    const result = await deps.categoriesProposal.preview();
+    return result.ok ? c.json(result.preview) : refuse(c, result.error);
+  });
+
+  // Takes only the preview the dialog showed: the server reads the list and
+  // rechecks every refusal itself.
+  app.post("/api/categories/proposal", async (c) => {
+    const body = await parseBody(
+      c,
+      categoriesProposalBodySchema,
+      CATEGORIES_PROPOSAL_BODY,
+    );
+    if (!body.ok) return body.response;
+    const result = await deps.categoriesProposal.submit(body.data.previewed);
+    return result.ok
+      ? c.json({ pullRequest: result.pullRequest })
+      : refuse(c, result.error);
+  });
+
+  // A POST, as opening the copy dialog also records what the operator saw (#1907).
+  app.post("/api/categories/harness/preview", async (c) => {
+    const result = await deps.categories.previewCopy();
+    if (result.ok) return c.json(result.preview);
+    const { ok: _ok, ...refusal } = result;
+    return c.json(refusal, categoryErrorResponses[result.error].status);
+  });
+
+  app.post("/api/categories/harness/copy", async (c) => {
+    const body = await parseBody(
+      c,
+      copyCategoriesBodySchema,
+      COPY_CATEGORIES_BODY,
+    );
+    if (!body.ok) return body.response;
+    return respond(c, await deps.categories.copyFromHarness(body.data.mode));
+  });
 
   app.post("/api/categories", async (c) => {
     const body = await parseBody(c, addCategoryBodySchema, ADD_CATEGORY_BODY);

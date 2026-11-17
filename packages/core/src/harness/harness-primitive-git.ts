@@ -1,5 +1,6 @@
 // The git steps that differ by primitive type: a skill is a folder (a tree),
-// a prompt one file (a blob). Nothing leaves as stdout or stderr.
+// a prompt one file (a blob), as is the categories list. Nothing leaves as
+// stdout or stderr.
 import { execFile } from "node:child_process";
 import { access, lstat, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -17,13 +18,21 @@ import {
   parseProposalBranch,
   primitiveDir,
   primitiveEntry,
-  primitiveKey,
   primitiveObject,
   primitivePath,
   primitivePathspec,
 } from "./harness-primitive";
 import { readBranchAuthorship, readCommitEmail } from "./proposal-branch-git";
-import type { HarnessPromoteRef } from "./read-harness-state";
+import {
+  type ListSubject,
+  type ProposalSubject,
+  subjectBranchLeaf,
+  subjectKey,
+  subjectObject,
+  subjectPath,
+  subjectPathspec,
+} from "./proposal-subject";
+import type { HarnessPromoteRef, ListProposalRefs } from "./read-harness-state";
 
 const run = promisify(execFile);
 
@@ -271,13 +280,13 @@ const readObjectAt = async (
   return { object: mode && hash ? { hash, mode } : null };
 };
 
-/** The primitive's object on a commit; `object: null` where it lacks it, null on a failed read. */
-export const readPrimitiveObject = (
+/** The subject's object on a commit; `object: null` where it lacks it, null on a failed read. */
+export const readSubjectObject = (
   root: string,
   commit: string,
-  ref: PrimitiveRef,
+  subject: ProposalSubject,
 ): Promise<{ object: PrimitiveObject | null } | null> =>
-  readObjectAt(root, commit, primitivePath(ref));
+  readObjectAt(root, commit, subjectPath(subject));
 
 /** The primitive's hash on a ref, or null where the ref lacks it. */
 export const readPrimitiveHash = (
@@ -287,29 +296,34 @@ export const readPrimitiveHash = (
 ): Promise<string | null> =>
   runGitText(root, ["rev-parse", `${treeish}:${primitivePath(ref)}`]);
 
-/** One primitive's content in a new commit; `object: null` removes it. */
-export type PrimitiveChange = {
-  ref: PrimitiveRef;
+/** One subject's content in a new commit; `object: null` removes it. */
+export type SubjectChange = {
+  subject: ProposalSubject;
   object: PrimitiveObject | null;
 };
 
 // Each base copy is dropped first: `read-tree --prefix` refuses a path the
-// index already holds. `parent` is the proposal branch's tip when one exists,
-// so the push fast-forwards (#578).
-export async function commitPrimitivesOnto(
+// index already holds. `parents` leads with the proposal branch's tip when one
+// exists, so the push fast-forwards (#578).
+export async function commitSubjectsOnto(
   root: string,
-  changes: readonly PrimitiveChange[],
+  changes: readonly SubjectChange[],
   {
     treeBase,
-    parent,
+    parents,
     indexDir,
     message,
-  }: { treeBase: string; parent: string; indexDir: string; message: string },
+  }: {
+    treeBase: string;
+    parents: readonly string[];
+    indexDir: string;
+    message: string;
+  },
 ): Promise<string> {
   const options = indexOptions(join(indexDir, "promote"));
   await run("git", ["-C", root, "read-tree", treeBase], options);
   for (const change of changes) {
-    const path = primitivePath(change.ref);
+    const path = subjectPath(change.subject);
     await run(
       "git",
       [
@@ -328,7 +342,7 @@ export async function commitPrimitivesOnto(
     );
     if (change.object !== null) {
       const add =
-        primitiveObject(change.ref.type) === "tree"
+        subjectObject(change.subject) === "tree"
           ? ["read-tree", `--prefix=${path}/`, change.object.hash]
           : [
               "update-index",
@@ -347,7 +361,15 @@ export async function commitPrimitivesOnto(
   // No author, no signing flag: the author's own git config applies (#574).
   const { stdout: commit } = await run(
     "git",
-    ["-C", root, "commit-tree", tree.trim(), "-p", parent, "-m", message],
+    [
+      "-C",
+      root,
+      "commit-tree",
+      tree.trim(),
+      ...parents.flatMap((parent) => ["-p", parent]),
+      "-m",
+      message,
+    ],
     options,
   );
   return commit.trim();
@@ -363,7 +385,7 @@ const emptyByType = <T>(): Record<HarnessPrimitiveType, Record<string, T>> => ({
 // never proof.
 const hasLanded = async (
   root: string,
-  ref: PrimitiveRef,
+  ref: ProposalSubject,
   branch: string,
   tree: string | null,
   base: string,
@@ -382,13 +404,13 @@ const hasLanded = async (
     "--full-history",
     `${branch}..${base}`,
     "--",
-    primitivePathspec(ref),
+    subjectPathspec(ref),
   ]);
   if (commits === null) {
     return false;
   }
   for (const commit of commits.split("\n")) {
-    const read = await readObjectAt(root, commit, primitivePath(ref));
+    const read = await readObjectAt(root, commit, subjectPath(ref));
     if (read !== null && (read.object?.hash ?? null) === tree) {
       return true;
     }
@@ -432,26 +454,73 @@ export async function readProposalRefs(
   return refs;
 }
 
-// The newest commit on `ref` that touched each primitive, keyed by `primitiveKey`.
+// A list's branch is read apart: no primitive family takes its leaf.
+export async function readListProposal(
+  root: string,
+  subject: ListSubject,
+  base: string,
+): Promise<ListProposalRefs | null> {
+  const remote = await readSubjectObject(root, base, subject);
+  if (remote === null) {
+    return null;
+  }
+  const branch = `${PROPOSAL_REFS}/${subjectBranchLeaf(subject)}`;
+  const tip = await runGit(root, [
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `${branch}^{commit}`,
+  ]);
+  if (!tip.ok) {
+    return { remote: remote.object?.hash ?? null, promote: null };
+  }
+  const tree = (await readSubjectObject(root, branch, subject))?.object ?? null;
+  return {
+    remote: remote.object?.hash ?? null,
+    promote: {
+      tree: tree?.hash ?? null,
+      commit: tip.stdout,
+      authorship: await readBranchAuthorship(
+        root,
+        subject,
+        base,
+        await readCommitEmail(root),
+      ),
+      landed: await hasLanded(root, subject, branch, tree?.hash ?? null, base),
+    },
+  };
+}
+
+// The newest commit on `ref` that touched each subject, keyed by `subjectKey`.
 export async function readAuthors(
   root: string,
   ref: string,
-  refs: PrimitiveRef[],
+  refs: ProposalSubject[],
 ): Promise<Record<string, string | null>> {
   const authors = await Promise.all(
     refs.map(async (each) => [
-      primitiveKey(each),
+      subjectKey(each),
       await runGitText(root, [
         "log",
         "-1",
         "--format=%an",
         ref,
         "--",
-        primitivePath(each),
+        subjectPathspec(each),
       ]),
     ]),
   );
   return Object.fromEntries(authors);
+}
+
+/** The list file's blob hash on a ref; `hash: null` where it lacks the file, null on a failed read. */
+export async function readListHash(
+  root: string,
+  ref: string,
+  subject: ListSubject,
+): Promise<{ hash: string | null } | null> {
+  const read = await readSubjectObject(root, ref, subject);
+  return read === null ? null : { hash: read.object?.hash ?? null };
 }
 
 // Exit 1 is a staged difference; anything but 0 or 1, a killed run included, is no answer (#888).

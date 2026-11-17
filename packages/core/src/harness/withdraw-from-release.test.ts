@@ -21,6 +21,7 @@ const MERGED = "commit-merged";
 const FETCHED = { outcome: "fetched" as const, lastFetchedAt: "2026-10-25" };
 
 const greet = { type: "prompt", name: "greet" } as const;
+const CATEGORIES_SUBJECT = { type: "categories" } as const;
 
 type Content = { skills?: Skills; prompts?: Prompts };
 
@@ -49,6 +50,7 @@ const releaseRow = (
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  openByOther: false,
   mergedRequest: null,
   ...over,
 });
@@ -304,6 +306,19 @@ describe("WithdrawFromRelease", () => {
       });
 
       await expect(withdrawal.inspect(skillRef("tdd"))).resolves.toEqual({
+        ok: false,
+        error: "not-pending-release",
+      });
+    });
+
+    it("refuses the categories list while the next release holds no change to it", async () => {
+      const { withdrawal } = build({
+        release: { skills: { tdd: "released tdd" } },
+        merged: { skills: { tdd: "merged tdd" } },
+        rows: [releaseRow(skillRef("tdd"), "edit")],
+      });
+
+      await expect(withdrawal.inspect(CATEGORIES_SUBJECT)).resolves.toEqual({
         ok: false,
         error: "not-pending-release",
       });

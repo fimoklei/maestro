@@ -1,5 +1,7 @@
 import { Menu } from "lucide-react";
 import { useNavigate } from "react-router";
+import { HARNESS_CATEGORIES_CHANGED } from "../categories/categories-copy";
+import { useHarnessCategoriesChanged } from "../categories/use-categories";
 import { ActionsMenu } from "../ui/actions-menu";
 import { Button } from "../ui/button";
 import { cn } from "../ui/cn";
@@ -15,6 +17,8 @@ import { useHarnessSummary } from "./use-harness-summary";
 export function NarrowBar({ className }: { className?: string }) {
   const navigate = useNavigate();
   const { path, label, meta } = useHarnessSummary();
+  // The sidebar's Harness menu folds in here, with its dot on Settings.
+  const changed = useHarnessCategoriesChanged();
 
   return (
     <header
@@ -45,6 +49,9 @@ export function NarrowBar({ className }: { className?: string }) {
           items={[...SCREENS, SETTINGS].map((screen) => ({
             label: screen.label,
             onSelect: () => navigate(screen.to),
+            ...(screen === SETTINGS && changed
+              ? { signal: HARNESS_CATEGORIES_CHANGED }
+              : {}),
           }))}
           trigger={
             <Button size="icon" variant="quiet">

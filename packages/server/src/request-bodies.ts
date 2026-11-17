@@ -2,6 +2,8 @@
 
 import {
   type BatchRequest,
+  CATEGORIES_PREVIEW_KINDS,
+  COPY_MODES,
   HARNESS_PRIMITIVE_TYPES,
   type ImportSkillsInput,
   type PromptImportDraft,
@@ -101,6 +103,15 @@ export const assignCategoryBodySchema = z.object({
     )
     .min(1),
   category: z.string().nullable(),
+});
+
+export const copyCategoriesBodySchema = z.object({
+  mode: z.enum(COPY_MODES),
+});
+
+// The preview the dialog showed; core refuses a write it did not show.
+export const categoriesProposalBodySchema = z.object({
+  previewed: z.enum(CATEGORIES_PREVIEW_KINDS),
 });
 
 // Global carries no path, so no untrusted path crosses the boundary on it.
@@ -217,6 +228,9 @@ const primitiveRefShape = {
 
 export const primitiveRefBodySchema = z.object(primitiveRefShape);
 
+// The categories list, the proposal subject that carries no name.
+const listSubjectShape = { type: z.literal("categories") };
+
 // Each item proposed in order; core re-reads every one before its push. An
 // item with a seenRemoteTree is a deletion, confirmed against that tree (#580).
 export const proposeBatchBodySchema = z.object({
@@ -236,11 +250,13 @@ export const proposalBodySchema = z.object({
   number: z.number().int().positive(),
 });
 
-// Null withdraws a branch with no open request (#1639).
-export const withdrawBodySchema = z.object({
-  ...primitiveRefShape,
-  number: z.number().int().positive().nullable(),
-});
+// Null withdraws a branch with no open request (#1639). The categories list
+// carries no name.
+const withdrawNumber = z.number().int().positive().nullable();
+export const withdrawBodySchema = z.union([
+  z.object({ ...primitiveRefShape, number: withdrawNumber }),
+  z.object({ ...listSubjectShape, number: withdrawNumber }),
+]);
 
 // The hash is compared against a freshly fetched remote, never used as the
 // thing to remove (#580).
@@ -265,10 +281,15 @@ export const discardBodySchema = z.object({
 
 // The token is rebuilt from a fresh read and compared; the previous name of a
 // rename is read server-side, never taken from the body.
-export const releaseWithdrawalBodySchema = z.object({
-  ...primitiveRefShape,
-  confirmation: z.string(),
-});
+export const releaseWithdrawalCheckBodySchema = z.union([
+  primitiveRefBodySchema,
+  z.object(listSubjectShape),
+]);
+
+export const releaseWithdrawalBodySchema = z.union([
+  z.object({ ...primitiveRefShape, confirmation: z.string() }),
+  z.object({ ...listSubjectShape, confirmation: z.string() }),
+]);
 
 // The commit is compared against a freshly read HEAD, never used as the thing
 // to restore.
@@ -313,7 +334,7 @@ export const WITHDRAW_BODY: RequestShape = {
   message:
     "Nothing was withdrawn. Reload the page, then withdraw the proposal again.",
   detail:
-    'The request carries a type, a name and a pull-request number or null: { type: "skill" | "prompt", name: string, number: number | null }.',
+    'The request carries a type, a name and a pull-request number or null: { type: "skill" | "prompt", name: string, number: number | null }, or the categories list and a number or null: { type: "categories", number: number | null }.',
 };
 
 export const WITHDRAW_CHECK_BODY: RequestShape = {
@@ -353,14 +374,14 @@ export const RELEASE_WITHDRAWAL_CHECK_BODY: RequestShape = {
   message:
     "Nothing was withdrawn. Reload the page, then withdraw it from release again.",
   detail:
-    'The request carries a type and a name: { type: "skill" | "prompt", name: string }.',
+    'The request carries a type and a name: { type: "skill" | "prompt", name: string }, or the categories list: { type: "categories" }.',
 };
 
 export const RELEASE_WITHDRAWAL_BODY: RequestShape = {
   message:
     "Nothing was withdrawn. Reload the page, then withdraw it from release again.",
   detail:
-    'The request carries a type, a name and the confirmation it was given: { type: "skill" | "prompt", name: string, confirmation: string }.',
+    'The request carries a type, a name and the confirmation it was given: { type: "skill" | "prompt", name: string, confirmation: string }, or the categories list and its confirmation: { type: "categories", confirmation: string }.',
 };
 
 export const RELEASE_BODY: RequestShape = {
@@ -393,6 +414,19 @@ export const ASSIGN_CATEGORY_BODY: RequestShape = {
   message: "Nothing was changed. Reload the page, then set the category again.",
   detail:
     'The request carries the items and a category or null: { items: { type: "skill" | "prompt", name: string }[], category: string | null }.',
+};
+
+export const COPY_CATEGORIES_BODY: RequestShape = {
+  message:
+    "Nothing was copied. Reload the page, then copy the Harness categories again.",
+  detail: 'The request carries how to copy: { mode: "add" | "replace" }.',
+};
+
+export const CATEGORIES_PROPOSAL_BODY: RequestShape = {
+  message:
+    "Nothing was pushed. Reload the page, then propose your categories again.",
+  detail:
+    'The request carries the kind of preview the dialog showed: { previewed: "changes" | "unchanged" | "uncompared" | "update" | "after-close" }.',
 };
 
 export const PATH_BODY: RequestShape = {

@@ -1,4 +1,4 @@
-import type { PrimitiveRef, WithdrawFromReleaseError } from "@maestro/core";
+import type { HarnessStageRow, WithdrawFromReleaseError } from "@maestro/core";
 import { HARNESS_BUSY } from "../ui/busy-copy";
 import {
   rereadLabel,
@@ -8,7 +8,7 @@ import {
 import type { NoticeContent } from "../ui/notice";
 import { noticeFromTable } from "../ui/notice-table";
 import { named, phrase } from "../ui/phrase";
-import { ITEM_WORDS } from "./item-words";
+import { CATEGORIES_NAME, rowWords } from "./item-words";
 import {
   deletionHeadings,
   harnessHeadings,
@@ -18,20 +18,35 @@ import {
   promoteHeadings,
 } from "./notice-copy";
 
-type WithdrawalItem = PrimitiveRef & { openRequests: readonly number[] | null };
+type WithdrawalItem = Pick<
+  HarnessStageRow,
+  "type" | "name" | "openRequests" | "openByOther"
+>;
+
+// The list has no name of its own and every change to it goes at once.
+const notPendingDetail = ({ type, name }: WithdrawalItem) =>
+  type === "categories"
+    ? "No categories change is under Pending release now."
+    : phrase`${named(name)} is no longer under Pending release.`;
+
+const unknownOpenDetail = (item: WithdrawalItem) =>
+  item.type === "categories"
+    ? "A categories pull request is open, or GitHub could not be read."
+    : `A pull request for this ${rowWords(item.type).noun} is open, or GitHub could not be read.`;
+
+const notWithdrawn = (item: WithdrawalItem) =>
+  `${item.type === "categories" ? CATEGORIES_NAME : rowWords(item.type).Noun} not withdrawn`;
 
 // Takes the item: a refusal names the one that left Pending release, and the
 // pull requests a read found open.
-const releaseWithdrawalHeadings = ({
-  type,
-  name,
-  openRequests,
-}: WithdrawalItem) => {
-  const known = openRequests === null ? null : openProposalCause(openRequests);
-  const w = ITEM_WORDS[type];
+const releaseWithdrawalHeadings = (item: WithdrawalItem) => {
+  const known = item.openRequests === null ? null : openProposalCause(item);
+  const w = rowWords(item.type);
   const deletion = deletionHeadings(w);
   const promote = promoteHeadings(w);
   const again = `select ${WITHDRAW_FROM_RELEASE} again.`;
+  const noun = item.type === "categories" ? "categories" : w.noun;
+  const asItIs = item.type === "categories" ? "as they are" : "as it is";
   return leftAsItWas<WithdrawFromReleaseError>("Nothing was withdrawn.", {
     "not-configured": harnessHeadings["not-configured"],
     "invalid-skill": invalidNameHeading(w),
@@ -44,8 +59,8 @@ const releaseWithdrawalHeadings = ({
     "not-pending-release": {
       level: "error",
       label: "Not under Pending release",
-      message: `Select ${rereadLabel("Harness")} to see the ${w.noun} as it is now.`,
-      detail: phrase`${named(name)} is no longer under Pending release.`,
+      message: `Select ${rereadLabel("Harness")} to see the ${noun} ${asItIs} now.`,
+      detail: notPendingDetail(item),
     },
     "proposal-open":
       known === null
@@ -53,7 +68,7 @@ const releaseWithdrawalHeadings = ({
             level: "error",
             label: "Withdrawal blocked",
             message: `Select ${rereadLabel("Harness")} to read GitHub again.`,
-            detail: `A pull request for this ${w.noun} is open, or GitHub could not be read.`,
+            detail: unknownOpenDetail(item),
           }
         : { level: "error", label: "Withdrawal blocked", message: known },
     "confirmation-stale": {
@@ -91,7 +106,7 @@ const releaseWithdrawalHeadings = ({
     },
     "withdraw-failed": {
       level: "error",
-      label: `${w.Noun} not withdrawn`,
+      label: notWithdrawn(item),
       message: `Check that you can push to the default branch on GitHub, then ${again}`,
     },
     "sparse-checkout": {
@@ -122,9 +137,13 @@ const releaseWithdrawalHeadings = ({
 };
 
 /** Why Withdraw from release is blocked, as a tooltip cause; null when nothing blocks it. */
-export const openProposalCause = (
-  openRequests: readonly number[] | null,
-): string | null => {
+export const openProposalCause = ({
+  type,
+  openRequests,
+  openByOther,
+}: Pick<HarnessStageRow, "type" | "openRequests" | "openByOther">):
+  | string
+  | null => {
   if (openRequests === null) {
     return `Select ${rereadLabel("Harness")} to read GitHub again.`;
   }
@@ -133,7 +152,11 @@ export const openProposalCause = (
   }
   const requests = openRequests.length === 1 ? "pull request" : "pull requests";
   const numbers = listOf(openRequests.map((number) => `#${number}`));
-  return `Merge ${requests} ${numbers} on GitHub, or select ${WITHDRAW_PROPOSAL}.`;
+  // Another contributor's request offers that reader no Withdraw proposal,
+  // and it closes only one categories pull request.
+  return type === "categories" && (openByOther || openRequests.length > 1)
+    ? `Merge or close ${requests} ${numbers} on GitHub.`
+    : `Merge ${requests} ${numbers} on GitHub, or select ${WITHDRAW_PROPOSAL}.`;
 };
 
 export const releaseWithdrawalNotice = (
@@ -141,6 +164,6 @@ export const releaseWithdrawalNotice = (
   item: WithdrawalItem,
 ): NoticeContent | null =>
   noticeFromTable(releaseWithdrawalHeadings(item), error, {
-    label: `${ITEM_WORDS[item.type].Noun} not withdrawn`,
+    label: notWithdrawn(item),
     message: `Nothing was withdrawn. The Maestro server did not answer. Select ${WITHDRAW_FROM_RELEASE} again.`,
   });

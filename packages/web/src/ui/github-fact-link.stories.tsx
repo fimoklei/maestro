@@ -5,7 +5,7 @@ const meta = {
   title: "Core/GitHubFactLink",
   component: GitHubFactLink,
   args: {
-    value: "github.com/fimoklei/agent-harness",
+    value: "fimoklei/agent-harness",
     page: { kind: "link", url: "https://github.com/fimoklei/agent-harness" },
   },
 } satisfies Meta<typeof GitHubFactLink>;

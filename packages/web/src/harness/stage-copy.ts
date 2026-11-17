@@ -1,6 +1,7 @@
 // One row per status, so a new status fails typecheck until it has copy.
 import type {
   HarnessChange,
+  HarnessPrimitiveType,
   HarnessStage,
   HarnessStageRow,
   RequestedReviewer,
@@ -9,18 +10,20 @@ import type {
 import { BRANCH_FACT, NEXT_RELEASE } from "../ui/band-copy";
 import { type BandCount, countOf } from "../ui/band-summary";
 import {
+  CREATE_PULL_REQUEST,
   CREATE_RELEASE,
   DISCARD_CHANGE,
   EDIT_PROMPT,
   IMPORT_LOCAL_EDITS,
   PROPOSE_CHANGE,
   rereadLabel,
+  UPDATE_PULL_REQUEST,
   UPDATE_TARGET,
 } from "../ui/control-labels";
 import { type Copy, machine, named, phrase, plainText } from "../ui/phrase";
 import { type StatusFamily, WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
-import { ITEM_WORDS } from "./item-words";
+import { rowWords } from "./item-words";
 import { listOf } from "./notice-copy";
 import { offersDiscard } from "./row-actions";
 
@@ -89,18 +92,21 @@ const READINGS: Record<Exclude<StageStatus, "proposed-by-other">, string> = {
 
 // A stuck row is a warning, not a lag, so it carries ⚠ rather than ↑. Local
 // work behind another contributor's open request reads as that request.
-export const statusReading = (row: HarnessStageRow): StatusReading => {
-  const status =
-    row.waitingOn === null ? row.status : ("proposed-by-other" as const);
-  const family = FAMILIES[status];
-  return reading(
-    status === "proposed-by-other"
-      ? `Proposed by ${row.waitingOn ?? "another contributor"}`
-      : READINGS[status],
-    family,
-    family === "attention" ? WARNING_GLYPH : undefined,
-  );
-};
+export const statusReading = (row: HarnessStageRow): StatusReading =>
+  row.waitingOn === null && row.status !== "proposed-by-other"
+    ? stageStatusReading(row.status)
+    : withGlyph(
+        `Proposed by ${row.waitingOn ?? "another contributor"}`,
+        FAMILIES["proposed-by-other"],
+      );
+
+/** A status that names nobody, as every stage's row shows it. */
+export const stageStatusReading = (
+  status: Exclude<StageStatus, "proposed-by-other">,
+): StatusReading => withGlyph(READINGS[status], FAMILIES[status]);
+
+const withGlyph = (word: string, family: StatusFamily): StatusReading =>
+  reading(word, family, family === "attention" ? WARNING_GLYPH : undefined);
 
 // The facts a sentence substitutes into: both come from the same read the rows
 // did, so a Detail never names a release the rows were not read from.
@@ -117,6 +123,9 @@ export function changeSentence(
 ): Copy {
   const skill = named(row.name);
   const harness = machine(origin);
+  if (row.type === "categories") {
+    return listChangeSentence(row.change, harness);
+  }
   switch (row.change) {
     case "addition":
       return phrase`This change adds ${skill} to ${harness}.`;
@@ -131,13 +140,56 @@ export function changeSentence(
   }
 }
 
+// The file is replaced whole, so an edit names no item inside it.
+const listChangeSentence = (
+  change: HarnessChange,
+  harness: ReturnType<typeof machine>,
+): Copy => {
+  switch (change) {
+    case "addition":
+      return phrase`This change adds Harness categories to ${harness}.`;
+    case "deletion":
+      return phrase`This change deletes the Harness categories from ${harness}.`;
+    default:
+      return phrase`This change replaces the Harness categories in ${harness}.`;
+  }
+};
+
 const requestNumbers = (row: HarnessStageRow): string[] =>
   row.requests.map((request) => `#${request.number}`);
 
 const first = (row: HarnessStageRow): string => requestNumbers(row)[0] ?? "";
 
+// The list is named as Categories in Settings names it.
+const subjectOf = (row: HarnessStageRow): string =>
+  row.type === "categories"
+    ? "the Harness categories"
+    : `this ${rowWords(row.type).noun}`;
+
 const waitSentence = (row: HarnessStageRow, login: string): Copy =>
-  phrase`${named(login)} has pull request ${first(row)} open for this ${ITEM_WORDS[row.type].noun}. Wait until it is merged or closed.`;
+  phrase`${named(login)} has pull request ${first(row)} open for ${subjectOf(row)}. Wait until it is merged or closed.`;
+
+// The list is proposed from Categories in Settings, never from its row; the
+// page is named without "›".
+const CATEGORIES_IN_SETTINGS = "Categories in Settings";
+const IN_SETTINGS = `open ${CATEGORIES_IN_SETTINGS} and select`;
+
+function listDetailSentence(row: HarnessStageRow): Copy | null {
+  switch (row.status) {
+    case "changes-requested":
+      return `A reviewer asked for changes on pull request ${first(row)}. To send your current categories, ${IN_SETTINGS} ${UPDATE_PULL_REQUEST}.`;
+    case "pull-request-missing":
+      return `The proposal branch is on GitHub without a pull request. To create one, ${IN_SETTINGS} ${CREATE_PULL_REQUEST}.`;
+    case "proposal-closed": {
+      const [closed] = row.requests;
+      return closed?.byOther === true
+        ? phrase`${named(closed.author)}'s pull request ${first(row)} was closed without merging. To propose your own categories, ${IN_SETTINGS} ${CREATE_PULL_REQUEST}.`
+        : `Pull request ${first(row)} was closed without merging. To propose your current categories as a new pull request, ${IN_SETTINGS} ${CREATE_PULL_REQUEST}.`;
+    }
+    default:
+      return null;
+  }
+}
 
 // The selection column under Pending proposal (#1825). A skill and a prompt
 // can share a name, so a row's box names its type too.
@@ -145,7 +197,7 @@ export const SELECT_PRIMITIVES = "Select skills and prompts";
 export const selectAllUnder = (stage: HarnessStage) =>
   `Select all under ${STAGE_NAMES[stage]}`;
 export const selectRowLabel = (row: Pick<HarnessStageRow, "name" | "type">) =>
-  `Select ${row.name} ${ITEM_WORDS[row.type].noun}`;
+  `Select ${row.name} ${rowWords(row.type).noun}`;
 
 /** Why a row cannot join a selection: another contributor's open request; null: it can. */
 export const selectionBlock = (row: HarnessStageRow): string | null =>
@@ -160,12 +212,16 @@ export function detailSentence(
   const release = releasedVersion === null ? null : machine(releasedVersion);
   const publish = `Select ${CREATE_RELEASE} to publish it.`;
   const deletion = row.change === "deletion";
-  const noun = ITEM_WORDS[row.type].noun;
+  const noun = rowWords(row.type).noun;
   // One next action; Restore stays in the row menu (#1396).
   const deleteLocally = phrase`This ${noun} is deleted in your clone but still in ${NEXT_RELEASE}. Select ${PROPOSE_CHANGE} to propose the deletion.`;
   // Local work behind another contributor's request offers no Propose change.
   if (row.waitingOn !== null) {
     return waitSentence(row, row.waitingOn);
+  }
+  const list = row.type === "categories" ? listDetailSentence(row) : null;
+  if (list !== null) {
+    return list;
   }
   switch (row.status) {
     case "not-yet-proposed":
@@ -199,14 +255,14 @@ export function detailSentence(
         ? `Pull request ${first(row)} proposes deleting this ${noun} and is approved. Select View pull request to merge it.`
         : `Pull request ${first(row)} is approved. Select View pull request to merge it.`;
     case "pull-request-missing":
-      return "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.";
+      return `The proposal branch is on GitHub without a pull request. Select ${CREATE_PULL_REQUEST} to open one.`;
     case "proposal-merged":
       return deletion
         ? `Pull request ${first(row)} merged the deletion. Select ${rereadLabel("Harness")} to read GitHub again.`
         : `Pull request ${first(row)} was merged. Select ${rereadLabel("Harness")} to read GitHub again.`;
     case "proposal-closed": {
       if (deletion && row.onDisk) {
-        return `Pull request ${first(row)} was closed without merging. The ${ITEM_WORDS[row.type].holder} is back in your clone, so the ${noun} stays in the Harness.`;
+        return `Pull request ${first(row)} was closed without merging. The ${rowWords(row.type).holder} is back in your clone, so the ${noun} stays in the Harness.`;
       }
       // Only its author reopens it, so the menu offers no Reopen proposal.
       const [closed] = row.requests;
@@ -223,9 +279,34 @@ export function detailSentence(
           : "Several pull requests match this branch."
       } Open the extra pull requests on GitHub and close them.`;
     case "proposed-by-other":
-      return `Another contributor has pull request ${first(row)} open for this ${noun}. Wait until it is merged or closed.`;
+      return `Another contributor has pull request ${first(row)} open for ${subjectOf(row)}. Wait until it is merged or closed.`;
     case "not-yet-released":
       return releaseSentence(row, release, publish);
+  }
+}
+
+// The list's Pending release sentence; null where the item sentence fits.
+function listReleaseSentence(
+  change: HarnessChange,
+  release: ReturnType<typeof machine> | null,
+): Copy | null {
+  const list = "The Harness categories";
+  const them = `Select ${CREATE_RELEASE} to publish them.`;
+  switch (change) {
+    case "addition":
+      return release === null
+        ? `${list} are in no release yet. ${them}`
+        : phrase`${list} were added after release ${release}. ${them}`;
+    case "edit":
+      return release === null
+        ? `${list} are in no release yet. ${them}`
+        : phrase`${list} changed after release ${release}. Select ${CREATE_RELEASE} to publish the change.`;
+    case "deletion":
+      return release === null
+        ? null
+        : phrase`${list} were deleted after release ${release}. Select ${CREATE_RELEASE} to publish the deletion.`;
+    case "rename":
+      return null;
   }
 }
 
@@ -235,8 +316,13 @@ function releaseSentence(
   release: ReturnType<typeof machine> | null,
   publish: string,
 ): Copy {
-  const noun = ITEM_WORDS[row.type].noun;
+  const noun = rowWords(row.type).noun;
   const deletion = `Select ${CREATE_RELEASE} to publish the deletion.`;
+  const list =
+    row.type === "categories" ? listReleaseSentence(row.change, release) : null;
+  if (list !== null) {
+    return list;
+  }
   switch (row.change) {
     case "addition":
       return release === null
@@ -309,27 +395,33 @@ export const alsoInWords = (row: HarnessStageRow): string =>
 // Deployed copies come from a release only, so local work on a skill the
 // default branch holds has not reached them (#1160).
 export const deployedCopiesLine = (row: HarnessStageRow): string | null =>
-  ITEM_WORDS[row.type].deploys &&
+  rowWords(row.type).deploys &&
   row.stage === "pending-proposal" &&
   row.change === "edit"
     ? `Deployed copies change only after a release and ${UPDATE_TARGET}.`
     : null;
 
 // A merged change that is only wrong is corrected, not withdrawn (#1685).
-const CORRECTION: Record<HarnessStageRow["type"], string> = {
+const CORRECTION: Record<HarnessPrimitiveType, string> = {
   prompt: `To correct this change, select ${EDIT_PROMPT}.`,
   skill: `To correct this change, edit the deployed copy. Then select ${IMPORT_LOCAL_EDITS} on Deploy-state.`,
 };
 
 // A deleted prompt offers no Edit prompt; an added skill has no deployed copy.
-const NO_CORRECTION: Record<HarnessStageRow["type"], HarnessChange> = {
+const NO_CORRECTION: Record<HarnessPrimitiveType, HarnessChange> = {
   prompt: "deletion",
   skill: "addition",
 };
 
-export const correctionLine = (row: HarnessStageRow): string | null =>
-  row.stage === "pending-release" && row.change !== NO_CORRECTION[row.type]
-    ? CORRECTION[row.type]
+export const correctionLine = ({
+  stage,
+  type,
+  change,
+}: HarnessStageRow): string | null =>
+  stage === "pending-release" &&
+  type !== "categories" &&
+  change !== NO_CORRECTION[type]
+    ? CORRECTION[type]
     : null;
 
 // Suppressed where any membership is unknown: "only here" is a claim, and an

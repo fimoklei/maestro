@@ -1,17 +1,198 @@
-import type { HarnessPrimitiveType, ImportMode } from "@maestro/core";
+import type {
+  CopyFacts,
+  CopyMode,
+  HarnessPrimitiveType,
+  ImportMode,
+} from "@maestro/core";
 import type { CategoryNameProblem } from "@maestro/core/category-name";
 import { harnessHeadings } from "../harness/notice-copy";
 import { ADD_CATEGORY, NO_CATEGORY } from "../ui/category-menu-copy";
 import { rereadLabel, SET_CATEGORY } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
-import { machine, named, type Phrase, phrase } from "../ui/phrase";
+import { machine, named, namedList, type Phrase, phrase } from "../ui/phrase";
 
 const CATEGORIES = "Categories";
 export const CATEGORIES_SENTENCE =
-  "Categories stay on this computer. Only you see them.";
+  "Your categories are saved on this computer.";
 export const NO_CATEGORIES = "No categories yet";
 export const NO_CATEGORIES_SENTENCE = "Categories appear here.";
+/** The empty list's sentence while the Harness carries categories to copy. */
+export const NO_CATEGORIES_OR_COPY =
+  "Add a category or copy categories from the Harness.";
+
+/** The section of the categories the latest Harness release contains. */
+export const HARNESS_CATEGORIES = "Harness categories";
+
+/** Stated only for a release with categories (#1904). */
+export const harnessCategoriesCount = (count: number) =>
+  `The latest Harness release contains ${count} ${count === 1 ? "category" : "categories"}.`;
+
+/** A file with an error never reads as no categories; the own list works on. */
+export const harnessCategoriesFaulty = (tag: string) =>
+  ({
+    level: "warning",
+    label: "Couldn't load Harness categories",
+    message: phrase`The categories file in Harness release ${machine(tag)} contains an error. You can still propose your own categories for review.`,
+  }) as const satisfies NoticeContent;
+
+/** The dot's accessible text, and the notice's heading on Categories in Settings. */
+export const HARNESS_CATEGORIES_CHANGED = "Harness categories have changed";
+
+/** A release changed the Harness categories since the operator last saw them; the Copy row below acts on it. */
+export const harnessCategoriesChanged = (tag: string) =>
+  ({
+    level: "info",
+    label: HARNESS_CATEGORIES_CHANGED,
+    message: phrase`Release ${machine(tag)} changed the Harness categories. Select ${COPY_FROM_HARNESS} to compare them with your list before anything changes.`,
+  }) as const satisfies NoticeContent;
+
+/** The copy dialog's row fact for a category absent from the list the operator last saw. */
+export const newIn = (tag: string): Phrase => phrase`New in ${machine(tag)}`;
+
+/** The row, the copy dialog's title and the connect gate's checkbox. */
+export const COPY_HARNESS_CATEGORIES = "Copy Harness categories";
+/** The row's button. */
+export const COPY_FROM_HARNESS = "Copy from Harness";
+export const COPY_ROW_SENTENCE =
+  "Copies the Harness categories into your list.";
+export const COPY_CATEGORIES = "Copy categories";
+
+export const copyIntro = (tag: string, count: number): Phrase =>
+  phrase`Harness release ${machine(tag)} has ${count} ${count === 1 ? "category" : "categories"}.`;
+
+export const copySkipped = (count: number) =>
+  count === 1
+    ? "The categories file has 1 entry with an error. It won't be copied."
+    : `The categories file has ${count} entries with errors. They won't be copied.`;
+
+export const COPY_MODE_COPY: Record<
+  CopyMode,
+  { label: string; description: string }
+> = {
+  add: {
+    label: "Add",
+    description:
+      "Adds the categories you don't have and gives each skill or prompt without a category its Harness category.",
+  },
+  replace: {
+    label: "Replace",
+    description:
+      "Deletes the categories only you have. Every skill and prompt gets its Harness category, or none.",
+  },
+};
+
+type CopyGroup = "added" | "deleted" | "unchanged";
+
+const COPY_GROUPS: Record<CopyGroup, string> = {
+  added: "Added",
+  deleted: "Deleted",
+  unchanged: "Unchanged",
+};
+
+export const copyGroupLegend = (group: CopyGroup, count: number) =>
+  `${COPY_GROUPS[group]} · ${count}`;
+
+/** The row fact on a name Replace spells as the Harness does. */
+export const spelledInYourList = (was: string): Phrase =>
+  phrase`Spelled ${named(was)} in your list`;
+
+// `A`, `A and B`, `A, B and C`, from four names `A, B and 2 more`.
+const deletedNames = (names: readonly string[]): Phrase =>
+  names.length <= 3
+    ? namedList(names)
+    : phrase`${named(names[0] ?? "")}, ${named(names[1] ?? "")} and ${names.length - 2} more`;
+
+/** What Replace takes from the operator's sorting; null when it takes nothing. */
+export function replaceWarning({
+  deleted,
+  moved,
+  uncategorised,
+}: CopyFacts): NoticeContent | null {
+  const movedCount = moved.skills + moved.prompts;
+  const clearedCount = uncategorised.skills + uncategorised.prompts;
+  const items = movedCount + clearedCount;
+  if (deleted.length === 0 && items === 0) return null;
+  const willMove = `${carried(moved.skills, moved.prompts)} will move to another category`;
+  const willClear = `${carried(uncategorised.skills, uncategorised.prompts)} will have no category`;
+  const sentences: Phrase[] = [
+    ...(deleted.length === 0
+      ? []
+      : [
+          phrase`${deletedNames(deleted)} ${deleted.length === 1 ? "isn't" : "aren't"} in the Harness categories.`,
+        ]),
+    ...(deleted.length > 0 && items === 0
+      ? [
+          deleted.length === 1
+            ? emptyCategoryDeleted(deleted[0] ?? "")
+            : phrase`No skills or prompts are in these categories.`,
+        ]
+      : []),
+    ...(items === 0
+      ? []
+      : [
+          phrase`${
+            movedCount === 0
+              ? willClear
+              : clearedCount === 0
+                ? willMove
+                : `${willMove}, and ${willClear}`
+          }.`,
+          phrase`${items === 1 ? "It stays" : "They stay"} in the Harness.`,
+        ]),
+    phrase`You can't undo Replace. Select ${COPY_MODE_COPY.add.label} to keep everything you have.`,
+  ];
+  return {
+    level: "warning",
+    label:
+      deleted.length === 0
+        ? `Replace changes the category of ${carried(
+            moved.skills + uncategorised.skills,
+            moved.prompts + uncategorised.prompts,
+          )}`
+        : `Replace deletes ${deleted.length} of your categories`,
+    message: {
+      parts: sentences.flatMap((sentence, index) =>
+        index === 0 ? sentence.parts : [" ", ...sentence.parts],
+      ),
+    },
+  };
+}
+
+/** Heard while the copy dialog reads the release. */
+export const LOADING_CATEGORIES = "Loading categories…";
+
+const NOTHING_LEFT = `The latest Harness release has no categories to copy. Select ${CLOSE}, then select ${rereadLabel(CATEGORIES)}.`;
+/** The cause when the latest release could not be read. */
+export const RELEASE_UNREAD =
+  "Maestro couldn't read the latest Harness release.";
+
+/** Why the copy dialog has nothing to show, by the refusal's code. */
+export const copyPreviewFailed = (code: string | null): NoticeContent => ({
+  level: "error",
+  label: "Couldn't load Harness categories",
+  message:
+    code === "no-harness-categories"
+      ? NOTHING_LEFT
+      : code === "harness-categories-unread"
+        ? `${RELEASE_UNREAD} Select ${CLOSE}, then select ${COPY_FROM_HARNESS} to try again.`
+        : `Select ${CLOSE}, then select ${COPY_FROM_HARNESS} to try again.`,
+});
+
+/** Heading of every failed copy of the Harness categories. */
+export const COPY_FAILED_HEADING = "Couldn't copy Harness categories";
+
+/** Why Copy categories did not land, by the refusal's code. */
+export const copyFailed = (code: string | null): NoticeContent => ({
+  level: "error",
+  label: COPY_FAILED_HEADING,
+  message:
+    code === "no-harness-categories"
+      ? NOTHING_LEFT
+      : code === "harness-categories-unread"
+        ? `${RELEASE_UNREAD} Select ${COPY_CATEGORIES} to try again.`
+        : `Select ${COPY_CATEGORIES} to try again.`,
+});
 
 export { ADD_CATEGORY };
 export const ADD_A_CATEGORY = "Add a category";

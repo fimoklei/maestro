@@ -55,30 +55,41 @@ const onDisk = async (
   return entry.kind === "unreadable" ? null : entry.kind === "plain";
 };
 
+/** The items of `refs` that `known` names or the Working harness holds on disk. */
+export const heldBeside = async (
+  fs: PrimitiveEntryFs,
+  root: string,
+  refs: readonly PrimitiveRef[],
+  known: ReadonlySet<string>,
+): Promise<HeldItems | null> => {
+  try {
+    const held = new Set<string>();
+    for (const ref of refs) {
+      const key = primitiveKey(ref);
+      if (known.has(key) || held.has(key)) {
+        held.add(key);
+        continue;
+      }
+      const found = await onDisk(fs, root, ref);
+      if (found === null) return null;
+      if (found) held.add(key);
+    }
+    const asked = new Set(refs.map(primitiveKey));
+    // Unknown is not absent: an entry saved after the read is kept.
+    return {
+      holds: (ref) =>
+        !asked.has(primitiveKey(ref)) || held.has(primitiveKey(ref)),
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const heldItemsFrom =
   (deps: { git: HeldItemsGitPort; fs: PrimitiveEntryFs }): ReadHeldItems =>
   async (root, refs) => {
-    try {
-      const released = await releasedKeys(deps.git, root);
-      if (released === null) return null;
-      const held = new Set<string>();
-      for (const ref of refs) {
-        const key = primitiveKey(ref);
-        if (released.has(key) || held.has(key)) {
-          held.add(key);
-          continue;
-        }
-        const found = await onDisk(deps.fs, root, ref);
-        if (found === null) return null;
-        if (found) held.add(key);
-      }
-      const asked = new Set(refs.map(primitiveKey));
-      // Unknown is not absent: an entry saved after the read is kept.
-      return {
-        holds: (ref) =>
-          !asked.has(primitiveKey(ref)) || held.has(primitiveKey(ref)),
-      };
-    } catch {
-      return null;
-    }
+    const released = await releasedKeys(deps.git, root).catch(() => null);
+    return released === null
+      ? null
+      : await heldBeside(deps.fs, root, refs, released);
   };

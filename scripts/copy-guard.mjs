@@ -83,6 +83,8 @@ const RETIRED = [
   /\bAddition\b/i,
   // A screen names the place a file is in, never "on disk" (#1788).
   /\bon disk\b/i,
+  // Categories reach the Harness through Create pull request (#1882).
+  /\bupload(?:s|ed|ing)?\b/i,
   // Copy is level: no promotional words, no chat phrases, no exclamation.
   /\b(?:seamless|effortless|supercharge|powerful|magic|unlock|leverage|AI-powered|intelligent|smartly|empower|robust|Oops|Whoops|Let's)/i,
   /!(?=\s|$)/,

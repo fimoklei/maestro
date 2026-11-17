@@ -33,6 +33,7 @@ const row = (over: Partial<HarnessStageRow> = {}): HarnessStageRow => ({
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  openByOther: false,
   mergedRequest: null,
   ...over,
 });

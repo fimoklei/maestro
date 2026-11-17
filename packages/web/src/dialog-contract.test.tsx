@@ -1,6 +1,9 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type {
+  CategoriesProposalPreview,
+  CopyMode,
+  CopyPreview,
   ReleasePlan,
   SkillFolderScan,
   UpdatePreview,
@@ -48,6 +51,8 @@ import {
 } from "./registry/repositories-test-helpers";
 import { UnregisterDialog } from "./registry/unregister-dialog";
 import { AddCategoryDialog } from "./settings/add-category-dialog";
+import { CopyHarnessCategoriesDialog } from "./settings/copy-harness-categories-dialog";
+import { CreatePullRequestDialog } from "./settings/create-pull-request-dialog";
 import { DeleteCategoryDialog } from "./settings/delete-category-dialog";
 import { RenameCategoryDialog } from "./settings/rename-category-dialog";
 import { SetLocationDialog } from "./settings/set-location-dialog";
@@ -161,6 +166,7 @@ const releaseWithdrawalDialog = (
       path: ".apm/skills/research",
       change: "edit",
       previousName: null,
+      mergedRequest: null,
     }}
     check={check}
     onClose={over.onClose ?? vi.fn()}
@@ -453,7 +459,142 @@ const deleteCategoryDialog = ({
   />
 );
 
+const COPY_PREVIEW: CopyPreview = {
+  tag: "v1.5.0",
+  count: 1,
+  skipped: 0,
+  choice: true,
+  modes: {
+    add: {
+      added: ["Planning"],
+      deleted: [],
+      unchanged: ["Drafts"],
+      respelled: [],
+      moved: { skills: 0, prompts: 0 },
+      uncategorised: { skills: 0, prompts: 0 },
+    },
+    replace: {
+      added: ["Planning"],
+      deleted: ["Drafts"],
+      unchanged: [],
+      respelled: [],
+      moved: { skills: 0, prompts: 0 },
+      uncategorised: { skills: 1, prompts: 0 },
+    },
+  },
+  fresh: [],
+};
+
+const copyCategoriesDialog = (
+  preview: CopyPreview | null,
+  {
+    running = false,
+    onClose = vi.fn(),
+    failure = null,
+    mode = "add",
+  }: Options & { failure?: NoticeContent | null; mode?: CopyMode } = {},
+) => (
+  <CopyHarnessCategoriesDialog
+    preview={preview}
+    mode={mode}
+    onModeChange={vi.fn()}
+    failure={failure}
+    busy={running}
+    onCopy={vi.fn()}
+    onClose={onClose}
+  />
+);
+
+const DELETES_A_CATEGORY: CategoriesProposalPreview = {
+  kind: "changes",
+  added: [],
+  deleted: [{ name: "Debugging", skills: 2, prompts: 1 }],
+  moved: [],
+};
+
+const createPullRequestDialog = (
+  preview: CategoriesProposalPreview | null,
+  {
+    running = false,
+    onClose = vi.fn(),
+    failure = null,
+    update = null,
+  }: Options & { failure?: NoticeContent | null; update?: number | null } = {},
+) => (
+  <CreatePullRequestDialog
+    update={update}
+    closed={null}
+    preview={preview}
+    failure={failure}
+    running={running}
+    onCreate={vi.fn()}
+    onClose={onClose}
+  />
+);
+
 const ON_DIALOG: Row[] = [
+  {
+    file: "settings/create-pull-request-dialog.tsx",
+    heading: "Create pull request",
+    render: ({ running, onClose }) =>
+      createPullRequestDialog(DELETES_A_CATEGORY, { running, onClose }),
+    changed: null,
+    emptyForm: null,
+    loading: {
+      line: "Comparing with the next release…",
+      render: () => createPullRequestDialog(null),
+    },
+    loadFailed: () => createPullRequestDialog(null, { failure: FAILED }),
+    notices: [
+      {
+        label: "Merging deletes 1 Harness category",
+        render: () =>
+          createPullRequestDialog(
+            {
+              kind: "update",
+              number: 45,
+              difference: DELETES_A_CATEGORY,
+              deleted: [{ name: "Debugging", skills: 2, prompts: 1 }],
+            },
+            { update: 45 },
+          ),
+      },
+      {
+        label: "Your categories match the next release",
+        render: () => createPullRequestDialog({ kind: "unchanged" }),
+      },
+      {
+        label: "Couldn't compare with the next release",
+        render: () => createPullRequestDialog({ kind: "uncompared" }),
+      },
+      {
+        label: "Your categories match pull request #45",
+        render: () =>
+          createPullRequestDialog(
+            {
+              kind: "update",
+              number: 45,
+              difference: { kind: "unchanged" },
+              deleted: [],
+            },
+            { update: 45 },
+          ),
+      },
+      {
+        label: "Couldn't compare with pull request #45",
+        render: () =>
+          createPullRequestDialog(
+            {
+              kind: "update",
+              number: 45,
+              difference: { kind: "uncompared" },
+              deleted: [],
+            },
+            { update: 45 },
+          ),
+      },
+    ],
+  },
   {
     file: "deploy-state/remove-skill-dialog.tsx",
     heading: "Remove tdd v0.5.0",
@@ -850,6 +991,25 @@ const ON_DIALOG: Row[] = [
     loading: null,
     loadFailed: null,
     notices: [],
+  },
+  {
+    file: "settings/copy-harness-categories-dialog.tsx",
+    heading: "Copy Harness categories",
+    render: ({ running, onClose }) =>
+      copyCategoriesDialog(COPY_PREVIEW, { running, onClose }),
+    changed: null,
+    emptyForm: null,
+    loading: {
+      line: "Loading categories…",
+      render: () => copyCategoriesDialog(null),
+    },
+    loadFailed: () => copyCategoriesDialog(null, { failure: FAILED }),
+    notices: [
+      {
+        label: "Replace deletes 1 of your categories",
+        render: () => copyCategoriesDialog(COPY_PREVIEW, { mode: "replace" }),
+      },
+    ],
   },
   {
     file: "settings/delete-category-dialog.tsx",

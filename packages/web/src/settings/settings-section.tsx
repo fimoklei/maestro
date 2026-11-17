@@ -13,8 +13,10 @@ export interface SettingsSectionProps {
   list?: boolean;
   /** The rows are being read again. */
   busy?: boolean;
-  /** `SettingsRow`s. */
-  children: ReactNode;
+  /** A notice about the section, between its heading and its rows. */
+  notice?: ReactNode;
+  /** `SettingsRow`s; a section without rows draws no list. */
+  children?: ReactNode;
 }
 
 const ROWS = "flex flex-col overflow-hidden rounded-control border border-edge";
@@ -25,6 +27,7 @@ export function SettingsSection({
   description,
   list = false,
   busy = false,
+  notice,
   children,
 }: SettingsSectionProps) {
   const headingId = useId();
@@ -48,7 +51,8 @@ export function SettingsSection({
         </div>
         {action}
       </div>
-      {list ? (
+      {notice}
+      {children === undefined ? null : list ? (
         <ul aria-labelledby={headingId} className={`m-0 list-none p-0 ${ROWS}`}>
           {children}
         </ul>

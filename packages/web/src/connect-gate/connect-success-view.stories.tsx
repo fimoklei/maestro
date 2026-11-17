@@ -9,9 +9,13 @@ const meta = {
     outcome: "found" as ConnectOutcome,
     primitiveCount: 7,
     inventoryPath: "/home/me/agent-harness",
+    copyOffer: null,
+    copying: false,
     onContinue: () => undefined,
   },
 } satisfies Meta<typeof ConnectSuccessView>;
+
+const offer = { checked: true, onCheckedChange: () => undefined };
 
 export default meta;
 
@@ -31,3 +35,12 @@ export const Scaffolded: Story = {
 export const CountUnread: Story = {
   args: { outcome: "found", primitiveCount: null },
 };
+
+// The latest release holds Harness categories: continue copies them.
+export const CopyOffered: Story = { args: { copyOffer: offer } };
+
+export const CopyCleared: Story = {
+  args: { copyOffer: { ...offer, checked: false } },
+};
+
+export const Copying: Story = { args: { copyOffer: offer, copying: true } };

@@ -31,6 +31,7 @@ const JSON_FIELDS = [
   "number",
   "url",
   "state",
+  "mergedAt",
   "isDraft",
   "reviewDecision",
   "reviewRequests",
@@ -115,6 +116,7 @@ const requestSchema = z.object({
   number: z.number().int().positive(),
   url: urlSchema,
   state: z.enum(["OPEN", "CLOSED", "MERGED"]),
+  mergedAt: z.string().nullable(),
   isDraft: z.boolean(),
   reviewDecision: z.enum([
     "",
@@ -330,7 +332,8 @@ function toReviewRequest(row: z.infer<typeof requestSchema>): ReviewRequest {
   return {
     number: row.number,
     url: row.url,
-    state: STATES[row.state],
+    // A merge time proves the merge, whatever `state` says.
+    state: row.mergedAt !== null ? "merged" : STATES[row.state],
     draft: row.isDraft,
     decision: DECISIONS[row.reviewDecision] ?? null,
     reviewers: row.reviewRequests.map(toReviewer),

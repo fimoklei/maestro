@@ -1,4 +1,4 @@
-import type { HarnessPrimitiveType } from "@maestro/core";
+import type { HarnessPrimitiveType, HarnessStageRow } from "@maestro/core";
 import { DELETE_LABEL, RESTORE_LABEL } from "../ui/control-labels";
 
 /** The words a sentence takes by type: a skill is a folder that deploys, a prompt one file that never does. */
@@ -45,3 +45,19 @@ export const ITEM_WORDS: Record<HarnessPrimitiveType, ItemWords> = {
     deploys: false,
   },
 };
+
+// One file in the Harness, like a prompt. The list offers no delete, restore
+// or name of its own, so the prompt's labels and example never show.
+const LIST_WORDS: ItemWords = {
+  ...ITEM_WORDS.prompt,
+  noun: "list",
+  Noun: "List",
+  home: ".maestro folder",
+};
+
+/** The words a Harness row takes: a primitive's, or the categories list's. */
+export const rowWords = (type: HarnessStageRow["type"]): ItemWords =>
+  type === "categories" ? LIST_WORDS : ITEM_WORDS[type];
+
+/** The Name the categories list shows under on the Harness screen. */
+export const CATEGORIES_NAME = "Categories";

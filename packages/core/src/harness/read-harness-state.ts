@@ -6,11 +6,17 @@ import type {
   HarnessPrimitiveType,
   PrimitiveRef,
 } from "./harness-primitive";
+
 import { primitiveKey } from "./harness-primitive";
 import type { HarnessReviewPort, ViewerRead } from "./harness-review-port";
 import { buildStages, type HarnessStages } from "./harness-stages";
 import { type LatestRelease, readLatestRelease } from "./latest-release";
 import type { ProposalKind } from "./proposal-request";
+import {
+  CATEGORIES_SUBJECT,
+  type ListSubject,
+  type ProposalSubject,
+} from "./proposal-subject";
 import {
   proposeReleaseVersion,
   type SemverStep,
@@ -50,14 +56,24 @@ export type PromoteSkillOutcome =
 
 export type SkillPushOutcome = Exclude<PromoteSkillOutcome, "skill-missing">;
 
-/** One commit on the default branch that puts the named primitives back as `source` holds them. */
+/** A list proposed as one file on its own branch, built on `defaultTip`. */
+export type ListFilePush = {
+  subject: ListSubject;
+  text: string;
+  defaultTip: string;
+  message: string;
+};
+
+export type ListPushOutcome = Exclude<SkillPushOutcome, "source-changed">;
+
+/** One commit on the default branch that puts the named subjects back as `source` holds them. */
 export type DefaultBranchWithdrawal = {
   defaultBranch: string;
   // The tip the confirmation read: the push's lease.
   tip: string;
   // The latest release's commit; null where the Harness has no release.
   source: string | null;
-  refs: readonly PrimitiveRef[];
+  refs: readonly ProposalSubject[];
   message: string;
 };
 
@@ -89,6 +105,12 @@ export type HarnessFreshness = {
 };
 
 export type HarnessTag = { name: string; commit: string };
+
+/** A file's text at a ref; `too-large` is refused before it is loaded. */
+export type FileAtRef =
+  | { kind: "absent" }
+  | { kind: "too-large" }
+  | { kind: "text"; text: string };
 
 // `local-changes`: uncommitted work on a path upstream changed, so catch-up
 // leaves it. A local commit ahead of upstream is `current`.
@@ -134,6 +156,12 @@ export type HarnessHashes = {
 
 export type HarnessMovementTrees = Record<HarnessPrimitiveType, HarnessHashes>;
 
+/** A list's file at origin/HEAD and on its proposal branch; null where absent. */
+export type ListProposalRefs = {
+  remote: string | null;
+  promote: HarnessPromoteRef | null;
+};
+
 export interface HarnessGitPort {
   fetch(root: string): Promise<HarnessFetchOutcome>;
   readFacts(root: string): Promise<HarnessFacts>;
@@ -149,13 +177,32 @@ export interface HarnessGitPort {
   // The files directly at the root of `ref`'s tree, never a folder. Null is an
   // unreadable ref.
   readRootFiles(root: string, ref: string): Promise<string[] | null>;
-  // Keyed by `primitiveKey`.
+  // Checks the size before it loads the file. Null is an unreadable ref.
+  readFileAt(
+    root: string,
+    ref: string,
+    path: string,
+    maxBytes: number,
+  ): Promise<FileAtRef | null>;
+  // The list file's blob hash at `ref`; `hash: null` where `ref` lacks the
+  // file. Null is an unreadable ref.
+  readListHash(
+    root: string,
+    ref: string,
+    subject: ListSubject,
+  ): Promise<{ hash: string | null } | null>;
+  // Keyed by `subjectKey`.
   readAuthors(
     root: string,
     ref: string,
-    refs: PrimitiveRef[],
+    refs: ProposalSubject[],
   ): Promise<Record<string, string | null>>;
   readMovementTrees(root: string): Promise<HarnessMovementTrees | null>;
+  // Null is an unreadable ref, never an absent file or branch.
+  readListProposal(
+    root: string,
+    subject: ListFilePush["subject"],
+  ): Promise<ListProposalRefs | null>;
   // Takes the exact commit, never `origin/HEAD`, which can move under a concurrent fetch (#579).
   mergeBaseCommit(root: string, remoteCommit: string): Promise<string | null>;
   // Null where the file is absent; an empty string is a present-but-blank manifest.
@@ -183,6 +230,9 @@ export interface HarnessGitPort {
     ref: PrimitiveRef,
     baseCommit: string,
   ): Promise<SkillPushOutcome>;
+  // The commit's tree is `defaultTip`'s with the file; the adapter picks its
+  // parents. Never `--force`, and never touches the working tree.
+  pushListFile(root: string, push: ListFilePush): Promise<ListPushOutcome>;
   // Builds the commit in a throwaway index, pushes it with a lease on `tip`,
   // then moves the local branch and resets the named paths in the index. The
   // working tree is never touched; nothing is written before the checks pass.
@@ -223,13 +273,13 @@ export interface HarnessGitPort {
   readPushesWhereItFetched(root: string): Promise<boolean>;
   readAuthoredHere(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
     base: string,
   ): Promise<BranchAuthorship>;
   // Never `--force`. A branch already gone counts as deleted.
   deleteProposalBranch(
     root: string,
-    ref: PrimitiveRef,
+    subject: ProposalSubject,
   ): Promise<"deleted" | "failed">;
 }
 
@@ -420,6 +470,7 @@ export class ReadHarnessState {
         : null;
     const movements = delta?.movements ?? null;
     const trees = await this.deps.git.readMovementTrees(root);
+    const list = await this.deps.git.readListProposal(root, CATEGORIES_SUBJECT);
     const atMergeBase =
       head === null ? null : await this.hashesAtMergeBase(root, head);
     // One batched read for the whole Harness, never one per skill.
@@ -447,6 +498,7 @@ export class ReadHarnessState {
           origin,
           defaultBranch: facts.defaultBranch,
           trees,
+          list,
           atMergeBase,
           review,
           viewer,

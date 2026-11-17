@@ -33,6 +33,7 @@ import type { ActionsMenuItem } from "../ui/actions-menu";
 import {
   NOT_RELEASED_YET,
   ORIGIN_FACT,
+  originName,
   RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
@@ -54,7 +55,7 @@ import { type Reading, readFreshness } from "../ui/freshness";
 import { GitHubMark } from "../ui/github-mark-link";
 import { Icon } from "../ui/icon";
 import { SelectionBar } from "../ui/selection-bar";
-import { TableScreen } from "../ui/table-screen";
+import { TableScreen, type TableScreenOutcome } from "../ui/table-screen";
 import { useNow } from "../ui/use-now";
 import { type ReadFailure, useTableScreen } from "../ui/use-table-screen";
 import { useViewOptions } from "../ui/use-view-options";
@@ -138,6 +139,7 @@ export function SkillsView({
   failure,
   reading,
   onReread,
+  arrival,
   onOpenHarness,
   onShowTarget,
   clone,
@@ -168,6 +170,8 @@ export function SkillsView({
   /** A read is running, shown or not. */
   reading: boolean;
   onReread: () => void;
+  /** The outcome of the step that led here, as a failed copy at the Connect gate; null for none. */
+  arrival: TableScreenOutcome | null;
   // Supplied by the container, so this component stays routerless and storyable.
   onOpenHarness?: () => void;
   /** Opens a target's row on Deploy-state; absent where no router is. */
@@ -320,7 +324,10 @@ export function SkillsView({
                 {
                   label: ORIGIN_FACT,
                   icon: <GitHubMark />,
-                  value: harness?.origin ?? UNKNOWN_FACT_VALUE,
+                  value:
+                    harness === null
+                      ? UNKNOWN_FACT_VALUE
+                      : originName(harness.origin),
                   github: harness?.github,
                   machine: harness !== null,
                   drop: ORIGIN_DROP,
@@ -362,6 +369,7 @@ export function SkillsView({
         labelsBelowRem: LABELS_BELOW_REM,
         countsBelowRem: COUNTS_BELOW_REM,
       }}
+      outcome={arrival}
       rereading={screen.reading}
       firstReadRows={24}
       rows={rows}

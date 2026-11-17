@@ -2,11 +2,14 @@ import type { HarnessStageRow, HarnessState, ReleasePlan } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { StrictMode } from "react";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { toast } from "sonner";
 import { afterEach, beforeEach, vi } from "vitest";
+import { CATEGORIES_PAGE } from "../settings/settings-pages";
 import { jsonResponse, renderWithQuery } from "../test-utils";
 import { ToastHost } from "../ui/toast";
 import { HarnessView } from "./harness-view";
+import { rowWords } from "./item-words";
 import { stageRow as row } from "./stage-row-fixture";
 
 export { row };
@@ -366,7 +369,19 @@ export function renderHarness() {
   // — the open-time refresh must still be one request.
   return renderWithQuery(
     <StrictMode>
-      <HarnessView openPrimitive={null} written={null} />
+      <MemoryRouter initialEntries={["/harness"]}>
+        <Routes>
+          <Route
+            path="/harness"
+            element={<HarnessView openPrimitive={null} written={null} />}
+          />
+          {/* Where Open Categories in Settings lands. */}
+          <Route
+            path={CATEGORIES_PAGE.to}
+            element={<p>Categories in Settings</p>}
+          />
+        </Routes>
+      </MemoryRouter>
       <ToastHost />
     </StrictMode>,
   );
@@ -460,11 +475,11 @@ export const ON_DISK: HarnessState = {
 export const openRowMenu = async (
   name: string,
   stage = "Pending proposal",
-  type: "skill" | "prompt" = "skill",
+  type: HarnessStageRow["type"] = "skill",
 ) => {
   await userEvent.click(
     await screen.findByRole("button", {
-      name: `Actions for ${name} ${type} in ${stage}`,
+      name: `Actions for ${name} ${rowWords(type).noun} in ${stage}`,
     }),
   );
   return screen.findByRole("menu");

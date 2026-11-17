@@ -1,6 +1,6 @@
 // A released primitive that a merged change waits to replace. It reads the one
 // release diff the Pending release stage reads, so the two never disagree.
-import type { HarnessMovement } from "../harness/harness-movements";
+import type { SubjectMovement } from "../harness/harness-movements";
 import type { PrimitiveRef } from "../harness/harness-primitive";
 import type { HarnessChange } from "../harness/harness-stages";
 import type { HarnessGitPort } from "../harness/read-harness-state";
@@ -15,7 +15,7 @@ export type PendingRelease = {
 } | null;
 
 export type PendingReleaseDelta = {
-  movements: HarnessMovement[];
+  movements: SubjectMovement[];
   defaultBranch: string;
 };
 
@@ -26,7 +26,10 @@ export type ReadPendingRelease = (
 
 export const pendingReleaseFromGit =
   (
-    git: Pick<HarnessGitPort, "readFacts" | "readPrimitives" | "readAuthors">,
+    git: Pick<
+      HarnessGitPort,
+      "readFacts" | "readPrimitives" | "readListHash" | "readAuthors"
+    >,
   ): ReadPendingRelease =>
   async (root) => {
     const facts = await git.readFacts(root);

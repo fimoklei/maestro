@@ -80,6 +80,7 @@ describe("Skills band 2 at a narrow window", () => {
         failure={null}
         reading={false}
         onReread={() => {}}
+        arrival={null}
         clone={{ kind: "checking" }}
         onDeleted={() => {}}
       />,

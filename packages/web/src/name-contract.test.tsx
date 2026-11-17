@@ -77,7 +77,7 @@ const PLAIN: Record<string, Record<string, string>> = {
   },
   "harness/harness-columns.tsx": {
     "`${row.stage}:${row.type}:${row.name}`": "key",
-    "`Actions for ${row.name} ${ITEM_WORDS[row.type].noun} in ${STAGE_NAMES[row.stage]}`":
+    "`Actions for ${row.name} ${rowWords(row.type).noun} in ${STAGE_NAMES[row.stage]}`":
       "menu label",
   },
   "harness/release-delta.tsx": {
@@ -109,7 +109,7 @@ const PLAIN: Record<string, Record<string, string>> = {
     "`Select ${name}`": "checkbox label",
   },
   "harness/stage-copy.ts": {
-    "`Select ${row.name} ${ITEM_WORDS[row.type].noun}`": "checkbox label",
+    "`Select ${row.name} ${rowWords(row.type).noun}`": "checkbox label",
   },
   "registry/repositories-copy.ts": {
     "`${UNREGISTER} ${name}`": "dialog title",

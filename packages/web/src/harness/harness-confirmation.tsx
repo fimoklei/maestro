@@ -1,4 +1,4 @@
-import type { HarnessPrimitiveType } from "@maestro/core";
+import type { HarnessStageRow } from "@maestro/core";
 import { type ComponentProps, useId } from "react";
 import type { ActionKey } from "../ui/busy-copy";
 import { Card } from "../ui/card";
@@ -8,7 +8,7 @@ import { Notice, type NoticeContent } from "../ui/notice";
 import type { Copy } from "../ui/phrase";
 import { PhraseText } from "../ui/phrase-text";
 import { StatusLine } from "../ui/status-line";
-import { ITEM_WORDS } from "./item-words";
+import { rowWords } from "./item-words";
 
 /** A fact the card shows after the item's own name. */
 type ConfirmationFact = Omit<ComponentProps<typeof Fact>, "wrap">;
@@ -38,7 +38,7 @@ export function HarnessConfirmation({
   loadNotice,
   onClose,
 }: {
-  type: HarnessPrimitiveType;
+  type: HarnessStageRow["type"];
   name: string;
   title: string;
   action: ConfirmationAction;
@@ -86,12 +86,7 @@ export function HarnessConfirmation({
       )}
       <Card padded>
         <dl className="flex flex-wrap gap-x-panel gap-y-cell">
-          <Fact
-            label={ITEM_WORDS[type].Noun}
-            value={name}
-            wrap
-            machine={false}
-          />
+          <Fact label={rowWords(type).Noun} value={name} wrap machine={false} />
           {facts.map((fact) => (
             <Fact key={fact.label} {...fact} wrap />
           ))}

@@ -53,6 +53,7 @@ const row = (
   ownsBranch: false,
   previousName: null,
   openRequests: [],
+  openByOther: false,
   mergedRequest: null,
   ...over,
 });
@@ -841,4 +842,106 @@ describe("harnessCounts", () => {
       },
     ]);
   });
+});
+
+// Approved and drafted sentences for the categories list, as exact strings.
+describe("the Categories row", () => {
+  const list = (status: StageStatus, over: Partial<HarnessStageRow> = {}) =>
+    row("pending-review", status, {
+      type: "categories",
+      name: "Categories",
+      requests: [request],
+      ...over,
+    });
+
+  it.each<[HarnessChange, string]>([
+    [
+      "addition",
+      "This change adds Harness categories to github.com/fimoklei/agent-harness.",
+    ],
+    [
+      "edit",
+      "This change replaces the Harness categories in github.com/fimoklei/agent-harness.",
+    ],
+    [
+      "deletion",
+      "This change deletes the Harness categories from github.com/fimoklei/agent-harness.",
+    ],
+  ])("states a %s of the list", (change, text) => {
+    expect(
+      plainText(
+        changeSentence(list("waiting-for-review", { change }), CONTEXT),
+      ),
+    ).toBe(text);
+  });
+
+  it.each<[StageStatus, Partial<HarnessStageRow>, string]>([
+    [
+      "changes-requested",
+      {},
+      "A reviewer asked for changes on pull request #45. To send your current categories, open Categories in Settings and select Update pull request.",
+    ],
+    [
+      "pull-request-missing",
+      { requests: [] },
+      "The proposal branch is on GitHub without a pull request. To create one, open Categories in Settings and select Create pull request.",
+    ],
+    [
+      "proposal-closed",
+      {},
+      "Pull request #45 was closed without merging. To propose your current categories as a new pull request, open Categories in Settings and select Create pull request.",
+    ],
+    [
+      "proposal-closed",
+      { requests: [{ ...pullRequest(46), author: "mira", byOther: true }] },
+      "mira's pull request #46 was closed without merging. To propose your own categories, open Categories in Settings and select Create pull request.",
+    ],
+    [
+      "proposed-by-other",
+      { waitingOn: "mira", requests: [pullRequest(46)] },
+      "mira has pull request #46 open for the Harness categories. Wait until it is merged or closed.",
+    ],
+  ])("says what a %s list waits for", (status, over, text) => {
+    expect(plainText(detailSentence(list(status, over), CONTEXT))).toBe(text);
+  });
+
+  it.each<[HarnessChange, string | null, string]>([
+    [
+      "addition",
+      "v1.4.0",
+      "The Harness categories were added after release v1.4.0. Select Create a release to publish them.",
+    ],
+    [
+      "addition",
+      null,
+      "The Harness categories are in no release yet. Select Create a release to publish them.",
+    ],
+    [
+      "edit",
+      null,
+      "The Harness categories are in no release yet. Select Create a release to publish them.",
+    ],
+    [
+      "edit",
+      "v1.4.0",
+      "The Harness categories changed after release v1.4.0. Select Create a release to publish the change.",
+    ],
+    [
+      "deletion",
+      "v1.4.0",
+      "The Harness categories were deleted after release v1.4.0. Select Create a release to publish the deletion.",
+    ],
+  ])(
+    "says a %s of the list waits for a release after %s",
+    (change, releasedVersion, text) => {
+      const pending = row("pending-release", "not-yet-released", {
+        type: "categories",
+        name: "Categories",
+        change,
+      });
+      expect(
+        plainText(detailSentence(pending, { ...CONTEXT, releasedVersion })),
+      ).toBe(text);
+    },
+  );
 });
