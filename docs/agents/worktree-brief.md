@@ -11,6 +11,9 @@ auto-loaded rule files, and it may not start on the branch you build on.
 - To build on a branch, run `git reset --hard <branch>` as its own call.
 - Build test-first: see each new test go red on its own assertion before you
   write the code that turns it green.
+- While you work, run only the test files you touch. The commit gate runs the
+  affected tests; the full `pnpm verify` runs once, in the orchestrator, before
+  the push.
 - Run one plain command per call. The isolation guard refuses `&&` and `;`
   chains, `$VAR`, `eval`, heredocs and `python3 -`.
 - `cd` only to an absolute path.
