@@ -42,7 +42,7 @@ import {
 import {
   behindLine,
   copyChipText,
-  globalAlsoBehindLine,
+  globalBehindLine,
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
   pinnedTagsLine,
@@ -466,6 +466,19 @@ export function emptyGroupLines(
 /** The Status hover card: one reason sentence, then the read age; the pane holds the rest. */
 export type StatusCard = { reason: Copy | null; readAge: string | null };
 
+/** The reason of a Skills missing or Not updated reading, which names no release. */
+function folderReason(row: TargetRow): Copy | null {
+  const [missing] = skillsMissingLines(row);
+  if (missing !== undefined && row.status?.word === SKILLS_MISSING.word) {
+    return missing;
+  }
+  const [notUpdated] = notUpdatedLines(row);
+  if (notUpdated !== undefined && row.status?.word === NOT_UPDATED.word) {
+    return notUpdated;
+  }
+  return null;
+}
+
 function statusReason(row: TargetRow): Copy | null {
   if (row.pending) return UNFINISHED_REASONS[row.pending.kind];
   const edited = editedSkills(row.primitives);
@@ -479,15 +492,9 @@ function statusReason(row: TargetRow): Copy | null {
       row.behind ? (row.head?.latestRelease ?? null) : null,
     );
   }
-  const [missing] = skillsMissingLines(row);
-  if (missing !== undefined && row.status?.word === SKILLS_MISSING.word) {
-    return row.behind && row.head
-      ? globalAlsoBehindLine(missing, row.head)
-      : missing;
-  }
-  const [notUpdated] = notUpdatedLines(row);
-  if (notUpdated !== undefined && row.status?.word === NOT_UPDATED.word) {
-    return notUpdated;
+  const folder = folderReason(row);
+  if (folder !== null) {
+    return row.behind && row.head ? globalBehindLine(folder, row.head) : folder;
   }
   if (row.status?.word === EDITS_IN_HARNESS.word) {
     return copyChipText("edits-in-harness").hint;
