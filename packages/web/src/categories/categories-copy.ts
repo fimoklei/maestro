@@ -44,16 +44,16 @@ export const harnessCategoriesChanged = (tag: string) =>
   ({
     level: "info",
     label: HARNESS_CATEGORIES_CHANGED,
-    message: phrase`Release ${machine(tag)} changed the Harness categories. Select ${COPY} to compare them with your list before anything changes.`,
+    message: phrase`Release ${machine(tag)} changed the Harness categories. Select ${COPY_FROM_HARNESS} to compare them with your list before anything changes.`,
   }) as const satisfies NoticeContent;
 
 /** The copy dialog's row fact for a category absent from the list the operator last saw. */
 export const newIn = (tag: string): Phrase => phrase`New in ${machine(tag)}`;
 
-/** The row, its button's accessible name and the copy dialog's title. */
+/** The row, the copy dialog's title and the connect gate's checkbox. */
 export const COPY_HARNESS_CATEGORIES = "Copy Harness categories";
-/** The row's button, short as asked; its accessible name says what it copies. */
-export const COPY = "Copy";
+/** The row's button. */
+export const COPY_FROM_HARNESS = "Copy from Harness";
 export const COPY_ROW_SENTENCE =
   "Copies the Harness categories into your list. Your list stays as it is when the Harness changes.";
 export const COPY_CATEGORIES = "Copy categories";
@@ -175,8 +175,8 @@ export const copyPreviewFailed = (code: string | null): NoticeContent => ({
     code === "no-harness-categories"
       ? NOTHING_LEFT
       : code === "harness-categories-unread"
-        ? `${RELEASE_UNREAD} Select ${CLOSE}, then select ${COPY} to try again.`
-        : `Select ${CLOSE}, then select ${COPY} to try again.`,
+        ? `${RELEASE_UNREAD} Select ${CLOSE}, then select ${COPY_FROM_HARNESS} to try again.`
+        : `Select ${CLOSE}, then select ${COPY_FROM_HARNESS} to try again.`,
 });
 
 /** Heading of every failed copy of the Harness categories. */

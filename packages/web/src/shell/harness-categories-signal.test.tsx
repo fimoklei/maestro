@@ -123,7 +123,7 @@ describe("the Harness categories change signal", () => {
     expect(
       within(section).getByText(
         sentence(
-          "Release v1.5.0 changed the Harness categories. Select Copy to compare them with your list before anything changes.",
+          "Release v1.5.0 changed the Harness categories. Select Copy from Harness to compare them with your list before anything changes.",
         ),
       ),
     ).toBeInTheDocument();
@@ -134,7 +134,7 @@ describe("the Harness categories change signal", () => {
     expect(notice).not.toBeNull();
     expect(within(notice as HTMLElement).queryAllByRole("button")).toEqual([]);
     expect(
-      within(section).getByRole("button", { name: "Copy Harness categories" }),
+      within(section).getByRole("button", { name: "Copy from Harness" }),
     ).toBeInTheDocument();
   });
 
@@ -147,7 +147,7 @@ describe("the Harness categories change signal", () => {
     await within(section).findByText(SIGNAL);
 
     await userEvent.click(
-      within(section).getByRole("button", { name: "Copy Harness categories" }),
+      within(section).getByRole("button", { name: "Copy from Harness" }),
     );
     const dialog = await screen.findByRole("dialog", {
       name: "Copy Harness categories",

@@ -30,7 +30,7 @@ const openDialog = async () => {
   return screen.findByRole("dialog", { name: "Create pull request" });
 };
 
-describe("the row Pull request to the Harness", () => {
+describe("the row Propose to Harness", () => {
   it("offers Create pull request for an own list, also where the Harness carries no categories", async () => {
     stubServer({ rows: [{ state: "start" }] });
     renderPage();
@@ -38,9 +38,7 @@ describe("the row Pull request to the Harness", () => {
     const button = await createButton();
     expect(button).not.toHaveAttribute("aria-disabled");
     const region = await section();
-    expect(
-      within(region).getByText("Pull request to the Harness"),
-    ).toBeInTheDocument();
+    expect(within(region).getByText("Propose to Harness")).toBeInTheDocument();
     expect(
       within(region).getByText(
         "Propose your categories for the connected Harness. This creates a pull request for review.",

@@ -32,7 +32,7 @@ const PULL = "https://github.com/fimoklei/agent-harness/pull";
 // Approved sentences, as exact strings.
 describe("the pull-request row", () => {
   it("names the row and its link", () => {
-    expect(PULL_REQUEST_ROW).toBe("Pull request to the Harness");
+    expect(PULL_REQUEST_ROW).toBe("Propose to Harness");
     expect(VIEW_ON_HARNESS).toBe("View on Harness");
   });
 

@@ -106,7 +106,7 @@ const renderPage = () =>
 
 const openDialog = async () => {
   await userEvent.click(
-    await screen.findByRole("button", { name: "Copy Harness categories" }),
+    await screen.findByRole("button", { name: "Copy from Harness" }),
   );
   return within(
     await screen.findByRole("dialog", { name: "Copy Harness categories" }),
@@ -132,8 +132,8 @@ describe("Copy Harness categories", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      within(section).getByRole("button", { name: "Copy Harness categories" }),
-    ).toHaveTextContent(/^Copy$/);
+      within(section).getByRole("button", { name: "Copy from Harness" }),
+    ).toHaveTextContent(/^Copy from Harness$/);
   });
 
   it("states it is loading until the preview answers", async () => {
@@ -430,7 +430,7 @@ describe("Copy Harness categories", () => {
     [
       "a release Maestro could not read",
       () => jsonResponse({ error: "harness-categories-unread" }, 503),
-      "Maestro couldn't read the latest Harness release. Select Close, then select Copy to try again.",
+      "Maestro couldn't read the latest Harness release. Select Close, then select Copy from Harness to try again.",
     ],
   ])(
     "states a preview that failed for %s, with nothing to copy",

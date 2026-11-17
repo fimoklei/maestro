@@ -1,7 +1,7 @@
 import type { HarnessCategories } from "@maestro/core";
 import type { ReactNode } from "react";
 import {
-  COPY,
+  COPY_FROM_HARNESS,
   COPY_HARNESS_CATEGORIES,
   COPY_ROW_SENTENCE,
   HARNESS_CATEGORIES,
@@ -24,7 +24,7 @@ export function HarnessCategoriesSection({
 }: {
   harness: HarnessCategories | undefined;
   onCopy: () => void;
-  /** The rows after Copy, such as Pull request to the Harness. */
+  /** The rows after Copy, such as Propose to Harness. */
   children: ReactNode;
 }) {
   return (
@@ -54,12 +54,8 @@ export function HarnessCategoriesSection({
           name={COPY_HARNESS_CATEGORIES}
           description={COPY_ROW_SENTENCE}
           control={
-            <Button
-              variant="quiet"
-              aria-label={COPY_HARNESS_CATEGORIES}
-              onClick={onCopy}
-            >
-              {COPY}
+            <Button variant="quiet" onClick={onCopy}>
+              {COPY_FROM_HARNESS}
             </Button>
           }
         />

@@ -8,8 +8,8 @@ import {
   CATEGORY_NAME_ERRORS,
   CATEGORY_NOT_ADDED,
   CATEGORY_NOT_SET_AFTER_EDIT,
-  COPY,
   COPY_CATEGORIES,
+  COPY_FROM_HARNESS,
   COPY_HARNESS_CATEGORIES,
   COPY_MODE_COPY,
   COPY_ROW_SENTENCE,
@@ -74,7 +74,7 @@ describe("Categories copy", () => {
 
   it("offers the copy of the Harness categories in the approved words", () => {
     expect(COPY_HARNESS_CATEGORIES).toBe("Copy Harness categories");
-    expect(COPY).toBe("Copy");
+    expect(COPY_FROM_HARNESS).toBe("Copy from Harness");
     expect(COPY_CATEGORIES).toBe("Copy categories");
     expect(COPY_ROW_SENTENCE).toBe(
       "Copies the Harness categories into your list. Your list stays as it is when the Harness changes.",
@@ -230,9 +230,9 @@ describe("Categories copy", () => {
     ],
     [
       "harness-categories-unread",
-      "Maestro couldn't read the latest Harness release. Select Close, then select Copy to try again.",
+      "Maestro couldn't read the latest Harness release. Select Close, then select Copy from Harness to try again.",
     ],
-    [null, "Select Close, then select Copy to try again."],
+    [null, "Select Close, then select Copy from Harness to try again."],
   ])("states a copy dialog with nothing to show: %s", (code, message) => {
     expect(copyPreviewFailed(code)).toEqual({
       level: "error",

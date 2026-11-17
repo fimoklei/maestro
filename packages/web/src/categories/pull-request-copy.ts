@@ -1,4 +1,4 @@
-// The row Pull request to the Harness on Categories in Settings, and the
+// The row Propose to Harness on Categories in Settings, and the
 // Create pull request dialog it opens.
 import type {
   CategoriesProposalError,
@@ -36,7 +36,7 @@ export const pullRequestName = (number: number) => `pull request #${number}`;
 
 const REREAD_CATEGORIES = rereadLabel("Categories");
 
-export const PULL_REQUEST_ROW = "Pull request to the Harness";
+export const PULL_REQUEST_ROW = "Propose to Harness";
 
 /** The link to the Harness screen, where the pull request shows. */
 export const VIEW_ON_HARNESS = "View on Harness";

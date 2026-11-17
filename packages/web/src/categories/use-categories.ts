@@ -54,7 +54,7 @@ const categoriesQueries = {
       queryKey: HARNESS_KEY,
       queryFn: () => requestJson<HarnessCategories>("/api/categories/harness"),
     }),
-  /** The row Pull request to the Harness: where the categories pull request stands. */
+  /** The row Propose to Harness: where the categories pull request stands. */
   proposal: () =>
     queryOptions({
       queryKey: PROPOSAL_KEY,

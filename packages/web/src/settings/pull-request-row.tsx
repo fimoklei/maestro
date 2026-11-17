@@ -12,7 +12,7 @@ import { TextLink } from "../ui/text-link";
 import { CreatePullRequest } from "./create-pull-request";
 import { SettingsRow } from "./settings-row";
 
-// The row Pull request to the Harness (#1910): where the operator's
+// The row Propose to Harness (#1910): where the operator's
 // categories pull request stands, and Create or Update pull request.
 export function PullRequestRow({
   row,

@@ -71,7 +71,7 @@ type ListReadiness = "ready" | "empty" | "over-limits";
 /** `empty` and `over-limits` block Update pull request as they block Create. */
 type OwnListAgainstRequest = "same" | "differs" | "empty" | "over-limits";
 
-/** What the row Pull request to the Harness states; first match wins. */
+/** What the row Propose to Harness states; first match wins. */
 export type CategoriesProposalRow =
   // The Harness or GitHub could not be read.
   | { state: "unread" }
