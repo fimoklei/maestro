@@ -207,6 +207,23 @@ export const EmptyWhilePullRequestOpen: Story = {
   },
 };
 
+export const OverLimitsWhilePullRequestOpen: Story = {
+  args: {
+    children: (
+      <PullRequestRow
+        row={{
+          state: "own-open",
+          status: "waiting-for-review",
+          number: 45,
+          url: `${PULL}/45`,
+          list: "over-limits",
+        }}
+        report={() => {}}
+      />
+    ),
+  },
+};
+
 export const PullRequestMissing: Story = {
   args: {
     children: (
