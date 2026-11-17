@@ -21,6 +21,8 @@ afterEach(() => {
 
 const WAITING =
   "Pull request #45 is open and waiting for a reviewer. Select Update pull request to send your current categories.";
+const CONTAINS =
+  "Pull request #45 is open and waiting for a reviewer. It already contains your current categories.";
 
 const ownOpen = (
   list: Extract<CategoriesProposalRow, { state: "own-open" }>["list"],
@@ -69,7 +71,7 @@ describe("the row while the operator's own pull request is open", () => {
     renderPage();
 
     const region = await section();
-    expect(await within(region).findByText(WAITING)).toBeInTheDocument();
+    expect(await within(region).findByText(CONTAINS)).toBeInTheDocument();
     expect(await updateButton()).not.toHaveAttribute("aria-disabled");
     expect(
       within(region).queryByRole("button", { name: "Create pull request" }),
@@ -82,22 +84,30 @@ describe("the row while the operator's own pull request is open", () => {
 
     expect(
       await within(await section()).findByText(
-        `${WAITING} Your categories differ from the pull request.`,
+        `${WAITING} Your categories differ from pull request #45.`,
       ),
     ).toBeInTheDocument();
   });
 
   it.each([
-    ["empty", "Add a category."],
-    ["over-limits", "Delete categories."],
+    [
+      "empty",
+      "Add or copy at least one category before updating the pull request.",
+      "Add a category.",
+    ],
+    [
+      "over-limits",
+      "Your list is too large for the Harness categories file. Delete categories before creating a pull request.",
+      "Delete categories.",
+    ],
   ] as const)(
-    "keeps the pull request's sentence for a list that is %s and blocks the button",
-    async (list, cause) => {
+    "adds what to do first for a list that is %s and blocks the button",
+    async (list, first, cause) => {
       stubServer({ rows: [ownOpen(list)] });
       renderPage();
 
       expect(
-        await within(await section()).findByText(WAITING),
+        await within(await section()).findByText(`${WAITING} ${first}`),
       ).toBeInTheDocument();
       expectTooltipCause(await updateButton(), cause);
     },
@@ -128,7 +138,7 @@ describe("the Update pull request dialog", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      await within(dialog).findByText("Not yet in pull request #45"),
+      await within(dialog).findByText("Compared with pull request #45"),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole("group", {
@@ -170,11 +180,11 @@ describe("the Update pull request dialog", () => {
     const dialog = await openDialog();
 
     expect(
-      await within(dialog).findByText("Your categories match the pull request"),
+      await within(dialog).findByText("Your categories match pull request #45"),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "An update would change nothing in the pull request.",
+        "Change your categories before you update the pull request.",
       ),
     ).toBeInTheDocument();
     expect(footerButtons(dialog)).toEqual(["Close"]);
@@ -190,7 +200,12 @@ describe("the Update pull request dialog", () => {
     const dialog = await openDialog();
 
     expect(
-      await within(dialog).findByText("Couldn't compare with the pull request"),
+      await within(dialog).findByText("Couldn't compare with pull request #45"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        "The categories file in pull request #45 contains an error. Update the pull request.",
+      ),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", { name: "Update pull request" }),
@@ -210,7 +225,7 @@ describe("the Update pull request dialog", () => {
     });
     renderPage();
     const dialog = await openDialog();
-    await within(dialog).findByText("Not yet in pull request #45");
+    await within(dialog).findByText("Compared with pull request #45");
 
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Update pull request" }),
@@ -223,7 +238,7 @@ describe("the Update pull request dialog", () => {
     expect(screen.getByRole("status")).toHaveTextContent(
       "Updated pull request #45.",
     );
-    expect(await screen.findByText(WAITING)).toBeInTheDocument();
+    expect(await screen.findByText(CONTAINS)).toBeInTheDocument();
   });
 
   it("reports a failed push in the words of an update", async () => {
@@ -234,7 +249,7 @@ describe("the Update pull request dialog", () => {
     });
     renderPage();
     const dialog = await openDialog();
-    await within(dialog).findByText("Couldn't compare with the pull request");
+    await within(dialog).findByText("Couldn't compare with pull request #45");
 
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Update pull request" }),

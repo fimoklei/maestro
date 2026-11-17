@@ -62,7 +62,7 @@ export const PushFailed: Story = {
   args: {
     failure: pullRequestNotice(
       new HttpError(502, "", "promote-failed"),
-      "create",
+      null,
       null,
     ),
   },
@@ -70,7 +70,7 @@ export const PushFailed: Story = {
 
 export const NotConfirmed: Story = {
   args: {
-    failure: pullRequestNotice(new TypeError("fetch failed"), "create", null),
+    failure: pullRequestNotice(new TypeError("fetch failed"), null, null),
   },
 };
 
@@ -108,7 +108,7 @@ export const AfterClosePushFailed: Story = {
     preview: AFTER_CLOSE,
     failure: pullRequestNotice(
       new HttpError(502, "", "push-failed-after-delete"),
-      "create",
+      null,
       45,
     ),
   },
@@ -183,7 +183,7 @@ export const UpdateFailed: Story = {
     ...UpdateChanges.args,
     failure: pullRequestNotice(
       new HttpError(502, "", "promote-failed"),
-      "update",
+      45,
       null,
     ),
   },

@@ -12,6 +12,7 @@ import {
   COMPARING,
   CREATE_PULL_REQUEST,
   CREATE_PULL_REQUEST_BODY,
+  comparedWithPullRequest,
   comparingWithPullRequest,
   createAfterCloseBody,
   DELETED_FROM_HARNESS,
@@ -20,11 +21,10 @@ import {
   itemsCounted,
   MOVED_TO_ANOTHER_CATEGORY,
   NEXT_RELEASE_UNREADABLE,
-  notYetInPullRequest,
-  PULL_REQUEST_UNREADABLE,
   pullRequestDeletes,
+  pullRequestUnreadable,
   SAME_AS_NEXT_RELEASE,
-  SAME_AS_PULL_REQUEST,
+  sameAsPullRequest,
   UPDATE_PULL_REQUEST,
   updatePullRequestBody,
   updatePullRequestTitle,
@@ -90,13 +90,13 @@ const textsFor = (update: number | null) =>
         verb: "update" as const,
         body: updatePullRequestBody(update),
         comparing: comparingWithPullRequest(update),
-        compared: notYetInPullRequest(update),
+        compared: comparedWithPullRequest(update),
         legends: {
           added: ADDED_TO_PULL_REQUEST,
           deleted: DELETED_FROM_PULL_REQUEST,
         },
-        same: SAME_AS_PULL_REQUEST,
-        unreadable: PULL_REQUEST_UNREADABLE,
+        same: sameAsPullRequest(update),
+        unreadable: pullRequestUnreadable(update),
       };
 
 // Proposes the operator's list to the Harness (#1910), also after a close

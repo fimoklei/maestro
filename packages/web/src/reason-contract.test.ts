@@ -49,8 +49,8 @@ function noticeLabels(code: string): string[] {
     deployNotice(error).label,
     updatePreviewNotice(error).label,
     updateNotice(error).label,
-    ...(["create", "update"] as const).map(
-      (mode) => pullRequestNotice(error, mode, null)?.label ?? "",
+    ...[null, 45].map(
+      (update) => pullRequestNotice(error, update, null)?.label ?? "",
     ),
   ].filter((label) => label !== "" && !FALLBACKS.has(label));
   // "Removal outcome unknown" is both the fallback and remove-failed's reason.

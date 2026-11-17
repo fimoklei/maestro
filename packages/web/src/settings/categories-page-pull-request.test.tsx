@@ -70,7 +70,7 @@ describe("the row Pull request to the Harness", () => {
     [
       "a list over the file's limits",
       { state: "over-limits" },
-      "The Harness takes at most 200 categories in a file of at most 256 KB. Delete categories before creating a pull request.",
+      "Your list is too large for the Harness categories file. Delete categories before creating a pull request.",
       "Delete categories.",
     ],
     [
@@ -103,7 +103,7 @@ describe("the row Pull request to the Harness", () => {
     [
       "waiting-for-review",
       "Waiting for review",
-      "Pull request #45 is open and waiting for a reviewer. Select Update pull request to send your current categories.",
+      "Pull request #45 is open and waiting for a reviewer. It already contains your current categories.",
     ],
     [
       "changes-requested",
@@ -176,7 +176,7 @@ describe("the row Pull request to the Harness", () => {
     const region = await section();
     expect(
       await within(region).findByText(
-        "Pull request #45 was merged. Teammates get these categories with the next Harness release.",
+        "Pull request #45 was merged. Teammates will get these categories with the next Harness release.",
       ),
     ).toBeInTheDocument();
     expect(within(region).getByText("Not yet released")).toBeInTheDocument();
@@ -377,7 +377,7 @@ describe("the Create pull request dialog", () => {
     expect(posts).toEqual(["/api/categories/proposal"]);
     expect(
       await screen.findByText(
-        "Pull request #101 is open and waiting for a reviewer. Select Update pull request to send your current categories.",
+        "Pull request #101 is open and waiting for a reviewer. It already contains your current categories.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(
@@ -404,7 +404,7 @@ describe("the Create pull request dialog", () => {
         pullRequest: { state: "missing", gh: "available" },
       } satisfies CategoriesProposalCreated),
       "Pull request not opened",
-      "Maestro pushed your categories to the branch maestro/list.categories, but GitHub opened no pull request. Select Close, then check the Harness screen.",
+      "Your categories are on the branch maestro/list.categories. Select Close, then select Create pull request to open one.",
     ],
   ])("reports %s in the dialog", async (_, create, heading, message) => {
     stubServer({ rows: [{ state: "start" }], create });

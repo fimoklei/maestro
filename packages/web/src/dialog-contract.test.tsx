@@ -559,7 +559,7 @@ const ON_DIALOG: Row[] = [
         render: () => createPullRequestDialog({ kind: "uncompared" }),
       },
       {
-        label: "Your categories match the pull request",
+        label: "Your categories match pull request #45",
         render: () =>
           createPullRequestDialog(
             {
@@ -572,7 +572,7 @@ const ON_DIALOG: Row[] = [
           ),
       },
       {
-        label: "Couldn't compare with the pull request",
+        label: "Couldn't compare with pull request #45",
         render: () =>
           createPullRequestDialog(
             {

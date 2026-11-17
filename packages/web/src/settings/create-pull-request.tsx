@@ -44,10 +44,10 @@ export function CreatePullRequest({
       pullRequest.state === "missing"
         ? null
         : { name: pullRequestName(pullRequest.number), row: null },
-    failure: (error) => pullRequestNotice(error, mode, closed),
+    failure: (error) => pullRequestNotice(error, update, closed),
   });
   const failure = preview.isError
-    ? pullRequestNotice(preview.error, mode, closed)
+    ? pullRequestNotice(preview.error, update, closed)
     : (write.failure ??
       (create.data?.pullRequest.state === "missing"
         ? PULL_REQUEST_NOT_OPENED

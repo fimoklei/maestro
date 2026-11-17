@@ -44,7 +44,7 @@ export const VIEW_ON_HARNESS = "View on Harness";
 const EMPTY_SENTENCE =
   "Add or copy at least one category before creating a pull request.";
 const OVER_LIMITS_SENTENCE =
-  "The Harness takes at most 200 categories in a file of at most 256 KB. Delete categories before creating a pull request.";
+  "Your list is too large for the Harness categories file. Delete categories before creating a pull request.";
 
 /** What the row shows in one state: its sentence, and why the button waits. */
 export type PullRequestRowView = {
@@ -74,9 +74,22 @@ const listCause = (list: string): string | null =>
       ? OVER_LIMITS_CAUSE
       : null;
 
-/** Beside the pull request's own sentence when the operator's list differs from it. */
-const DIFFERS_FROM_PULL_REQUEST =
-  "Your categories differ from the pull request.";
+/** After the open pull request's sentence: how the operator's list stands against it; null for nothing to add. */
+const againstPullRequest = (
+  list: Extract<CategoriesProposalRow, { state: "own-open" }>["list"],
+  number: number,
+): string | null => {
+  switch (list) {
+    case "differs":
+      return `Your categories differ from pull request #${number}.`;
+    case "empty":
+      return "Add or copy at least one category before updating the pull request.";
+    case "over-limits":
+      return OVER_LIMITS_SENTENCE;
+    case "same":
+      return null;
+  }
+};
 
 export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
   switch (row.state) {
@@ -114,7 +127,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
     // compares with the next release, which now holds the merged list.
     case "merged-not-released":
       return {
-        sentence: `Pull request #${row.number} was merged. Teammates get these categories with the next Harness release.`,
+        sentence: `Pull request #${row.number} was merged. Teammates will get these categories with the next Harness release.`,
         blocked: listCause(row.list),
         open: stageStatusReading("not-yet-released"),
         mode: "create",
@@ -131,15 +144,16 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
       };
     }
     case "own-open": {
+      const waiting = `Pull request #${row.number} is open and waiting for a reviewer.`;
       const state =
         row.status === "changes-requested"
           ? `A reviewer asked for changes on pull request #${row.number}. Change your categories, then select ${UPDATE_PULL_REQUEST} to send them.`
-          : `Pull request #${row.number} is open and waiting for a reviewer. Select ${UPDATE_PULL_REQUEST} to send your current categories.`;
+          : row.list === "same"
+            ? `${waiting} It already contains your current categories.`
+            : `${waiting} Select ${UPDATE_PULL_REQUEST} to send your current categories.`;
+      const against = againstPullRequest(row.list, row.number);
       return {
-        sentence:
-          row.list === "differs"
-            ? `${state} ${DIFFERS_FROM_PULL_REQUEST}`
-            : state,
+        sentence: against === null ? state : `${state} ${against}`,
         blocked: listCause(row.list),
         open: stageStatusReading(row.status),
         mode: "update",
@@ -179,23 +193,27 @@ export const updatePullRequestBody = (number: number) =>
 export const comparingWithPullRequest = (number: number) =>
   `Comparing with pull request #${number}…`;
 
-export const notYetInPullRequest = (number: number) =>
-  `Not yet in pull request #${number}`;
+export const comparedWithPullRequest = (number: number) =>
+  `Compared with pull request #${number}`;
 export const ADDED_TO_PULL_REQUEST = "Added to the pull request";
 export const DELETED_FROM_PULL_REQUEST = "Deleted from the pull request";
 
-export const SAME_AS_PULL_REQUEST = {
-  level: "info",
-  label: "Your categories match the pull request",
-  message: "An update would change nothing in the pull request.",
-} as const satisfies NoticeContent;
+const matchesPullRequest = (number: number) =>
+  `Your categories match pull request #${number}`;
 
-export const PULL_REQUEST_UNREADABLE = {
-  level: "warning",
-  label: "Couldn't compare with the pull request",
-  message:
-    "The categories file in the pull request contains an error. Your update replaces the whole file, so you can still send it.",
-} as const satisfies NoticeContent;
+export const sameAsPullRequest = (number: number) =>
+  ({
+    level: "info",
+    label: matchesPullRequest(number),
+    message: "Change your categories before you update the pull request.",
+  }) as const satisfies NoticeContent;
+
+export const pullRequestUnreadable = (number: number) =>
+  ({
+    level: "warning",
+    label: `Couldn't compare with pull request #${number}`,
+    message: `The categories file in pull request #${number} contains an error. Update the pull request.`,
+  }) as const satisfies NoticeContent;
 
 /** A group's legend with its count. */
 export const groupLegend = (group: string, count: number) =>
@@ -255,14 +273,20 @@ const notConfirmed = (mode: PullRequestMode): NoticeCopy => ({
 export const PULL_REQUEST_NOT_OPENED = {
   level: "error",
   label: "Pull request not opened",
-  message: phrase`Maestro pushed your categories to the branch ${machine("maestro/list.categories")}, but GitHub opened no pull request. Select ${CLOSE}, then check the Harness screen.`,
+  message: phrase`Your categories are on the branch ${machine("maestro/list.categories")}. Select ${CLOSE}, then select ${CREATE_PULL_REQUEST} to open one.`,
 } as const satisfies NoticeContent;
 
 const headings = (
-  mode: PullRequestMode,
+  update: number | null,
   closed: number | null,
 ): NoticeTable<CategoriesProposalError> => {
+  const mode: PullRequestMode = update === null ? "create" : "update";
   const AGAIN = `select ${PULL_REQUEST_LABEL[mode]} again.`;
+  const listUnchanged = {
+    level: "error",
+    label: SAME_AS_NEXT_RELEASE.label,
+    message: SAME_AS_NEXT_RELEASE.message,
+  } as const satisfies NoticeContent;
   const notCreated = {
     level: "error",
     label:
@@ -294,21 +318,22 @@ const headings = (
       label: "Too many categories",
       message: OVER_LIMITS_SENTENCE,
     },
-    "list-unchanged": {
-      level: "error",
-      label: SAME_AS_NEXT_RELEASE.label,
-      message: SAME_AS_NEXT_RELEASE.message,
-    },
+    "list-unchanged": listUnchanged,
     "proposed-by-other": {
       level: "error",
       label: "Another contributor's pull request is open",
       message: `Nothing was pushed. Wait until it is merged or closed, then ${AGAIN}`,
     },
-    "request-unchanged": {
-      level: "error",
-      label: SAME_AS_PULL_REQUEST.label,
-      message: `Nothing was pushed. ${SAME_AS_PULL_REQUEST.message}`,
-    },
+    // Only an update compares with a pull request; a create compares with the
+    // next release.
+    "request-unchanged":
+      update === null
+        ? listUnchanged
+        : {
+            level: "error",
+            label: matchesPullRequest(update),
+            message: "Nothing was pushed.",
+          },
     "proposal-changed": {
       level: "error",
       label: "Pull request changed",
@@ -341,8 +366,13 @@ const headings = (
 /** Why the dialog could not compare, create or update; never a claim about GitHub it cannot make. */
 export const pullRequestNotice = (
   error: unknown,
-  mode: PullRequestMode,
+  /** The operator's open pull request an update sends to; null to create one. */
+  update: number | null,
   /** The closed pull request a Create pull request replaces; null for none. */
   closed: number | null,
 ): NoticeContent | null =>
-  noticeFromTable(headings(mode, closed), error, notConfirmed(mode));
+  noticeFromTable(
+    headings(update, closed),
+    error,
+    notConfirmed(update === null ? "create" : "update"),
+  );
