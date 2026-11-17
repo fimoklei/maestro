@@ -64,6 +64,7 @@ import {
   ALL_RELEASED,
   harnessCounts,
   JOURNEY_EMPTY,
+  originName,
   SELECT_PRIMITIVES,
   STAGE_NAMES,
   selectAllUnder,
@@ -225,7 +226,7 @@ export function HarnessView({
   );
   const context = {
     releasedVersion: state?.releasedVersion ?? null,
-    origin: state?.origin ?? "",
+    origin: originName(state?.origin ?? ""),
   };
   const columns = useMemo(
     () =>
@@ -479,7 +480,7 @@ export function HarnessView({
                     : [{ type, name, change, seenRemoteTree: remoteTree }],
                 )}
               // The host is dropped: owner/repo names it.
-              origin={state?.origin.replace(/^[^/]+\//, "") ?? ""}
+              origin={context.origin}
               onSelectionSpent={() => setStaged(new Set())}
             />
           </SelectionBar>

@@ -17,6 +17,7 @@ import { releasePlanNotice } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { ReleaseWithdrawalDialogHost } from "./release-withdrawal-dialog-host";
 import { RestoreDialog } from "./restore-dialog";
+import { originName } from "./stage-copy";
 import {
   folderInClone,
   useDeletionCheck,
@@ -243,7 +244,10 @@ export function LocalDeletionDialog({
         kind: "local",
         // Both screens read the Harness already; the plain word stands in
         // until that read lands. The host is dropped: owner/repo names it.
-        origin: harness.data?.origin.replace(/^[^/]+\//, "") ?? "the Harness",
+        origin:
+          harness.data === undefined
+            ? "the Harness"
+            : originName(harness.data.origin),
         screen,
         path,
         check: check.isFetching

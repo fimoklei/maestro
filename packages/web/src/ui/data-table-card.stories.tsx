@@ -47,9 +47,7 @@ export const WithoutReadAge: Story = {
 export const WithoutReading: Story = {
   args: {
     content: {
-      body: [
-        "This change adds release-notes to github.com/fimoklei/agent-harness.",
-      ],
+      body: ["This change adds release-notes to fimoklei/agent-harness."],
       readAge: null,
     },
     children: <span>Added</span>,

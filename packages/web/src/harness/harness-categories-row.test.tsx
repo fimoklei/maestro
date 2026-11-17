@@ -86,7 +86,7 @@ describe("the Categories row under Pending review", () => {
     expect(
       await screen.findByText(
         sentence(
-          "This change replaces the Harness categories in github.com/fimoklei/agent-harness.",
+          "This change replaces the Harness categories in fimoklei/agent-harness.",
         ),
       ),
     ).toBeInTheDocument();
