@@ -181,3 +181,30 @@ export const EmptyWhilePullRequestOpen: Story = {
     ),
   },
 };
+
+export const PullRequestMissing: Story = {
+  args: {
+    children: (
+      <PullRequestRow
+        row={{ state: "pull-request-missing", list: "ready" }}
+        report={() => {}}
+      />
+    ),
+  },
+};
+
+export const MergedNotReleased: Story = {
+  args: {
+    children: (
+      <PullRequestRow
+        row={{
+          state: "merged-not-released",
+          number: 45,
+          url: `${PULL}/45`,
+          list: "ready",
+        }}
+        report={() => {}}
+      />
+    ),
+  },
+};

@@ -32,7 +32,8 @@ export function PullRequestRow({
         name={PULL_REQUEST_ROW}
         description={view.sentence}
         control={
-          <>
+          // One group, so the button never wraps apart from its chip.
+          <div className="flex flex-wrap items-center gap-inline font-ui text-row">
             {view.open === null ? null : (
               <>
                 <StatusBadge reading={view.open} />
@@ -44,7 +45,7 @@ export function PullRequestRow({
               unavailable={view.blocked}
               onClick={() => setOpen(true)}
             />
-          </>
+          </div>
         }
       />
       {open ? (

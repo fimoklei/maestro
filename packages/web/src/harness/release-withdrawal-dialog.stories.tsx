@@ -127,3 +127,7 @@ export const ConfirmationOutOfDate: Story = {
     },
   },
 };
+
+export const CategoriesFileDeleted: Story = {
+  args: { target: { ...CATEGORIES, change: "deletion" } },
+};

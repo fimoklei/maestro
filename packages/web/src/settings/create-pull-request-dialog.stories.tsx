@@ -188,3 +188,24 @@ export const UpdateFailed: Story = {
     ),
   },
 };
+
+export const TooManyCategories: Story = {
+  args: {
+    failure: pullRequestNotice(
+      new HttpError(409, "", "list-too-large"),
+      null,
+      null,
+    ),
+  },
+};
+
+export const UpdateRefusedAsUnchanged: Story = {
+  args: {
+    update: 45,
+    failure: pullRequestNotice(
+      new HttpError(409, "", "request-unchanged"),
+      45,
+      null,
+    ),
+  },
+};
