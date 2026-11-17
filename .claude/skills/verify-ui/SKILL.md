@@ -25,8 +25,10 @@ and zoom the change touches, and each state you could not reach.
      request.
 2. Screenshot the changed UI with `agent-browser --session maestro-<worktree folder>`,
    in each theme. Repeat it through a function, `ab(){ agent-browser --session
-   maestro-<worktree folder> "$@"; }`, never a variable. Read a region as text with
-   `pnpm cockpit:snapshot "<selector>" [path]`, never a bare `agent-browser snapshot`.
+   maestro-<worktree folder> "$@"; }`, never a variable. Switch theme with
+   `ab set media dark` or `ab set media light`. Read a region as text with
+   `pnpm cockpit:snapshot "<selector>" [path]`, never a bare `agent-browser snapshot`;
+   the open detail pane is `'aside[aria-label$=" detail"]'`.
    Open a hover card with `ab mouse move <x> <y>` on the badge's pixel position,
    read from a screenshot; take screen paths from `packages/web/src/shell/screens.tsx`.
 3. Screenshot every state the change touches (loading, empty, failure,
@@ -37,7 +39,8 @@ and zoom the change touches, and each state you could not reach.
    --no-open` in the background and take the URL from its `Local:` line; open
    `<url>/iframe.html?id=<story id>&viewMode=story&globals=theme:dark` (story
    ids: `<url>/index.json`).
-4. Read changed copy at a narrow width and at 200% zoom, in one theme.
+4. Read changed copy at a narrow width (`ab set viewport 390 844`) and at 200%
+   zoom (`ab set viewport 720 450 2`: a 1440×900 window at 200%), in one theme.
 5. Compare against the design source (`design.md` → Sources), then judge hierarchy, density,
    alignment and consistency. Fix each mismatch and screenshot again; done
    when a fresh screenshot shows none.
