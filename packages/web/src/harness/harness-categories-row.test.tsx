@@ -86,7 +86,7 @@ describe("the Categories row under Pending review", () => {
     expect(
       await screen.findByText(
         sentence(
-          "This change replaces the categories in github.com/fimoklei/agent-harness with your categories.",
+          "This change replaces the Harness categories in github.com/fimoklei/agent-harness.",
         ),
       ),
     ).toBeInTheDocument();
@@ -179,7 +179,7 @@ describe("the Categories row under Pending review", () => {
 
       expect(pane).toHaveTextContent("Pull request missing");
       expect(pane).toHaveTextContent(
-        "The proposal branch is on GitHub without a pull request. To open one, open Categories in Settings and select Create pull request.",
+        "The proposal branch is on GitHub without a pull request. To create one, open Categories in Settings and select Create pull request.",
       );
     });
 
@@ -240,7 +240,7 @@ describe("the Categories row under Pending release", () => {
     const pane = await openPane("Categories", "Pending release");
 
     expect(pane).toHaveTextContent(
-      `This list changed after release ${CONNECTED.releasedVersion}. Select Create a release to publish it.`,
+      `The Harness categories changed after release ${CONNECTED.releasedVersion}. Select Create a release to publish the change.`,
     );
   });
 
@@ -326,7 +326,7 @@ describe("Withdraw proposal on the Categories row", () => {
       ]),
     );
     expect(
-      await screen.findByText(sentence("Withdrew Categories.")),
+      await screen.findByText(sentence("Withdrew proposal for Categories.")),
     ).toBeInTheDocument();
   });
 

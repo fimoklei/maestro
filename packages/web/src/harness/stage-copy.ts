@@ -147,11 +147,11 @@ const listChangeSentence = (
 ): Copy => {
   switch (change) {
     case "addition":
-      return phrase`This change adds your categories to ${harness}.`;
+      return phrase`This change adds Harness categories to ${harness}.`;
     case "deletion":
-      return phrase`This change deletes the categories from ${harness}.`;
+      return phrase`This change deletes the Harness categories from ${harness}.`;
     default:
-      return phrase`This change replaces the categories in ${harness} with your categories.`;
+      return phrase`This change replaces the Harness categories in ${harness}.`;
   }
 };
 
@@ -179,7 +179,7 @@ function listDetailSentence(row: HarnessStageRow): Copy | null {
     case "changes-requested":
       return `A reviewer asked for changes on pull request ${first(row)}. To send your current categories, ${IN_SETTINGS} ${UPDATE_PULL_REQUEST}.`;
     case "pull-request-missing":
-      return `The proposal branch is on GitHub without a pull request. To open one, ${IN_SETTINGS} ${CREATE_PULL_REQUEST}.`;
+      return `The proposal branch is on GitHub without a pull request. To create one, ${IN_SETTINGS} ${CREATE_PULL_REQUEST}.`;
     case "proposal-closed": {
       const [closed] = row.requests;
       return closed?.byOther === true
@@ -285,6 +285,31 @@ export function detailSentence(
   }
 }
 
+// The list's Pending release sentence; null where the item sentence fits.
+function listReleaseSentence(
+  change: HarnessChange,
+  release: ReturnType<typeof machine> | null,
+): Copy | null {
+  const list = "The Harness categories";
+  const them = `Select ${CREATE_RELEASE} to publish them.`;
+  switch (change) {
+    case "addition":
+      return release === null
+        ? `${list} are in no release yet. ${them}`
+        : phrase`${list} were added after release ${release}. ${them}`;
+    case "edit":
+      return release === null
+        ? `${list} are in no release yet. ${them}`
+        : phrase`${list} changed after release ${release}. Select ${CREATE_RELEASE} to publish the change.`;
+    case "deletion":
+      return release === null
+        ? null
+        : phrase`${list} were deleted after release ${release}. Select ${CREATE_RELEASE} to publish the deletion.`;
+    case "rename":
+      return null;
+  }
+}
+
 // The stage header already places the row in the next release (#1731).
 function releaseSentence(
   row: HarnessStageRow,
@@ -293,6 +318,11 @@ function releaseSentence(
 ): Copy {
   const noun = rowWords(row.type).noun;
   const deletion = `Select ${CREATE_RELEASE} to publish the deletion.`;
+  const list =
+    row.type === "categories" ? listReleaseSentence(row.change, release) : null;
+  if (list !== null) {
+    return list;
+  }
   switch (row.change) {
     case "addition":
       return release === null

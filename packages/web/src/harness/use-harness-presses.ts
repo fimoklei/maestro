@@ -193,7 +193,10 @@ export function useHarnessPresses(
   const proposalAction = useProposalAction();
   const proposalWrite = useWriteAction(proposalAction, {
     screen,
-    action: ({ action }) => action,
+    action: ({ action, type }) =>
+      action === "withdraw" && type === "categories"
+        ? "withdrawListProposal"
+        : action,
     // Create and reopen keep the row in Pending review. A withdrawn item
     // leaves every stage, so the screen states it in a toast.
     subject: landsIn("pending-review"),

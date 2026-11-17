@@ -109,7 +109,10 @@ const withdrawHeadings = ({
       level: "error",
       label: "Pull request still open",
       message: `Select ${WITHDRAW_PROPOSAL} again to close it.`,
-      detail: phrase`${matches} GitHub did not close the pull request.`,
+      detail:
+        type === "categories"
+          ? CLOSE_REFUSED
+          : phrase`${matches} ${CLOSE_REFUSED}`,
     },
     "branch-delete-failed": {
       level: "error",
@@ -124,6 +127,7 @@ const withdrawHeadings = ({
 };
 
 const LIST_STAYS = "Your categories stay as they are.";
+const CLOSE_REFUSED = "GitHub did not close the pull request.";
 
 /** What a withdrawal's notice names: the item, its branch and its request. */
 export type WithdrawContext = Pick<HarnessStageRow, "type" | "name"> & {

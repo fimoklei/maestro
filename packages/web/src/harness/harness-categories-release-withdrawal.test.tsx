@@ -121,6 +121,23 @@ describe("Withdraw from release on the Categories row", () => {
     ).toBeVisible();
   });
 
+  it("names the deletion of the file where it was deleted by hand", async () => {
+    stubHarnessServer({
+      read: { body: merged({ change: "deletion", mergedRequest: null }) },
+    });
+    renderHarness();
+
+    const dialog = await openWithdrawal();
+
+    expect(
+      within(dialog).getByText(
+        sentence(
+          "This takes the deletion of the categories file out of the next release on GitHub. The next release then carries the Harness categories again.",
+        ),
+      ),
+    ).toBeVisible();
+  });
+
   it.each([
     [
       45,

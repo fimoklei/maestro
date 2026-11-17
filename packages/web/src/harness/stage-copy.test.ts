@@ -857,15 +857,15 @@ describe("the Categories row", () => {
   it.each<[HarnessChange, string]>([
     [
       "addition",
-      "This change adds your categories to github.com/fimoklei/agent-harness.",
+      "This change adds Harness categories to github.com/fimoklei/agent-harness.",
     ],
     [
       "edit",
-      "This change replaces the categories in github.com/fimoklei/agent-harness with your categories.",
+      "This change replaces the Harness categories in github.com/fimoklei/agent-harness.",
     ],
     [
       "deletion",
-      "This change deletes the categories from github.com/fimoklei/agent-harness.",
+      "This change deletes the Harness categories from github.com/fimoklei/agent-harness.",
     ],
   ])("states a %s of the list", (change, text) => {
     expect(
@@ -884,7 +884,7 @@ describe("the Categories row", () => {
     [
       "pull-request-missing",
       { requests: [] },
-      "The proposal branch is on GitHub without a pull request. To open one, open Categories in Settings and select Create pull request.",
+      "The proposal branch is on GitHub without a pull request. To create one, open Categories in Settings and select Create pull request.",
     ],
     [
       "proposal-closed",
@@ -904,4 +904,44 @@ describe("the Categories row", () => {
   ])("says what a %s list waits for", (status, over, text) => {
     expect(plainText(detailSentence(list(status, over), CONTEXT))).toBe(text);
   });
+
+  it.each<[HarnessChange, string | null, string]>([
+    [
+      "addition",
+      "v1.4.0",
+      "The Harness categories were added after release v1.4.0. Select Create a release to publish them.",
+    ],
+    [
+      "addition",
+      null,
+      "The Harness categories are in no release yet. Select Create a release to publish them.",
+    ],
+    [
+      "edit",
+      null,
+      "The Harness categories are in no release yet. Select Create a release to publish them.",
+    ],
+    [
+      "edit",
+      "v1.4.0",
+      "The Harness categories changed after release v1.4.0. Select Create a release to publish the change.",
+    ],
+    [
+      "deletion",
+      "v1.4.0",
+      "The Harness categories were deleted after release v1.4.0. Select Create a release to publish the deletion.",
+    ],
+  ])(
+    "says a %s of the list waits for a release after %s",
+    (change, releasedVersion, text) => {
+      const pending = row("pending-release", "not-yet-released", {
+        type: "categories",
+        name: "Categories",
+        change,
+      });
+      expect(
+        plainText(detailSentence(pending, { ...CONTEXT, releasedVersion })),
+      ).toBe(text);
+    },
+  );
 });

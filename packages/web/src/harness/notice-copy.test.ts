@@ -844,6 +844,22 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
       "Your skill folder matches its copy in the next release.",
     );
   });
+
+  it("states only GitHub's refusal when the categories pull request stays open", () => {
+    expect(
+      readNotice(
+        withdrawNotice(refusal("close-failed"), {
+          type: "categories",
+          name: "Categories",
+          branch: "maestro/list.categories",
+          number: 45,
+        }),
+      )?.detail,
+    ).toBe("GitHub did not close the pull request.");
+    expect(notice("close-failed")?.detail).toBe(
+      "Your skill folder now matches its copy in the next release. GitHub did not close the pull request.",
+    );
+  });
 });
 
 describe("Withdraw from release while a proposal is open", () => {
@@ -862,6 +878,16 @@ describe("Withdraw from release while a proposal is open", () => {
   it("names every pull request to merge", () => {
     expect(openProposalCause(skillOpen([45, 51, 52]))).toBe(
       "Merge pull requests #45, #51 and #52 on GitHub, or select Withdraw proposal.",
+    );
+  });
+
+  // Withdraw proposal closes one categories pull request, never several.
+  it("asks to merge or close several own categories pull requests", () => {
+    expect(
+      openProposalCause({ ...skillOpen([45, 46]), type: "categories" }),
+    ).toBe("Merge or close pull requests #45 and #46 on GitHub.");
+    expect(openProposalCause({ ...skillOpen([45]), type: "categories" })).toBe(
+      "Merge pull request #45 on GitHub, or select Withdraw proposal.",
     );
   });
 
