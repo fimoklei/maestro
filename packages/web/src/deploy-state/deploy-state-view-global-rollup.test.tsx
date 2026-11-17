@@ -301,4 +301,36 @@ describe("Deploy-state — Global's Status hover card while behind", () => {
       "Read just now",
     ]);
   });
+
+  it("adds that Global is also behind, where Not updated wins", async () => {
+    stubServer(() => ({
+      global: globalWith(
+        { missing: false, notUpdated: true, behind: true },
+        false,
+      ),
+    }));
+    renderDeployState();
+
+    expect(await statusCardLines("Not updated")).toEqual([
+      "tdd in ~/.agents/skills is still at v0.4.0, but the Target release is v0.4.1. Global is also behind: 1 of 4 deployed skills changed in v0.4.3.",
+      "Read just now",
+    ]);
+  });
+});
+
+describe("Deploy-state — Global's Status hover card while not behind", () => {
+  it("shows only the Not updated reason", async () => {
+    stubServer(() => ({
+      global: globalWith(
+        { missing: false, notUpdated: true, behind: false },
+        false,
+      ),
+    }));
+    renderDeployState();
+
+    expect(await statusCardLines("Not updated")).toEqual([
+      "tdd in ~/.agents/skills is still at v0.4.0, but the Target release is v0.4.1.",
+      "Read just now",
+    ]);
+  });
 });
