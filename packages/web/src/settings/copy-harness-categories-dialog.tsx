@@ -7,12 +7,10 @@ import {
   copyGroupLegend,
   copyIntro,
   copySkipped,
-  HOW_TO_COPY,
-  LOADING_HARNESS_CATEGORIES,
+  LOADING_CATEGORIES,
   newIn,
   replaceWarning,
   spelledInYourList,
-  WHAT_HAPPENS,
 } from "../categories/categories-copy";
 import { Dialog, dialogRun } from "../ui/dialog";
 import { GroupedList } from "../ui/grouped-list";
@@ -79,7 +77,7 @@ export function CopyHarnessCategoriesDialog({
     >
       {preview === null || facts === undefined ? (
         failure === null ? (
-          <StatusLine>{LOADING_HARNESS_CATEGORIES}</StatusLine>
+          <StatusLine>{LOADING_CATEGORIES}</StatusLine>
         ) : null
       ) : (
         <>
@@ -93,7 +91,6 @@ export function CopyHarnessCategoriesDialog({
           )}
           {preview.choice ? (
             <OptionRadios
-              legend={HOW_TO_COPY}
               options={MODES.map((value) => ({
                 value,
                 ...COPY_MODE_COPY[value],
@@ -103,9 +100,6 @@ export function CopyHarnessCategoriesDialog({
               disabled={busy}
             />
           ) : null}
-          <h3 className="m-0 font-semibold font-ui text-gray-12 text-row">
-            {WHAT_HAPPENS}
-          </h3>
           <GroupedList
             groups={GROUPS.map((group) => ({
               tone: "neutral",

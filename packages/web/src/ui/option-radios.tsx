@@ -10,13 +10,11 @@ type Option<T extends string> = {
 // A choice between a few ways to run one action, each a word and a sentence,
 // one always selected. RadioGroup is the choice among machine values.
 export function OptionRadios<T extends string>({
-  legend,
   options,
   value,
   onChange,
   disabled,
 }: {
-  legend: string;
   options: readonly Option<T>[];
   value: T;
   onChange: (value: T) => void;
@@ -25,7 +23,6 @@ export function OptionRadios<T extends string>({
   const id = useId();
   return (
     <fieldset className="m-0 flex min-w-0 flex-col gap-tight border-0 p-0">
-      <legend className="p-0 font-ui text-gray-11 text-meta">{legend}</legend>
       {options.map((option) => (
         <div key={option.value} className="flex min-w-0 items-start gap-inline">
           <input

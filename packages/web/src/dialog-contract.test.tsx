@@ -991,7 +991,7 @@ const ON_DIALOG: Row[] = [
     changed: null,
     emptyForm: null,
     loading: {
-      line: "Loading the Harness categories…",
+      line: "Loading categories…",
       render: () => copyCategoriesDialog(null),
     },
     loadFailed: () => copyCategoriesDialog(null, { failure: FAILED }),

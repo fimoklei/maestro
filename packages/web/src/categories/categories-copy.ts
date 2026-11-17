@@ -6,7 +6,6 @@ import type {
 } from "@maestro/core";
 import type { CategoryNameProblem } from "@maestro/core/category-name";
 import { harnessHeadings } from "../harness/notice-copy";
-import { loadingText } from "../ui/busy-copy";
 import { ADD_CATEGORY, NO_CATEGORY } from "../ui/category-menu-copy";
 import { rereadLabel, SET_CATEGORY } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
@@ -60,14 +59,12 @@ export const COPY_ROW_SENTENCE =
 export const COPY_CATEGORIES = "Copy categories";
 
 export const copyIntro = (tag: string, count: number): Phrase =>
-  phrase`Harness release ${machine(tag)} has ${count} ${count === 1 ? "category" : "categories"}. After the copy, your categories stay as they are when the Harness changes.`;
+  phrase`Harness release ${machine(tag)} has ${count} ${count === 1 ? "category" : "categories"}.`;
 
 export const copySkipped = (count: number) =>
   count === 1
     ? "The categories file has 1 entry with an error. It won't be copied."
     : `The categories file has ${count} entries with errors. They won't be copied.`;
-
-export const HOW_TO_COPY = "How to copy";
 
 export const COPY_MODE_COPY: Record<
   CopyMode,
@@ -84,8 +81,6 @@ export const COPY_MODE_COPY: Record<
       "Deletes the categories only you have. Every skill and prompt gets its Harness category, or none.",
   },
 };
-
-export const WHAT_HAPPENS = "What happens to your categories";
 
 type CopyGroup = "added" | "deleted" | "unchanged";
 
@@ -165,7 +160,7 @@ export function replaceWarning({
 }
 
 /** Heard while the copy dialog reads the release. */
-export const LOADING_HARNESS_CATEGORIES = loadingText(HARNESS_CATEGORIES);
+export const LOADING_CATEGORIES = "Loading categories…";
 
 const NOTHING_LEFT = `The latest Harness release has no categories to copy. Select ${CLOSE}, then select ${rereadLabel(CATEGORIES)}.`;
 /** The cause when the latest release could not be read. */

@@ -148,9 +148,7 @@ describe("Copy Harness categories", () => {
 
     const dialog = await openDialog();
 
-    expect(
-      dialog.getByText("Loading the Harness categories…"),
-    ).toBeInTheDocument();
+    expect(dialog.getByText("Loading categories…")).toBeInTheDocument();
     answer(jsonResponse(EMPTY_OWN));
     expect(await dialog.findByText(/has 2 categories/)).toBeInTheDocument();
   });
@@ -163,9 +161,7 @@ describe("Copy Harness categories", () => {
 
     expect(
       await dialog.findByText(
-        sentence(
-          "Harness release v1.5.0 has 2 categories. After the copy, your categories stay as they are when the Harness changes.",
-        ),
+        sentence("Harness release v1.5.0 has 2 categories."),
       ),
     ).toBeInTheDocument();
     expect(dialog.queryByRole("radio")).toBeNull();
@@ -208,9 +204,8 @@ describe("Copy Harness categories", () => {
     ).toHaveAccessibleDescription(
       "Deletes the categories only you have. Every skill and prompt gets its Harness category, or none.",
     );
-    expect(
-      dialog.getByRole("group", { name: "How to copy" }),
-    ).toBeInTheDocument();
+    expect(dialog.queryByText("How to copy")).toBeNull();
+    expect(dialog.queryByText("What happens to your categories")).toBeNull();
     expect(groupNames(dialog, /^Added · 1$/)).toEqual(["Planning"]);
     expect(groupNames(dialog, /^Unchanged · 2$/)).toEqual(["Drafts", "review"]);
     expect(dialog.queryByRole("group", { name: /^Deleted/ })).toBeNull();

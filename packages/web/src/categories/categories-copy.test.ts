@@ -26,10 +26,9 @@ import {
   deleteMoves,
   emptyCategoryDeleted,
   HARNESS_CATEGORIES,
-  HOW_TO_COPY,
   harnessCategoriesCount,
   harnessCategoriesFaulty,
-  LOADING_HARNESS_CATEGORIES,
+  LOADING_CATEGORIES,
   NO_CATEGORIES,
   NO_CATEGORIES_OR_COPY,
   NO_CATEGORIES_SENTENCE,
@@ -41,7 +40,6 @@ import {
   replaceWarning,
   setCategoryFor,
   spelledInYourList,
-  WHAT_HAPPENS,
 } from "./categories-copy";
 
 // Approved sentences, as exact strings.
@@ -81,8 +79,6 @@ describe("Categories copy", () => {
     expect(COPY_ROW_SENTENCE).toBe(
       "Copies the Harness categories into your list. Your list stays as it is when the Harness changes.",
     );
-    expect(HOW_TO_COPY).toBe("How to copy");
-    expect(WHAT_HAPPENS).toBe("What happens to your categories");
     expect(COPY_MODE_COPY).toEqual({
       add: {
         label: "Add",
@@ -95,18 +91,12 @@ describe("Categories copy", () => {
           "Deletes the categories only you have. Every skill and prompt gets its Harness category, or none.",
       },
     });
-    expect(LOADING_HARNESS_CATEGORIES).toBe("Loading the Harness categories…");
+    expect(LOADING_CATEGORIES).toBe("Loading categories…");
   });
 
   it.each([
-    [
-      6,
-      "Harness release v1.5.0 has 6 categories. After the copy, your categories stay as they are when the Harness changes.",
-    ],
-    [
-      1,
-      "Harness release v1.5.0 has 1 category. After the copy, your categories stay as they are when the Harness changes.",
-    ],
+    [6, "Harness release v1.5.0 has 6 categories."],
+    [1, "Harness release v1.5.0 has 1 category."],
   ])(
     "opens the copy dialog on the %i categories of the release",
     (count, text) => {

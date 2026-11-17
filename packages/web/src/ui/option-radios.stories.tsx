@@ -12,7 +12,6 @@ const meta = {
     ),
   ],
   args: {
-    legend: "How to copy",
     options: [
       {
         value: "add",
