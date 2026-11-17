@@ -110,6 +110,11 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
         `Maestro couldn't read the Harness or GitHub. Select ${REREAD_CATEGORIES} to try again.`,
         `${REREAD_CATEGORIES} first.`,
       );
+    case "no-usable-origin":
+      return blockedRow(
+        `The Harness clone has no GitHub origin. Point the clone's origin at the Harness repository on GitHub, then select ${REREAD_CATEGORIES}.`,
+        "Point the clone's origin at GitHub first.",
+      );
     case "waiting-on-other":
       return blockedRow(
         phrase`${named(row.author)} has pull request #${row.number} open for the Harness categories. Wait until it is merged or closed.`,
@@ -145,12 +150,17 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
     }
     case "own-open": {
       const waiting = `Pull request #${row.number} is open and waiting for a reviewer.`;
+      const asked = `A reviewer asked for changes on pull request #${row.number}.`;
+      // A list the write refuses drops the call to update.
+      const refused = listCause(row.list) !== null;
       const state =
         row.status === "changes-requested"
-          ? `A reviewer asked for changes on pull request #${row.number}. Change your categories, then select ${UPDATE_PULL_REQUEST} to send them.`
+          ? refused
+            ? asked
+            : `${asked} Change your categories, then select ${UPDATE_PULL_REQUEST} to send them.`
           : row.list === "same"
             ? `${waiting} It already contains your current categories.`
-            : listCause(row.list) !== null
+            : refused
               ? waiting
               : `${waiting} Select ${UPDATE_PULL_REQUEST} to send your current categories.`;
       const against = againstPullRequest(row.list, row.number);
@@ -233,22 +243,21 @@ export const itemsCounted = (
   return parts.length === 0 ? null : parts.join(" and ");
 };
 
-/** The warning above a danger confirm: what merging takes from the Harness. */
+/** Update pull request's warning above its danger confirm: what merging takes from the Harness. */
 export const pullRequestDeletes = (
   deleted: readonly CategoryCount[],
 ): NoticeContent => {
-  const names = deleted.map((each) => each.name);
-  const items = itemsCounted(
-    deleted.reduce((sum, each) => sum + each.skills, 0),
-    deleted.reduce((sum, each) => sum + each.prompts, 0),
-  );
+  const names = namedList(deleted.map((each) => each.name));
+  const skills = deleted.reduce((sum, each) => sum + each.skills, 0);
+  const prompts = deleted.reduce((sum, each) => sum + each.prompts, 0);
+  const items = itemsCounted(skills, prompts);
   return {
     level: "warning",
-    label: `This pull request deletes ${deleted.length} Harness ${deleted.length === 1 ? "category" : "categories"}`,
+    label: `Merging deletes ${deleted.length} Harness ${deleted.length === 1 ? "category" : "categories"}`,
     message:
       items === null
-        ? phrase`Once it is merged, the Harness categories no longer include ${namedList(names)}.`
-        : phrase`Once it is merged, ${items} in ${namedList(names)} have no category in the Harness.`,
+        ? phrase`The Harness then no longer has ${names}.`
+        : phrase`The Harness then no longer has ${names}, and ${items} ${skills + prompts === 1 ? "has" : "have"} no category.`,
   };
 };
 

@@ -83,6 +83,12 @@ describe("the row Propose to Harness", () => {
       "Maestro couldn't read the Harness or GitHub. Select Re-read Categories to try again.",
       "Re-read Categories first.",
     ],
+    [
+      "a clone without a GitHub origin",
+      { state: "no-usable-origin" },
+      "The Harness clone has no GitHub origin. Point the clone's origin at the Harness repository on GitHub, then select Re-read Categories.",
+      "Point the clone's origin at GitHub first.",
+    ],
   ])(
     "blocks Create pull request for %s, with its cause",
     async (_, row, text, cause) => {
@@ -256,7 +262,7 @@ describe("the Create pull request dialog", () => {
     ).toBeInTheDocument();
   });
 
-  it("warns, and confirms with a danger button, when the pull request deletes Harness categories", async () => {
+  it("confirms with a danger button, without a warning, when the pull request deletes Harness categories", async () => {
     stubServer({
       rows: [{ state: "start" }],
       preview: jsonResponse({
@@ -273,26 +279,16 @@ describe("the Create pull request dialog", () => {
 
     const dialog = await openDialog();
 
-    expect(
-      await within(dialog).findByText(
-        "This pull request deletes 2 Harness categories",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        sentence(
-          "Once it is merged, 3 skills and 2 prompts in Debugging and Review have no category in the Harness.",
-        ),
-      ),
-    ).toBeInTheDocument();
-    // The group is neutral, as in the Copy dialog's Replace view.
-    const deleted = within(dialog).getByRole("group", {
+    // The group is neutral, as in the Copy dialog's Replace view, and names
+    // what the pull request deletes; no warning repeats it.
+    const deleted = await within(dialog).findByRole("group", {
       name: "Deleted from the Harness · 2",
     });
     expect(deleted.outerHTML).not.toMatch(/amber/);
+    expect(within(dialog).queryByText(/deletes|no longer/)).toBeNull();
     expect(
       within(dialog).getByRole("button", { name: "Create pull request" }),
-    ).toBeInTheDocument();
+    ).toHaveClass("text-red-11");
   });
 
   it("offers only Close when the list matches the next release", async () => {

@@ -158,18 +158,18 @@ describe("the Update pull request dialog", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      within(dialog).getByText("This pull request deletes 1 Harness category"),
+      within(dialog).getByText("Merging deletes 1 Harness category"),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
         sentence(
-          "Once it is merged, 2 skills in Debugging have no category in the Harness.",
+          "The Harness then no longer has Debugging, and 2 skills have no category.",
         ),
       ),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", { name: "Update pull request" }),
-    ).toBeInTheDocument();
+    ).toHaveClass("text-red-11");
   });
 
   it("offers only Close when the list equals the pull request", async () => {

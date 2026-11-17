@@ -29,7 +29,9 @@ const closed = (over: Partial<Closed> = {}): CategoriesProposalRow => ({
   ...over,
 });
 
-const afterClose = (deletesBranch: boolean) =>
+type Category = { name: string; skills: number; prompts: number };
+
+const afterClose = (deletesBranch: boolean, deleted: Category[] = []) =>
   jsonResponse({
     kind: "after-close",
     number: 45,
@@ -37,7 +39,7 @@ const afterClose = (deletesBranch: boolean) =>
     difference: {
       kind: "changes",
       added: [{ name: "Planning", skills: 1, prompts: 0 }],
-      deleted: [],
+      deleted,
       moved: [],
     },
   } satisfies CategoriesProposalPreview);
@@ -127,6 +129,38 @@ describe("the Create pull request dialog after a close without merging", () => {
         "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("confirms with a danger button, without a warning, when the new pull request deletes Harness categories", async () => {
+    stubServer({
+      rows: [closed()],
+      preview: afterClose(true, [{ name: "Review", skills: 2, prompts: 0 }]),
+    });
+    renderPage();
+
+    const dialog = await openDialog();
+
+    expect(
+      await within(dialog).findByRole("group", {
+        name: "Deleted from the Harness · 1",
+      }),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(/no longer/)).toBeNull();
+    expect(
+      within(dialog).getByRole("button", { name: "Create pull request" }),
+    ).toHaveClass("text-red-11");
+  });
+
+  it("confirms with the primary button when the new pull request deletes nothing", async () => {
+    stubServer({ rows: [closed()], preview: afterClose(true) });
+    renderPage();
+
+    const dialog = await openDialog();
+    await within(dialog).findByText("Compared with the next release");
+
+    expect(
+      within(dialog).getByRole("button", { name: "Create pull request" }),
+    ).not.toHaveClass("text-red-11");
   });
 
   it("creates the new pull request and says so", async () => {

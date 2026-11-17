@@ -98,6 +98,19 @@ export const AfterCloseKeepsBranch: Story = {
   args: { closed: 45, preview: { ...AFTER_CLOSE, deletesBranch: false } },
 };
 
+export const AfterCloseDeletesHarnessCategories: Story = {
+  args: {
+    closed: 45,
+    preview: {
+      ...AFTER_CLOSE,
+      difference: {
+        ...AFTER_CLOSE.difference,
+        deleted: [{ name: "Debugging", skills: 2, prompts: 0 }],
+      },
+    },
+  },
+};
+
 export const AfterCloseComparing: Story = {
   args: { closed: 45, preview: null },
 };

@@ -136,6 +136,17 @@ describe("the pull-request row on Categories in Settings", () => {
 
     expect((await row()).body).toEqual({ state: "unread" });
   });
+
+  it("states a clone whose origin is not on GitHub", async () => {
+    const { tipHolds, own, harness, row } = world();
+    tipHolds(["tdd"]);
+    await own(["Planning"]);
+    harness.originUrl = "/srv/git/agent-harness.git";
+
+    expect((await row()).body).toEqual({
+      state: "no-usable-origin",
+    } satisfies CategoriesProposalRow);
+  });
 });
 
 describe("the difference against the next release", () => {

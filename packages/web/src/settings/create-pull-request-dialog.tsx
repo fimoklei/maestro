@@ -137,17 +137,19 @@ export function CreatePullRequestDialog({
       : preview?.kind === "after-close"
         ? createAfterCloseBody(preview.number, preview.deletesBranch)
         : null;
-  // The warning always counts against the next release.
+  // What merging deletes always counts against the next release.
   const deleted =
     preview?.kind === "update"
       ? preview.deleted
-      : preview?.kind === "changes"
-        ? preview.deleted
+      : difference?.kind === "changes"
+        ? difference.deleted
         : [];
   const creatable =
     failure === null &&
     (difference?.kind === "changes" || difference?.kind === "uncompared");
-  const deletes = deleted.length > 0 ? pullRequestDeletes(deleted) : null;
+  // A create's Deleted group already names them; only an update warns.
+  const deletes =
+    deleted.length > 0 && update !== null ? pullRequestDeletes(deleted) : null;
   // A read that failed leaves nothing to describe.
   const bodyless = preview === null && failure !== null;
 
@@ -161,7 +163,7 @@ export function CreatePullRequestDialog({
           ? {
               label: texts.action,
               verb: texts.verb,
-              tone: deletes === null ? "primary" : "danger",
+              tone: deleted.length === 0 ? "primary" : "danger",
               unavailable: null,
               onRun: onCreate,
             }

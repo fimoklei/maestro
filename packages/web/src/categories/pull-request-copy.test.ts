@@ -155,8 +155,24 @@ describe("the pull-request row", () => {
         url: `${PULL}/45`,
         list: "empty",
       },
-      "A reviewer asked for changes on pull request #45. Change your categories, then select Update pull request to send them. Add or copy at least one category before updating the pull request.",
+      "A reviewer asked for changes on pull request #45. Add or copy at least one category before updating the pull request.",
       "Add a category.",
+    ],
+    [
+      {
+        state: "own-open",
+        status: "changes-requested",
+        number: 45,
+        url: `${PULL}/45`,
+        list: "over-limits",
+      },
+      "A reviewer asked for changes on pull request #45. Your list is too large for the Harness categories file. Delete categories before creating a pull request.",
+      "Delete categories.",
+    ],
+    [
+      { state: "no-usable-origin" },
+      "The Harness clone has no GitHub origin. Point the clone's origin at the Harness repository on GitHub, then select Re-read Categories.",
+      "Point the clone's origin at GitHub first.",
     ],
   ])("states %j", (row, sentence, blocked) => {
     const view = pullRequestRow(row);
@@ -194,6 +210,36 @@ describe("the Update pull request dialog", () => {
       message:
         "The categories file in pull request #45 contains an error. Update the pull request.",
     });
+  });
+
+  it("warns of the Harness categories merging deletes and the items they leave", () => {
+    const warning = pullRequestDeletes([
+      { name: "Debugging", skills: 1, prompts: 2 },
+      { name: "Release", skills: 1, prompts: 0 },
+      { name: "Review", skills: 1, prompts: 0 },
+      { name: "Writing", skills: 0, prompts: 0 },
+    ]);
+    expect(warning.level).toBe("warning");
+    expect(warning.label).toBe("Merging deletes 4 Harness categories");
+    expect(plainText(warning.message)).toBe(
+      "The Harness then no longer has Debugging, Release, Review and Writing, and 3 skills and 2 prompts have no category.",
+    );
+  });
+
+  it("warns of one deleted category, with one item or none", () => {
+    const one = pullRequestDeletes([
+      { name: "Release", skills: 1, prompts: 0 },
+    ]);
+    expect(one.label).toBe("Merging deletes 1 Harness category");
+    expect(plainText(one.message)).toBe(
+      "The Harness then no longer has Release, and 1 skill has no category.",
+    );
+    expect(
+      plainText(
+        pullRequestDeletes([{ name: "Writing", skills: 0, prompts: 0 }])
+          .message,
+      ),
+    ).toBe("The Harness then no longer has Writing.");
   });
 
   it("states a list the write refuses as too large", () => {
@@ -252,22 +298,6 @@ describe("the Create pull request dialog", () => {
     expect(ADDED_TO_HARNESS).toBe("Added to the Harness");
     expect(DELETED_FROM_HARNESS).toBe("Deleted from the Harness");
     expect(MOVED_TO_ANOTHER_CATEGORY).toBe("Moved to another category");
-  });
-
-  it("warns of the Harness categories it deletes and the items they leave", () => {
-    const warning = pullRequestDeletes([
-      { name: "Debugging", skills: 1, prompts: 2 },
-      { name: "Release", skills: 1, prompts: 0 },
-      { name: "Review", skills: 1, prompts: 0 },
-      { name: "Writing", skills: 0, prompts: 0 },
-    ]);
-    expect(warning.level).toBe("warning");
-    expect(warning.label).toBe(
-      "This pull request deletes 4 Harness categories",
-    );
-    expect(plainText(warning.message)).toBe(
-      "Once it is merged, 3 skills and 2 prompts in Debugging, Release, Review and Writing have no category in the Harness.",
-    );
   });
 
   it("says when the list matches the next release", () => {

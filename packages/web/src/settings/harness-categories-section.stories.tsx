@@ -62,6 +62,14 @@ export const HarnessNotRead: Story = {
   },
 };
 
+export const NoGitHubOrigin: Story = {
+  args: {
+    children: (
+      <PullRequestRow row={{ state: "no-usable-origin" }} report={() => {}} />
+    ),
+  },
+};
+
 export const AnotherContributorsPullRequest: Story = {
   args: {
     children: (
@@ -105,6 +113,23 @@ export const ChangesRequested: Story = {
           number: 45,
           url: `${PULL}/45`,
           list: "same",
+        }}
+        report={() => {}}
+      />
+    ),
+  },
+};
+
+export const EmptyWhileChangesRequested: Story = {
+  args: {
+    children: (
+      <PullRequestRow
+        row={{
+          state: "own-open",
+          status: "changes-requested",
+          number: 45,
+          url: `${PULL}/45`,
+          list: "empty",
         }}
         report={() => {}}
       />

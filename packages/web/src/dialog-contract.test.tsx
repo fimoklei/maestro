@@ -547,8 +547,17 @@ const ON_DIALOG: Row[] = [
     loadFailed: () => createPullRequestDialog(null, { failure: FAILED }),
     notices: [
       {
-        label: "This pull request deletes 1 Harness category",
-        render: () => createPullRequestDialog(DELETES_A_CATEGORY),
+        label: "Merging deletes 1 Harness category",
+        render: () =>
+          createPullRequestDialog(
+            {
+              kind: "update",
+              number: 45,
+              difference: DELETES_A_CATEGORY,
+              deleted: [{ name: "Debugging", skills: 2, prompts: 1 }],
+            },
+            { update: 45 },
+          ),
       },
       {
         label: "Your categories match the next release",

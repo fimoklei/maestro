@@ -75,6 +75,8 @@ type OwnListAgainstRequest = "same" | "differs" | "empty" | "over-limits";
 export type CategoriesProposalRow =
   // The Harness or GitHub could not be read.
   | { state: "unread" }
+  // The clone's origin is no GitHub repository.
+  | { state: "no-usable-origin" }
   | { state: "waiting-on-other"; author: string; number: number; url: string }
   | {
       state: "own-open";
@@ -227,6 +229,8 @@ const rowRefusal = (
   switch (row.state) {
     case "unread":
       return "no-answer";
+    case "no-usable-origin":
+      return "no-usable-origin";
     case "waiting-on-other":
       return "proposed-by-other";
     case "empty":
@@ -497,9 +501,14 @@ export class CategoriesProposal {
     await this.deps.fetchGate.fetchRecent(harness.root);
     const assessed = await this.assess(harness, this.deps.reads);
     if (!assessed.ok) {
-      return assessed.error === "categories-unreadable"
-        ? { ok: false, error: assessed.error }
-        : { ok: true, row: { state: "unread" } };
+      switch (assessed.error) {
+        case "categories-unreadable":
+          return { ok: false, error: assessed.error };
+        case "no-usable-origin":
+          return { ok: true, row: { state: "no-usable-origin" } };
+        default:
+          return { ok: true, row: { state: "unread" } };
+      }
     }
     return { ok: true, row: assessed.value.row };
   }
