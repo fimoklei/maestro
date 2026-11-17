@@ -287,7 +287,7 @@ describe("Deploy-state — Global's Status hover card while behind", () => {
     ]);
   });
 
-  it("adds that Global is also behind, where Skills missing wins", async () => {
+  it("adds that Global is behind, where Skills missing wins", async () => {
     stubServer(() => ({
       global: globalWith(
         { missing: true, notUpdated: false, behind: true },
@@ -297,12 +297,12 @@ describe("Deploy-state — Global's Status hover card while behind", () => {
     renderDeployState();
 
     expect(await statusCardLines("Skills missing")).toEqual([
-      "1 of 4 deployed skills is missing in ~/.agents/skills. Global is also behind: 1 of 4 deployed skills changed in v0.4.3.",
+      "1 of 4 deployed skills is missing in ~/.agents/skills. Global is behind: 1 of 4 deployed skills changed in v0.4.3.",
       "Read just now",
     ]);
   });
 
-  it("adds that Global is also behind, where Not updated wins", async () => {
+  it("adds that Global is behind, where Not updated wins", async () => {
     stubServer(() => ({
       global: globalWith(
         { missing: false, notUpdated: true, behind: true },
@@ -312,7 +312,7 @@ describe("Deploy-state — Global's Status hover card while behind", () => {
     renderDeployState();
 
     expect(await statusCardLines("Not updated")).toEqual([
-      "tdd in ~/.agents/skills is still at v0.4.0, but the Target release is v0.4.1. Global is also behind: 1 of 4 deployed skills changed in v0.4.3.",
+      "tdd in ~/.agents/skills is still at v0.4.0, but the Target release is v0.4.1. Global is behind: 1 of 4 deployed skills changed in v0.4.3.",
       "Read just now",
     ]);
   });

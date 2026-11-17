@@ -42,7 +42,7 @@ import {
 import {
   behindLine,
   copyChipText,
-  globalAlsoBehindLine,
+  globalBehindLine,
   LATEST_RELEASE_UNKNOWN,
   ON_LATEST_RELEASE,
   pinnedTagsLine,
@@ -494,9 +494,7 @@ function statusReason(row: TargetRow): Copy | null {
   }
   const folder = folderReason(row);
   if (folder !== null) {
-    return row.behind && row.head
-      ? globalAlsoBehindLine(folder, row.head)
-      : folder;
+    return row.behind && row.head ? globalBehindLine(folder, row.head) : folder;
   }
   if (row.status?.word === EDITS_IN_HARNESS.word) {
     return copyChipText("edits-in-harness").hint;
