@@ -42,7 +42,7 @@ export const Linked: Story = {
   args: {
     label: "Origin",
     icon: <GitHubMark />,
-    value: "github.com/fimoklei/agent-harness",
+    value: "fimoklei/agent-harness",
     github: { kind: "link", url: "https://github.com/fimoklei/agent-harness" },
   },
 };

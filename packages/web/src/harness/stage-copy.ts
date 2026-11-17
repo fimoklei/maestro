@@ -108,10 +108,6 @@ export const stageStatusReading = (
 const withGlyph = (word: string, family: StatusFamily): StatusReading =>
   reading(word, family, family === "attention" ? WARNING_GLYPH : undefined);
 
-/** The Harness as the screen names it: `owner/repo`, without the host. */
-export const originName = (origin: string): string =>
-  origin.replace(/^[^/]+\//, "");
-
 // The facts a sentence substitutes into: both come from the same read the rows
 // did, so a Detail never names a release the rows were not read from.
 export type StageContext = {

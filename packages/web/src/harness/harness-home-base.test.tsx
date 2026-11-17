@@ -58,7 +58,7 @@ describe("Harness home base", () => {
       await screen.findByRole("heading", { level: 1, name: /harness/i }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText("github.com/fimoklei/agent-harness"),
+      await screen.findByText("fimoklei/agent-harness"),
     ).toBeInTheDocument();
   });
 
@@ -808,7 +808,7 @@ describe("Harness home base", () => {
 
     const band = await band2();
     for (const [label, value] of [
-      ["Origin", "github.com/fimoklei/agent-harness"],
+      ["Origin", "fimoklei/agent-harness"],
       ["Release", "v0.5.0"],
     ]) {
       expect(within(band).getByText(label as string)).toBeInTheDocument();
@@ -856,7 +856,7 @@ describe("Harness home base", () => {
 
     const band = await band2();
     expect(
-      within(band).getByText("github.com/fimoklei/agent-harness"),
+      within(band).getByText("fimoklei/agent-harness"),
     ).toBeInTheDocument();
     expect(within(band).queryByRole("link")).not.toBeInTheDocument();
   });

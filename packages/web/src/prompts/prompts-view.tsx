@@ -20,6 +20,7 @@ import type { HarnessFacts } from "../skills/skills-band";
 import {
   NOT_RELEASED_YET,
   ORIGIN_FACT,
+  originName,
   RELEASE_FACT,
   UNKNOWN_FACT_VALUE,
 } from "../ui/band-copy";
@@ -317,7 +318,10 @@ export function PromptsView({
                   {
                     label: ORIGIN_FACT,
                     icon: <GitHubMark />,
-                    value: harness?.origin ?? UNKNOWN_FACT_VALUE,
+                    value:
+                      harness === null
+                        ? UNKNOWN_FACT_VALUE
+                        : originName(harness.origin),
                     github: harness?.github,
                     machine: harness !== null,
                     drop: ORIGIN_DROP,

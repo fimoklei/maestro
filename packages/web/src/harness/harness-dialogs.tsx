@@ -6,6 +6,7 @@ import type {
   SemverStep,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
+import { originName } from "../ui/band-copy";
 import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { DiscardDialog } from "./discard-dialog";
@@ -17,7 +18,6 @@ import { releasePlanNotice } from "./notice-copy";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { ReleaseWithdrawalDialogHost } from "./release-withdrawal-dialog-host";
 import { RestoreDialog } from "./restore-dialog";
-import { originName } from "./stage-copy";
 import {
   folderInClone,
   useDeletionCheck,

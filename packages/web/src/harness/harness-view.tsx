@@ -10,7 +10,12 @@ import { CATEGORIES_PAGE } from "../settings/settings-pages";
 import { useRereadInventory } from "../shell/use-reread-inventory";
 import { ActionsMenu } from "../ui/actions-menu";
 import { BandAction } from "../ui/band-action";
-import { NOT_RELEASED_YET, ORIGIN_FACT, RELEASE_FACT } from "../ui/band-copy";
+import {
+  NOT_RELEASED_YET,
+  ORIGIN_FACT,
+  originName,
+  RELEASE_FACT,
+} from "../ui/band-copy";
 import { setStagedMany, toggleStaged } from "../ui/bulk-selection";
 import { Button } from "../ui/button";
 import {
@@ -64,7 +69,6 @@ import {
   ALL_RELEASED,
   harnessCounts,
   JOURNEY_EMPTY,
-  originName,
   SELECT_PRIMITIVES,
   STAGE_NAMES,
   selectAllUnder,
@@ -396,7 +400,7 @@ export function HarnessView({
                 {
                   label: ORIGIN_FACT,
                   icon: <GitHubMark />,
-                  value: state.origin,
+                  value: context.origin,
                   github: state.github,
                   machine: true,
                   drop: { rank: 2, belowRem: 48 },

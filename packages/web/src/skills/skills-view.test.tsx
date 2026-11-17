@@ -597,7 +597,7 @@ describe("SkillsView — band 2 facts", () => {
       />,
     );
     expect(facts()).toEqual([
-      "Origin github.com/acme/harness",
+      "Origin acme/harness",
       "Release Not released yet",
       "Skills 2",
     ]);

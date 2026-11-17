@@ -392,6 +392,10 @@ const TDD = {
   description: "Test first.",
 };
 
+// The Harness read the Skills band states its facts from.
+const harnessRead = (input: RequestInfo | URL): Response | null =>
+  String(input) === "/api/harness" ? jsonResponse(RELEASED) : null;
+
 const ON_TABLE_SCREEN: Row[] = [
   {
     file: "deploy-state/deploy-state-view.tsx",
@@ -566,6 +570,7 @@ const ON_TABLE_SCREEN: Row[] = [
         vi.fn(
           async (input: RequestInfo | URL) =>
             noCategories(input) ??
+            harnessRead(input) ??
             (String(input).startsWith("/api/registry")
               ? jsonResponse({ repos: [] })
               : jsonResponse({ primitives: [], unreadTypes: [] })),
@@ -584,6 +589,7 @@ const ON_TABLE_SCREEN: Row[] = [
           vi.fn(
             async (input: RequestInfo | URL) =>
               noCategories(input) ??
+              harnessRead(input) ??
               (String(input).startsWith("/api/registry")
                 ? jsonResponse({ repos: [] })
                 : jsonResponse({ primitives: [], unreadTypes: [] })),
