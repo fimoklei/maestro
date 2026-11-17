@@ -236,7 +236,7 @@ describe("Categories copy", () => {
   it.each([
     [
       "no-harness-categories",
-      "The latest Harness release no longer contains categories. Select Close, then select Re-read Categories.",
+      "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
     ],
     [
       "harness-categories-unread",
@@ -254,17 +254,17 @@ describe("Categories copy", () => {
   it.each([
     [
       "no-harness-categories",
-      "The latest Harness release no longer contains categories, so nothing was copied. Select Close, then select Re-read Categories.",
+      "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
     ],
     [
       "harness-categories-unread",
-      "Maestro couldn't read the latest Harness release, so nothing was copied. Select Copy categories to try again.",
+      "Maestro couldn't read the latest Harness release. Select Copy categories to try again.",
     ],
     [null, "Select Copy categories to try again."],
   ])("states why Copy categories did not land: %s", (code, message) => {
     expect(copyFailed(code)).toEqual({
       level: "error",
-      label: "Categories not copied",
+      label: "Couldn't copy Harness categories",
       message,
     });
   });

@@ -167,8 +167,10 @@ export function replaceWarning({
 /** Heard while the copy dialog reads the release. */
 export const LOADING_HARNESS_CATEGORIES = loadingText(HARNESS_CATEGORIES);
 
-const NOTHING_LEFT = "The latest Harness release no longer contains categories";
-const UNREAD = "Maestro couldn't read the latest Harness release";
+const NOTHING_LEFT = `The latest Harness release has no categories to copy. Select ${CLOSE}, then select ${rereadLabel(CATEGORIES)}.`;
+/** The cause when the latest release could not be read. */
+export const RELEASE_UNREAD =
+  "Maestro couldn't read the latest Harness release.";
 
 /** Why the copy dialog has nothing to show, by the refusal's code. */
 export const copyPreviewFailed = (code: string | null): NoticeContent => ({
@@ -176,23 +178,24 @@ export const copyPreviewFailed = (code: string | null): NoticeContent => ({
   label: "Couldn't load Harness categories",
   message:
     code === "no-harness-categories"
-      ? `${NOTHING_LEFT}. Select ${CLOSE}, then select ${REREAD_CATEGORIES}.`
+      ? NOTHING_LEFT
       : code === "harness-categories-unread"
-        ? `${UNREAD}. Select ${CLOSE}, then select ${COPY} to try again.`
+        ? `${RELEASE_UNREAD} Select ${CLOSE}, then select ${COPY} to try again.`
         : `Select ${CLOSE}, then select ${COPY} to try again.`,
 });
 
-export const CATEGORIES_NOT_COPIED = "Categories not copied";
+/** Heading of every failed copy of the Harness categories. */
+export const COPY_FAILED_HEADING = "Couldn't copy Harness categories";
 
 /** Why Copy categories did not land, by the refusal's code. */
 export const copyFailed = (code: string | null): NoticeContent => ({
   level: "error",
-  label: CATEGORIES_NOT_COPIED,
+  label: COPY_FAILED_HEADING,
   message:
     code === "no-harness-categories"
-      ? `${NOTHING_LEFT}, so nothing was copied. Select ${CLOSE}, then select ${REREAD_CATEGORIES}.`
+      ? NOTHING_LEFT
       : code === "harness-categories-unread"
-        ? `${UNREAD}, so nothing was copied. Select ${COPY_CATEGORIES} to try again.`
+        ? `${RELEASE_UNREAD} Select ${COPY_CATEGORIES} to try again.`
         : `Select ${COPY_CATEGORIES} to try again.`,
 });
 

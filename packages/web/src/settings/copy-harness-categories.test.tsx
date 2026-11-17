@@ -392,12 +392,12 @@ describe("Copy Harness categories", () => {
     [
       "a release without categories",
       () => jsonResponse({ error: "no-harness-categories" }, 409),
-      "The latest Harness release no longer contains categories, so nothing was copied. Select Close, then select Re-read Categories.",
+      "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
     ],
     [
       "a release Maestro could not read",
       () => jsonResponse({ error: "harness-categories-unread" }, 503),
-      "Maestro couldn't read the latest Harness release, so nothing was copied. Select Copy categories to try again.",
+      "Maestro couldn't read the latest Harness release. Select Copy categories to try again.",
     ],
     [
       "no answer",
@@ -416,7 +416,7 @@ describe("Copy Harness categories", () => {
     );
 
     expect(
-      await dialog.findByText("Categories not copied"),
+      await dialog.findByText("Couldn't copy Harness categories"),
     ).toBeInTheDocument();
     expect(dialog.getByText(message)).toBeInTheDocument();
     expect(
@@ -430,7 +430,7 @@ describe("Copy Harness categories", () => {
     [
       "a release without categories",
       () => jsonResponse({ error: "no-harness-categories" }, 409),
-      "The latest Harness release no longer contains categories. Select Close, then select Re-read Categories.",
+      "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
     ],
     [
       "a release Maestro could not read",

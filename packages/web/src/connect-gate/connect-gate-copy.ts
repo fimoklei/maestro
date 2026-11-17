@@ -1,4 +1,7 @@
-import { CATEGORIES_NOT_COPIED } from "../categories/categories-copy";
+import {
+  COPY_FAILED_HEADING,
+  RELEASE_UNREAD,
+} from "../categories/categories-copy";
 import { FIRST_INVENTORY_VIEW } from "../inventory/inventory-views";
 import { primitiveCountLabel } from "../shell/primitive-count-label";
 import type { NoticeContent } from "../ui/notice";
@@ -28,16 +31,16 @@ export const NO_SKILLS_YET = "It has no skills yet.";
 export const COPY_LATER_HINT =
   "You can also copy them later in Categories in Settings.";
 
-/** Why the copy on Continue to Skills did not land, stated on Skills after the move. */
+/** Why the copy on Continue to Skills did not land, stated on Skills after the move; Skills offers no control for any cause, so each points to Settings. */
 export const connectCopyFailed = (code: string | null): NoticeContent => ({
   level: "error",
-  label: CATEGORIES_NOT_COPIED,
+  label: COPY_FAILED_HEADING,
   message:
     code === "no-harness-categories"
-      ? "The latest Harness release no longer contains categories, so nothing was copied."
+      ? "The latest Harness release has no categories Maestro can copy. You can add your own in Categories in Settings."
       : code === "harness-categories-unread"
-        ? `Maestro couldn't read the latest Harness release, so nothing was copied. ${COPY_LATER_HINT}`
-        : `Nothing was copied. ${COPY_LATER_HINT}`,
+        ? `${RELEASE_UNREAD} You can copy the categories later in Categories in Settings.`
+        : "You can copy them later in Categories in Settings.",
 });
 
 // Null is a count that could not be read: left out, never shown as zero (#841).

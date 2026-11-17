@@ -58,18 +58,17 @@ describe("connect gate copy", () => {
     expect(COPY_LATER_HINT).toBe(
       "You can also copy them later in Categories in Settings.",
     );
-    // Provisional: shown on Skills after the move (#1908).
     expect(connectCopyFailed("no-harness-categories")).toEqual({
       level: "error",
-      label: "Categories not copied",
+      label: "Couldn't copy Harness categories",
       message:
-        "The latest Harness release no longer contains categories, so nothing was copied.",
+        "The latest Harness release has no categories Maestro can copy. You can add your own in Categories in Settings.",
     });
     expect(connectCopyFailed("harness-categories-unread").message).toBe(
-      "Maestro couldn't read the latest Harness release, so nothing was copied. You can also copy them later in Categories in Settings.",
+      "Maestro couldn't read the latest Harness release. You can copy the categories later in Categories in Settings.",
     );
     expect(connectCopyFailed(null).message).toBe(
-      "Nothing was copied. You can also copy them later in Categories in Settings.",
+      "You can copy them later in Categories in Settings.",
     );
   });
 
