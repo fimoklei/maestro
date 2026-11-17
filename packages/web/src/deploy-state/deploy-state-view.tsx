@@ -326,30 +326,26 @@ export function DeployStateView({
       view={view}
       noMatch={NO_FILTER_MATCH}
       empty={{ ...NO_TARGETS, icon: <Icon of={LayoutList} /> }}
-      pane={(row, frame) => {
-        const placed = targetPaneActions(row, onAction);
-        return (
-          <TargetDetailPane
-            row={row}
-            {...frame}
-            initialFocus={intent?.dialog ? null : undefined}
-            onRetry={() => retry.run(row.wire)}
-            isRetrying={retry.isRetrying(row.wire)}
-            retryFailure={retry.failure(row.wire)}
-            compared={freshness}
-            skillsList={skillsList(row)}
-            update={placed.update}
-            foot={placed.foot}
-            dialogs={
-              <TargetActions
-                key={`${row.id}:${intent?.nonce ?? 0}`}
-                row={row}
-                dialog={intent?.dialog ?? null}
-              />
-            }
-          />
-        );
-      }}
+      pane={(row, frame) => (
+        <TargetDetailPane
+          row={row}
+          {...frame}
+          initialFocus={intent?.dialog ? null : undefined}
+          onRetry={() => retry.run(row.wire)}
+          isRetrying={retry.isRetrying(row.wire)}
+          retryFailure={retry.failure(row.wire)}
+          compared={freshness}
+          skillsList={skillsList(row)}
+          foot={targetPaneActions(row, onAction)}
+          dialogs={
+            <TargetActions
+              key={`${row.id}:${intent?.nonce ?? 0}`}
+              row={row}
+              dialog={intent?.dialog ?? null}
+            />
+          }
+        />
+      )}
     />
   );
 }

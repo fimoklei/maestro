@@ -27,10 +27,7 @@ import {
 } from "./release-head-copy";
 import { SelectedSkills } from "./selected-skills";
 import { skippedEntryText } from "./skipped-entry-text";
-import {
-  showsReadFailure,
-  type TargetPaneActions,
-} from "./target-pane-actions";
+import { showsReadFailure } from "./target-pane-actions";
 import {
   editedSkills,
   type TargetRow,
@@ -39,7 +36,7 @@ import {
 import type { SkillsListBasis } from "./use-deployed-skills-list";
 
 // A target's full reading. Presentational: the foot's items arrive as `foot`,
-// Update target as `update`, and the dialogs they open as `dialogs`.
+// and the dialogs they open as `dialogs`.
 export function TargetDetailPane({
   row,
   position,
@@ -52,7 +49,6 @@ export function TargetDetailPane({
   retryFailure,
   compared,
   skillsList,
-  update,
   foot,
   dialogs,
 }: {
@@ -69,7 +65,6 @@ export function TargetDetailPane({
   retryFailure: DeployStateNotice | null;
   /** Band 2's freshness line, so the Compared fact dates the same, oldest reading. */
   compared: string | null;
-  update: TargetPaneActions["update"];
   foot: FootItem[];
   /** Mounted beside the pane, so a dialog outlives a re-render of its foot. */
   dialogs: ReactNode;
@@ -176,7 +171,6 @@ export function TargetDetailPane({
                   />
                 ),
                 machine: true,
-                action: update ?? undefined,
               },
           changed === null
             ? null
