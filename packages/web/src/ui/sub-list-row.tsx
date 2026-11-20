@@ -1,6 +1,7 @@
 import type { ActionsMenuItem } from "./actions-menu";
 import { cn } from "./cn";
 import { MachineValue } from "./machine-value";
+import type { Copy } from "./phrase";
 import { RowMenu } from "./row-menu";
 import { Skeleton } from "./skeleton";
 import { StatusMark } from "./status-mark";
@@ -9,7 +10,7 @@ import { Tooltip } from "./tooltip";
 import { useReadSkeleton } from "./use-read-skeleton";
 
 // Inside the pane a row carries a mark, never a badge (#1065).
-type RowMark = StatusReading & { hint?: string };
+type RowMark = StatusReading & { hint?: Copy };
 
 /** A row's value: a version or path is a machine value; words such as a count are not. */
 export type SubListValue = { text: string; machine: boolean };

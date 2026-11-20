@@ -260,3 +260,10 @@ export const readyView = (
   followsRelease: false,
   ...fields,
 });
+
+/** The open tooltip as drawn on screen. */
+export async function shownTooltip(): Promise<HTMLElement> {
+  const copy = await screen.findByRole("tooltip", { hidden: true });
+  // Radix renders its screen-reader copy as a child of the drawn content.
+  return copy.parentElement as HTMLElement;
+}

@@ -1,6 +1,7 @@
 import { waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { expectDescription } from "../test-utils";
+import { expectDescription, shownTooltip } from "../test-utils";
 import {
   globalAnswer,
   openPane,
@@ -161,6 +162,23 @@ describe("Deploy-state pane — Global skill rows", () => {
     expect(row.value()).toBe(AGENTS);
     expect(row.valueIsMachine()).toBe(true);
     expectDescription(row.mark(), `No copy in ${AGENTS}.`);
+  });
+
+  it("sets the folder in the hover in mono", async () => {
+    const user = userEvent.setup();
+    stubGlobal(
+      { claude: [skill("show-me"), skill("tdd")], codex: [skill("tdd")] },
+      { [AGENTS]: { missing: ["show-me"] } },
+    );
+    renderDeployState();
+    const row = await skillRow("show-me");
+    await waitFor(() => expect(row.mark()).toHaveAccessibleName("Missing"));
+
+    await user.hover(row.mark());
+
+    expect(within(await shownTooltip()).getByText(AGENTS)).toHaveClass(
+      "font-mono",
+    );
   });
 
   it("reads Not updated with the release its one copy is still at", async () => {

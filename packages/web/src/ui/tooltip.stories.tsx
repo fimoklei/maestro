@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Button } from "./button";
+import { machine, phrase } from "./phrase";
 import { Tooltip } from "./tooltip";
 
 const meta = {
@@ -23,5 +24,13 @@ export const WithDetail: Story = {
     label: "Local edits",
     detail: "Files changed after deployment.",
     children: <Button variant="quiet">Local edits</Button>,
+  },
+};
+
+export const WithMachineValue: Story = {
+  args: {
+    label: "Missing",
+    detail: phrase`No copy in ${machine("~/.agents/skills")}.`,
+    children: <Button variant="quiet">Missing</Button>,
   },
 };

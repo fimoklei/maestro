@@ -1,6 +1,8 @@
 import { Slot } from "@radix-ui/react-slot";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { type ComponentProps, type ReactNode, useId } from "react";
+import { type Copy, plainText } from "./phrase";
+import { PhraseText } from "./phrase-text";
 
 // Never holds a control.
 
@@ -13,7 +15,7 @@ export function Tooltip({
   /** The trigger's accessible name, or the whole of its shortened text. */
   label: string;
   /** A reason under the label; the trigger's description, said once. */
-  detail?: string;
+  detail?: Copy;
   children: ReactNode;
 }) {
   const contentId = useId();
@@ -38,7 +40,9 @@ export function Tooltip({
           >
             {label}
             {detail === undefined ? null : (
-              <span className="block text-gray-11">{detail}</span>
+              <span className="block text-gray-11">
+                <PhraseText copy={withoutLinks(detail)} />
+              </span>
             )}
           </TooltipPrimitive.Content>
         </TooltipPrimitive.Portal>
@@ -46,6 +50,16 @@ export function Tooltip({
     </TooltipPrimitive.Provider>
   );
 }
+
+// A link reads as its words: the tooltip opens on hover, so a press never reaches it.
+const withoutLinks = (copy: Copy): Copy =>
+  typeof copy === "string"
+    ? copy
+    : {
+        parts: copy.parts.map((part) =>
+          typeof part !== "string" && part.kind === "link" ? part.text : part,
+        ),
+      };
 
 // Radix joins the content id onto any aria-describedby the child carries, and
 // only while open; the detail describes the trigger while closed too.
@@ -56,7 +70,7 @@ function TriggerTarget({
   ...rest
 }: ComponentProps<typeof Slot> & {
   contentId: string;
-  detail: string | undefined;
+  detail: Copy | undefined;
 }) {
   const ids = describedBy
     ?.split(/\s+/)
@@ -66,7 +80,7 @@ function TriggerTarget({
     <Slot
       {...rest}
       aria-describedby={ids === "" ? undefined : ids}
-      aria-description={detail}
+      aria-description={detail === undefined ? undefined : plainText(detail)}
     />
   );
 }
