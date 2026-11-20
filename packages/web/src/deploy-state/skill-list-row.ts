@@ -7,7 +7,7 @@ import {
   UNVERIFIED,
   UP_TO_DATE,
 } from "../inventory/skill-status";
-import { plainText } from "../ui/phrase";
+import type { Copy } from "../ui/phrase";
 import { WARNING_GLYPH } from "../ui/status-family";
 import { reading, type StatusReading } from "../ui/status-reading";
 import type { SubListValue } from "../ui/sub-list-row";
@@ -30,7 +30,7 @@ export type SkillListRow = {
   /** A version or path as a machine value; a folder count in words. */
   value: SubListValue;
   /** The mark's tooltip line under its word. */
-  hover: string | undefined;
+  hover: Copy | undefined;
   /** Lower is worse: the mark's place in the skill-row order. */
   rank: number;
   /** Up to date in every folder of its target. */
@@ -101,7 +101,7 @@ export function globalSkillRows(
       ...row,
       mark,
       value: off.value,
-      hover: plainText(off.hover),
+      hover: off.hover,
       rank: rankOf(mark),
       clean: false,
     };
