@@ -43,6 +43,7 @@ function refForDeployedSkill(
     return { ok: false, reason: "ref-unresolvable" };
   }
 
+  // Exactly one match: zero and several returned above.
   const entry = matches[0] as LockfileEntry;
   const trustworthy =
     entry.host === SUPPORTED_HOST &&

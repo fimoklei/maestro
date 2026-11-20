@@ -26,6 +26,7 @@ export function githubPageField<
 >(key: K, page: GitHubPage | undefined): Partial<Record<K, GitHubPage>> {
   if (page === undefined) return {};
   const link = linkSchema.safeParse(page);
+  // A computed key widens to string; `key` is the K the caller named.
   return { [key]: link.success ? link.data : UNKNOWN_PAGE } as Record<
     K,
     GitHubPage

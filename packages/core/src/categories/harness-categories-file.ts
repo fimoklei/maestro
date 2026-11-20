@@ -39,6 +39,7 @@ const assignmentSchema = z.object({
 });
 
 const isPrimitiveType = (type: string): type is HarnessPrimitiveType =>
+  // Widened only to ask includes() about any string; the guard narrows it back.
   (HARNESS_PRIMITIVE_TYPES as readonly string[]).includes(type);
 
 const byteLength = (text: string): number =>

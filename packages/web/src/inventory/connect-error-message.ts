@@ -12,6 +12,7 @@ export function scaffoldOfferPath(error: unknown): string | null {
   if (!(error instanceof HttpError) || error.code !== "scaffoldable") {
     return null;
   }
+  // An HttpError body; `path` stays unknown and is checked below.
   const { path } = (error.body ?? {}) as { path?: unknown };
   return typeof path === "string" && path !== "" ? path : null;
 }

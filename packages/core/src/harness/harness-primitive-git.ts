@@ -47,6 +47,7 @@ const PROPOSAL_FORMAT = `%(refname:lstrip=${PROPOSAL_REFS.split("/").length})\t%
 export type PrimitiveObject = { hash: string; mode: string };
 
 const wasKilled = (error: unknown): boolean =>
+  // execFile rejects with an Error that sets `killed` on a timeout.
   (error as { killed?: boolean }).killed === true;
 
 const pathExists = (path: string): Promise<boolean> =>
@@ -545,6 +546,7 @@ export async function readStagedDifference(
     );
     return false;
   } catch (error) {
+    // execFile rejects with an Error that carries the exit code.
     return !wasKilled(error) && (error as { code?: number }).code === 1
       ? true
       : null;

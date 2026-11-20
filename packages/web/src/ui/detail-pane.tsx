@@ -132,6 +132,7 @@ export function DetailPane({
     const step =
       event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : null;
     if (step === null) return;
+    // A keydown inside the pane targets an element.
     if ((event.target as HTMLElement).closest(OWNS_ARROWS)) return;
     const next = position.index + step;
     if (next < 0 || next >= position.count) return;

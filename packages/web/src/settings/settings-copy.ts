@@ -30,6 +30,7 @@ const SET_LOCATION_MESSAGES: Partial<Record<ConnectInventoryError, string>> = {
 };
 
 export function setLocationMessage(code: string | null): string | undefined {
+  // Indexed by any code; an unknown one reads undefined.
   return (SET_LOCATION_MESSAGES as Record<string, string | undefined>)[
     code ?? ""
   ];

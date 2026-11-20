@@ -58,6 +58,7 @@ function removalOutcome(error: unknown): RemoveOutcome | null {
   if (!(error instanceof HttpError)) {
     return null;
   }
+  // An HttpError body, read field by field; every field stays unknown.
   const outcome = (error.body as { outcome?: unknown } | undefined)?.outcome as
     | { scope?: unknown; state?: unknown; tools?: unknown }
     | undefined;
@@ -67,6 +68,7 @@ function removalOutcome(error: unknown): RemoveOutcome | null {
   }
   if (outcome?.scope === "global" && Array.isArray(outcome.tools)) {
     const tools: RemoveToolOutcome[] = [];
+    // An array, checked above; every field stays unknown.
     for (const entry of outcome.tools as {
       tool?: unknown;
       path?: unknown;

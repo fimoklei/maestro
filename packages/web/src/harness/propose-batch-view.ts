@@ -134,7 +134,8 @@ const noticeFor = (
 ): NoticeCopy => {
   const words = ITEM_WORDS[ref.type];
   return item?.change === "deletion"
-    ? deletionHeadings(words)[error as PromoteDeletionError]
+    ? // The server sends a deletion's codes for a deletion and a promotion's otherwise.
+      deletionHeadings(words)[error as PromoteDeletionError]
     : promoteHeadings(words)[error as PromoteError];
 };
 

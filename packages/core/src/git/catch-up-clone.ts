@@ -156,6 +156,7 @@ async function exitsZero(
     await git(root, args, options);
     return true;
   } catch (error) {
+    // execFile rejects with an Error that carries the exit code.
     if ((error as { code?: unknown }).code === 1) {
       return false;
     }

@@ -512,7 +512,8 @@ export function deployAttentionNotice(
 /** The whole notice for a refused or failed deploy. */
 export function deployNotice(error: unknown): DeployStateNotice {
   return error instanceof HttpError && Object.hasOwn(DEPLOY, error.code ?? "")
-    ? deployNoticeFor(error.code as DeploySkillError, linkedPathOf(error))
+    ? // Object.hasOwn above proves the code is a key of DEPLOY.
+      deployNoticeFor(error.code as DeploySkillError, linkedPathOf(error))
     : noticeFor(DEPLOY, error, UNKNOWN_DEPLOY);
 }
 
@@ -715,6 +716,7 @@ export function retryNotice(
       return notice;
     }
     if (Object.hasOwn(copy, error.code ?? "")) {
+      // Object.hasOwn above proves the code is a key of the table.
       return copy[error.code as RetryTargetOperationError];
     }
   }
