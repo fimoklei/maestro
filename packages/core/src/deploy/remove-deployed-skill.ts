@@ -685,6 +685,7 @@ export class RemoveDeployedSkill {
     lockKey: string,
     detected: readonly SupportedTool[] | undefined,
   ): Promise<RemoveDeployedSkillError | null> {
+    // A root plan is only made where `deps.selection` is set.
     const applied = await (this.deps.selection as SelectionWriter).apply({
       target: input.target,
       key: lockKey,

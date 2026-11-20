@@ -36,6 +36,7 @@ export const readFrontmatter = (
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
     return null;
   }
+  // A non-null object that is not an array, checked above.
   return { block, data: data as Record<string, unknown> };
 };
 

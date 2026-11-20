@@ -321,6 +321,7 @@ function classifyInstallFailure(
 }
 
 function outputOf(error: unknown): string {
+  // execFile rejects with an Error that carries stdout and stderr; both stay unknown.
   const { stdout, stderr } = error as { stdout?: unknown; stderr?: unknown };
   return `${String(stdout ?? "")}\n${String(stderr ?? "")}`;
 }

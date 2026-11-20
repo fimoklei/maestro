@@ -146,6 +146,7 @@ function orderedLeftAlone(
   const listed = [...labels.keys()].filter((key) => rows.has(key));
   const unlisted = [...rows.keys()].filter((key) => !labels.has(key));
   return [...listed, ...unlisted].map(
+    // Every key comes from `rows` itself, filtered by rows.has above.
     (key) => rows.get(key) as BulkRemoveLeftAloneRow,
   );
 }

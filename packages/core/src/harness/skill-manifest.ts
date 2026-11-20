@@ -61,6 +61,7 @@ const namesExactly = (raw: string, name: string): boolean => {
     return false;
   }
   try {
+    // Frontmatter parses to a mapping; a non-object fails the name check.
     return (parse(block) as Record<string, unknown>).name === name;
   } catch {
     return false;

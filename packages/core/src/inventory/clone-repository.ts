@@ -28,6 +28,7 @@ export class GitCloneAdapter implements CloneRepositoryPort {
       });
       return "cloned";
     } catch (error) {
+      // execFile rejects with an Error that carries stderr.
       return classifyCloneFailure((error as { stderr?: string }).stderr ?? "");
     }
   }

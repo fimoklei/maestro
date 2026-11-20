@@ -128,10 +128,12 @@ function recomputedPlan(error: unknown): ReleasePlan | null {
   if (!(error instanceof HttpError)) {
     return null;
   }
+  // An HttpError body, read field by field; `plan` stays unknown.
   const plan = (error.body as { plan?: unknown } | undefined)?.plan;
   if (plan === null || typeof plan !== "object") {
     return null;
   }
+  // An object, checked above; every field is checked below.
   const shape = plan as Partial<ReleasePlan>;
   const versions = shape.versions;
   const complete =
@@ -147,6 +149,7 @@ function recomputedPlan(error: unknown): ReleasePlan | null {
     isArrayOf(shape.delta, isMovement) &&
     isArrayOf(shape.findings, isFinding) &&
     (shape.blocked === null || isOneOf(shape.blocked, BLOCKS));
+  // Every field was checked above.
   return complete ? (plan as ReleasePlan) : null;
 }
 
@@ -178,6 +181,7 @@ const PROBLEMS = [
 const isOneOf = <T extends string>(
   value: unknown,
   allowed: readonly T[],
+  // Widened only to ask includes() about any value.
 ): boolean => allowed.includes(value as T);
 
 const isNullableString = (value: unknown): boolean =>
@@ -192,6 +196,7 @@ const isArrayOf = (
     (entry) =>
       entry !== null &&
       typeof entry === "object" &&
+      // A non-null object, checked above; `element` checks its fields.
       element(entry as Record<string, unknown>),
   );
 

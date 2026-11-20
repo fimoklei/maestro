@@ -56,6 +56,7 @@ function refusal(
   if (!(error instanceof HttpError) || error.code === undefined) {
     return null;
   }
+  // An unknown code reads undefined in REFUSES_THE_REMOVAL below.
   const code = error.code as RefusalCode;
   return REFUSES_THE_REMOVAL[code] === true
     ? { code, notice: removeNotice(error) }
