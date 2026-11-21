@@ -4,9 +4,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { sentence } from "../test-utils";
 import { HoverCard } from "./hover-card";
 
-function renderCard(props: { focused?: boolean } = {}) {
+function renderCard(props: { focused: boolean } = { focused: false }) {
   return render(
-    <HoverCard content={<p>Deployed to 2 targets</p>} {...props}>
+    <HoverCard
+      ownsEscape={false}
+      content={<p>Deployed to 2 targets</p>}
+      {...props}
+    >
       <span>Up to date</span>
     </HoverCard>,
   );
@@ -56,7 +60,11 @@ describe("HoverCard", () => {
     expect(card()).toBeInTheDocument();
 
     rerender(
-      <HoverCard content={<p>Deployed to 2 targets</p>} focused={false}>
+      <HoverCard
+        ownsEscape={false}
+        content={<p>Deployed to 2 targets</p>}
+        focused={false}
+      >
         <span>Up to date</span>
       </HoverCard>,
     );
@@ -89,7 +97,11 @@ describe("HoverCard", () => {
     render(
       <>
         <button type="button">Before</button>
-        <HoverCard content={<p>Deployed to 2 targets</p>} focused>
+        <HoverCard
+          ownsEscape={false}
+          content={<p>Deployed to 2 targets</p>}
+          focused
+        >
           <span>Up to date</span>
         </HoverCard>
       </>,

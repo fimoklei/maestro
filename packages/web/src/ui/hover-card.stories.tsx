@@ -9,6 +9,7 @@ const meta = {
   component: HoverCard,
   args: {
     focused: true,
+    ownsEscape: false,
     content: <p className="m-0">Deployed to 2 targets</p>,
     children: (
       <span>
