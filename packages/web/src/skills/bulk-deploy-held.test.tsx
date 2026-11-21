@@ -1,4 +1,8 @@
-import type { BulkDeployReport, SkillOutcome } from "@maestro/core";
+import type {
+  BulkDeployReport,
+  DeployedPrimitive,
+  SkillOutcome,
+} from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -75,11 +79,13 @@ function stub(
   },
 ) {
   // A skill in `current` is at the release in both folders: the plan skips it.
-  const copies = run.current.map((name) => ({
-    type: "skill",
-    name,
-    version: "v1.0.0",
-  }));
+  const copies = run.current.map(
+    (name): DeployedPrimitive => ({
+      type: "skill",
+      name,
+      version: "v1.0.0",
+    }),
+  );
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {

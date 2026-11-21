@@ -1,5 +1,6 @@
 import type {
   FolderOutcomes,
+  PendingOperation,
   SkillOutcome,
   UpdatePreview,
 } from "@maestro/core";
@@ -57,7 +58,11 @@ const globalAt = (
   });
 };
 
-const PENDING = { kind: "update", release: "v0.3.5", desired: ["tdd"] };
+const PENDING: PendingOperation = {
+  kind: "update",
+  release: "v0.3.5",
+  desired: ["tdd"],
+};
 
 const REPO = "/Users/me/project";
 const repoAt = (release: string, pendingOperation?: object) => ({

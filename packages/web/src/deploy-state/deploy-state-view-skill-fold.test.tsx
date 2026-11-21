@@ -1,3 +1,4 @@
+import type { DeployedPrimitive } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,7 +19,10 @@ afterEach(() => {
 
 const AGENTS = "~/.agents/skills";
 
-const skill = (name: string, copy?: string) => ({
+const skill = (
+  name: string,
+  copy?: DeployedPrimitive["copy"],
+): DeployedPrimitive => ({
   type: "skill",
   name,
   version: "v0.4.1",

@@ -1,4 +1,11 @@
-import type { PrimitiveRef } from "@maestro/core";
+import type {
+  DeployedPrimitive,
+  GlobalFolderState,
+  GlobalTargetState,
+  PendingOperation,
+  PrimitiveRef,
+  SkippedEntry,
+} from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
@@ -13,7 +20,7 @@ type Answer = unknown | { status: number; body: unknown };
 
 export type ServerState = {
   repos?: string[] | Answer;
-  global?: Answer;
+  global?: GlobalAnswer | { status: number; body: unknown } | Promise<Response>;
   repo?: Record<string, Answer>;
   // "global" or a repo path; defaults to nothing behind.
   drift?: Record<string, Answer>;
@@ -38,17 +45,25 @@ const respond = (answer: Answer): Response | Promise<Response> =>
 
 const EMPTY_TARGET = { primitives: [], skipped: [] };
 
-type Copy = { name: string } & Record<string, unknown>;
+/** The Global read as the server answers it. */
+export type GlobalAnswer = GlobalTargetState & {
+  skipped: SkippedEntry[];
+  otherOrigins: string[];
+  pendingOperation?: PendingOperation;
+};
 
 /**
- * The Global read as the server answers it: one target with its folders. A
- * tool left out of `copies` is not detected; its folder holds no copy.
+ * One target with its folders. A tool left out of `copies` is not detected;
+ * its folder holds no copy.
  */
 export function globalAnswer(
-  copies: { claude?: Copy[]; codex?: Copy[] },
-  extra: Record<string, unknown> = {},
-) {
-  const folder = (path: string, tool: "claude" | "codex") => ({
+  copies: { claude?: DeployedPrimitive[]; codex?: DeployedPrimitive[] },
+  extra: Partial<Omit<GlobalAnswer, "primitives" | "folders">> = {},
+): GlobalAnswer & { folders: [GlobalFolderState, GlobalFolderState] } {
+  const folder = (
+    path: string,
+    tool: "claude" | "codex",
+  ): GlobalFolderState => ({
     path,
     tool,
     detected: copies[tool] !== undefined,

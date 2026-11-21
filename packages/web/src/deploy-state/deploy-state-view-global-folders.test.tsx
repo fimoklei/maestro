@@ -1,3 +1,4 @@
+import type { DeployedPrimitive } from "@maestro/core";
 import { waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -14,7 +15,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const skill = (name: string, copy?: string) => ({
+const skill = (
+  name: string,
+  copy?: DeployedPrimitive["copy"],
+): DeployedPrimitive => ({
   type: "skill",
   name,
   version: "v0.4.1",

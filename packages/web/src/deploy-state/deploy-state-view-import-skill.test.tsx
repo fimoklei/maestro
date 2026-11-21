@@ -1,3 +1,4 @@
+import type { DeployedPrimitive } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -19,7 +20,10 @@ afterEach(() => {
 const REPO = "/Users/me/project";
 const ROW = "…/me/project";
 
-const skill = (name: string, copy?: "local-edits") => ({
+const skill = (
+  name: string,
+  copy?: DeployedPrimitive["copy"],
+): DeployedPrimitive => ({
   type: "skill",
   name,
   version: "v0.3.5",

@@ -1,3 +1,4 @@
+import type { DeployedPrimitive } from "@maestro/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -29,7 +30,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const skill = (name: string, version = "v0.5.0") => ({
+const skill = (name: string, version = "v0.5.0"): DeployedPrimitive => ({
   type: "skill",
   name,
   version,
@@ -188,7 +189,7 @@ describe("Deploy-state — one table of every target", () => {
 });
 
 describe("Deploy-state — Global and its folders", () => {
-  const edited = { ...skill("tdd"), copy: "local-edits" };
+  const edited: DeployedPrimitive = { ...skill("tdd"), copy: "local-edits" };
 
   it("reads Global as one row, with a read-only row per folder: its path and one mark", async () => {
     stubServer(() => ({

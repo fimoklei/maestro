@@ -1,4 +1,4 @@
-import type { LocalEditsSkill } from "@maestro/core";
+import type { DeployedPrimitive, LocalEditsSkill } from "@maestro/core";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -19,7 +19,7 @@ afterEach(() => {
 const CLAUDE_COPY = "~/.claude/skills/code-review";
 const CODEX_COPY = "~/.agents/skills/code-review";
 
-const edited = (name: string) => ({
+const edited = (name: string): DeployedPrimitive => ({
   type: "skill",
   name,
   version: "v0.3.5",
