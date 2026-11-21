@@ -1,5 +1,12 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { expect, vi } from "vitest";
@@ -260,6 +267,13 @@ export const readyView = (
   followsRelease: false,
   ...fields,
 });
+
+/** The open hover card as drawn on screen. */
+export function shownCard(): Promise<HTMLElement> {
+  return waitFor(() =>
+    htmlElement(document.querySelector("[data-radix-popper-content-wrapper]")),
+  );
+}
 
 /** The open tooltip as drawn on screen. */
 export async function shownTooltip(): Promise<HTMLElement> {

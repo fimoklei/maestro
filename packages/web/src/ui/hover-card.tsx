@@ -10,12 +10,15 @@ const GUTTER = 8;
 
 export function HoverCard({
   content,
-  focused = false,
+  focused,
+  ownsEscape,
   children,
 }: {
   content: ReactNode;
-  /** Set by an owner that holds focus itself, as a grid does for its active row. */
-  focused?: boolean;
+  /** Whether the owner holds focus on the trigger: the grid's active row, or a focused mark. */
+  focused: boolean;
+  /** Escape closes the open card alone, not the panel around it; a grid's card leaves it to the panel. */
+  ownsEscape: boolean;
   /** One element; it becomes the trigger. */
   children: ReactNode;
 }) {
@@ -56,6 +59,10 @@ export function HoverCard({
         onPointerUp={(event) => {
           if (event.pointerType === "touch") setPointerOpen((open) => !open);
         }}
+        // Focus is the owner's, through `focused`: Radix's own delayed open
+        // would undo an Escape pressed within the delay.
+        onFocus={(event) => event.preventDefault()}
+        onBlur={(event) => event.preventDefault()}
       >
         {children}
       </HoverCardPrimitive.Trigger>
@@ -66,6 +73,9 @@ export function HoverCard({
           sideOffset={6}
           collisionBoundary={panel}
           collisionPadding={GUTTER}
+          onEscapeKeyDown={(event) => {
+            if (ownsEscape) event.stopPropagation();
+          }}
           // Grows for a row such as a whole target name; a sentence never
           // widens it, so prose keeps the narrow measure.
           className="z-50 w-max [&_p]:[contain:inline-size] min-w-[min(var(--container-2xs),var(--radix-hover-card-content-available-width))] max-w-[min(var(--container-lg),var(--radix-hover-card-content-available-width))] rounded-float border border-gray-7 bg-gray-2 p-cell font-ui text-gray-12 text-meta shadow-float"

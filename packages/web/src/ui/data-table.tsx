@@ -728,7 +728,7 @@ function CardCell<T>({
   return content === null ? (
     children
   ) : (
-    <DataTableCard content={content} focused={focused}>
+    <DataTableCard content={content} focused={focused} ownsEscape={false}>
       {children}
     </DataTableCard>
   );

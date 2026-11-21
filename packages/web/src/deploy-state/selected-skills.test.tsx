@@ -5,7 +5,12 @@ import { describe, expect, it } from "vitest";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { driftViewModel } from "../drift/drift-view-model";
 import type { DriftResponse } from "../drift/use-drift";
-import { expectDescription, renderWithQuery } from "../test-utils";
+import {
+  expectDescription,
+  hoverOpen,
+  renderWithQuery,
+  shownCard,
+} from "../test-utils";
 import { SelectedSkills } from "./selected-skills";
 import { repoSkillRows } from "./skill-list-row";
 
@@ -103,17 +108,16 @@ describe("SelectedSkills marks", () => {
     expect(screen.getAllByRole("img")).toHaveLength(1);
   });
 
-  it("shows a mark's word and reason in a tooltip on focus, and closes it on Escape", async () => {
+  it("shows a mark's word, the row's whole value and its reason in a card on focus, and closes it on Escape", async () => {
     const user = userEvent.setup();
     renderList(behindTdd, [{ ...tdd, copy: "local-edits" }]);
     const mark = screen.getByRole("img", { name: "Local edits" });
 
     await user.tab();
     expect(mark).toHaveFocus();
-    const tooltip = await screen.findByRole("tooltip", { hidden: true });
-    expect(tooltip).toHaveTextContent("Files changed after deployment.");
-    expect(document.body).toHaveTextContent(
-      /Local edits\s*Files changed after deployment\./,
+    const card = await shownCard();
+    expect(card).toHaveTextContent(
+      /^Local edits\s*v0\.5\.0 → v0\.5\.1\s*Files changed after deployment\.$/,
     );
     // The word is the name; the reason is said once, as the description.
     expect(mark).toHaveAccessibleName("Local edits");
@@ -121,20 +125,19 @@ describe("SelectedSkills marks", () => {
     expect(mark).not.toHaveAttribute("title");
 
     await user.keyboard("{Escape}");
-    expect(screen.queryByRole("tooltip", { hidden: true })).toBeNull();
+    expect(card).not.toBeInTheDocument();
   });
 
   // #1811: the row may shorten its value, so a mark with no reason of its own
-  // holds the value whole under its word.
+  // holds the value whole beside its word.
   it("shows a mark with no reason as its word and the row's whole value, on hover", async () => {
-    const user = userEvent.setup();
     renderList(behindTdd);
 
     const mark = screen.getByRole("img", { name: "Behind" });
-    await user.hover(mark);
-    expect(
-      await screen.findByRole("tooltip", { hidden: true }),
-    ).toHaveTextContent(/^Behindv0\.5\.0 → v0\.5\.1$/);
+    await hoverOpen(mark);
+    expect(await shownCard()).toHaveTextContent(
+      /^Behind\s*v0\.5\.0 → v0\.5\.1$/,
+    );
     // The word is the name already; it is not read a second time (#1068).
     expectDescription(mark, "v0.5.0 → v0.5.1");
   });
