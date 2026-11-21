@@ -128,13 +128,6 @@ function Mark({ mark, value }: { mark: RowMark | null; value: SubListValue }) {
           <span
             role="img"
             aria-label={mark.word}
-            aria-description={
-              mark.hint === undefined ? value.text : plainText(mark.hint)
-            }
-            // biome-ignore lint/a11y/noNoninteractiveTabindex: a hover card trigger, so its reading opens from the keyboard too (#1068)
-            tabIndex={0}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
             className={cn(
               "inline-flex size-6 items-center justify-center rounded-control focus-visible:outline-2 focus-visible:outline-blue-9 focus-visible:outline-offset-2",
               mark.family === "attention"
@@ -143,6 +136,13 @@ function Mark({ mark, value }: { mark: RowMark | null; value: SubListValue }) {
                   ? "text-green-11"
                   : "text-gray-11",
             )}
+            aria-description={
+              mark.hint === undefined ? value.text : plainText(mark.hint)
+            }
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a hover card trigger, so its reading opens from the keyboard too (#1068)
+            tabIndex={0}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
           >
             {mark.glyph}
           </span>
