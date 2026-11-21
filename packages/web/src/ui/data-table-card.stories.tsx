@@ -13,6 +13,7 @@ const meta = {
   component: DataTableCard,
   args: {
     focused: true,
+    ownsEscape: false,
     content: {
       reading: BEHIND,
       value: <MachineValue>v0.3.2</MachineValue>,

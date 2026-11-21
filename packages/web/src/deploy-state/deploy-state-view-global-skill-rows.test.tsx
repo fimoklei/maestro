@@ -1,7 +1,7 @@
 import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { expectDescription, shownTooltip } from "../test-utils";
+import { expectDescription, shownCard } from "../test-utils";
 import {
   globalAnswer,
   openPane,
@@ -189,9 +189,9 @@ describe("Deploy-state pane — Global skill rows", () => {
 
     await user.hover(row.mark());
 
-    expect(within(await shownTooltip()).getByText(AGENTS)).toHaveClass(
-      "font-mono",
-    );
+    const folders = within(await shownCard()).getAllByText(AGENTS);
+    expect(folders).toHaveLength(2);
+    for (const folder of folders) expect(folder).toHaveClass("font-mono");
   });
 
   it("reads Not updated with the release its one copy is still at", async () => {

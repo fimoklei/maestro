@@ -1,7 +1,13 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { hoverOpen, jsonResponse, openFootMenu, sentence } from "../test-utils";
+import {
+  hoverOpen,
+  jsonResponse,
+  openFootMenu,
+  sentence,
+  shownCard,
+} from "../test-utils";
 import {
   cellsOf,
   factValue,
@@ -692,7 +698,9 @@ describe("Deploy-state pane — Deployed skills", () => {
     const pane = await openPane(LABEL);
     const mark = await within(pane).findByRole("img", { name: "Unverified" });
     await hoverOpen(mark);
-    await screen.findByRole("tooltip", { hidden: true });
+    expect(
+      within(await shownCard()).getByText("Update check did not run."),
+    ).toBeVisible();
     expect(mark).toHaveAccessibleDescription("Update check did not run.");
   });
 
@@ -703,7 +711,11 @@ describe("Deploy-state pane — Deployed skills", () => {
     const pane = await openPane(LABEL);
     const mark = await within(pane).findByRole("img", { name: "Unknown" });
     await hoverOpen(mark);
-    await screen.findByRole("tooltip", { hidden: true });
+    expect(
+      within(await shownCard()).getByText(
+        "Update check timed out after 1 minute.",
+      ),
+    ).toBeVisible();
     expect(mark).toHaveAccessibleDescription(
       "Update check timed out after 1 minute.",
     );

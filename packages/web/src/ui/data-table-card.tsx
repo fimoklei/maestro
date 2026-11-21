@@ -6,7 +6,7 @@ import { PhraseText } from "./phrase-text";
 import { StatusBadge } from "./status-badge";
 import type { StatusReading } from "./status-reading";
 
-/** What a cell's hover card says; the data table draws it. */
+/** What a hover card says, on a table cell or a sub-list row's mark. */
 export type DataTableCardContent = {
   /** None: no badge; with no value either, no header. */
   reading?: StatusReading;
@@ -34,15 +34,18 @@ export type DataTableCardColumn<T> = {
 export function DataTableCard({
   content,
   focused,
+  ownsEscape,
   children,
 }: {
   content: DataTableCardContent;
   focused: boolean;
+  ownsEscape: boolean;
   children: ReactNode;
 }) {
   return (
     <HoverCard
       focused={focused}
+      ownsEscape={ownsEscape}
       content={
         <div className="flex flex-col gap-inline">
           {content.reading === undefined &&
