@@ -34,10 +34,8 @@ import type { PromptFieldProblem } from "@maestro/core/prompt-file";
 
 type ErrorStatus = 400 | 403 | 404 | 409 | 422 | 500 | 502 | 503 | 504;
 
-// apm hung and the driver stopped it.
 const TIMED_OUT = { status: 504 } as const;
 
-// A status only: every sentence lives in its feature copy module in `packages/web`.
 export type ErrorTable<TCode extends string> = Record<
   TCode,
   { status: ErrorStatus }
@@ -100,7 +98,6 @@ export const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
   "deployed-unreadable": { status: 409 },
   "deployed-diverged-from-lock": { status: 409 },
   "deployed-diverged-pinned-per-skill": { status: 409 },
-  // What it costs now travels beside this refusal, never inside it (#364).
   "cost-not-acknowledged": { status: 409 },
   "remove-in-progress": { status: 409 },
   "manifest-not-recognised": { status: 409 },
@@ -111,8 +108,6 @@ export const removeErrorResponses: ErrorTable<RemoveDeployedSkillError> = {
   "remove-failed": { status: 502 },
 };
 
-// A failed check is an error, never an empty warning — the cockpit must tell
-// "nothing to lose" apart from "we could not look".
 export const removePreflightErrorResponses: ErrorTable<RemovePreflightError> = {
   "unsupported-primitive-type":
     removeErrorResponses["unsupported-primitive-type"],
@@ -157,8 +152,6 @@ export const updateRunErrorResponses: ErrorTable<UpdateRunError> = {
   "update-failed": { status: 502 },
 };
 
-// Exhaustive by construction: the table above is keyed by the error union
-// itself, so a new refusal cannot be missing from the allowlist.
 export const refusalCodes = Object.keys(removePreflightErrorResponses) as [
   RemovePreflightError,
   ...RemovePreflightError[],
@@ -180,8 +173,6 @@ export const connectErrorResponses: ErrorTable<ConnectInventoryError> = {
   "destination-occupied": { status: 409 },
   "destination-partial-clone": { status: 409 },
   "clone-in-progress": { status: 409 },
-  // GitHub answers a missing, a private and a mistyped repository the same
-  // way, so those three share one class (#555).
   "clone-auth-failed": { status: 422 },
   "clone-unavailable": { status: 422 },
   "clone-failed": { status: 422 },
@@ -243,7 +234,6 @@ export const promoteErrorResponses: ErrorTable<PromoteError> = {
   "promote-in-progress": { status: 409 },
 };
 
-// Only what stops the whole batch; an item's refusal rides in its stream.
 export const proposeBatchErrorResponses: ErrorTable<ProposeBatchError> = {
   ...harnessErrorResponses,
   "no-answer": { status: 409 },
@@ -264,7 +254,6 @@ export const proposalErrorResponses: ErrorTable<ProposalActionError> = {
   "action-failed": { status: 502 },
 };
 
-// Every Harness write that reads the working tree refuses these alike.
 const worktreeAmbiguityResponses: ErrorTable<WorktreeAmbiguity> = {
   "sparse-checkout": { status: 409 },
   "merge-in-progress": { status: 409 },
@@ -354,7 +343,6 @@ export const releaseWithdrawalErrorResponses: ErrorTable<WithdrawFromReleaseErro
     "proposal-open": { status: 409 },
     "confirmation-stale": { status: 409 },
     "clone-not-current": { status: 409 },
-    // GitHub declined the push: retrying will not help.
     "push-refused": { status: 403 },
     offline: { status: 502 },
     "push-elsewhere": promoteErrorResponses["push-elsewhere"],
@@ -362,15 +350,11 @@ export const releaseWithdrawalErrorResponses: ErrorTable<WithdrawFromReleaseErro
     "withdraw-failed": { status: 502 },
   };
 
-// As on the import, a broken field never gets here. Only core sees the front
-// matter the file keeps, so it refuses that file's size.
 type EditPromptRefusal = Exclude<
   EditPromptError,
   Exclude<PromptFieldProblem, "long-text">
 >;
 
-// Never a filesystem message, and never the path it wrote. The refusals a
-// prompt write shares across check, read, edit and the batch.
 export const promptWriteErrorResponses: ErrorTable<
   Exclude<EditPromptRefusal, "prompt-missing" | "prompt-changed">
 > = {
@@ -382,7 +366,6 @@ export const promptWriteErrorResponses: ErrorTable<
   "write-failed": { status: 500 },
 };
 
-// A refusal of one file is data in the answer; these refuse the batch.
 export const importPromptsErrorResponses: ErrorTable<ImportPromptsError> = {
   "not-configured": promptWriteErrorResponses["not-configured"],
   "destination-unsafe": promptWriteErrorResponses["destination-unsafe"],
@@ -408,7 +391,6 @@ export const isEditPromptRefusal = (
   code: EditPromptError,
 ): code is EditPromptRefusal => Object.hasOwn(editPromptErrorResponses, code);
 
-// A per-skill refusal is data in a 200; only a refused run is a status.
 export const importLocalEditsErrorResponses: ErrorTable<LocalEditsError> = {
   "not-configured": { status: 409 },
   "repo-not-registered": { status: 403 },
@@ -428,7 +410,6 @@ export const chooseFolderErrorResponses: ErrorTable<ChooseFolderError> = {
   "chooser-failed": { status: 502 },
 };
 
-// `name-exists` carries the existing category's name beside its code.
 export const categoriesProposalErrorResponses: ErrorTable<CategoriesProposalError> =
   {
     "not-configured": { status: 409 },

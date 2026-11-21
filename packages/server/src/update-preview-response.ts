@@ -1,4 +1,3 @@
-// The Update preview's shape check; a preview failing it does not cross at all.
 import {
   isValidSkillSlug,
   RELEASE_TAG_PATTERN,
@@ -10,7 +9,6 @@ const skillName = z.string().refine(isValidSkillSlug);
 
 const skillRow = z.object({
   name: skillName,
-  // Built by core from the Harness's own origin, never from apm prose.
   url: z.url().startsWith("https://github.com/").nullable(),
 });
 
@@ -51,7 +49,6 @@ export function updatePreviewBody(preview: UpdatePreview): unknown | null {
   return parsed.success ? parsed.data : null;
 }
 
-// A row failing the shape fails the whole report rather than half-drawing a ledger (#954).
 const outcomeSchema = z.array(
   z.object({
     name: skillName,
@@ -71,7 +68,6 @@ const foldersSchema = z.object({
   release: z.string().regex(RELEASE_TAG_PATTERN),
   folders: z.array(
     z.object({
-      // `~/…` inside home; absolute where CLAUDE_CONFIG_DIR sits outside it.
       path: z.string().regex(/^~?\//).max(200),
       tool: z.string().max(40),
       detected: z.boolean(),
@@ -92,7 +88,6 @@ const foldersSchema = z.object({
   ),
 });
 
-/** The outcome's body keys; null where apm never ran or the outcome fails its shape. */
 export function updateOutcomeBody(
   result: object,
 ): { outcome: unknown } | { folders: unknown } | null {

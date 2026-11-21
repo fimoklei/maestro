@@ -78,15 +78,12 @@ type Deps = Pick<
   | "scaffold"
 >;
 
-// A body carries more than the item; the use cases take the item alone.
 const refOf = ({ type, name }: PrimitiveRef): PrimitiveRef => ({ type, name });
 
-// The categories list carries no name.
 const subjectOf = (body: ProposalSubject): ProposalSubject =>
   body.type === "categories" ? { type: body.type } : refOf(body);
 
 export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
-  // Takes the primitive's type and name only; the harness is resolved server-side (#577).
   app.post("/api/harness/promote", async (c) => {
     const body = await parseBody(c, primitiveRefBodySchema, PROMOTE_BODY);
     if (!body.ok) {
@@ -103,7 +100,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  // The origin/HEAD tree the author confirmed against, so a remote that moved is refused (#580).
   app.post("/api/harness/promote/deletion", async (c) => {
     const body = await parseBody(c, deletionBodySchema, DELETION_BODY);
     if (!body.ok) {
@@ -132,7 +128,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json(result.checks);
   });
 
-  // The name is a claim: core re-reads the local refs and folder before deleting (#798).
   app.post("/api/harness/primitive/delete", async (c) => {
     const body = await parseBody(
       c,
@@ -153,7 +148,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ name: result.name });
   });
 
-  // The commit is compared with a freshly read HEAD, so the browser names no source.
   app.post("/api/harness/primitive/restore", async (c) => {
     const body = await parseBody(c, restoreBodySchema, RESTORE_BODY);
     if (!body.ok) {
@@ -170,8 +164,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ name: result.name, commit: result.commit });
   });
 
-  // The tree is the default-branch copy the author confirmed; core refuses one
-  // that moved since (#1375).
   app.post("/api/harness/primitive/discard", async (c) => {
     const body = await parseBody(c, discardBodySchema, DISCARD_BODY);
     if (!body.ok) {
@@ -188,8 +180,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ name: result.name });
   });
 
-  // Read for the confirmation; it writes nothing. POST, so the origin guard
-  // covers a read that returns a token.
   app.post("/api/harness/release/withdraw/check", async (c) => {
     const body = await parseBody(
       c,
@@ -227,7 +217,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ name: result.name });
   });
 
-  // Each rechecks identity and the request against a fresh read.
   const proposalResponse = <E extends string>(
     c: Context,
     result: { ok: true } | { ok: false; error: E },
@@ -280,7 +269,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     );
   });
 
-  // Read for the withdrawal's confirmation; it writes nothing.
   app.post("/api/harness/proposal/withdraw/check", async (c) => {
     const body = await parseBody(
       c,
@@ -298,7 +286,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ files: result.files });
   });
 
-  // Each folder's refusal is data; only an unconnected harness is a status.
   app.post("/api/harness/import/skills/check", async (c) => {
     const body = await parseBody(
       c,
@@ -316,7 +303,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json(result.scan);
   });
 
-  // Re-judges every folder before it copies; one refusal never stops the rest.
   app.post("/api/harness/import/skills", async (c) => {
     const body = await parseBody(c, importSkillsBodySchema, IMPORT_SKILLS_BODY);
     if (!body.ok) {
@@ -330,7 +316,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ outcomes: result.outcomes });
   });
 
-  // Free or taken in the Working Harness; an invalid name is data, not a status.
   app.post("/api/harness/prompt/check", async (c) => {
     const body = await parseBody(c, promptCheckBodySchema, PROMPT_CHECK_BODY);
     if (!body.ok) {
@@ -344,8 +329,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json(result.check);
   });
 
-  // Writes into the Working Harness the server resolves; the browser names no
-  // path. One outcome per file, in the order sent; a refused file is data.
   app.post("/api/harness/prompts/import", async (c) => {
     const body = await parseBody(
       c,
@@ -365,7 +348,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     } satisfies ImportPromptsAnswer);
   });
 
-  // Reads the Working Harness the server resolves, never the Released harness.
   app.post("/api/harness/prompt/read", async (c) => {
     const body = await parseBody(c, promptReadBodySchema, PROMPT_READ_BODY);
     if (!body.ok) {
@@ -379,7 +361,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json(result.prompt satisfies PromptFile);
   });
 
-  // Rewrites the file the read gave; core refuses any it would create.
   app.post("/api/harness/prompt/edit", async (c) => {
     const body = await parseBody(c, promptEditBodySchema, PROMPT_EDIT_BODY);
     if (!body.ok) {
@@ -387,7 +368,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     }
     const result = await deps.importPrompt.edit(body.data);
     if (!result.ok) {
-      // Core judges the fields again; the schema owns their HTTP refusal.
       if (!isEditPromptRefusal(result.error)) {
         return c.json({ error: "invalid-body", ...PROMPT_EDIT_BODY }, 400);
       }
@@ -397,7 +377,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     return c.json({ name: result.name });
   });
 
-  // The path is re-checked from scratch: the offer that carried it is not evidence (#556).
   app.post("/api/harness/scaffold", async (c) => {
     const body = await parseBody(c, connectBodySchema, PATH_BODY);
     if (!body.ok) {
@@ -408,7 +387,6 @@ export function registerHarnessAuthoringRoutes(app: Hono, deps: Deps) {
     if (!result.ok) {
       const { status } = scaffoldErrorResponses[result.error];
       if (result.error === "path-occupied") {
-        // Repository-relative, and nothing else about the repository.
         return c.json({ error: result.error, path: result.path }, status);
       }
       return c.json({ error: result.error }, status);

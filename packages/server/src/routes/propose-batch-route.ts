@@ -12,8 +12,6 @@ export function registerProposeBatchRoute(
   app: Hono,
   deps: Pick<AppDeps, "proposeBatch">,
 ) {
-  // One POST, so the origin guard applies; the answer streams one JSON line
-  // per item, then the report. A refusal before any item is a status.
   app.post("/api/harness/promote/batch", async (c) => {
     const body = await parseBody(c, proposeBatchBodySchema, PROPOSE_BATCH_BODY);
     if (!body.ok) {

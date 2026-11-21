@@ -1,10 +1,7 @@
-// Guards against DNS rebinding and CSRF. No static bypass header.
 import type { MiddlewareHandler } from "hono";
 
 const ALLOWED_HOSTNAMES = new Set(["127.0.0.1", "localhost"]);
 
-// Host carries no scheme ("127.0.0.1:3000"), so one is assumed; Origin
-// already has its own.
 function headerHostname(
   value: string | undefined,
   { assumeScheme }: { assumeScheme: boolean },

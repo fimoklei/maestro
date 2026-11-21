@@ -5,7 +5,6 @@ type RegisteredRepoGate =
   | { ok: false; response: Response }
   | { ok: true; path: string };
 
-// Readers take the canonical path from the registry, never the query string.
 export async function requireRegisteredRepo(
   c: Context,
   registry: Pick<Registry, "resolveRegistered">,
