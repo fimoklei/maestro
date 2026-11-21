@@ -26,6 +26,12 @@ import {
 /** An unedited copy Global did not move to its Target release; `stillAt` null where no older release matches. */
 export type NotUpdatedCopy = { name: string; stillAt: string | null };
 
+/** A folder's Not updated copies and the one Target release the read compared them with. */
+export type NotUpdatedCopies = {
+  targetRelease: string;
+  copies: NotUpdatedCopy[];
+};
+
 /** A copy Global no longer updates, in a folder whose tool is not detected. */
 export type StrayCopy = { name: string; atRelease: boolean };
 
@@ -33,7 +39,7 @@ export type StrayCopy = { name: string; atRelease: boolean };
 export type GlobalFolderState = GlobalFolder & {
   primitives: DeployedPrimitive[];
   // Absent where every copy is at the Target release.
-  notUpdated?: NotUpdatedCopy[];
+  notUpdated?: NotUpdatedCopies;
   // Skills of Global's list with no files here; absent where none lack them.
   missing?: string[];
   // Undetected folder only: Selection skills with a copy here and in a written

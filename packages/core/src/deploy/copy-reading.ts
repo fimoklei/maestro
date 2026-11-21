@@ -9,15 +9,16 @@ import type { SupportedTool } from "./deploy-tools";
 /**
  * One skill's copy in one Global folder, measured against the Target release.
  * `at-release` also covers a copy whose changes the latest release holds
- * (#1213). `not-updated`: unedited, but not the Target release; `stillAt` is
- * the newest older release it equals, or null where none matches.
+ * (#1213). `not-updated`: unedited, but not `targetRelease`, the Target
+ * release it was compared with; `stillAt` is the newest older release it
+ * equals, or null where none matches.
  * `edits-in-harness`: Local edits whose files equal the skill in the Working
  * harness; every guard still treats it as `local-edits`.
  */
 export type CopyReading =
   | { kind: "missing" }
   | { kind: "at-release" }
-  | { kind: "not-updated"; stillAt: string | null }
+  | { kind: "not-updated"; stillAt: string | null; targetRelease: string }
   | { kind: "local-edits" }
   | { kind: "edits-in-harness" }
   | { kind: "unverified" }

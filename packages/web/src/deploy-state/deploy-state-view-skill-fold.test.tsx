@@ -59,7 +59,10 @@ function fourteen() {
         ? {
             ...folder,
             missing: ["show-me"],
-            notUpdated: [{ name: "jobs", stillAt: "v0.4.0" }],
+            notUpdated: {
+              targetRelease: "v0.4.1",
+              copies: [{ name: "jobs", stillAt: "v0.4.0" }],
+            },
           }
         : folder,
     ),

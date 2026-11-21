@@ -41,10 +41,15 @@ type Deviations = {
   missing: boolean;
   notUpdated: boolean;
   behind: boolean;
+  /** False where the read carries no release head, as under Pinned per skill. */
+  head?: boolean;
 };
 
 // Where `edits`, every copy of workflow-commit and workflow-ship holds local edits.
-function globalWith({ missing, notUpdated, behind }: Deviations, edits = true) {
+function globalWith(
+  { missing, notUpdated, behind, head: withHead = true }: Deviations,
+  edits = true,
+) {
   const copy = edits ? "local-edits" : undefined;
   const edited = [
     skill("workflow-commit", "v0.4.1", copy),
@@ -55,7 +60,7 @@ function globalWith({ missing, notUpdated, behind }: Deviations, edits = true) {
       claude: [...edited, skill("show-me"), skill("tdd")],
       codex: [...edited, ...(missing ? [] : [skill("show-me")]), skill("tdd")],
     },
-    { releaseHead: head(behind ? "v0.4.3" : "v0.4.1") },
+    withHead ? { releaseHead: head(behind ? "v0.4.3" : "v0.4.1") } : {},
   );
   const [claude, agents] = answer.folders;
   return {
@@ -66,7 +71,12 @@ function globalWith({ missing, notUpdated, behind }: Deviations, edits = true) {
         ...agents,
         ...(missing ? { missing: ["show-me"] } : {}),
         ...(notUpdated
-          ? { notUpdated: [{ name: "tdd", stillAt: "v0.4.0" }] }
+          ? {
+              notUpdated: {
+                targetRelease: "v0.4.1",
+                copies: [{ name: "tdd", stillAt: "v0.4.0" }],
+              },
+            }
           : {}),
       },
     ],
@@ -332,5 +342,27 @@ describe("Deploy-state — Global's Status hover card while not behind", () => {
       "tdd in ~/.agents/skills is still at v0.4.0, but the Target release is v0.4.1.",
       "Read just now",
     ]);
+  });
+});
+
+describe("Deploy-state — Global's Status hover card with no release head", () => {
+  it("names the Target release the copy was compared with", async () => {
+    const global = globalWith(
+      { missing: false, notUpdated: true, behind: false, head: false },
+      false,
+    );
+    stubServer(() => ({ global }));
+    renderDeployState();
+    await waitFor(() => expect(cellsOf("Global")[1]).toBe("Not updated"));
+
+    await hoverOpen(within(rowOf("Global")).getByText("Not updated"));
+
+    expect(
+      await screen.findByText(
+        sentence(
+          "tdd in ~/.agents/skills is still at v0.4.0, but the Target release is v0.4.1.",
+        ),
+      ),
+    ).toBeInTheDocument();
   });
 });

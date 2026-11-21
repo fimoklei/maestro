@@ -48,7 +48,7 @@ function readingIn(
   if (folder.missing?.includes(skill)) return "missing";
   const copy = folder.primitives.find((each) => each.name === skill);
   if (copy?.copy === "local-edits") return "local-edits";
-  if (folder.notUpdated?.some((each) => each.name === skill)) {
+  if (folder.notUpdated?.copies.some((each) => each.name === skill)) {
     return "not-updated";
   }
   return null;
@@ -64,24 +64,22 @@ function oneFolderHover(
   reading: FolderSkillReading,
   folder: GlobalFolderState,
   skill: string,
-  release: string | undefined,
 ): Copy {
-  const copy = folder.notUpdated?.find((each) => each.name === skill);
+  const lagging = folder.notUpdated;
+  const copy = lagging?.copies.find((each) => each.name === skill);
   if (reading === "missing") return noCopyInHint(folder.path);
-  if (reading === "not-updated" && copy !== undefined && release !== undefined)
-    return notUpdatedLine(folder.path, [copy], release);
+  if (reading === "not-updated" && lagging !== undefined && copy !== undefined)
+    return notUpdatedLine(folder.path, { ...lagging, copies: [copy] });
   return inFoldersHint([folder.path]);
 }
 
 /**
- * Global's skill × folder table: `skills` is Global's one skill list and
- * `release` its Target release. A folder whose tool is not detected never
- * enters it, so it counts nowhere.
+ * Global's skill × folder table: `skills` is Global's one skill list. A
+ * folder whose tool is not detected never enters it, so it counts nowhere.
  */
 export function globalSkillReadings(
   skills: readonly string[],
   folders: readonly GlobalFolderState[],
-  release: string | undefined,
 ): GlobalSkillReadings {
   const written = folders.filter((folder) => folder.detected);
   const readings = skills.flatMap((skill) =>
@@ -109,7 +107,7 @@ export function globalSkillReadings(
         value: deviatingFoldersValue(paths, written.length),
         hover:
           off.length === 1
-            ? oneFolderHover(reading, only.folder, skill, release)
+            ? oneFolderHover(reading, only.folder, skill)
             : inFoldersHint(paths),
       },
     ];

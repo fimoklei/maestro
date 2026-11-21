@@ -50,7 +50,10 @@ describe("skill list rows", () => {
       folder("~/.agents/skills", {
         primitives: skills.filter((each) => each.name !== "show-me"),
         missing: ["show-me"],
-        notUpdated: [{ name: "ship", stillAt: "v0.4.0" }],
+        notUpdated: {
+          targetRelease: "v0.4.1",
+          copies: [{ name: "ship", stillAt: "v0.4.0" }],
+        },
       }),
     ];
     const rows = globalSkillRows(
@@ -59,7 +62,6 @@ describe("skill list rows", () => {
       globalSkillReadings(
         skills.map((each) => each.name),
         folders,
-        "v0.4.1",
       ),
     );
 

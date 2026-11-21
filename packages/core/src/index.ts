@@ -99,6 +99,7 @@ export type {
 export type {
   GlobalFolderState,
   GlobalTargetState,
+  NotUpdatedCopies,
   NotUpdatedCopy,
   StrayCopy,
 } from "./deploy-state/global-target";

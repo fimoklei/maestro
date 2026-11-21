@@ -57,7 +57,7 @@ describe("Skills missing copy", () => {
 describe("Not updated copy", () => {
   const AGENTS = "~/.agents/skills";
   const line = (copies: { name: string; stillAt: string | null }[]) =>
-    plainText(notUpdatedLine(AGENTS, copies, "v2.0.0"));
+    plainText(notUpdatedLine(AGENTS, { targetRelease: "v2.0.0", copies }));
 
   it("names the release one copy is still at", () => {
     expect(line([{ name: "code-review", stillAt: "v1.0.0" }])).toBe(

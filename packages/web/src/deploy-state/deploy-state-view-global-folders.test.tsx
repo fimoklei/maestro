@@ -67,7 +67,10 @@ describe("Deploy-state pane — Global folder rows", () => {
           {
             ...agents,
             missing: ["show-me"],
-            notUpdated: [{ name: "tdd", stillAt: "v0.4.0" }],
+            notUpdated: {
+              targetRelease: "v0.4.1",
+              copies: [{ name: "tdd", stillAt: "v0.4.0" }],
+            },
           },
         ],
       },
@@ -100,7 +103,10 @@ describe("Deploy-state pane — Global folder rows", () => {
           {
             ...agents,
             missing: ["show-me"],
-            notUpdated: [{ name: "tdd", stillAt: "v0.4.0" }],
+            notUpdated: {
+              targetRelease: "v0.4.1",
+              copies: [{ name: "tdd", stillAt: "v0.4.0" }],
+            },
           },
         ],
       },

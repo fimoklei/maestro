@@ -569,10 +569,16 @@ describe("Deploy-state pane — Global folders", () => {
           claude,
           {
             ...agents,
-            notUpdated: [
-              { name: "code-review", stillAt: "v1.0.0" },
-              { name: "tdd", stillAt: "v1.0.0" },
-            ],
+            notUpdated: {
+              targetRelease: "v2.0.0",
+              copies: [
+                {
+                  name: "code-review",
+                  stillAt: "v1.0.0",
+                },
+                { name: "tdd", stillAt: "v1.0.0" },
+              ],
+            },
           },
         ],
       },

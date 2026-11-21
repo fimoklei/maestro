@@ -530,7 +530,10 @@ describe("a Global folder left at an older release", () => {
   };
 
   it("reads that folder and the Global row as Not updated", () => {
-    const global = lagging([{ name: "code-review", stillAt: "v1.0.0" }]);
+    const global = lagging({
+      targetRelease: "v2.0.0",
+      copies: [{ name: "code-review", stillAt: "v1.0.0" }],
+    });
     expect(folderMarks(global)).toEqual([
       ["~/.claude/skills", "✓ In sync"],
       ["~/.agents/skills", "⚠ Not updated"],
@@ -539,7 +542,13 @@ describe("a Global folder left at an older release", () => {
   });
 
   it("reads the Global row as Local edits where another folder holds an edit", () => {
-    const global = lagging([{ name: "code-review", stillAt: "v1.0.0" }], true);
+    const global = lagging(
+      {
+        targetRelease: "v2.0.0",
+        copies: [{ name: "code-review", stillAt: "v1.0.0" }],
+      },
+      true,
+    );
     expect(folderMarks(global)).toEqual([
       ["~/.claude/skills", "⚠ Local edits"],
       ["~/.agents/skills", "⚠ Not updated"],
@@ -548,14 +557,20 @@ describe("a Global folder left at an older release", () => {
   });
 
   it("names the release the copy is still at in the hover card", () => {
-    const global = lagging([{ name: "code-review", stillAt: "v1.0.0" }]);
+    const global = lagging({
+      targetRelease: "v2.0.0",
+      copies: [{ name: "code-review", stillAt: "v1.0.0" }],
+    });
     expect(readCard(statusCard(global, COMPARED)).reason).toBe(
       "code-review in ~/.agents/skills is still at v1.0.0, but the Target release is v2.0.0.",
     );
   });
 
   it("names no release in the hover card where no older tag matched", () => {
-    const global = lagging([{ name: "code-review", stillAt: null }]);
+    const global = lagging({
+      targetRelease: "v2.0.0",
+      copies: [{ name: "code-review", stillAt: null }],
+    });
     expect(readCard(statusCard(global, COMPARED)).reason).toBe(
       "code-review in ~/.agents/skills is not at the Target release v2.0.0.",
     );
@@ -570,7 +585,10 @@ describe("a Global folder that lacks skills", () => {
         {
           ...agents([skill("code-review", edited ? "local-edits" : undefined)]),
           missing,
-          notUpdated: [{ name: "code-review", stillAt: "v1.0.0" }],
+          notUpdated: {
+            targetRelease: "v2.0.0",
+            copies: [{ name: "code-review", stillAt: "v1.0.0" }],
+          },
         },
       ]),
       syncedDrift,
