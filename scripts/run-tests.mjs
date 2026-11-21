@@ -1,21 +1,22 @@
 #!/usr/bin/env node
 // Runs vitest and keeps the complete output on disk in `.logs/`.
 
-import { spawn } from "node:child_process";
-import { createWriteStream, mkdirSync } from "node:fs";
+import { execFileSync, spawn } from "node:child_process";
+import { createWriteStream, mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
-
 import { changedFiles } from "./lib/changed-files.mjs";
+import { sourceScanTests } from "./lib/source-scan-tests.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const logPath = resolve(repoRoot, ".logs/test.log");
 const flags = process.argv.slice(2);
 
-// `--affected` runs only the tests the uncommitted work reaches, with the
-// commit gate's selection (`vitest related --passWithNoTests`). `--since <ref>`
-// widens the work to everything the branch changed since `ref`.
+// `--affected` runs only the tests the uncommitted work reaches: the commit
+// gate's selection (`vitest related --passWithNoTests`), plus the tests that
+// read a touched package's source from disk, which the gate misses.
+// `--since <ref>` widens the work to everything the branch changed since `ref`.
 const affected = flags.includes("--affected");
 const sinceAt = flags.indexOf("--since");
 const since = sinceAt === -1 ? null : flags[sinceAt + 1];
@@ -46,8 +47,29 @@ if (affected) {
     process.exit(0);
   }
 }
+// Every package test, read once so a source-scan test joins the run.
+const packageTests = () =>
+  execFileSync(
+    "git",
+    ["ls-files", "-z", "packages/*/src/*.test.ts", "packages/*/src/*.test.tsx"],
+    { cwd: repoRoot },
+  )
+    .toString()
+    .split("\0")
+    .filter(Boolean)
+    .map((path) => ({
+      path,
+      text: readFileSync(resolve(repoRoot, path), "utf8"),
+    }));
+
 const args = affected
-  ? ["related", "--run", "--passWithNoTests", ...rest, ...changed]
+  ? [
+      "related",
+      "--run",
+      "--passWithNoTests",
+      ...rest,
+      ...new Set([...changed, ...sourceScanTests(changed, packageTests())]),
+    ]
   : ["run", ...rest];
 
 mkdirSync(dirname(logPath), { recursive: true });
