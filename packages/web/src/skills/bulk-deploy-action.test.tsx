@@ -1,4 +1,8 @@
-import type { BulkDeployReport } from "@maestro/core";
+import type {
+  BulkDeployReport,
+  DeployedPrimitive,
+  SkippedEntry,
+} from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -31,11 +35,13 @@ afterEach(() => {
 // Stubs the reads (drift up to date; each tool holds the skills `deployed`
 // names, nothing by default); the bulk route returns the test's `bulkReport`.
 function stubReads(bulkReport: unknown, deployed: string[] = []) {
-  const primitives = deployed.map((name) => ({
-    type: "skill",
-    name,
-    version: "v1.0.0",
-  }));
+  const primitives = deployed.map(
+    (name): DeployedPrimitive => ({
+      type: "skill",
+      name,
+      version: "v1.0.0",
+    }),
+  );
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
@@ -1181,7 +1187,7 @@ describe("BulkDeployAction — the target it deploys to", () => {
 describe("BulkDeployAction — no target until the reader chooses", () => {
   const twoRepos = [{ path: "/projects/alpha" }, { path: "/projects/beta" }];
 
-  const skill = (name: string) => ({
+  const skill = (name: string): DeployedPrimitive => ({
     type: "skill",
     name,
     version: "v1.0.0",
@@ -1203,7 +1209,7 @@ describe("BulkDeployAction — no target until the reader chooses", () => {
       behind?: string[];
       reading?: string;
       changedInRelease?: string[];
-      skipped?: unknown[];
+      skipped?: SkippedEntry[];
       globalStateHangs?: boolean;
       repoStateFails?: boolean;
       repoStateHangs?: boolean;

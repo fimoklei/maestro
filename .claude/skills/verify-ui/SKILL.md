@@ -20,6 +20,10 @@ and zoom the change touches, and each state you could not reach.
      straight after `pnpm smoke`, with no wait loop.
    - A newer or older release after seeding → `pnpm smoke:release <tag>`
      (`v1.0.0`, `v1.1.0`, `v2.0.0`).
+   - A Global state no scenario seeds → stub Global's read before opening the
+     screen: `ab network route "**/api/deploy-state/global" --body "$(cat
+     <file>.json)"`, the JSON shaped as core's `GlobalDeployStateResult`;
+     `ab network unroute` ends it. Name the state as stubbed in step 8.
    - In smoke, `gh` reads reach GitHub and its pull-request writes stop in
      the sandbox (`scripts/smoke-gh.mjs`), so a proposal opens no pull
      request.
@@ -31,6 +35,9 @@ and zoom the change touches, and each state you could not reach.
    the open detail pane is `'aside[aria-label$=" detail"]'`.
    Open a hover card with `ab mouse move <x> <y>` on the badge's pixel position,
    read from a screenshot; take screen paths from `packages/web/src/shell/screens.tsx`.
+   Scroll the detail pane with `ab eval 'document.querySelector("aside
+   div.overflow-y-auto").scrollTop = <px>'`, then screenshot for the new pixel
+   positions.
 3. Screenshot every state the change touches (loading, empty, failure,
    disabled, selected, the longest realistic name) in the changed component's
    stories, in each theme. Add a missing state as a story (`frontend.md` →

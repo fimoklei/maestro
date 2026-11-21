@@ -1,3 +1,4 @@
+import type { DeployedPrimitive } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,7 +21,11 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const skill = (name: string, version = "v0.4.1", copy?: string) => ({
+const skill = (
+  name: string,
+  version = "v0.4.1",
+  copy?: DeployedPrimitive["copy"],
+): DeployedPrimitive => ({
   type: "skill",
   name,
   version,
@@ -273,15 +278,16 @@ describe("Deploy-state — Global pane paragraph", () => {
   });
 });
 
-// The card's lines: one reason, then the read age.
+// The card's lines: one reason, then the read age where the read has one.
 async function statusCardLines(word: string) {
   await waitFor(() => expect(cellsOf("Global")[1]).toBe(word));
   await hoverOpen(within(rowOf("Global")).getByText(word));
-  const age = await screen.findByText("Read just now");
-  return Array.from(
-    (age.parentElement as HTMLElement).querySelectorAll("p"),
-    (line) => line.textContent,
-  );
+  const card = await waitFor(() => {
+    const open = document.querySelector('[data-side][data-state="open"]');
+    if (open === null) throw new Error(`no open hover card for ${word}`);
+    return open;
+  });
+  return Array.from(card.querySelectorAll("p"), (line) => line.textContent);
 }
 
 describe("Deploy-state — Global's Status hover card while behind", () => {
@@ -353,16 +359,9 @@ describe("Deploy-state — Global's Status hover card with no release head", () 
     );
     stubServer(() => ({ global }));
     renderDeployState();
-    await waitFor(() => expect(cellsOf("Global")[1]).toBe("Not updated"));
 
-    await hoverOpen(within(rowOf("Global")).getByText("Not updated"));
-
-    expect(
-      await screen.findByText(
-        sentence(
-          "tdd in ~/.agents/skills is still at v0.4.0, but the Target release is v0.4.1.",
-        ),
-      ),
-    ).toBeInTheDocument();
+    expect(await statusCardLines("Not updated")).toEqual([
+      "tdd in ~/.agents/skills is still at v0.4.0, but the Target release is v0.4.1.",
+    ]);
   });
 });

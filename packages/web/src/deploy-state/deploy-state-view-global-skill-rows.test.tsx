@@ -1,3 +1,4 @@
+import type { DeployedPrimitive, GlobalFolderState } from "@maestro/core";
 import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,7 +21,10 @@ afterEach(() => {
 const CLAUDE = "~/.claude/skills";
 const AGENTS = "~/.agents/skills";
 
-const skill = (name: string, copy?: string) => ({
+const skill = (
+  name: string,
+  copy?: DeployedPrimitive["copy"],
+): DeployedPrimitive => ({
   type: "skill",
   name,
   version: "v0.4.1",
@@ -37,14 +41,13 @@ const HEAD = {
   comparedAt: RECENT(),
 };
 
-type Folder = ReturnType<typeof globalAnswer>["folders"][number] &
-  Record<string, unknown>;
+type Folder = GlobalFolderState;
 
 // A third written folder: only two tools ship, but the row counts any number.
 const THIRD = "~/.third/skills";
 const third = (
   primitives: ReturnType<typeof skill>[],
-  facts: Record<string, unknown> = {},
+  facts: Partial<GlobalFolderState> = {},
 ): Folder => ({
   path: THIRD,
   tool: "codex",
@@ -59,11 +62,14 @@ const third = (
  */
 function stubGlobal(
   copies: Parameters<typeof globalAnswer>[0],
-  facts: Partial<Record<string, Record<string, unknown>>> = {},
+  facts: Partial<Record<string, Partial<GlobalFolderState>>> = {},
   {
     extraFolders = [],
     target = { releaseHead: HEAD },
-  }: { extraFolders?: Folder[]; target?: Record<string, unknown> } = {},
+  }: {
+    extraFolders?: Folder[];
+    target?: Parameters<typeof globalAnswer>[1];
+  } = {},
 ) {
   const answer = globalAnswer(copies, target);
   stubServer(() => ({
