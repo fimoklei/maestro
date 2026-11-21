@@ -32,6 +32,7 @@ export class TargetOperationStore {
   async read(key: string): Promise<TargetOperation | null> {
     const records = (await this.store.read()).targetOperations ?? [];
     return (records.find((record) => record.key === key) ??
+      // The config schema parsed this record; TargetOperation is its typed view.
       null) as TargetOperation | null;
   }
 

@@ -50,7 +50,8 @@ export function noticeFromTable<TCode extends string>(
   }
   const row =
     error instanceof HttpError
-      ? (table as Record<string, TableRow | undefined>)[error.code ?? ""]
+      ? // Indexed by any code; an unknown one reads undefined.
+        (table as Record<string, TableRow | undefined>)[error.code ?? ""]
       : undefined;
   // The error's own text never reaches the screen, so neither does apm prose.
   const chosen = row ?? { level: "error" as const, ...fallback };

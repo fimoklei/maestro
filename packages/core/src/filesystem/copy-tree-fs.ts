@@ -115,6 +115,7 @@ export class NodeCopyTreeFs implements CopyTreeFsPort {
     try {
       return openFileOf(await open(path, constants.O_RDONLY));
     } catch (error) {
+      // fs/promises rejects with an ErrnoException.
       return (error as NodeJS.ErrnoException).code === "ENOENT"
         ? "missing"
         : null;

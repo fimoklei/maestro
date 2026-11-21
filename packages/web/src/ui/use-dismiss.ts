@@ -31,6 +31,7 @@ function closeIfTop(entry: StackEntry | undefined, via: DismissedBy) {
 function handleDocumentKeyDown(event: KeyboardEvent) {
   pressedOutside = null;
   if (event.key !== "Escape") return;
+  // A keydown targets an element, or nothing on the window.
   if ((event.target as Element | null)?.closest?.(OVERLAY)) return;
   if (closeIfTop(top(), "escape")) event.preventDefault();
 }

@@ -92,6 +92,7 @@ export function registerMessage(error: unknown): string {
   if (requestShape) {
     return plainText(requestShape.message);
   }
+  // An unknown code reads undefined and falls back below.
   return registerSentences[error.code as RegisterError] ?? NOT_ANSWERED;
 }
 

@@ -19,6 +19,7 @@ function isNotFound(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
+    // An object, checked above; fs errors carry their errno code.
     (error as { code?: string }).code === "ENOENT"
   );
 }
@@ -122,6 +123,7 @@ export class NodeFileSystem implements FileSystemPort {
       await writeFile(path, contents, { encoding: "utf8", flag: "wx" });
       return true;
     } catch (error) {
+      // fs/promises rejects with an Error that carries its errno code.
       if ((error as { code?: string }).code === "EEXIST") {
         return false;
       }

@@ -66,6 +66,7 @@ From `packages/web/src/test-utils.tsx`:
 
 - Focus a grid or row by keyboard with `focusByKeyboard`.
 - Assert an accessible description with `expectDescription`.
+- Read an open tooltip as drawn with `shownTooltip`.
 - Query a sentence that holds a name with `sentence("…")`, never `getByText` or a negative `queryByText` of the whole sentence.
 
 ## Mocking

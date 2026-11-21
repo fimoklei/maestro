@@ -14,6 +14,7 @@ export async function runGit(root: string, args: string[]): Promise<GitRun> {
     const { stdout } = await run("git", ["-C", root, ...args], gitOptions());
     return { ok: true, stdout: stdout.trim() };
   } catch (error) {
+    // execFile rejects with an Error that carries the exit code; checked below.
     const code = (error as { code?: unknown }).code;
     return { ok: false, exitCode: typeof code === "number" ? code : null };
   }

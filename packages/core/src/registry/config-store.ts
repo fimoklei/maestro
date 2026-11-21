@@ -129,6 +129,7 @@ export class ConfigStore {
       if (config !== undefined) {
         await this.write(config);
       }
+      // `mutate` returns the result its caller typed as T.
       return result as T;
     });
     // Keep the chain alive when an update rejects.

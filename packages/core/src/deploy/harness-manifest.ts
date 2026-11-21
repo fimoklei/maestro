@@ -34,6 +34,7 @@ export function readHarnessSelection(
   if (entries.length > 1) {
     return NOT_RECOGNISED;
   }
+  // Exactly one entry: none and several returned above.
   return skillsOf(entries[0] as YAMLMap);
 }
 
@@ -52,6 +53,7 @@ export function writeHarnessSelection(
   if (doc === null || entries === null || entries.length !== 1) {
     return null;
   }
+  // Exactly one entry: the length check above returned otherwise.
   const entry = entries[0] as YAMLMap;
   if (skillsOf(entry).kind !== "selection") {
     return null;
@@ -115,6 +117,7 @@ function plainString(node: unknown): string | null {
   if (typeof node === "string") {
     return node;
   }
+  // Read like a YAML scalar node; `value` stays unknown and is checked below.
   const value = (node as { value?: unknown } | null)?.value;
   return typeof value === "string" ? value : null;
 }

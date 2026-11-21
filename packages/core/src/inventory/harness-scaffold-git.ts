@@ -109,11 +109,13 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
       ]);
       return "pushed";
     } catch (error) {
+      // execFile rejects with an Error that sets `killed` on a timeout.
       const killed = (error as { killed?: boolean }).killed === true;
       if (killed) {
         return "offline";
       }
       return classifyFetchFailure(
+        // execFile rejects with an Error that carries stderr.
         String((error as { stderr?: string }).stderr),
       ) === "offline"
         ? "offline"

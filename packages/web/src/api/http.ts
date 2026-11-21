@@ -28,10 +28,12 @@ export async function requestJson<T>(
     throw await httpError(res);
   }
 
+  // The caller names the shape its endpoint answers with.
   return res.json() as Promise<T>;
 }
 
 async function httpError(res: Response): Promise<HttpError> {
+  // An error body, or null when it is not JSON; each field is optional.
   const body = (await res.json().catch(() => null)) as {
     message?: string;
     error?: string;

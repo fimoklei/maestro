@@ -365,11 +365,13 @@ function parseJson(stdout: string): unknown {
 }
 
 function isMissing(error: unknown): boolean {
+  // execFile rejects with an Error whose code is ENOENT when gh is missing.
   return (error as { code?: unknown }).code === "ENOENT";
 }
 
 // Only the class crosses; the failure text is thrown away.
 function noAnswerPossible(error: unknown): boolean {
+  // execFile rejects with an Error that carries these fields; each stays unknown.
   const { code, killed, stderr } = error as {
     code?: unknown;
     killed?: unknown;

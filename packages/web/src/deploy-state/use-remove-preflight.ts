@@ -22,9 +22,8 @@ export type RemovePreflight = {
 // build cannot read makes the whole answer unreadable, never clean (#793).
 export function readRemovePreflight(body: unknown): RemovePreflight | null {
   const value = body as
-    | { check?: unknown; receipt?: unknown }
-    | null
-    | undefined;
+    // A response body, read field by field; every field stays unknown.
+    { check?: unknown; receipt?: unknown } | null | undefined;
   const check = readCheck(value?.check);
   if (check === null) {
     return null;
@@ -39,14 +38,15 @@ export function readRemovePreflight(body: unknown): RemovePreflight | null {
 
 function readCheck(value: unknown): RemoveCheck | null {
   const check = value as
-    | { scope?: unknown; warning?: unknown; tools?: unknown }
-    | undefined;
+    // Read field by field; every field stays unknown.
+    { scope?: unknown; warning?: unknown; tools?: unknown } | undefined;
   if (check?.scope === "repo") {
     const warning = readWarning(check.warning);
     return warning === undefined ? null : { scope: "repo", warning };
   }
   if (check?.scope === "global" && Array.isArray(check.tools)) {
     const tools: RemoveToolCheck[] = [];
+    // An array, checked above; every field stays unknown.
     for (const entry of check.tools as {
       tool?: unknown;
       path?: unknown;
@@ -87,7 +87,8 @@ function readWarning(value: unknown): RemoveWarning | null | undefined {
     return null;
   }
   return typeof value === "string" && Object.hasOwn(WARNINGS, value)
-    ? (value as RemoveWarning)
+    ? // Object.hasOwn above proves the value is a key of WARNINGS.
+      (value as RemoveWarning)
     : undefined;
 }
 

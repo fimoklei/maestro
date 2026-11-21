@@ -113,6 +113,7 @@ export function updateOutcomeReport(input: {
   const rows = foldAgreeingTools(input.rows);
   const inState = <S extends UpdateSkillState>(...states: S[]) =>
     rows.filter((row): row is UpdateOutcomeRow & { state: S } =>
+      // Widened only to ask includes() about any state.
       (states as UpdateSkillState[]).includes(row.state),
     );
   const detailed = (row: UpdateOutcomeRow & { state: UnlandedState }) => ({

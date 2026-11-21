@@ -432,14 +432,17 @@ export function DataTable<T extends RowData>({
           // it would ring the previous row until release. Pointer, not mouse: a
           // ⋮ trigger cancels the mouse events, and its row still takes the cursor.
           onPointerDown={(event) => {
+            // A pointer event's target is always a Node.
             if (event.currentTarget.contains(event.target as Node)) {
               setCursor(index);
             }
           }}
           onClick={(event) => {
+            // A click's target is always a Node.
             if (!event.currentTarget.contains(event.target as Node)) {
               return;
             }
+            // Inside the row, checked above: an element.
             if ((event.target as HTMLElement).closest(INTERACTIVE)) {
               return;
             }
