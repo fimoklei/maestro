@@ -254,7 +254,6 @@ export function globalRows(
   const table = globalSkillReadings(
     data.primitives.map((primitive) => primitive.name),
     data.folders,
-    data.releaseHead?.release,
   );
   // A failed read's stale copies count nowhere.
   const countsOf = (folder: GlobalFolderState): FolderCounts =>
@@ -316,9 +315,9 @@ export function globalRows(
         ? null
         : !folder.detected
           ? strayDiffers(folder, release)
-          : release === undefined || !folder.notUpdated?.length
+          : !folder.notUpdated?.copies.length
             ? null
-            : notUpdatedLine(folder.path, folder.notUpdated, release),
+            : notUpdatedLine(folder.path, folder.notUpdated),
       strayCopies: readFailed ? null : openCodeLine(folder, data.folders),
     };
   });

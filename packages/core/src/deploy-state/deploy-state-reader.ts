@@ -431,6 +431,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
         folder.missing = missing;
       }
       const notUpdated: NotUpdatedCopy[] = [];
+      let targetRelease: string | undefined;
       for (const primitive of folder.primitives) {
         const reading = readings.get(primitive.name) ?? null;
         if (reading?.kind !== "missing") {
@@ -444,10 +445,11 @@ export class GlobalDeployStateReader extends DeployStateReader {
           primitive.copy = reading.kind;
         } else if (reading?.kind === "not-updated") {
           notUpdated.push({ name: primitive.name, stillAt: reading.stillAt });
+          targetRelease = reading.targetRelease;
         }
       }
-      if (notUpdated.length > 0) {
-        folder.notUpdated = notUpdated;
+      if (targetRelease !== undefined) {
+        folder.notUpdated = { targetRelease, copies: notUpdated };
       }
     }
     for (const folder of folders.filter((each) => !each.detected)) {

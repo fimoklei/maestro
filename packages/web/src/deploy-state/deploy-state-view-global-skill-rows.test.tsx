@@ -53,13 +53,19 @@ const third = (
   ...facts,
 });
 
-/** Global's answer with each folder's own facts laid over its copies. */
+/**
+ * Global's answer with each folder's own facts laid over its copies.
+ * `target` replaces the release head, as `pinnedPerSkill` does.
+ */
 function stubGlobal(
   copies: Parameters<typeof globalAnswer>[0],
   facts: Partial<Record<string, Record<string, unknown>>> = {},
-  extraFolders: Folder[] = [],
+  {
+    extraFolders = [],
+    target = { releaseHead: HEAD },
+  }: { extraFolders?: Folder[]; target?: Record<string, unknown> } = {},
 ) {
-  const answer = globalAnswer(copies, { releaseHead: HEAD });
+  const answer = globalAnswer(copies, target);
   stubServer(() => ({
     global: {
       ...answer,
@@ -123,7 +129,7 @@ describe("Deploy-state pane — Global skill rows", () => {
         codex: [skill("tdd", "local-edits")],
       },
       {},
-      [third([skill("tdd")])],
+      { extraFolders: [third([skill("tdd")])] },
     );
     renderDeployState();
     const row = await skillRow("tdd");
@@ -139,8 +145,15 @@ describe("Deploy-state pane — Global skill rows", () => {
         claude: [skill("tdd", "local-edits")],
         codex: [skill("tdd")],
       },
-      { [AGENTS]: { notUpdated: [{ name: "tdd", stillAt: "v0.4.0" }] } },
-      [third([skill("tdd")], { missing: ["tdd"] })],
+      {
+        [AGENTS]: {
+          notUpdated: {
+            targetRelease: "v0.4.1",
+            copies: [{ name: "tdd", stillAt: "v0.4.0" }],
+          },
+        },
+      },
+      { extraFolders: [third([skill("tdd")], { missing: ["tdd"] })] },
     );
     renderDeployState();
     const row = await skillRow("tdd");
@@ -184,7 +197,14 @@ describe("Deploy-state pane — Global skill rows", () => {
   it("reads Not updated with the release its one copy is still at", async () => {
     stubGlobal(
       { claude: [skill("tdd")], codex: [skill("tdd")] },
-      { [AGENTS]: { notUpdated: [{ name: "tdd", stillAt: "v0.4.0" }] } },
+      {
+        [AGENTS]: {
+          notUpdated: {
+            targetRelease: "v0.4.1",
+            copies: [{ name: "tdd", stillAt: "v0.4.0" }],
+          },
+        },
+      },
     );
     renderDeployState();
     const row = await skillRow("tdd");
@@ -200,7 +220,14 @@ describe("Deploy-state pane — Global skill rows", () => {
   it("reads Not updated with no older release where none matches", async () => {
     stubGlobal(
       { claude: [skill("tdd")], codex: [skill("tdd")] },
-      { [AGENTS]: { notUpdated: [{ name: "tdd", stillAt: null }] } },
+      {
+        [AGENTS]: {
+          notUpdated: {
+            targetRelease: "v0.4.1",
+            copies: [{ name: "tdd", stillAt: null }],
+          },
+        },
+      },
     );
     renderDeployState();
     const row = await skillRow("tdd");
@@ -209,6 +236,29 @@ describe("Deploy-state pane — Global skill rows", () => {
     expectDescription(
       row.mark(),
       `tdd in ${AGENTS} is not at the Target release v0.4.1.`,
+    );
+  });
+
+  it("names the Target release its copy was compared with under Pinned per skill", async () => {
+    stubGlobal(
+      { claude: [skill("tdd")], codex: [skill("tdd")] },
+      {
+        [AGENTS]: {
+          notUpdated: {
+            targetRelease: "v0.4.1",
+            copies: [{ name: "tdd", stillAt: "v0.4.0" }],
+          },
+        },
+      },
+      { target: { pinnedPerSkill: [{ release: "v0.4.1", skills: 1 }] } },
+    );
+    renderDeployState();
+    const row = await skillRow("tdd");
+
+    await waitFor(() => expect(row.mark()).toHaveAccessibleName("Not updated"));
+    expectDescription(
+      row.mark(),
+      `tdd in ${AGENTS} is still at v0.4.0, but the Target release is v0.4.1.`,
     );
   });
 
@@ -230,7 +280,10 @@ describe("Deploy-state pane — Global skill rows", () => {
         [AGENTS]: {
           primitives: [skill("tdd", "local-edits")],
           missing: ["tdd"],
-          notUpdated: [{ name: "tdd", stillAt: "v0.4.0" }],
+          notUpdated: {
+            targetRelease: "v0.4.1",
+            copies: [{ name: "tdd", stillAt: "v0.4.0" }],
+          },
           strayCopies: [{ name: "tdd", atRelease: false }],
         },
       },

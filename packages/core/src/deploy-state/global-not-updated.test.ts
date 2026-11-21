@@ -76,7 +76,7 @@ function narrowedGlobal(
 }
 
 describe("GlobalDeployStateReader on a folder left at an older release", () => {
-  it("names the release each unedited copy is still at", async () => {
+  it("names the release each unedited copy is still at and the Target release it was compared with", async () => {
     const { reader } = narrowedGlobal();
 
     const result = await reader.readGlobal(GLOBAL_ROOT);
@@ -88,10 +88,13 @@ describe("GlobalDeployStateReader on a folder left at an older release", () => {
       ["~/.claude/skills", undefined],
       [
         "~/.agents/skills",
-        [
-          { name: "code-review", stillAt: "v1.1.0" },
-          { name: "commit-message", stillAt: "v1.0.0" },
-        ],
+        {
+          targetRelease: "v2.0.0",
+          copies: [
+            { name: "code-review", stillAt: "v1.1.0" },
+            { name: "commit-message", stillAt: "v1.0.0" },
+          ],
+        },
       ],
     ]);
   });
@@ -111,10 +114,13 @@ describe("GlobalDeployStateReader on a folder left at an older release", () => {
 
     const result = await reader.readGlobal(GLOBAL_ROOT);
 
-    expect(result.ok && result.folders[1]?.notUpdated).toStrictEqual([
-      { name: "code-review", stillAt: null },
-      { name: "commit-message", stillAt: null },
-    ]);
+    expect(result.ok && result.folders[1]?.notUpdated).toStrictEqual({
+      targetRelease: "v2.0.0",
+      copies: [
+        { name: "code-review", stillAt: null },
+        { name: "commit-message", stillAt: null },
+      ],
+    });
   });
 
   it("names no release where the tag list could not be read", async () => {
@@ -122,10 +128,13 @@ describe("GlobalDeployStateReader on a folder left at an older release", () => {
 
     const result = await tree.reader.readGlobal(GLOBAL_ROOT);
 
-    expect(result.ok && result.folders[1]?.notUpdated).toStrictEqual([
-      { name: "code-review", stillAt: null },
-      { name: "commit-message", stillAt: null },
-    ]);
+    expect(result.ok && result.folders[1]?.notUpdated).toStrictEqual({
+      targetRelease: "v2.0.0",
+      copies: [
+        { name: "code-review", stillAt: null },
+        { name: "commit-message", stillAt: null },
+      ],
+    });
   });
 
   it("reads a copy that differs from its record as Local edits, as before", async () => {
@@ -133,9 +142,10 @@ describe("GlobalDeployStateReader on a folder left at an older release", () => {
 
     const result = await reader.readGlobal(GLOBAL_ROOT);
 
-    expect(result.ok && result.folders[1]?.notUpdated).toStrictEqual([
-      { name: "commit-message", stillAt: "v1.0.0" },
-    ]);
+    expect(result.ok && result.folders[1]?.notUpdated).toStrictEqual({
+      targetRelease: "v2.0.0",
+      copies: [{ name: "commit-message", stillAt: "v1.0.0" }],
+    });
     expect(
       result.ok && result.folders[1]?.primitives.map((p) => [p.name, p.copy]),
     ).toStrictEqual([

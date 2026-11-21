@@ -181,6 +181,7 @@ export class DeployedContentAdapter
         return {
           kind: "not-updated",
           stillAt: await olderReleaseHolding(name, scanned.copy),
+          targetRelease: input.release,
         };
       },
       read: async (name: string, tool: SupportedTool): Promise<CopyReading> => {
@@ -214,6 +215,7 @@ export class DeployedContentAdapter
         return {
           kind: "not-updated",
           stillAt: await olderReleaseHolding(name, copy),
+          targetRelease: input.release,
         };
       },
     };

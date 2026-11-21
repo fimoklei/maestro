@@ -1,4 +1,4 @@
-import type { NotUpdatedCopy } from "@maestro/core";
+import type { NotUpdatedCopies } from "@maestro/core";
 import {
   IMPORT_LOCAL_EDITS,
   REGISTER_REPOSITORY,
@@ -193,13 +193,12 @@ export function strayCopiesLine(
  */
 export function notUpdatedLine(
   folder: string,
-  copies: readonly NotUpdatedCopy[],
-  release: string,
+  { targetRelease, copies }: NotUpdatedCopies,
 ): Phrase {
   const [first] = copies;
-  const where = machine(folder);
-  const target = machine(release);
   if (first === undefined) return phrase``;
+  const where = machine(folder);
+  const target = machine(targetRelease);
   const subject =
     copies.length === 1
       ? phrase`${named(first.name)} in ${where} is`
