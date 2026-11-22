@@ -16,6 +16,7 @@ import {
 } from "./deploy-state-types";
 import { harnessPages, perSkillPage } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
+import { COPY_READINGS } from "./reading-order";
 import {
   countExtraRootPackageFiles,
   deployedRootPackageSkills,
@@ -158,13 +159,8 @@ export async function readGlobalTarget(
   };
 }
 
-const COPY_RANK: readonly (DeployedPrimitive["copy"] & string)[] = [
-  "local-edits",
-  "unverified",
-  "edits-in-harness",
-];
 const copyRank = (copy: DeployedPrimitive["copy"]) =>
-  copy === undefined ? COPY_RANK.length : COPY_RANK.indexOf(copy);
+  copy === undefined ? COPY_READINGS.length : COPY_READINGS.indexOf(copy);
 
 export function oneSkillList(
   folders: readonly GlobalFolderState[],

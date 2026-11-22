@@ -7,11 +7,12 @@ import { RowMenu } from "../ui/row-menu";
 import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { ACTIONS_COLUMN_LABEL, rowActionsLabel } from "../ui/row-menu-copy";
 import { StatusBadge } from "../ui/status-badge";
-import { readingRank, STATUS_COLUMN_WIDTH } from "../ui/status-reading";
+import { STATUS_COLUMN_WIDTH } from "../ui/status-reading";
 import { StatusSkeleton } from "../ui/status-skeleton";
 import { ORIGIN_NOT_READ, TARGET_LABEL } from "./deploy-state-copy";
 import { targetRowItems } from "./target-menu";
 import { statusCard, type TargetRow } from "./target-rows";
+import { targetRank } from "./target-status";
 
 export type TargetAction = "deploy" | "update" | "retry" | "import";
 
@@ -25,8 +26,6 @@ export type TargetTableRow = TargetRow & {
   /** Band 2's line, which the Status card's read age repeats. */
   compared: string | null;
 };
-
-const unranked = Number.MAX_SAFE_INTEGER;
 
 function statusCardContent(row: TargetTableRow): DataTableCardContent | null {
   if (row.status === null) return null;
@@ -87,8 +86,7 @@ export const deployStateColumns = ({
             <StatusBadge reading={row.original.status} />
           ),
         sortFn: (a, b) =>
-          (a.original.status ? readingRank(a.original.status) : unranked) -
-          (b.original.status ? readingRank(b.original.status) : unranked),
+          targetRank(a.original.status) - targetRank(b.original.status),
         meta: { width: STATUS_COLUMN_WIDTH },
       }),
       card: { keyboard: true, content: statusCardContent },

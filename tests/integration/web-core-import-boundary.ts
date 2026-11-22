@@ -13,6 +13,7 @@ const CORE_PACKAGE_PATH = /[\\/]packages[\\/]core([\\/]|$)/;
 const RUNTIME_CORE_SUBPATHS = new Set([
   "@maestro/core/prompt-file",
   "@maestro/core/category-name",
+  "@maestro/core/reading-order",
 ]);
 
 const reachesCore = (

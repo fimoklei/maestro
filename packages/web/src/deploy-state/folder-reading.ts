@@ -1,12 +1,7 @@
-/**
- * How a copy in a Global folder deviates, worst first: a copy that holds work
- * outranks one that is absent or behind. The skill marks, the folder words
- * and the target roll-up all take this order.
- */
-export const FOLDER_READINGS = [
-  "local-edits",
-  "missing",
-  "not-updated",
-] as const;
+import { type KindOn, readingsOn } from "@maestro/core/reading-order";
 
-export type FolderSkillReading = (typeof FOLDER_READINGS)[number];
+/**
+ */
+export const FOLDER_READINGS = readingsOn("folder");
+
+export type FolderSkillReading = KindOn<"folder">;

@@ -6,6 +6,7 @@ import type {
   PendingOperation,
   ReleaseHead,
 } from "@maestro/core";
+import { type EditedKind, holdsEdits } from "@maestro/core/reading-order";
 import type { DeployedView } from "../deploy-state/deployed-view";
 import type { DriftStatus, DriftViewModel } from "../drift/drift-view-model";
 import type { DeployTarget } from "./use-deploy-skill";
@@ -89,8 +90,10 @@ export function rollUpDeployment(
   let targetCount = 0;
   let behindCount = 0;
   let unknownCount = 0;
-  let localEditsCount = 0;
-  let editsInHarnessCount = 0;
+  const edited = {
+    "local-edits": 0,
+    "edits-in-harness": 0,
+  } satisfies Record<EditedKind, number>;
   let pending = false;
   let unreadable = false;
   let checking = false;
@@ -114,12 +117,8 @@ export function rollUpDeployment(
     const copy = target.primitives.find(
       (primitive) => primitive.name === skillName,
     )?.copy;
-    if (copy === "local-edits") {
-      localEditsCount++;
-      continue;
-    }
-    if (copy === "edits-in-harness") {
-      editsInHarnessCount++;
+    if (copy !== undefined && holdsEdits(copy)) {
+      edited[copy]++;
       continue;
     }
     const status = skillReading(target, skillName);
@@ -140,8 +139,8 @@ export function rollUpDeployment(
     targetCount,
     behindCount,
     unknownCount,
-    localEditsCount,
-    editsInHarnessCount,
+    localEditsCount: edited["local-edits"],
+    editsInHarnessCount: edited["edits-in-harness"],
     pending,
     unreadable,
     checking,

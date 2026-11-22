@@ -41,6 +41,11 @@ describe("valueImportsFromCore", () => {
     expect(valueImportsFromCore(src)).toEqual([]);
   });
 
+  it("allows a value import from the reading-order subpath", () => {
+    const src = `import { readingsOn } from "@maestro/core/reading-order";`;
+    expect(valueImportsFromCore(src)).toEqual([]);
+  });
+
   it("allows a multi-line type-only import from core", () => {
     const src = [
       "import type {",

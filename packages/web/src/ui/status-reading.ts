@@ -34,5 +34,12 @@ export function reading(
 export const readingRank = (value: StatusReading): number =>
   RANK.indexOf(value.family);
 
+export const rankBy =
+  (words: readonly string[]) =>
+  (status: StatusReading | null): number => {
+    const index = status === null ? -1 : words.indexOf(status.word);
+    return index === -1 ? words.length : index;
+  };
+
 /** A Status column's width, in spacing steps, that fits "Edits in the Harness". */
 export const STATUS_COLUMN_WIDTH = 41;

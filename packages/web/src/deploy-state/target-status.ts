@@ -1,9 +1,14 @@
 import type { PendingOperation } from "@maestro/core";
+import {
+  type KindOn,
+  readingsOn,
+  withUnknown,
+} from "@maestro/core/reading-order";
 import type { TargetDriftIndicator } from "../drift/drift-view-model";
 import type { StatusChip } from "../ui/band-summary";
 import { WARNING_GLYPH } from "../ui/status-family";
-import { reading, type StatusReading } from "../ui/status-reading";
-import { FOLDER_READINGS, type FolderSkillReading } from "./folder-reading";
+import { rankBy, reading, type StatusReading } from "../ui/status-reading";
+import type { FolderSkillReading } from "./folder-reading";
 import { UNFINISHED_HEADINGS } from "./release-head-copy";
 
 /** An unfinished operation's badge: its pane notice's own heading. */
@@ -25,29 +30,32 @@ const PINNED = reading("Pinned per skill", "neutral");
 const OTHER_ORIGIN = reading("Other origin", "neutral");
 const EMPTY = reading("Empty", "neutral");
 
-// A target's reading for each folder reading, which keeps its order.
-const FOLDER_ROLLUP = {
+type TargetKind = KindOn<"target"> | "unknown";
+
+const TARGET_ORDER = withUnknown(readingsOn("target"), "behind");
+
+const TARGET_READINGS = {
+  attention: ATTENTION,
   "local-edits": LOCAL_EDITS,
   missing: SKILLS_MISSING,
   "not-updated": NOT_UPDATED,
-} satisfies Record<FolderSkillReading, StatusReading>;
-const DEVIATIONS = FOLDER_READINGS.map((each) => FOLDER_ROLLUP[each]);
+  "edits-in-harness": EDITS_IN_HARNESS,
+  behind: BEHIND,
+  unknown: UNKNOWN,
+  "up-to-date": IN_SYNC,
+  "pinned-per-skill": PINNED,
+  "other-origin": OTHER_ORIGIN,
+  empty: EMPTY,
+} satisfies Record<Exclude<TargetKind, "unfinished">, StatusReading>;
 
 /** Every word the badge can read, worst first, as Filter offers them. */
-export const TARGET_STATUS_WORDS = [
-  ...Object.values(UNFINISHED_HEADINGS),
-  ...[
-    ATTENTION,
-    ...DEVIATIONS,
-    EDITS_IN_HARNESS,
-    BEHIND,
-    UNKNOWN,
-    IN_SYNC,
-    PINNED,
-    OTHER_ORIGIN,
-    EMPTY,
-  ].map((value) => value.word),
-];
+export const TARGET_STATUS_WORDS = TARGET_ORDER.flatMap((kind) =>
+  kind === "unfinished"
+    ? Object.values(UNFINISHED_HEADINGS)
+    : [TARGET_READINGS[kind].word],
+);
+
+export const targetRank = rankBy(TARGET_STATUS_WORDS);
 
 /**
  * Global's one Status: the reading of its worst Global folder, by the Filter
@@ -70,28 +78,34 @@ export function worstFolderReading(
   return worst;
 }
 
-const attentionChip = (each: StatusReading): StatusChip => ({
-  word: each.word,
-  family: "attention",
-  covers: [each.word],
+export const chipOf = (
+  { word, family }: StatusReading,
+  covers: readonly string[],
+): StatusChip => ({
+  word,
+  family: family === "neutral" ? "neutral" : "attention",
+  covers,
 });
 
-/** Band 2's count chips, worst first; the unfinished operations roll into Attention. */
 export const TARGET_CHIPS: readonly StatusChip[] = [
   { word: UNKNOWN.word, family: "failed", covers: [UNKNOWN.word] },
-  {
-    word: ATTENTION.word,
-    family: "attention",
-    covers: [ATTENTION.word, ...Object.values(UNFINISHED_HEADINGS)],
-  },
-  ...DEVIATIONS.map(attentionChip),
-  {
-    word: EDITS_IN_HARNESS.word,
-    family: "neutral",
-    covers: [EDITS_IN_HARNESS.word],
-  },
-  attentionChip(BEHIND),
+  ...TARGET_ORDER.slice(0, TARGET_ORDER.indexOf("unknown")).flatMap(
+    (kind): StatusChip[] => {
+      if (kind === "unfinished") return [];
+      const each = TARGET_READINGS[kind];
+      return [
+        chipOf(
+          each,
+          kind === "attention"
+            ? [each.word, ...Object.values(UNFINISHED_HEADINGS)]
+            : [each.word],
+        ),
+      ];
+    },
+  ),
 ];
+
+type HeldKind = FolderSkillReading | "edits-in-harness";
 
 // How a target was built outranks what the drift check made of it; nothing
 // shows before a reading has answered.
@@ -120,18 +134,17 @@ export function targetStatus({
   missing?: boolean;
 }): StatusReading | null {
   if (pending) return unfinishedReading(pending);
-  const deviates = {
+  const holds: Partial<Record<TargetKind, boolean>> = {
     "local-edits": localEdits,
     missing,
     "not-updated": notUpdated,
-  } satisfies Record<FolderSkillReading, boolean>;
-  const worst = FOLDER_READINGS.find((each) => deviates[each]);
-  if (worst !== undefined && indicator === "attention") return ATTENTION;
-  if (worst !== undefined && indicator !== "pending") {
-    return FOLDER_ROLLUP[worst];
-  }
-  if (editsInHarness && indicator !== "pending") {
-    return indicator === "attention" ? ATTENTION : EDITS_IN_HARNESS;
+    "edits-in-harness": editsInHarness,
+  } satisfies Record<HeldKind, boolean>;
+  const held = TARGET_ORDER.find(
+    (kind): kind is HeldKind => holds[kind] === true,
+  );
+  if (held !== undefined && indicator !== "pending") {
+    return indicator === "attention" ? ATTENTION : TARGET_READINGS[held];
   }
   if (pinnedPerSkill) return PINNED;
   switch (indicator) {
