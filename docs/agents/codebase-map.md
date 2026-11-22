@@ -45,6 +45,9 @@ Where to look first. Layer rules and package shape: `CODING_STANDARDS.md` → Ar
   in `harness/dialog-copy.ts`, `ui/busy-copy.ts`, `harness/notice-copy.ts`),
   the pane buttons in `ui/foot-actions.tsx` and `ui/gated-button.tsx`. Flow
   tests build on `harness/harness-flow-fixture.tsx`.
+- **A runtime value from `core` in `web`**: export it on a `core` subpath
+  (`packages/core/package.json` → `exports`) and add that subpath to
+  `RUNTIME_CORE_SUBPATHS` in `tests/integration/web-core-import-boundary.ts`.
 - **Contract tests** in `packages/web/src/` check every feature module at once.
   A new dialog, table screen, named sentence or server code can fail one you
   did not touch:

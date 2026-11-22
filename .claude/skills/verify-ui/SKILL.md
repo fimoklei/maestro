@@ -34,8 +34,11 @@ and zoom the change touches, and each state you could not reach.
    `pnpm cockpit:snapshot "<selector>" [path]`, never a bare `agent-browser snapshot`;
    the open detail pane is `'aside[aria-label$=" detail"]'`.
    Open a hover card with `pnpm cockpit:hover "<selector>"`: it hovers the
-   element and prints the open card's text; screenshot after it. Take screen
-   paths from `packages/web/src/shell/screens.tsx`.
+   element and prints the open card's text; screenshot after it. Screen
+   paths: `/` (Deploy-state), `/repositories`, `/inventory/skills`,
+   `/inventory/prompts`, `/harness`; `packages/web/src/shell/screens.tsx`
+   holds the list. Sort a column with the button inside its `th`; a click on
+   the header cell itself sorts nothing: `ab eval '[...document.querySelectorAll("th")].find((e) => e.textContent.trim() === "<header>").querySelector("button").click()'`.
    Scroll the detail pane with `ab eval 'document.querySelector("aside
    div.overflow-y-auto").scrollTop = <px>'`, then screenshot for the new pixel
    positions.
