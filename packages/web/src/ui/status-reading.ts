@@ -34,5 +34,13 @@ export function reading(
 export const readingRank = (value: StatusReading): number =>
   RANK.indexOf(value.family);
 
+/** A sort key by a surface's word order: a lower number is a worse reading; no reading, or a word off the list, sorts last. */
+export const rankBy =
+  (words: readonly string[]) =>
+  (status: StatusReading | null): number => {
+    const index = status === null ? -1 : words.indexOf(status.word);
+    return index === -1 ? words.length : index;
+  };
+
 /** A Status column's width, in spacing steps, that fits "Edits in the Harness". */
 export const STATUS_COLUMN_WIDTH = 41;

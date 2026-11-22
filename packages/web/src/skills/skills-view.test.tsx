@@ -668,6 +668,29 @@ describe("SkillsView — band 2 facts", () => {
 });
 
 describe("SkillsView — sorting", () => {
+  it("sorts Edits in the Harness above Up to date by the reading order, not by family", async () => {
+    stubPendingFetch();
+    const held = deployedTo(["tdd", "caveman"]);
+    held.primitives = [
+      { type: "skill", name: "tdd", version: "v1.0.0" },
+      {
+        type: "skill",
+        name: "caveman",
+        version: "v1.0.0",
+        copy: "edits-in-harness",
+      },
+    ];
+    renderView({ targets: [held] });
+
+    const statusHeader = within(grid()).getByRole("columnheader", {
+      name: /status/i,
+    });
+    await userEvent.click(within(statusHeader).getByRole("button"));
+
+    expect(dataRowNames()).toEqual(["caveman", "tdd"]);
+    expect(statusAndReach("caveman")[0]).toContain("Edits in the Harness");
+  });
+
   it("sorts by name and shows the active sort when the header is clicked", async () => {
     stubPendingFetch();
     renderView();

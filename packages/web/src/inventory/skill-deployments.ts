@@ -2,6 +2,7 @@
 // targets the deployed column rolls up, so the two can't diverge.
 
 import type { ReleaseHead } from "@maestro/core";
+import { holdsEdits } from "@maestro/core/reading-order";
 import { GLOBAL } from "../deploy-state/deploy-state-copy";
 import {
   comparedFact,
@@ -90,8 +91,7 @@ export function skillDeployments(
       release: target.releaseHead?.release ?? deployed.version,
       version: deployed.version,
       status,
-      edited:
-        deployed.copy === "local-edits" || deployed.copy === "edits-in-harness",
+      edited: deployed.copy !== undefined && holdsEdits(deployed.copy),
       mark: target.pending
         ? {
             ...unfinishedReading(target.pending),
