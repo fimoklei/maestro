@@ -11,6 +11,8 @@ Where to look first. Layer rules and package shape: `CODING_STANDARDS.md` → Ar
   root-package canary installs its `v0.6.0`, and plain `pnpm smoke` seeds its
   inventory from a local clone. Its skills sit in `skills/` before `v0.6.0`
   and in `.apm/skills/` from `v0.6.0`.
+- **The operator's running cockpit** comes from the main checkout, not this
+  worktree: run `pnpm cockpit:url` there (`git worktree list` names it).
 - **Adapter wiring** (which real class backs a port): `realDeps()` in
   `packages/server/src/app.ts`. Routes: `packages/server/src/routes/<feature>-routes.ts`;
   the Harness reads, refresh and release in `harness-routes.ts`, every other

@@ -7,6 +7,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { stripVTControlCharacters } from "node:util";
 import { changedFiles } from "./lib/changed-files.mjs";
+import { idleWatch } from "./lib/idle-watch.mjs";
 import { sourceScanTests } from "./lib/source-scan-tests.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -94,8 +95,19 @@ const child = spawn("vitest", args, {
   stdio: ["inherit", "pipe", "pipe"],
 });
 
+const STALL_MS = 180_000;
+const watch = idleWatch({ limitMs: STALL_MS, startedAt: Date.now() });
+const stallTimer = setInterval(() => {
+  const idle = watch.check(Date.now());
+  if (idle === null) return;
+  const notice = `\n[run-tests] no output for ${Math.round(idle / 60_000)} min. Check for workers: pgrep -P ${child.pid}\n`;
+  process.stderr.write(notice);
+  log.write(notice);
+}, 30_000);
+
 const tee = (source, sink) => {
   source.on("data", (chunk) => {
+    watch.output(Date.now());
     sink.write(chunk);
     log.write(stripVTControlCharacters(chunk.toString()));
   });
@@ -105,6 +117,7 @@ tee(child.stdout, process.stdout);
 tee(child.stderr, process.stderr);
 
 child.on("error", (error) => {
+  clearInterval(stallTimer);
   process.stderr.write(`failed to start vitest: ${error.message}\n`);
   log.end(`\n---\nfailed to start vitest: ${error.message}\n`, () =>
     process.exit(1),
@@ -112,6 +125,7 @@ child.on("error", (error) => {
 });
 
 child.on("close", (code, signal) => {
+  clearInterval(stallTimer);
   const exitCode = code ?? 1;
   log.end(
     `---\nfinished: ${new Date().toISOString()}\nexit code: ${exitCode}${signal ? ` (signal ${signal})` : ""}\n`,
