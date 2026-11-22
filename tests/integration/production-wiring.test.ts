@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { app } from "@maestro/server";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { makeRepoDir } from "../helpers/repo-dir";
 
 // The default `app` must resolve MAESTRO_HOME per request, not at import
@@ -23,15 +23,13 @@ const LOCAL = {
 
 describe("default app config home", () => {
   let dir: string;
-  const previousHome = process.env.MAESTRO_HOME;
 
   beforeEach(async () => {
     dir = await makeRepoDir("maestro-home-");
-    process.env.MAESTRO_HOME = dir;
+    vi.stubEnv("MAESTRO_HOME", dir);
   });
 
   afterEach(async () => {
-    process.env.MAESTRO_HOME = previousHome;
     await rm(dir, { recursive: true, force: true });
   });
 
@@ -60,10 +58,6 @@ describe("production wiring", () => {
   let home: string;
   let maestroHome: string;
   let inventory: string;
-  const previous = {
-    HOME: process.env.HOME,
-    MAESTRO_HOME: process.env.MAESTRO_HOME,
-  };
 
   beforeEach(async () => {
     root = await nodeRealpath(await mkdtemp(join(tmpdir(), "maestro-wiring-")));
@@ -93,13 +87,11 @@ describe("production wiring", () => {
       "utf8",
     );
 
-    process.env.HOME = home;
-    process.env.MAESTRO_HOME = maestroHome;
+    vi.stubEnv("HOME", home);
+    vi.stubEnv("MAESTRO_HOME", maestroHome);
   });
 
   afterEach(async () => {
-    process.env.HOME = previous.HOME;
-    process.env.MAESTRO_HOME = previous.MAESTRO_HOME;
     await rm(root, { recursive: true, force: true });
   });
 

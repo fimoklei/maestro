@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
 
@@ -60,20 +60,15 @@ describe("joining a Harness by its GitHub url", () => {
 
     // Reaches every git this process starts and survives apm's
     // `GIT_CONFIG_GLOBAL` isolation.
-    process.env.GIT_CONFIG_COUNT = "2";
-    process.env.GIT_CONFIG_KEY_0 = `url.${remote}.insteadOf`;
-    process.env.GIT_CONFIG_VALUE_0 = GITHUB_URL;
+    vi.stubEnv("GIT_CONFIG_COUNT", "2");
+    vi.stubEnv("GIT_CONFIG_KEY_0", `url.${remote}.insteadOf`);
+    vi.stubEnv("GIT_CONFIG_VALUE_0", GITHUB_URL);
     // A redirect at a missing repository, so the failing clone stays local.
-    process.env.GIT_CONFIG_KEY_1 = `url.${join(base, "gone.git")}.insteadOf`;
-    process.env.GIT_CONFIG_VALUE_1 = MISSING_URL;
+    vi.stubEnv("GIT_CONFIG_KEY_1", `url.${join(base, "gone.git")}.insteadOf`);
+    vi.stubEnv("GIT_CONFIG_VALUE_1", MISSING_URL);
   });
 
   afterEach(async () => {
-    delete process.env.GIT_CONFIG_COUNT;
-    delete process.env.GIT_CONFIG_KEY_0;
-    delete process.env.GIT_CONFIG_VALUE_0;
-    delete process.env.GIT_CONFIG_KEY_1;
-    delete process.env.GIT_CONFIG_VALUE_1;
     await removeGitTempTree(base);
   });
 
