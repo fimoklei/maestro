@@ -21,9 +21,13 @@ export default defineConfig({
     // maxWorkers (#1699); the slowest test nears the 5s default under load.
     maxWorkers: currentMaxWorkers(),
     testTimeout: 20_000,
+    unstubEnvs: true,
     // Runs once per run, before any lane: a killed run never reaches its
     // `afterEach`, so its temp trees are swept here instead.
-    globalSetup: ["./tests/helpers/sweep-temp-trees.ts"],
+    globalSetup: [
+      "./tests/helpers/sweep-temp-trees.ts",
+      "./tests/helpers/sandbox-home.ts",
+    ],
     // Tests read fixtures through `fs`, which `vitest related` cannot follow,
     // so a fixture change reruns the whole suite (#1111). Anchored: `**` skips
     // dot folders such as `.claude/worktrees/` (picomatch 4.0.7).

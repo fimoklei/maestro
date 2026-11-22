@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { app } from "@maestro/server";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initGitClone, removeGitTempTree } from "../helpers/git-fixture";
 
 const run = promisify(execFile);
@@ -21,10 +21,6 @@ describe("a Harness clone whose origin git rewrites", () => {
   let root: string;
   let clone: string;
   let repo: string;
-  const previous = {
-    HOME: process.env.HOME,
-    MAESTRO_HOME: process.env.MAESTRO_HOME,
-  };
 
   beforeEach(async () => {
     root = await realpath(await mkdtemp(join(tmpdir(), "maestro-rewrite-")));
@@ -70,13 +66,11 @@ describe("a Harness clone whose origin git rewrites", () => {
         ],
       }),
     );
-    process.env.HOME = join(root, "home");
-    process.env.MAESTRO_HOME = maestroHome;
+    vi.stubEnv("HOME", join(root, "home"));
+    vi.stubEnv("MAESTRO_HOME", maestroHome);
   });
 
   afterEach(async () => {
-    process.env.HOME = previous.HOME;
-    process.env.MAESTRO_HOME = previous.MAESTRO_HOME;
     await removeGitTempTree(root);
   });
 

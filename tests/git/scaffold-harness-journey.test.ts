@@ -11,7 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
 
@@ -56,29 +56,18 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       remote,
     ]);
 
-    process.env.GIT_CONFIG_COUNT = "1";
-    process.env.GIT_CONFIG_KEY_0 = `url.${remote}.insteadOf`;
-    process.env.GIT_CONFIG_VALUE_0 = GITHUB_URL;
+    vi.stubEnv("GIT_CONFIG_COUNT", "1");
+    vi.stubEnv("GIT_CONFIG_KEY_0", `url.${remote}.insteadOf`);
+    vi.stubEnv("GIT_CONFIG_VALUE_0", GITHUB_URL);
     // The commit needs an identity the machine may lack; `.invalid` never
     // resolves (RFC 2606).
-    process.env.GIT_AUTHOR_NAME = "Fixture";
-    process.env.GIT_AUTHOR_EMAIL = "fixture@example.invalid";
-    process.env.GIT_COMMITTER_NAME = "Fixture";
-    process.env.GIT_COMMITTER_EMAIL = "fixture@example.invalid";
+    vi.stubEnv("GIT_AUTHOR_NAME", "Fixture");
+    vi.stubEnv("GIT_AUTHOR_EMAIL", "fixture@example.invalid");
+    vi.stubEnv("GIT_COMMITTER_NAME", "Fixture");
+    vi.stubEnv("GIT_COMMITTER_EMAIL", "fixture@example.invalid");
   });
 
   afterEach(async () => {
-    for (const key of [
-      "GIT_CONFIG_COUNT",
-      "GIT_CONFIG_KEY_0",
-      "GIT_CONFIG_VALUE_0",
-      "GIT_AUTHOR_NAME",
-      "GIT_AUTHOR_EMAIL",
-      "GIT_COMMITTER_NAME",
-      "GIT_COMMITTER_EMAIL",
-    ]) {
-      delete process.env[key];
-    }
     await removeGitTempTree(base);
   });
 
@@ -223,10 +212,10 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     const app = makeApp();
     const offered = await offerFor(app);
     // git refuses an empty ident whatever the config says (git 2.50.1).
-    process.env.GIT_AUTHOR_NAME = "";
-    process.env.GIT_AUTHOR_EMAIL = "";
-    process.env.GIT_COMMITTER_NAME = "";
-    process.env.GIT_COMMITTER_EMAIL = "";
+    vi.stubEnv("GIT_AUTHOR_NAME", "");
+    vi.stubEnv("GIT_AUTHOR_EMAIL", "");
+    vi.stubEnv("GIT_COMMITTER_NAME", "");
+    vi.stubEnv("GIT_COMMITTER_EMAIL", "");
 
     const failed = await post(app, "/api/harness/scaffold", { path: offered });
 
@@ -237,10 +226,10 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
     }
     expect(await read(clone, "status", "--porcelain")).toBe("");
 
-    process.env.GIT_AUTHOR_NAME = "Fixture";
-    process.env.GIT_AUTHOR_EMAIL = "fixture@example.invalid";
-    process.env.GIT_COMMITTER_NAME = "Fixture";
-    process.env.GIT_COMMITTER_EMAIL = "fixture@example.invalid";
+    vi.stubEnv("GIT_AUTHOR_NAME", "Fixture");
+    vi.stubEnv("GIT_AUTHOR_EMAIL", "fixture@example.invalid");
+    vi.stubEnv("GIT_COMMITTER_NAME", "Fixture");
+    vi.stubEnv("GIT_COMMITTER_EMAIL", "fixture@example.invalid");
 
     const retry = await post(app, "/api/harness/scaffold", { path: offered });
 
