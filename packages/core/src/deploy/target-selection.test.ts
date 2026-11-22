@@ -99,6 +99,41 @@ describe("readTargetSelection", () => {
     });
   });
 
+  it("reads a target holding both a root package and per-skill pins as the root package", async () => {
+    const lock = `${rootLock("v0.6.0", [".claude/skills/prototype/SKILL.md"])}- repo_url: fimoklei/agent-harness
+  host: github.com
+  resolved_ref: v0.5.0
+  virtual_path: .apm/skills/tdd
+  package_type: claude_skill
+`;
+    expect(
+      await readTargetSelection(
+        reader(lock, [".claude/skills/prototype/SKILL.md"]),
+      ),
+    ).toMatchObject({ kind: "root", deployed: ["prototype"] });
+  });
+
+  it("finds a copy recorded under an absolute folder outside the tree root", async () => {
+    const file = "/elsewhere/claude/skills/prototype/SKILL.md";
+    const lock = rootLock("v0.6.0", [file]);
+    const result = await readTargetSelection({
+      ...reader(lock),
+      fs: {
+        readFile: async () => lock,
+        isFileEntry: async (path: string) => path === file,
+      },
+      location: {
+        lockfilePath: () => "/home/.apm/apm.lock.yaml",
+        treeRoot: () => "/home",
+        toolRoots: () => ({ ...REPO_TOOL_ROOTS, claude: "/elsewhere/claude" }),
+      },
+    });
+    expect(result).toMatchObject({
+      kind: "root",
+      copies: [{ name: "prototype", tool: "claude" }],
+    });
+  });
+
   it("ignores a per-skill dependency from another origin", async () => {
     const lock = `dependencies:
 - repo_url: other/repo

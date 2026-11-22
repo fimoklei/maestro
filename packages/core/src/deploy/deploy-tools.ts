@@ -1,24 +1,13 @@
-// Every tool-dependent value derives from DEPLOY_TOOLS, so none can drift
-// from the others (#63, #131).
 import { isAbsolute, join, relative, resolve } from "node:path";
 
 export type SupportedTool = "claude" | "codex";
 
-// One entry per Global folder: the apm target that writes it and its presence
-// marker.
 type DeployTool = {
   apmTarget: SupportedTool;
-  // codex deploys to the cross-client ".agents" dir, not ".codex".
   skillsDirPrefix: string;
-  // The tool's own config, never a skills directory a deploy creates.
   globalPresenceMarker: string;
-  // At user scope apm and the tool move the folder and the marker into this
-  // variable's directory.
   configDir?: { variable: string; marker: string };
 };
-
-// No tool is the only reader of its skills folder, so Maestro never deletes a
-// copy for a tool it did not detect (#202, #1557, #1793).
 
 export const DEPLOY_TOOLS: readonly DeployTool[] = [
   {
@@ -34,31 +23,22 @@ export const DEPLOY_TOOLS: readonly DeployTool[] = [
   },
 ];
 
-/** Per tool, the folder holding a target's `skills/`: relative to the target's tree root, or absolute. */
 export type ToolRoots = Readonly<Record<SupportedTool, string>>;
 
-/** Where Global writes each tool's skills and finds its marker; each path relative to home, or absolute. */
 export type GlobalLayout = {
   roots: ToolRoots;
   markers: Readonly<Record<SupportedTool, string>>;
 };
 
-// The cast is safe: DEPLOY_TOOLS holds one entry per SupportedTool.
 const byTool = (value: (tool: DeployTool) => string) =>
   Object.fromEntries(
     DEPLOY_TOOLS.map((tool) => [tool.apmTarget, value(tool)]),
   ) as Record<SupportedTool, string>;
 
-/** A repo target always writes the default folders. */
 export const REPO_TOOL_ROOTS: ToolRoots = byTool(
   (tool) => tool.skillsDirPrefix,
 );
 
-/**
- * Global's layout as apm 0.32.0 resolves it from the environment it receives:
- * a blank variable is unset; `~` expands, a relative value resolves against
- * apm's cwd, and symlinks resolve on both the value and home.
- */
 export function resolveGlobalLayout(input: {
   env: NodeJS.ProcessEnv;
   home: string;
@@ -97,14 +77,11 @@ export function resolveGlobalLayout(input: {
 }
 
 export type GlobalFolder = {
-  /** Starting with `~/` inside home, absolute outside it, as the screen names it. */
   path: string;
   tool: SupportedTool;
-  /** Global writes this folder only while its tool is detected. */
   detected: boolean;
 };
 
-/** The Global folder a tool's apm target writes, as the screen names it. */
 export function globalFolderPath(
   tool: SupportedTool,
   layout: GlobalLayout,
@@ -128,19 +105,14 @@ export const SUPPORTED_TOOLS: readonly SupportedTool[] = DEPLOY_TOOLS.map(
   (tool) => tool.apmTarget,
 );
 
-// One comma list, never a repeated flag: apm takes the last `-t` only. A repo
-// target installs for every tool.
 export const APM_DEPLOY_TARGET_FLAG = SUPPORTED_TOOLS.join(",");
 
-// Empty when nothing is detected; the caller refuses before apm runs.
 export function apmTargetFlagForTools(tools: readonly SupportedTool[]): string {
   return DEPLOY_TOOLS.filter((tool) => tools.includes(tool.apmTarget))
     .map((tool) => tool.apmTarget)
     .join(",");
 }
 
-// Relative to the deployed root or absolute, like the lockfile's
-// deployed_file_hashes. Omitting `tools` means every DEPLOY_TOOLS tool.
 export function deployTargetSubtrees(
   name: string,
   roots: ToolRoots,

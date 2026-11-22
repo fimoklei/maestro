@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
-// Captured `apm view ... versions` output, apm 0.26.0.
-const capturedTable = `     Available versions:
+const apm026VersionsTable = `     Available versions:
     fimoklei/agent-harness
 ┏━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┓
 ┃ Name   ┃ Type   ┃ Commit   ┃
@@ -21,7 +20,9 @@ const capturedTable = `     Available versions:
 
 describe("resolveLatestTagFromVersionsTable", () => {
   it("returns the latest semver tag from captured apm output", () => {
-    expect(resolveLatestTagFromVersionsTable(capturedTable)).toBe("v0.5.1");
+    expect(resolveLatestTagFromVersionsTable(apm026VersionsTable)).toBe(
+      "v0.5.1",
+    );
   });
 
   it("ignores branch rows even when they appear last", () => {

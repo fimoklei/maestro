@@ -11,7 +11,6 @@ const FETCHED: HarnessFreshness = {
 const manifest = (name: string, body = "Body") =>
   `---\ndescription: ${name} does a thing\n---\n${body}\n`;
 
-// v1.2.3 tags `old`; origin/HEAD is `head`.
 const releasedAt = (
   atRelease: Record<string, string | null>,
   atHead: Record<string, string | null>,
@@ -97,7 +96,6 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("names a removal's author from the release when the branch never had it", async () => {
-    // A tag on another history: a log at the branch answers nothing.
     const git = new InMemoryHarnessGit();
     git.commit("old", { grilling: manifest("grilling") }, { author: "Linus" });
     git.commit("head", {});
@@ -151,6 +149,21 @@ describe("ReadHarnessState.planRelease", () => {
           { skill: "blankdesc", problem: "empty-description" },
           { skill: "nomanifest", problem: "missing-manifest" },
         ],
+      },
+    });
+  });
+
+  it("reports a broken skill the release delta does not touch", async () => {
+    const broken = "---\ndescription: '  '\n---\n";
+    const git = releasedAt(
+      { blankdesc: broken },
+      { blankdesc: broken, added: manifest("added") },
+    );
+
+    await expect(buildRead(git).planRelease()).resolves.toMatchObject({
+      ok: true,
+      plan: {
+        findings: [{ skill: "blankdesc", problem: "empty-description" }],
       },
     });
   });
@@ -224,7 +237,6 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("has no answer when the release tags could not be read", async () => {
-    // An unreadable tag namespace is not an unreleased harness (#519).
     const git = releasedAt({}, {});
     git.tags = null;
 
@@ -235,7 +247,6 @@ describe("ReadHarnessState.planRelease", () => {
   });
 
   it("reads origin/HEAD's skills once, so the delta and the checks agree", async () => {
-    // A failed second read once reported "no advisories" for checks never run.
     const git = releasedAt({}, { tdd: manifest("tdd") });
 
     await buildRead(git).planRelease();

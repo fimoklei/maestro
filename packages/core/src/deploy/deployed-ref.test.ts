@@ -8,7 +8,7 @@ import { DeployedRefAdapter } from "./deployed-ref";
 const target = { kind: "repo", repoPath: "/repo" } as const;
 const location = new DeployedLocation({}, (path) => path);
 
-const resolve = (entries: LockfileEntry[], name: string) =>
+const resolve = (entries: readonly unknown[], name: string) =>
   new DeployedRefAdapter({
     fs: new InMemoryFileSystem({
       files: {
@@ -98,11 +98,15 @@ describe("DeployedRefAdapter.resolve", () => {
     });
   });
 
-  // A lockfile is a file in the user's repo, so its ref must name the row's own
-  // skill or nothing is removed.
+  it("reports the lockfile malformed when an unreadable entry may be this skill's", async () => {
+    const { resolved_ref: _dropped, ...unreadableTdd } = tddEntry;
+    expect(await resolve([unreadableTdd, tddEntry], "tdd")).toEqual({
+      ok: false,
+      reason: "lockfile-malformed",
+    });
+  });
 
-  it("refuses an entry whose path is not this skill's own .apm/skills/ path", async () => {
-    // basename() alone would accept this.
+  it("refuses an entry whose path only ends in this skill's name", async () => {
     const elsewhere: LockfileEntry = {
       ...tddEntry,
       virtual_path: "vendor/other/tdd",

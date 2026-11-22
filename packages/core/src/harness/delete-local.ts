@@ -1,6 +1,3 @@
-// Removes a primitive's folder or file from the Working Harness's disk: no commit or push
-// (#798). A skill on the default branch goes the same way; Propose change then
-// carries the deletion to the Curator (#1370).
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { FileSystemPort } from "../registry/file-system";
@@ -20,9 +17,7 @@ export type DeleteLocalError =
   | "invalid-skill"
   | "already-gone"
   | "no-answer"
-  // The folder no longer holds the tree the confirmation was given against.
   | "confirmation-stale"
-  // A link, or outside the type's folder: removing it would delete something else.
   | "destination-unsafe"
   | "destination-unreadable"
   | "delete-failed"
@@ -32,23 +27,18 @@ export type DeleteLocalResult =
   | { ok: true; name: string }
   | { ok: false; error: DeleteLocalError };
 
-// Per type, then per name.
 type DeletionChecks = Record<
   HarnessPrimitiveType,
   Record<string, PrimitiveDeletionCheck>
 >;
 
-// A folder outside the clone has nothing to delete, so it carries no facts.
 export type PrimitiveDeletionCheck =
   | { inClone: false }
   | {
       inClone: true;
-      // The folder or file in the Harness, as the dialog names it.
       path: string;
       workingTree: string;
-      // The working tree differs from the last commit.
       uncommitted: boolean;
-      // In no ref: not on the default branch, local HEAD or a proposal branch.
       localOnly: boolean;
     };
 
@@ -93,7 +83,6 @@ export class DeleteLocal {
     };
   }
 
-  // Shares the harness-root lock with the publish path.
   async execute(
     ref: PrimitiveRef,
     seenWorkingTree: string,
@@ -116,12 +105,10 @@ export class DeleteLocal {
     ref: PrimitiveRef,
     seenWorkingTree: string,
   ): Promise<DeleteLocalResult> {
-    // Before the listing: real git lists no link, which would read as already gone.
     const entry = await inspectPrimitiveEntry(this.deps.fs, root, ref);
     if (entry.kind === "unsafe") {
       return { ok: false, error: "destination-unsafe" };
     }
-    // Re-read at the press, never taken from the row.
     const trees = await this.deps.git.readMovementTrees(root).catch(() => null);
     if (trees === null) {
       return { ok: false, error: "no-answer" };

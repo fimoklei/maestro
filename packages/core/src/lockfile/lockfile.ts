@@ -1,22 +1,15 @@
-// A malformed lockfile is a parse failure, never an empty stand-in (#58); one
-// unreadable entry does not fail the whole file (#357).
 import { basename } from "node:path";
 import { parse } from "yaml";
 import { z } from "zod";
 
-// Optional fields stay optional so an old or partial entry is refused further
-// along rather than failing the whole file. Unknown keys are ignored.
 const lockfileEntrySchema = z.object({
   resolved_ref: z.string(),
-  // Absent only on a root-package row; enforced in parseLockfile.
   virtual_path: z.string().optional(),
-  // Bounded here: this field reaches an HTTP response.
   package_type: z.string().regex(/^[a-z0-9_-]{1,40}$/i),
   host: z.string().optional(),
   repo_url: z.string().optional(),
   deployed_files: z.array(z.string()).optional(),
   deployed_file_hashes: z.record(z.string(), z.string()).optional(),
-  // Never read as what is deployed: it keeps names apm already dropped.
   skill_subset: z.array(z.string()).optional(),
 });
 
@@ -34,8 +27,6 @@ type LockfileParseResult =
   | { ok: true; entries: LockfileEntry[]; unreadable: UnreadableEntry[] }
   | { ok: false };
 
-// One read of a target's lockfile, handed to every skill classified against
-// it. `{ ok: false }` also covers a present file that could not be read (#58).
 export type LockfileReading = "missing" | LockfileParseResult;
 
 export function parseLockfile(raw: string): LockfileParseResult {
@@ -55,7 +46,6 @@ export function parseLockfile(raw: string): LockfileParseResult {
   const unreadable: UnreadableEntry[] = [];
   for (const candidate of parsed.data.dependencies) {
     const entry = lockfileEntrySchema.safeParse(candidate);
-    // A non-root row with no path would read as a skill with an empty name.
     if (entry.success && namesItself(entry.data)) {
       entries.push(entry.data);
       continue;
@@ -75,8 +65,6 @@ function namesItself(entry: LockfileEntry): boolean {
   );
 }
 
-// Fail-closed for write guards: an unreadable entry may be this skill, and an
-// unnamed one covers every name (#58).
 export function unreadableCovers(
   unreadable: readonly UnreadableEntry[],
   name: string,
@@ -94,14 +82,12 @@ export type PackageClass =
   | "invalid"
   | "other";
 
-// apm 0.26.0 writes these for a skill that also carries apm.yml or plugin.json.
 const UNSUPPORTED_TYPES = new Set(["hybrid", "marketplace_plugin"]);
 
 export function classifyPackageType(packageType: string): PackageClass {
   if (packageType === "claude_skill") {
     return "skill";
   }
-  // One dependency on the whole Harness, with its own selection of skills.
   if (packageType === "apm_package") {
     return "package";
   }
@@ -113,7 +99,6 @@ export function classifyPackageType(packageType: string): PackageClass {
 
 export type PackageReading =
   | { kind: "skill"; name: string }
-  // Its skills come from its recorded files.
   | { kind: "package" }
   | {
       kind: Exclude<PackageClass, "skill" | "package">;

@@ -4,14 +4,10 @@ import { HARNESS_PRIMITIVE_TYPES, primitiveDir } from "./harness-primitive";
 
 const HARNESS_ROOT = "/harness";
 
-/** A Harness clone's disk: its root and type folders, plus the entries named. */
 export const harnessDisk = (
   seed: {
-    // A path ending in `.md` is a prompt file, any other a folder.
     entries?: string[];
-    // Link path → target. A type folder may be one too.
     links?: Record<string, string>;
-    // Type folders left off the disk.
     missing?: string[];
     unreadable?: string[];
     unremovable?: string[];

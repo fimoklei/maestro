@@ -1,6 +1,3 @@
-// One in-memory Harness clone behind `HarnessGitPort`: commits hold skill and
-// prompt contents, refs point at commits, and every read derives from them, so
-// a test states content and never a hash.
 import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
 import { HARNESS_CATEGORIES_FILE } from "../inventory/harness-layout";
 import { fileAtRef } from "./file-at-ref.fake";
@@ -76,56 +73,37 @@ export const skillRef = (name: string): PrimitiveRef => ({
 });
 
 export class InMemoryHarnessGit implements HarnessGitPort {
-  // The one clone this world holds; any other root is no clone at all.
   root = "/harness";
   originUrl: string | null = "git@github.com:fimoklei/agent-harness.git";
   defaultBranch: string | null = "main";
-  // origin/HEAD as the last fetch left it; null where it could not be read.
   tip: string | null = null;
-  // Release tags as fetched; null is an unreadable namespace.
   tags: HarnessTag[] | null = [];
-  // Branch name under `maestro/` (a skill's name, `prompt.<name>` for a
-  // prompt) → its fetched tip; null is an unreadable tip.
   promote: Record<string, string | null> = {};
   head: string | null = null;
   working: Skills = {};
   workingPrompts: Prompts = {};
-  // Prompt names whose working file is a symlink.
   readonly workingPromptLinks = new Set<string>();
-  // Refs (commit ids, "HEAD", "working") whose skills cannot be listed.
   readonly unreadable = new Set<string>();
-  // Commit ids whose root alone cannot be listed.
   readonly unlistableRoots = new Set<string>();
   cloneSync: CloneSync = "current";
   ambiguity: WorktreeAmbiguity | null = null;
-  // Per branch name, as `promote`: a difference staged in the author's index;
-  // null is no answer.
   staged: Record<string, boolean | null> = {};
 
-  // One outcome per fetch, in order; the last repeats. A fetch also lands the
-  // next queued remote change, as a teammate's push arrives.
   fetchOutcomes: HarnessFetchOutcome[] = ["fetched"];
   fetchHold: Promise<void> | null = null;
   readonly arrivals: (() => void)[] = [];
   fetches = 0;
 
-  // What the remote answers; `null` lets the world decide.
   publishOutcome: PublishTagOutcome | null = null;
   pushOutcome: SkillPushOutcome | null = null;
-  // Per branch name, as `promote`: what that branch's push answers, ahead of
-  // `pushOutcome`.
   pushOutcomes: Record<string, SkillPushOutcome> = {};
   writeOutcome: "missing" | "failed" | null = null;
   deleteOutcome: "deleted" | "failed" = "deleted";
   withdrawOutcome: WithdrawalPushOutcome | null = null;
   pushesWhereItFetched = true;
-  // Per branch name, as `promote`: the files only the working tree holds;
-  // null is no answer.
   unproposed: Record<string, string[] | null> = {};
-  // Per branch name, as `promote`; absent is the author's own.
   authorship: Record<string, BranchAuthorship> = {};
 
-  // Every write that leaves this machine or touches the author's files.
   readonly published: { name: string; commit: string; branch: string }[] = [];
   readonly pushed: {
     type: HarnessPrimitiveType;
@@ -139,12 +117,9 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     commit: string;
     into: string;
   }[] = [];
-  // Every list file pushed, with the parents its commit took.
   readonly listPushes: { branch: string; parents: string[]; text: string }[] =
     [];
-  // Commits pushed to the default branch by a withdrawal.
   readonly withdrawals: { commit: string; message: string }[] = [];
-  // Proposal branch names deleted on the remote.
   readonly deletedBranches: string[] = [];
   readonly caughtUp: string[] = [];
   readonly treeReads: string[] = [];
@@ -175,7 +150,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return id;
   }
 
-  // One commit everywhere: origin/HEAD, local HEAD and disk agree.
   settled(skills: Skills, id = "settled", prompts: Prompts = {}): this {
     this.commit(id, skills, { prompts });
     this.tip = id;
@@ -185,7 +159,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return this;
   }
 
-  // Lands with the next fetch, never before.
   teammatePushes(id: string, skills: Skills, author = "teammate"): void {
     this.arrivals.push(() => {
       this.commit(id, skills, {
@@ -202,7 +175,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     }
   }
 
-  // Through the real listing parser, so a link drops out as it does in git.
   private listedWorkingPrompts(): Prompts {
     const listing = Object.entries(this.workingPrompts)
       .map(([name, text]) => {
@@ -239,7 +211,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return this.contentAt(ref)?.skills ?? null;
   }
 
-  // A commit id, `HEAD`, or a fetched promote branch's ref.
   private resolve(ref: string): string | null {
     const branch = ref.match(/^refs\/remotes\/origin\/maestro\/(.+)$/)?.[1];
     if (branch !== undefined) {
@@ -352,8 +323,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return content === null ? null : { hash: listFileHash(content) };
   }
 
-  // The newest commit in `ref`'s history that changed the subject, as
-  // `git log -1 -- <path>`. Keyed by `subjectKey`.
   async readAuthors(
     root: string,
     ref: string,
@@ -445,8 +414,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return { remote, promote: { tree, commit, authorship, landed } };
   }
 
-  // As the adapter: the tip is on origin/HEAD, or a commit the branch lacks
-  // holds its content.
   private hasLanded(
     branch: string | null,
     holds: (content: Content) => boolean,
@@ -582,8 +549,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return this.pushProposal(ref, base, "deletion", undefined);
   }
 
-  // As the adapter: the default-branch tree with the file; a branch that
-  // lacks the tip gains it as a second parent.
   async pushListFile(
     root: string,
     { subject, text, defaultTip }: ListFilePush,
@@ -646,7 +611,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
     return "pushed";
   }
 
-  // The remote's answer is checked after the clone's own checks, as in git.
   async withdrawOnDefaultBranch(
     root: string,
     withdrawal: DefaultBranchWithdrawal,
@@ -754,7 +718,6 @@ export class InMemoryHarnessGit implements HarnessGitPort {
       : [];
   }
 
-  // A skill's SKILL.md stands for its folder, as in the content model.
   async readWorkingDifferences(
     root: string,
     refs: readonly PrimitiveRef[],

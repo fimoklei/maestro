@@ -100,6 +100,21 @@ describe("parseLockfile", () => {
       unreadable: [{ virtualPath: null }],
     });
   });
+
+  it("reads a skill entry without a virtual_path as unreadable, never as a nameless skill", () => {
+    const raw = [
+      "dependencies:",
+      "- resolved_ref: v0.5.0",
+      "  package_type: claude_skill",
+      "",
+    ].join("\n");
+
+    expect(parseLockfile(raw)).toEqual({
+      ok: true,
+      entries: [],
+      unreadable: [{ virtualPath: null }],
+    });
+  });
 });
 
 describe("unreadableCovers", () => {
@@ -166,7 +181,6 @@ describe("classifyPackageType", () => {
 
 describe("parseLockfile package_type shape", () => {
   it("refuses an entry whose package_type is not a bounded token", () => {
-    // The one apm-derived field that reaches the browser, so its shape is checked here.
     const raw = [
       "dependencies:",
       "- resolved_ref: v0.5.0",

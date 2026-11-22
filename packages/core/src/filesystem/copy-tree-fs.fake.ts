@@ -3,18 +3,14 @@ import type { CopyEntryFacts, CopyTreeFsPort, OpenFile } from "./copy-tree-fs";
 
 type MemoryFile = { bytes: Buffer; executable: boolean; version: number };
 
-// An in-memory copy tree: files, directories and symlinks keyed by absolute
-// POSIX path. Tests write and edit it through the same port the adapters use.
 export class InMemoryCopyTree implements CopyTreeFsPort {
   private readonly files = new Map<string, MemoryFile>();
   private readonly directories = new Set<string>();
-  // Link path → the path it points at.
   private readonly symlinks = new Map<string, string>();
   private readonly unreadable = new Set<string>();
   private stagingCount = 0;
   private versionCounter = 0;
 
-  // Test helpers: the copy's own edits and removals, as the user would make them.
   write(path: string, contents: string | Buffer): void {
     this.writeSync(path, Buffer.from(contents), false);
   }
@@ -33,19 +29,15 @@ export class InMemoryCopyTree implements CopyTreeFsPort {
     }
   }
 
-  // Test edits: a link at `path` to `target`, which may not exist.
   symlink(path: string, target: string): void {
     this.ensureParents(path);
     this.symlinks.set(normalize(path), normalize(target));
   }
 
-  // Listing and opening of `path` are refused from now on, as an EACCES would.
   setUnreadable(path: string): void {
     this.unreadable.add(normalize(path));
   }
 
-  // The same tree behind `FileSystemPort`, so code reading through either
-  // port sees one disk.
   fileSystem(): FileSystemPort {
     const resolved = async (path: string) => {
       const real = await this.realpath(path);
@@ -100,7 +92,6 @@ export class InMemoryCopyTree implements CopyTreeFsPort {
     };
   }
 
-  // Test reads: what the copy holds now, for building expectations.
   filePaths(): string[] {
     return [...this.files.keys()].sort();
   }
@@ -150,7 +141,6 @@ export class InMemoryCopyTree implements CopyTreeFsPort {
     return [...names].sort();
   }
 
-  // Resolves a link in the final component only; null when it dangles.
   async realpath(path: string): Promise<string | null> {
     const key = normalize(path);
     const resolved = this.symlinks.get(key) ?? key;

@@ -71,7 +71,7 @@ const world = () => {
     expect(response.status).toBe(200);
     return (await response.json()) as HarnessCategories;
   };
-  return { harness, release, read, changed, preview, write, markSeen };
+  return { fs, harness, release, read, changed, preview, write, markSeen };
 };
 
 describe("the Harness categories change signal over HTTP", () => {
@@ -101,6 +101,27 @@ describe("the Harness categories change signal over HTTP", () => {
     release("v1.5.0", REVIEW_PLANNING);
 
     await write("/api/categories/harness/copy", { mode: "add" });
+
+    expect(await changed()).toBe(false);
+  });
+
+  it("clears the signal once a copy ran into a list of the operator's own", async () => {
+    const { release, changed, write } = world();
+    release("v1.5.0", REVIEW_PLANNING);
+    await write("/api/categories", { name: "Writing" });
+
+    await write("/api/categories/harness/copy", { mode: "add" });
+
+    expect(await changed()).toBe(false);
+  });
+
+  it("raises no signal while the categories section is broken", async () => {
+    const { fs, release, changed } = world();
+    await fs.writeFile(
+      "/maestro-home/config.json",
+      JSON.stringify({ repos: [], categories: [{ names: "Planning" }] }),
+    );
+    release("v1.5.0", REVIEW_PLANNING);
 
     expect(await changed()).toBe(false);
   });
@@ -193,6 +214,28 @@ describe("the Harness categories change signal over HTTP", () => {
 
     expect(await changed()).toBe(false);
     await write("/api/categories", { name: "Drafts" });
+
+    expect(await changed()).toBe(false);
+  });
+
+  it("counts a Harness list equal to the operator's own as seen, ignoring an item Inventory lacks", async () => {
+    const { release, changed, write } = world();
+    release(
+      "v1.5.0",
+      file(
+        ["Review", "Planning"],
+        [
+          "{ type: skill, name: tdd, category: Planning }",
+          "{ type: skill, name: retired, category: Review }",
+        ],
+      ),
+    );
+    await write("/api/categories", { name: "Planning" });
+    await write("/api/categories", { name: "Review" });
+    await write("/api/categories/assign", {
+      items: [{ type: "skill", name: "tdd" }],
+      category: "Planning",
+    });
 
     expect(await changed()).toBe(false);
   });

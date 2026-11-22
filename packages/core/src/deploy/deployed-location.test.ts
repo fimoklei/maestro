@@ -3,8 +3,6 @@ import { describe, expect, it } from "vitest";
 import type { DeployTarget } from "./deploy-skill";
 import { DeployedLocation } from "./deployed-location";
 
-// For global the lockfile is under ~/.apm but the files are under HOME: apm keys
-// global deployed_file_hashes HOME-relative (#61).
 describe("DeployedLocation", () => {
   const repo: DeployTarget = { kind: "repo", repoPath: "/work/my-repo" };
   const global: DeployTarget = { kind: "global" };
@@ -44,12 +42,11 @@ describe("DeployedLocation", () => {
     });
   });
 
-  it("reads Global's Claude Code folder and marker from CLAUDE_CONFIG_DIR", () => {
+  it("reads Global's Claude Code folder and marker from CLAUDE_CONFIG_DIR, set after startup", () => {
     const env: NodeJS.ProcessEnv = { HOME: "/sandbox-home" };
     const moving = new DeployedLocation(env, (path) => path);
     expect(moving.presenceMarkers().claude).toBe("/sandbox-home/.claude.json");
 
-    // Read per access, like HOME: a variable set after startup is honoured.
     env.CLAUDE_CONFIG_DIR = "/sandbox-home/.claude-work";
     expect(moving.toolRoots(global)).toStrictEqual({
       claude: ".claude-work",

@@ -1,4 +1,3 @@
-// The judgment is `apm outdated`'s; Maestro never computes a version diff.
 import type { ApmDriverPort, DeployTarget } from "../deploy/deploy-skill";
 import type { OutdatedResult } from "./parse-outdated";
 
@@ -21,7 +20,6 @@ export class CheckVersionDrift {
   async execute(input: CheckVersionDriftInput): Promise<OutdatedResult> {
     let target = input.target;
     if (target.kind === "repo") {
-      // Before any apm access.
       if (!(await this.deps.registry.isRegistered(target.repoPath))) {
         return { ok: false };
       }

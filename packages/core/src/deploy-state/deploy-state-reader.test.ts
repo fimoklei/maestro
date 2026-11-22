@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { SupportedTool } from "../deploy/deploy-tools";
-import { REPO_TOOL_ROOTS } from "../deploy/deploy-tools";
+import { REPO_TOOL_ROOTS, resolveGlobalLayout } from "../deploy/deploy-tools";
 import {
   copiesIn,
   inMemoryDeployedContent,
@@ -22,7 +22,6 @@ function fakePresence(tools: SupportedTool[]): ToolPresencePort {
   return { detectGlobalTools: async () => tools };
 }
 
-// The exact lockfile entry apm writes for `-t claude,codex`.
 const TWO_TOOL_LOCKFILE = readFileSync(
   new URL(
     "../../../../tests/fixtures/apm.lock.global-two-tool.yaml",
@@ -34,7 +33,6 @@ const TWO_TOOL_LOCKFILE = readFileSync(
 const REPO = "/repo";
 const LOCKFILE = `${REPO}/apm.lock.yaml`;
 
-// A tag-pinned skill entry has resolved_ref, virtual_path and package_type.
 function lockfile(entries: string): string {
   return `lockfile_version: '1'\ngenerated_at: '2026-06-05T13:22:03+00:00'\napm_version: 0.16.0\ndependencies:\n${entries}`;
 }
@@ -212,7 +210,6 @@ describe("DeployStateReader", () => {
   });
 
   it("keeps the readable skills when one entry cannot be interpreted", async () => {
-    // apm writes a `source: local` entry with no resolved_ref (#357).
     const localEntry =
       "- virtual_path: skills/local-one\n  package_type: claude_skill\n  source: local\n";
     const fs = new InMemoryFileSystem({
@@ -233,12 +230,10 @@ describe("DeployStateReader", () => {
 const GLOBAL_ROOT = "/home/.apm";
 const GLOBAL_LOCKFILE = `${GLOBAL_ROOT}/apm.lock.yaml`;
 
-// A two-tool skill entry: the shape apm writes for `-t claude,codex`.
 function twoToolEntry(ref: string, name: string): string {
   return `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: .apm/skills/${name}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/${name}\n  - .agents/skills/${name}\n  content_hash: sha256:abc\n`;
 }
 
-// One Global folder as the read names it, with the copies Global wrote there.
 function claudeFolder(primitives: unknown[], detected = true) {
   return {
     path: "~/.claude/skills",
@@ -340,6 +335,17 @@ describe("GlobalDeployStateReader.readGlobal", () => {
     });
   });
 
+  it("cannot be built without a tool-presence port", () => {
+    const build = () =>
+      // @ts-expect-error
+      new GlobalDeployStateReader({
+        fs: new InMemoryFileSystem(),
+        globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
+      });
+
+    expect(build).not.toThrow();
+  });
+
   it("returns every folder empty when there is no lockfile", async () => {
     const fs = new InMemoryFileSystem();
     const reader = new GlobalDeployStateReader({
@@ -374,7 +380,6 @@ describe("GlobalDeployStateReader.readGlobal", () => {
   });
 });
 
-// The root-package shape: one apm_package dependency deploying many skills.
 const PHANTOM_LOCKFILE = readFileSync(
   new URL(
     "../../../../tests/fixtures/apm.lock.spike-941-step3d-phantom.yaml",
@@ -383,7 +388,6 @@ const PHANTOM_LOCKFILE = readFileSync(
   "utf8",
 );
 
-// A root-package row carries no virtual_path.
 function rootPackageEntry(
   ref: string,
   deployedFiles: string[],
@@ -449,7 +453,6 @@ describe("DeployStateReader on a root-package target", () => {
   });
 
   it("does not count a recorded row whose file is gone from disk", async () => {
-    // A real capture: `delta` is recorded under .agents but the file is gone (#941).
     const onlyRealFiles = [
       ".agents/skills/alpha/SKILL.md",
       ".claude/skills/alpha/SKILL.md",
@@ -532,7 +535,6 @@ describe("DeployStateReader on a root-package target", () => {
     });
   });
 
-  // Leftover per-skill rows belong to no Selection and may not swell the count.
   it("keeps a leftover per-skill row out of the Release head's selection", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     const fs = new InMemoryFileSystem({
@@ -566,7 +568,6 @@ describe("DeployStateReader on a root-package target", () => {
     expect(result).toMatchObject({ ok: true, releaseHead: { selected: 1 } });
   });
 
-  // A target carrying both would show two answers to one question.
   it("reads a target still holding per-skill pins as pinned, with no Release head", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
     const fs = new InMemoryFileSystem({
@@ -669,6 +670,32 @@ describe("GlobalDeployStateReader on a root-package target", () => {
       folders: [claudeFolder([tdd]), agentsFolder([tdd, grill])],
       skipped: [],
       otherOrigins: [],
+    });
+  });
+
+  it("reads a skill Claude Code's folder holds outside HOME", async () => {
+    const files = ["/work/claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [GLOBAL_LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        [files[0] as string]: "x",
+      },
+    });
+    const reader = new GlobalDeployStateReader({
+      fs,
+      globalLayout: () =>
+        resolveGlobalLayout({
+          env: { CLAUDE_CONFIG_DIR: "/work/claude" },
+          home: "/home",
+          apmCwd: "/home/.maestro/.apm-scratch",
+          realpath: (path) => path,
+        }),
+      toolPresence: fakePresence(["claude"]),
+      treeRoot: () => "/home",
+    });
+
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toMatchObject({
+      primitives: [{ type: "skill", name: "tdd", version: "v0.3.2" }],
     });
   });
 
@@ -830,8 +857,6 @@ describe("DeployStateReader copy chips", () => {
   });
 
   it("calls the content port as a method, so an adapter keeps its own state", async () => {
-    // The real adapter, with tdd's copy edited on disk: a detached method call
-    // would lose its state (#949).
     const editedTdd = inMemoryDeployedContent();
     editedTdd.setCopy({ kind: "repo", repoPath: REPO }, "tdd", "diverged");
     const files = [".claude/skills/tdd/SKILL.md"];
@@ -860,9 +885,32 @@ describe("DeployStateReader copy chips", () => {
     });
   });
 
+  it("puts no chip on a copy whose check failed", async () => {
+    const files = [".claude/skills/tdd/SKILL.md"];
+    const fs = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(rootPackageEntry("v0.3.2", files, ["tdd"])),
+        ...onDisk(REPO, files),
+      },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      content: {
+        classify: () => Promise.reject(new Error("copy unreadable")),
+        harnessHolds: async () => false,
+      },
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(result.ok && result.primitives).toStrictEqual([
+      { type: "skill", name: "tdd", version: "v0.3.2" },
+    ]);
+  });
+
   it("leaves a copy whose changes the latest release holds unmarked (#1213)", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
-    const released = releasedIn041({ kind: "repo", repoPath: REPO });
+    const released = editedToV041({ kind: "repo", repoPath: REPO });
     const fs = new InMemoryFileSystem({
       files: {
         [LOCKFILE]: lockfile(
@@ -886,7 +934,7 @@ describe("DeployStateReader copy chips", () => {
 
   it("keeps Local edits when the latest release could not be read (#1213)", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
-    const released = releasedIn041({ kind: "repo", repoPath: REPO });
+    const released = editedToV041({ kind: "repo", repoPath: REPO });
     const fs = new InMemoryFileSystem({
       files: {
         [LOCKFILE]: lockfile(
@@ -910,7 +958,7 @@ describe("DeployStateReader copy chips", () => {
 
   it("keeps Local edits for a copy equal to an older release than the latest (#1213)", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
-    const released = releasedIn041({ kind: "repo", repoPath: REPO });
+    const released = editedToV041({ kind: "repo", repoPath: REPO });
     const fs = new InMemoryFileSystem({
       files: {
         [LOCKFILE]: lockfile(
@@ -937,7 +985,7 @@ describe("DeployStateReader copy chips", () => {
       ".claude/skills/tdd/SKILL.md",
       ".agents/skills/tdd/SKILL.md",
     ];
-    const released = releasedIn041({ kind: "global" }, ["codex"]);
+    const released = editedToV041({ kind: "global" }, ["codex"]);
     const fs = new InMemoryFileSystem({
       files: {
         [GLOBAL_LOCKFILE]: lockfile(
@@ -967,13 +1015,12 @@ describe("DeployStateReader copy chips", () => {
       ["~/.claude/skills", undefined],
       ["~/.agents/skills", "local-edits"],
     ]);
-    // The one skill list reads Local edits where any folder's copy does.
     expect(result.ok && result.primitives[0]?.copy).toBe("local-edits");
   });
 
   it("checks each Global folder's copy against the latest release (#1213)", async () => {
     const files = [".claude/skills/tdd/SKILL.md"];
-    const released = releasedIn041({ kind: "global" });
+    const released = editedToV041({ kind: "global" });
     const fs = new InMemoryFileSystem({
       files: {
         [GLOBAL_LOCKFILE]: lockfile(
@@ -1002,11 +1049,9 @@ describe("DeployStateReader copy chips", () => {
   });
 });
 
-// tdd's copy, edited away from its record to equal the skill at v0.4.1 only;
-// the `unreleased` tools hold work no release has.
-function releasedIn041(
+function editedToV041(
   target: DeployTarget,
-  unreleased: SupportedTool[] = [],
+  toolsWithUnreleasedWork: SupportedTool[] = [],
 ): {
   content: DeployedContentAdapter;
   hashes: Record<string, string>;
@@ -1025,7 +1070,7 @@ function releasedIn041(
   for (const tool of ["claude", "codex"] as const) {
     copies.editFile(
       `${copies.treeRoot(target)}/${dirs[tool]}/tdd/SKILL.md`,
-      unreleased.includes(tool) ? "unreleased work\n" : released,
+      toolsWithUnreleasedWork.includes(tool) ? "unreleased work\n" : released,
     );
   }
   return {
@@ -1048,7 +1093,6 @@ function latestIs(
   };
 }
 
-// A per-skill dependency: one entry per skill, pinned at its own tag.
 function pinnedEntry(name: string, ref: string, prefixes = [".claude"]) {
   const files = prefixes
     .map((prefix) => `  - ${prefix}/skills/${name}/SKILL.md\n`)
@@ -1097,6 +1141,26 @@ describe("DeployStateReader on a target pinned per skill", () => {
     expect(result).toMatchObject({
       ok: true,
       primitives: [{ type: "skill", name: "tdd", version: "v1.0.0" }],
+    });
+    expect(
+      "pinnedPerSkill" in result ? result.pinnedPerSkill : undefined,
+    ).toBeUndefined();
+  });
+
+  it("reads no such status, and still lists the skills, when the Harness origin read fails", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [LOCKFILE]: lockfile(pinnedEntry("tdd", "v0.3.1")) },
+    });
+    const reader = new DeployStateReader({
+      fs,
+      harnessOrigin: () => Promise.reject(new Error("git unavailable")),
+    });
+
+    const result = await reader.read(REPO);
+
+    expect(result).toMatchObject({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", version: "v0.3.1" }],
     });
     expect(
       "pinnedPerSkill" in result ? result.pinnedPerSkill : undefined,
@@ -1225,13 +1289,26 @@ describe("DeployStateReader on a target with an unfinished operation", () => {
   });
 
   it("offers the retry on a target a first deploy left with no lockfile", async () => {
-    // A stopped first Deploy writes no lockfile; Retry deploy is still offered (#951).
     const reader = new DeployStateReader({
       fs: new InMemoryFileSystem({ files: {} }),
       operations: { pending: async () => pending },
     });
 
     await expect(reader.read(REPO)).resolves.toMatchObject({
+      primitives: [],
+      pendingOperation: pending,
+    });
+  });
+
+  it("offers the retry on Global when a first deploy left no lockfile", async () => {
+    const reader = new GlobalDeployStateReader({
+      fs: new InMemoryFileSystem(),
+      globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
+      toolPresence: fakePresence(["claude"]),
+      operations: { pending: async () => pending },
+    });
+
+    await expect(reader.readGlobal(GLOBAL_ROOT)).resolves.toMatchObject({
       primitives: [],
       pendingOperation: pending,
     });
@@ -1380,7 +1457,6 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
   });
 
   it("links nothing at a non-release ref, even when the Harness origin read failed", async () => {
-    // No known tag is decidable without the origin (#1181).
     const result = await read(repoAt("main"), async () => {
       throw new Error("git unavailable");
     });
@@ -1388,7 +1464,6 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
     expect(result).not.toHaveProperty("primitives.0.github");
   });
 
-  // A per-skill dependency from before the root-package model, pinned at its own tag.
   const legacyAt = (ref: string, virtualPath = ".apm/skills/tdd") =>
     `- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_commit: ec491f154c9d5c9a6c5db56d1946c4c34f3899bb\n  resolved_ref: ${ref}\n  virtual_path: ${virtualPath}\n  is_virtual: true\n  package_type: claude_skill\n  deployed_files:\n  - .claude/skills/tdd\n  content_hash: sha256:abc\n`;
   const legacyRepo = (ref: string, virtualPath?: string) =>
@@ -1412,6 +1487,32 @@ describe("DeployStateReader on the Harness's GitHub pages", () => {
         },
       ],
     });
+  });
+
+  it("reads the Harness page once for every entry that links, and never where none could", async () => {
+    let reads = 0;
+    const counted = async () => {
+      reads += 1;
+      return { kind: "link", url: HARNESS } as const;
+    };
+    const twoSkills = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]: lockfile(
+          legacyAt("v0.2.0") + legacyAt("v0.2.1", ".apm/skills/grill"),
+        ),
+      },
+    });
+    const noEntries = new InMemoryFileSystem({
+      files: {
+        [LOCKFILE]:
+          "lockfile_version: '1'\napm_version: 0.16.0\ndependencies: []\n",
+      },
+    });
+
+    await read(twoSkills, counted);
+    expect(reads).toBe(1);
+    await read(noEntries, counted);
+    expect(reads).toBe(1);
   });
 
   it("links no per-skill dependency off the Harness layout or a release tag", async () => {

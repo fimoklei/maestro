@@ -28,11 +28,6 @@ type Item = {
   held: boolean;
 };
 
-/**
- * Makes each named primitive on disk equal to its copy at `commit`: written
- * where absent, swapped where both hold it, set aside where the commit lacks
- * it. Either every name changes or none does.
- */
 export async function replaceFromCommit(
   deps: ReplaceDeps,
   {
@@ -43,7 +38,6 @@ export async function replaceFromCommit(
   }: {
     root: string;
     commit: string;
-    // The primitives `commit` holds.
     atCommit: readonly PrimitiveRef[];
     refs: readonly PrimitiveRef[];
   },
@@ -82,7 +76,6 @@ export async function replaceFromCommit(
   }
 }
 
-// Every entry is checked before any is written, so a refusal changes nothing.
 async function locate(
   deps: ReplaceDeps,
   root: string,
@@ -104,8 +97,6 @@ async function locate(
   const items: Item[] = [];
   for (const { ref, held, entry: first } of found) {
     let entry = first;
-    // A deleted last item takes its type folder with it; bringing it back
-    // needs the folder again.
     if (entry.kind === "unreadable" && held) {
       const made = await ensureHarnessPrimitiveDir(deps.fs, root, ref.type);
       if (!made.ok) {
@@ -126,8 +117,6 @@ async function locate(
   return items;
 }
 
-// Every move is a rename within a type's folder, so no primitive is ever
-// half-written; a failed move puts every earlier one back, newest first.
 async function swapIn(
   deps: ReplaceDeps,
   staged: readonly { item: Item; staging: string }[],

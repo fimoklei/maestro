@@ -1,4 +1,3 @@
-// A target card's lockfile-derived readings; one failing the shape does not cross.
 import {
   type PinnedPerSkill,
   RELEASE_TAG_PATTERN,
@@ -16,7 +15,6 @@ const releaseHeadSchema = z.object({
   comparedAt: z.iso.datetime().nullable(),
 });
 
-// Bounded on shape, not on the release pattern: a pin is any ref apm resolved.
 const pinnedPerSkillSchema = z
   .array(
     z.object({
@@ -35,8 +33,6 @@ type CardReadings = {
   extraFiles?: number;
 };
 
-// Spread into a response body: an absent key, never null, so "not read" cannot
-// be mistaken for a reading the server measured (#416).
 export function cardReadingFields(readings: CardReadings): CardReadings {
   const head = releaseHeadSchema.safeParse(readings.releaseHead);
   const pinned = pinnedPerSkillSchema.safeParse(readings.pinnedPerSkill);

@@ -16,8 +16,6 @@ const DEFAULT_LAYOUT = resolveGlobalLayout({
   realpath: (path) => path,
 });
 
-// The apm `-t` flag and the guard's scanned subtrees both derive from
-// DEPLOY_TOOLS, so they cannot drift (#63).
 describe("deploy tools", () => {
   it("builds the apm -t flag from every tool's apm target", () => {
     expect(APM_DEPLOY_TARGET_FLAG).toBe(
@@ -38,7 +36,6 @@ describe("deploy tools", () => {
   });
 
   it("scans the .claude and .agents copies a two-tool install writes", () => {
-    // apm deploys codex to the cross-client .agents dir, not .codex.
     expect(deployTargetSubtrees("tdd", REPO_TOOL_ROOTS)).toEqual([
       ".claude/skills/tdd",
       ".agents/skills/tdd",
@@ -46,7 +43,6 @@ describe("deploy tools", () => {
   });
 
   it("scopes the scanned subtrees to a given tool set", () => {
-    // Scanning .agents on a Claude-only redeploy reads the absent copy as drift (#136).
     expect(deployTargetSubtrees("tdd", REPO_TOOL_ROOTS, ["claude"])).toEqual([
       ".claude/skills/tdd",
     ]);
@@ -68,7 +64,6 @@ describe("deploy tools", () => {
   });
 
   it("carries a deploy-immune presence marker per tool", () => {
-    // A skills dir would read a past Maestro deploy back as an installed tool (#127).
     expect(
       DEPLOY_TOOLS.map((tool) => [tool.apmTarget, tool.globalPresenceMarker]),
     ).toEqual([
@@ -112,8 +107,6 @@ describe("globalFolders", () => {
   });
 });
 
-// apm 0.32.0 moves Claude Code's user-scope folder into CLAUDE_CONFIG_DIR and
-// records it home-relative inside HOME, absolute outside it (#1796).
 describe("resolveGlobalLayout", () => {
   const layoutFor = (
     value: string | undefined,
@@ -161,6 +154,16 @@ describe("resolveGlobalLayout", () => {
     expect(layoutFor("work/../claude").roots.claude).toBe(
       ".maestro/.apm-scratch/claude",
     );
+  });
+
+  it("resolves the symlinks of home too before comparing", () => {
+    const layout = resolveGlobalLayout({
+      env: { CLAUDE_CONFIG_DIR: "/Users/ada/.claude-work" },
+      home: "/link",
+      apmCwd: "/Users/ada/.maestro/.apm-scratch",
+      realpath: (path) => path.replace(/^\/link/, "/Users/ada"),
+    });
+    expect(layout.roots.claude).toBe(".claude-work");
   });
 
   it("compares the resolved folder with the resolved home, as apm does", () => {

@@ -1,5 +1,3 @@
-// Only what crosses the package boundary; keep core-internal exports off it.
-
 export type {
   CategoryChange,
   CategoryError,
@@ -32,7 +30,6 @@ export {
 export { ApmCliDriver } from "./deploy/apm-cli-driver";
 export { SelectionWriter } from "./deploy/apply-selection";
 export {
-  // Exported for the integration lane's apm fake.
   type ApmDriverPort,
   type BulkDeployReport,
   type DeployedContentState,

@@ -48,4 +48,13 @@ describe("GitHarnessScaffoldAdapter push", () => {
       await read(root, "rev-parse", "--abbrev-ref", "main@{upstream}"),
     ).toBe("origin/main");
   });
+
+  it("pushes the branch, and no tag, where a tag shares the branch's name", async () => {
+    await git(root, "tag", "main");
+
+    const outcome = await new GitHarnessScaffoldAdapter().push(root, "main");
+
+    expect(outcome).toBe("pushed");
+    expect(await read(remote, "tag", "--list")).toBe("");
+  });
 });

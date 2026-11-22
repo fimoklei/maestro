@@ -39,12 +39,9 @@ export type {
 } from "./deploy-ports";
 
 type DeploySkillInput = {
-  // Plain string: the skill-only rule is checked here, not by the schema.
   type: string;
   name: string;
   target: DeployTarget;
-  // Minted by this deploy's own refusal; content that changed since retires
-  // it (#952).
   confirmedCopyReceipt?: string;
 };
 
@@ -75,7 +72,6 @@ export type DeploySkillError =
   | "destination-symlinked"
   | "tag-check-timed-out"
   | "deploy-timed-out"
-  // Split by the operation record: pending means files may be on disk.
   | "deploy-failed"
   | "deploy-not-started";
 
@@ -83,10 +79,8 @@ export type DeploySkillResult =
   | {
       ok: true;
       deployed: { type: "skill"; name: string; version: string };
-      // Global only: each folder's copy of the Selection the install wrote.
       outcome?: FolderOutcomes;
     }
-  // `copyReceipt` licenses exactly the copies just read (#952).
   | {
       ok: false;
       error: DeploySkillError;
@@ -95,11 +89,8 @@ export type DeploySkillResult =
       blockingCopies?: BlockingCopy[];
     };
 
-/** A held row's Deploy again: the receipt its own refusal minted (#952). */
 export type HeldSkill = { name: string; confirmedCopyReceipt: string };
 
-// `whole` licenses the one check it was minted for; `each` licenses, per
-// skill, the copies a single deploy of that skill reads.
 type Consent = {
   whole: string | undefined;
   each: readonly HeldSkill[];
@@ -113,7 +104,6 @@ type BulkAttentionRow = {
   name: string;
   error: DeploySkillError;
   forceable: boolean;
-  // Minted by this row's own refusal; grants only what that refusal read (#952).
   copyReceipt?: string;
   blockingCopies?: BlockingCopy[];
 };
@@ -128,15 +118,11 @@ export type BulkDeployReport = {
   deployed: { name: string; version: string }[];
   attention: BulkAttentionRow[];
   failed: BulkFailure[];
-  // Global only, where apm ran: each folder's copy of every name it installed.
   outcome?: FolderOutcomes;
 };
 
-// Filled by the run once apm ran on Global.
 type OutcomeSink = { outcome?: FolderOutcomes };
 
-// Refusals the user acts on, and whether a force is the action. Every error
-// absent here is a genuine failure.
 const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
   "deployed-diverged-from-lock": { forceable: true },
   "deployed-unverifiable": { forceable: true },
@@ -166,17 +152,12 @@ export class DeploySkill {
     // Best-effort fetch and fast-forward of the clone before the checks
     // below; never throws (#666).
     syncHarness: () => Promise<void>;
-    // Inject the shared guard so a receipt one flow minted is the proof
-    // another checks (#952).
     copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
     deployedContent: DeployedContentPort;
     recordedPackage: RecordedPackagePort;
-    // Global path only.
     toolPresence: ToolPresencePort;
-    // Where Global writes, so a held copy names its folder as apm wrote it.
     globalLayout: () => GlobalLayout;
     harnessOrigin: () => Promise<GitOrigin | null>;
-    // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
     // Shared with the remove use-case: both rewrite the same apm.lock.yaml.
     locks: InFlightLocks;
@@ -212,8 +193,6 @@ export class DeploySkill {
       : result;
   }
 
-  // No consent: a bulk deploy never overwrites a copy with local edits; force
-  // stays per-item (#292).
   async executeBatch(input: {
     names: readonly string[];
     target: DeployTarget;
@@ -221,10 +200,6 @@ export class DeploySkill {
     return this.report(input.names, input.target, NO_CONSENT);
   }
 
-  /**
-   * A held run's Deploy again: every held skill in one install, each copy
-   * replaced only under the receipt of the refusal that read it (#952).
-   */
   async deployAgain(input: {
     target: DeployTarget;
     held: readonly HeldSkill[];
@@ -247,7 +222,6 @@ export class DeploySkill {
     try {
       rows = await this.run(input.names, input.target, consent, read);
     } catch {
-      // Only the reads before the lock can throw here: nothing was written.
       rows = input.names.map((name) => ({
         name,
         result: { ok: false, error: "deploy-not-started" },
@@ -256,7 +230,6 @@ export class DeploySkill {
 
     const deployed: BulkDeployReport["deployed"] = [];
     const attention: BulkAttentionRow[] = [];
-    // Keyed by error and link, so identical failures collapse to one line.
     const failures = new Map<string, BulkFailure>();
     for (const { name, result } of rows) {
       if (result.ok) {
@@ -294,7 +267,6 @@ export class DeploySkill {
     };
   }
 
-  // One answer per name, in the order given.
   private async run(
     names: readonly string[],
     target: DeployTarget,
@@ -336,8 +308,6 @@ export class DeploySkill {
 
     let lockKey: string;
     if (target.kind === "repo") {
-      // Before any filesystem or apm access: an unregistered path must reach
-      // neither.
       if (!(await this.deps.registry.isRegistered(target.repoPath))) {
         return every("repo-not-registered");
       }
@@ -356,8 +326,6 @@ export class DeploySkill {
     return run.ok ? run.value : every("deploy-in-progress");
   }
 
-  // Target-wide checks run once; every name that passes its own guards goes
-  // into one install (#1039).
   private async deploy(
     names: readonly string[],
     target: DeployTarget,
@@ -400,7 +368,6 @@ export class DeploySkill {
       return refuseRest("inventory-origin-unavailable");
     }
 
-    // Never rethrow: a raw apm message may carry a token.
     try {
       let globalTools: readonly SupportedTool[] | undefined;
       if (target.kind === "global") {
@@ -412,8 +379,6 @@ export class DeploySkill {
       }
       const toolScope = globalTools === undefined ? {} : { tools: globalTools };
 
-      // A skill is added at the release the target already follows, even a
-      // Behind one, so adding a skill never adopts an unpreviewed release.
       const current = await this.deps.selection.readTarget(target, origin);
       if (current.kind === "unreadable") {
         return refuseRest(current.reason);
@@ -421,8 +386,6 @@ export class DeploySkill {
       if (current.kind === "pinned-per-skill") {
         return refuseRest("target-pinned-per-skill");
       }
-      // An unfinished operation converges first, so a retry never has to
-      // reconcile two intents (#951).
       if ((await this.deps.selection.pending(lockKey)) !== null) {
         return refuseRest("operation-unfinished");
       }
@@ -467,9 +430,6 @@ export class DeploySkill {
         return results;
       }
 
-      // One install rewrites every copy in the Selection, and a same-ref apm
-      // install resets an edited copy silently (#56), so the guard reads them
-      // all. A copy equal to this release is not an edit (#952).
       const deployed = current.kind === "root" ? current.deployed : [];
       const scope = { write: "deploy", target } as const;
       const checkOver = (names: readonly string[]) =>
@@ -480,8 +440,6 @@ export class DeploySkill {
           release: tag,
         });
       let check = await checkOver(tagged);
-      // A root-package install skips a symlinked destination and still reports
-      // success, so the link is refused here.
       const candidates: string[] = [];
       for (const name of tagged) {
         const linkedPath = linkedPathAmong(check, [name]);
@@ -498,8 +456,6 @@ export class DeploySkill {
       if (candidates.length === 0) {
         return results;
       }
-      // A refused name outside the Selection is no copy at risk, so it must
-      // not bind the receipt a later single deploy checks.
       if (
         tagged.some(
           (name) => !candidates.includes(name) && !deployed.includes(name),
@@ -544,12 +500,7 @@ export class DeploySkill {
             desired,
             ...toolScope,
           })
-          // Held-back names keep their own refusal rather than joining the
-          // catch-all below.
           .catch((): SelectionResult => ({ ok: false, error: "apply-failed" }));
-        // What apm left per Global folder: the completion check reads only
-        // whether each recorded file exists. The install rewrites the whole
-        // Selection, so every copy in it is read.
         if (
           globalTools !== undefined &&
           (applied.ok || applied.error === "apply-incomplete")
@@ -585,8 +536,6 @@ export class DeploySkill {
       }
 
       for (const name of held) {
-        // Otherwise the receipt is minted against what a single deploy of this
-        // name now reads, so the row's own deploy is licensed by it.
         const decision =
           candidates.length === 1
             ? admitted
@@ -623,8 +572,6 @@ export class DeploySkill {
     }
   }
 
-  // A pending operation means this run may have written: the reader retries
-  // it. Without one, nothing of this run is on disk.
   private async failureAt(lockKey: string): Promise<DeploySkillError> {
     try {
       return (await this.deps.selection.pending(lockKey)) === null
@@ -635,8 +582,6 @@ export class DeploySkill {
     }
   }
 
-  // Null lets the name into the install. `latest` is set only when the target
-  // follows a release.
   private async nameRefusal(
     name: string,
     tag: string,
@@ -660,7 +605,6 @@ export class DeploySkill {
       : { ok: false, error: "local-diverged-from-tag" };
   }
 
-  // Null on any failure: an unread latest release keeps the plainer refusal.
   private async latestTag(ownerRepo: string): Promise<string | null> {
     try {
       const result = await this.deps.apm.resolveLatestTag(ownerRepo);
@@ -674,8 +618,6 @@ export class DeploySkill {
     target: DeployTarget,
     candidates: readonly string[],
   ): Promise<(finding: CopyFinding) => boolean> {
-    // Files apm placed under a package type it could not manage are apm's own,
-    // not local work; refusing over them would strand the target (#358).
     const lockfile = await this.deps.deployedContent.readLockfile(target);
     const standings = await Promise.all(
       candidates.map(async (name) => ({
@@ -704,7 +646,6 @@ export class DeploySkill {
     tools: readonly SupportedTool[] | undefined,
   ): Promise<DeploySkillResult> {
     if (error === "destination-symlinked") {
-      // Omitted rather than guessed when nothing on disk is a link (#748).
       const linkedPath = await this.deps.deployedContent.linkedSkillPath({
         target,
         name,

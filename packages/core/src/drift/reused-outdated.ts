@@ -1,5 +1,3 @@
-// `apm outdated` per Target, reused for a short window. Every apm write passes
-// through here, so a write drops the answer it changed.
 import type { ApmDriverPort, DeployTarget } from "../deploy/deploy-skill";
 import { ReuseGate } from "../reuse-gate";
 import type { OutdatedResult } from "./parse-outdated";
@@ -10,7 +8,6 @@ const keyOf = (target: DeployTarget) =>
 export class ReusedOutdated implements ApmDriverPort {
   private readonly deps: {
     apm: ApmDriverPort;
-    // A write may name a symlinked spelling; reads arrive canonical.
     canonicalPath: (path: string) => Promise<string>;
     now: () => Date;
     maxAgeMs: number;
@@ -48,7 +45,6 @@ export class ReusedOutdated implements ApmDriverPort {
     );
   }
 
-  // A new release changes what Behind means for every Target.
   dropAll(): void {
     this.gate.invalidateAll();
   }

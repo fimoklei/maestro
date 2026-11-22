@@ -1,7 +1,6 @@
 import { parse, parseDocument } from "yaml";
 import { readFrontmatter } from "./validate-skill-structure";
 
-// Reported, never refused on.
 export type ManifestAdvisory = "long-manifest" | "long-description";
 
 const MAX_LINES = 500;
@@ -48,7 +47,6 @@ export const rewriteFrontmatterName = (
   return namesExactly(rebuilt, name) ? rebuilt : null;
 };
 
-// Function replacement, so a `$&` in the manifest stays text.
 const replaceBlock = (
   raw: string,
   block: string,
@@ -61,7 +59,6 @@ const namesExactly = (raw: string, name: string): boolean => {
     return false;
   }
   try {
-    // Frontmatter parses to a mapping; a non-object fails the name check.
     return (parse(block) as Record<string, unknown>).name === name;
   } catch {
     return false;

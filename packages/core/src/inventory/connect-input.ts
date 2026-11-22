@@ -1,5 +1,3 @@
-// Decided offline: a GitHub origin is a clone, a non-remote is a local path,
-// and any other remote is refused before a network call.
 import { parseGitOrigin } from "../deploy/git-origin";
 
 export type ConnectInputError = "not-a-github-url" | "url-carries-credentials";
@@ -9,13 +7,11 @@ export type ConnectInputRoute =
   | { ok: true; kind: "url"; url: string; repoName: string; ownerRepo: string }
   | { ok: false; error: ConnectInputError };
 
-// The scp-like `user@host:` form. A path may contain `@`, never `@host:`.
 const scpLike = /^[^/\s@]+@[^/\s:]+:/;
 
 const looksRemote = (input: string): boolean =>
   input.includes("://") || scpLike.test(input);
 
-// git would write the whole url, token included, into the clone's config.
 const carriesCredentials = (url: string): boolean => {
   try {
     const parsed = new URL(url);
@@ -38,7 +34,6 @@ export const classifyConnectInput = (input: string): ConnectInputRoute => {
     return { ok: false, error: "not-a-github-url" };
   }
   const repoName = origin.ownerRepo.split("/")[1] ?? "";
-  // A relative segment would place the clone outside the chosen parent.
   if (repoName === "" || repoName === "." || repoName === "..") {
     return { ok: false, error: "not-a-github-url" };
   }

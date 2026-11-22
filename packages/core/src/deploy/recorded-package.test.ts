@@ -12,7 +12,6 @@ function lockfile(virtualPath: string, packageType: string): string {
   return `lockfile_version: '1'\napm_version: 0.26.0\ndependencies:\n- repo_url: fimoklei/agent-harness\n  host: github.com\n  resolved_ref: v0.5.0\n  virtual_path: ${virtualPath}\n  package_type: ${packageType}\n`;
 }
 
-// What the recorded read answers for `tdd`, given the raw lockfile or none.
 async function recordedTdd(raw: string | null) {
   const tree = new InMemoryCopyTree();
   if (raw !== null) {

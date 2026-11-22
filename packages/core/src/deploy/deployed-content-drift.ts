@@ -1,5 +1,3 @@
-// Both directions count: an extra file the lockfile never recorded is drift the
-// next same-ref install would silently reset (#56).
 export type DeployedFileHashes = Record<string, string>;
 
 type DeployedDrift = "clean" | "diverged";

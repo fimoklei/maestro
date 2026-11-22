@@ -30,7 +30,6 @@ type Deps = Pick<AppDeps, "categories" | "categoriesProposal">;
 const refuse = (c: Context, error: CategoriesProposalError) =>
   c.json({ error }, categoriesProposalErrorResponses[error].status);
 
-// Every route answers the whole list, so the cockpit replaces its cache from it.
 const respond = (c: Context, result: CategoryResult) => {
   if (result.ok) {
     const { list, added } = result;
@@ -57,7 +56,6 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
     respondHarness(c, await deps.categories.readHarness()),
   );
 
-  // The Connect gate's read: offering the copy records the release as seen.
   app.post("/api/categories/harness/seen", async (c) =>
     respondHarness(c, await deps.categories.markHarnessSeen()),
   );
@@ -72,8 +70,6 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
     return result.ok ? c.json(result.preview) : refuse(c, result.error);
   });
 
-  // Takes only the preview the dialog showed: the server reads the list and
-  // rechecks every refusal itself.
   app.post("/api/categories/proposal", async (c) => {
     const body = await parseBody(
       c,
@@ -87,7 +83,6 @@ export function registerCategoryRoutes(app: Hono, deps: Deps) {
       : refuse(c, result.error);
   });
 
-  // A POST, as opening the copy dialog also records what the operator saw (#1907).
   app.post("/api/categories/harness/preview", async (c) => {
     const result = await deps.categories.previewCopy();
     if (result.ok) return c.json(result.preview);

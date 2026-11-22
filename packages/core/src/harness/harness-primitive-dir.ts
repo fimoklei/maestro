@@ -12,8 +12,6 @@ export type ResolvedPrimitiveDir =
   | { ok: true; dir: string }
   | { ok: false; reason: "unreadable" | "outside-root" };
 
-// The type's folder, resolved inside the Harness root. Never creates the
-// folder: a caller that writes into it uses `ensureHarnessPrimitiveDir`.
 async function resolveHarnessPrimitiveDir(
   fs: Pick<FileSystemPort, "realpath">,
   root: string,
@@ -42,7 +40,6 @@ export type PrimitiveEntry =
   | { kind: "unsafe" }
   | { kind: "unreadable" };
 
-/** Where a primitive sits on disk; any link, even one inside its folder, is unsafe. */
 export async function inspectPrimitiveEntry(
   fs: PrimitiveEntryFs,
   root: string,
@@ -57,14 +54,11 @@ export async function inspectPrimitiveEntry(
   if (!(await fs.exists(path))) {
     return { kind: "absent", dir, path };
   }
-  // Neither a folder nor a file without following it: a link.
   const plain =
     (await fs.isDirectoryEntry(path)) || (await fs.isFileEntry(path));
   return plain ? { kind: "plain", dir, path } : { kind: "unsafe" };
 }
 
-// The type's folder, created when missing. Each part of its path that exists
-// is checked first, so a link leaving the Harness refuses before any write.
 export async function ensureHarnessPrimitiveDir(
   fs: Pick<FileSystemPort, "realpath" | "ensureDir">,
   root: string,
@@ -80,7 +74,6 @@ export async function ensureHarnessPrimitiveDir(
   for (const part of primitiveDir(type).split("/")) {
     path = join(path, part);
     const real = await fs.realpath(path).catch(() => null);
-    // Nothing exists below a missing part.
     if (real === null) break;
     if (!isWithinRoot(real, realRoot)) {
       return { ok: false, reason: "outside-root" };

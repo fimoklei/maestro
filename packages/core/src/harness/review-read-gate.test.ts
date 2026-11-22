@@ -21,14 +21,12 @@ const readOf = (limit: number): HarnessReviewRead => ({
   limit,
 });
 
-// A GitHub whose answer changes with every review read it is asked for.
-function build() {
+function build(written: ReviewWriteOutcome = { ok: true }) {
   let now = START;
   let root: string | undefined = ROOT;
   let next: HarnessReviewRead | null = null;
   let hold: Promise<void> = Promise.resolve();
   const asked = { reviews: 0, viewer: 0 };
-  const written: ReviewWriteOutcome = { ok: true };
   const review: HarnessReviewPort = {
     readReviews: async () => {
       asked.reviews += 1;
@@ -67,7 +65,6 @@ function build() {
     answer: (read: HarnessReviewRead) => {
       next = read;
     },
-    // The next reads wait until the returned release is called.
     holdReads: () => {
       let release = () => {};
       hold = new Promise<void>((resolve) => {
@@ -79,7 +76,6 @@ function build() {
 }
 
 describe("ReviewReadGate", () => {
-  // The review read belongs to the fetch it sits beside, never to a clock (#1738).
   it("reuses a review read until the Harness clone is fetched, however old", async () => {
     const { asked, reads, advance } = build();
     await reads.readReviews(ORIGIN);
@@ -231,6 +227,16 @@ describe("ReviewReadGate", () => {
       expect(asked.reviews).toBe(2);
     },
   );
+
+  it("drops the remembered answer after a write GitHub refused, which may still have landed", async () => {
+    const { asked, reads, writes } = build({ ok: false, error: "failed" });
+    await reads.readReviews(ORIGIN);
+
+    await writes.closeRequest(ORIGIN, 45);
+
+    await expect(reads.readReviews(ORIGIN)).resolves.toEqual(readOf(2));
+    expect(asked.reviews).toBe(2);
+  });
 
   it("gives a Proposal action's recheck a fresh read, never the remembered one", async () => {
     const { asked, reads, writes } = build();

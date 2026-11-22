@@ -1,6 +1,5 @@
 import { MAX_SLUG_LENGTH } from "../deploy/package-ref";
 
-// Empty where nothing survives.
 export const proposeSkillSlug = (folderName: string): string =>
   folderName
     .toLowerCase()

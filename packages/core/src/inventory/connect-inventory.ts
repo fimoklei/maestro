@@ -1,5 +1,3 @@
-// Connects the central inventory: a local path offline, a GitHub URL by
-// cloning it first. Errors are typed and path-free.
 import { join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 import { isWithinRoot } from "../filesystem/path-containment";
@@ -33,7 +31,6 @@ export type ConnectInventoryError =
 
 export type ConnectOutcome = "found" | "joined" | "scaffolded";
 
-// `scaffoldable` carries its path: a clone sits where the user never typed.
 export type ConnectInventoryResult =
   | { ok: true; outcome: ConnectOutcome; inventoryPath: string }
   | { ok: false; error: "scaffoldable"; scaffoldPath: string }
@@ -49,7 +46,6 @@ export class ConnectInventory {
   private readonly homeRoot: () => string;
   private readonly cloneRepository: CloneRepositoryPort;
   private readonly offers: ScaffoldOffers;
-  // A second request would read an in-flight clone as an interrupted one (#555).
   private readonly cloning = new Set<string>();
 
   constructor(deps: {
@@ -57,13 +53,10 @@ export class ConnectInventory {
     store: ConfigStore;
     originUrl: (path: string) => Promise<string | null>;
     defaultBranch: (path: string) => Promise<string | null>;
-    // Without it a subdirectory would read as a clone (#556).
     isRepositoryRoot: (path: string) => Promise<boolean>;
     probeHead: (path: string) => Promise<HeadProbe>;
-    // The ceiling a clone destination must sit under.
     homeRoot: () => string;
     clone: CloneRepositoryPort;
-    // The scaffold acts only on a path recorded here.
     offers: ScaffoldOffers;
   }) {
     this.fs = deps.fs;
@@ -77,8 +70,6 @@ export class ConnectInventory {
     this.offers = deps.offers;
   }
 
-  // `parent` is the folder a clone lands *in*; the child is the repository's
-  // name. `localOnly` refuses every remote address (#995).
   async connect(
     input: string,
     options: { parent?: string; localOnly?: boolean } = {},
@@ -130,12 +121,9 @@ export class ConnectInventory {
     if (cloned !== "cloned") {
       return { ok: false, error: cloned };
     }
-    // A clone that fails to connect stays on disk: never delete a repo (#498).
     return this.connectDirectory(destination, "joined");
   }
 
-  // What already sits where the clone would land. Maestro never renames,
-  // suffixes or deletes to make room: it reuses, refuses, or reports (#555).
   private async classifyDestination(
     destination: string,
     ownerRepo: string,
@@ -149,20 +137,17 @@ export class ConnectInventory {
     }
 
     if (!(await this.fs.exists(join(destination, ".git")))) {
-      // Only a knowably empty directory is free.
       const entries = await this.fs
         .listRawEntries(destination)
         .catch(() => null);
       return entries?.length === 0 ? "free" : "occupied";
     }
 
-    // Only partial-clone recovers by deleting the folder, so unknown is occupied.
     const head = await this.probeHead(destination);
     if (head === "unknown") {
       return "occupied";
     }
 
-    // A commitless repository with another origin is not this clone's leftover.
     const origin = await this.originUrl(destination);
     const parsed = origin === null ? null : parseGitOrigin(origin);
     if (parsed?.ownerRepo.toLowerCase() !== ownerRepo.toLowerCase()) {
@@ -171,11 +156,8 @@ export class ConnectInventory {
     return head === "commit" ? "same-origin" : "partial-clone";
   }
 
-  // Untrusted input: refuse lexically outside home before touching disk,
-  // resolve, then check containment again against the canonical home.
   private async resolveParent(chosen?: string): Promise<string | null> {
     const rawHome = this.homeRoot();
-    // Both count: they differ under a symlinked prefix (macOS /var).
     const home = await this.fs.realpath(rawHome).catch(() => rawHome);
     if (chosen === undefined) {
       return home;
@@ -192,7 +174,6 @@ export class ConnectInventory {
     if (!validated.ok) {
       return null;
     }
-    // A symlink lexically inside home but resolving outside is caught here.
     return isWithinRoot(validated.path, home) ? validated.path : null;
   }
 
@@ -208,7 +189,6 @@ export class ConnectInventory {
     const originUrl = await this.originUrl(validated.path);
     const origin = originUrl === null ? null : parseGitOrigin(originUrl);
 
-    // A real file: a directory or symlink with the manifest's name is refused.
     const manifest = join(validated.path, HARNESS_MANIFEST);
     if (!(await this.fs.isFileEntry(manifest))) {
       if (origin === null || !(await this.isRepositoryRoot(validated.path))) {

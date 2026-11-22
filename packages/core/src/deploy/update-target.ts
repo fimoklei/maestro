@@ -24,8 +24,6 @@ import {
 import { ConsentSigner } from "./signed-consent";
 import type { TargetSelection } from "./target-selection";
 
-// `url` points at the skill's folder at the chosen release; null where a
-// caller has no link to give (#960).
 export type UpdateSkillRow = { name: string; url: string | null };
 
 export type CopyConsentRow = { name: string; tool: SupportedTool | null };
@@ -34,22 +32,16 @@ export type UpdatePreview = {
   release: string;
   chosenRelease: string;
   counts: { changed: number; removed: number; unchanged: number };
-  // The requested skill when the target's own release does not hold it; empty
-  // when the Selection already carries it (#955).
   addedByThisDeploy: readonly UpdateSkillRow[];
   changed: readonly UpdateSkillRow[];
   removed: readonly string[];
   unchanged: readonly string[];
   newInRelease: readonly UpdateSkillRow[];
-  // Two consents: dropping work, and overwriting a copy nothing could verify
-  // (#952).
   localEdits: {
     discard: readonly CopyConsentRow[];
     unverified: readonly CopyConsentRow[];
   };
   selection: { current: readonly string[]; desired: readonly string[] };
-  // Null where every copy is clean, so no caller offers consent nobody needs
-  // to give (#952).
   copyReceipt: string | null;
   token: string;
 };
@@ -57,23 +49,18 @@ export type UpdatePreview = {
 export type UpdatePreviewError =
   | "repo-not-registered"
   | "no-supported-tool"
-  // The target follows no single release: Empty, or still pinned per skill.
   | "not-deployed"
   | "lockfile-malformed"
   | "deployed-unreadable"
   | "inventory-not-configured"
   | "inventory-unreadable"
   | "no-published-tag"
-  // Without a GitHub origin the target's root package cannot be proven ours,
-  // so nothing is priced (#960).
   | "inventory-origin-unavailable"
   | "ref-unresolvable"
   | "skill-not-in-release"
-  // apm skips a linked destination and still reports success (#1215).
   | "destination-symlinked"
   | "preview-failed";
 
-// `linkedPath` rides only with `destination-symlinked`, read from disk.
 type PreviewRefusal = {
   ok: false;
   error: UpdatePreviewError;
@@ -84,7 +71,6 @@ export type UpdatePreviewResult =
   | { ok: true; preview: UpdatePreview }
   | PreviewRefusal;
 
-// Everything the token binds: changing any of it retires the consent (#953).
 export type UpdateScope = {
   target: DeployTarget;
   chosenRelease: string;
@@ -94,7 +80,6 @@ export type UpdateScope = {
   copies: LocalCopyCheck;
 };
 
-// Read from content and the deployment record, never from apm's prose.
 export type UpdateSkillState =
   | "updated"
   | "removed"
@@ -121,7 +106,6 @@ export type UpdateRunError =
   | "update-timed-out"
   | "update-failed";
 
-/** What the update left: per skill and tool on a repository, per Global folder on Global. */
 type UpdateOutcome =
   | { outcome: readonly UpdateOutcomeRow[]; folders?: never }
   | { folders: FolderOutcomes; outcome?: never };
@@ -132,10 +116,8 @@ export type UpdateRunResult =
       ok: false;
       error: UpdateRunError;
       linkedPath?: string;
-      // Only where apm ran, so an absent key is never a proven outcome.
       outcome?: readonly UpdateOutcomeRow[];
       folders?: FolderOutcomes;
-      // Only where consent can clear the refusal (#952).
       copyReceipt?: string;
     };
 
@@ -146,8 +128,6 @@ const COPY_ERRORS: Record<Exclude<CopyVerdict, "clean">, UpdateRunError> = {
   "lockfile-malformed": "lockfile-malformed",
 };
 
-// A kept copy landed only when its content equals the chosen release; an
-// absent one is missing, not old; anything unreadable proves nothing.
 const KEPT: Record<DeployedContentState, UpdateSkillState> = {
   clean: "updated",
   "not-deployed": "missing",
@@ -157,7 +137,6 @@ const KEPT: Record<DeployedContentState, UpdateSkillState> = {
   "lockfile-malformed": "unknown",
 };
 
-// A dropped copy: only an absent one proves the removal.
 const DROPPED: Record<DeployedContentState, UpdateSkillState> = {
   "not-deployed": "removed",
   clean: "not-removed",
@@ -170,39 +149,29 @@ const DROPPED: Record<DeployedContentState, UpdateSkillState> = {
 export class UpdateTarget {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
-    // Content decides what changed, never commit ancestry.
     git: ReleaseHeadGitPort;
     resolveRoot: () => Promise<string | undefined>;
-    // Null is "not known", never a guessed host.
     harnessOrigin: () => Promise<GitOrigin | null>;
     toolPresence: ToolPresencePort;
     copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
     selection: Pick<SelectionWriter, "apply" | "pending" | "readTarget">;
     deployedCleanup: DeployedCleanupPort;
-    // A repository's outcome probe; the pre-write check is the guard's.
     deployedContent: Pick<DeployedContentPort, "readLockfile" | "classify">;
-    // Global's outcome: each Global folder against the chosen release.
     outcomes: Pick<FolderOutcomeReader, "read">;
-    // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
-    // Shared with deploy and remove: all three rewrite one apm.lock.yaml.
     locks: InFlightLocks;
   };
 
-  // Never exposed, never persisted: a restart retires every outstanding
-  // preview, which is the safe direction.
   private readonly signer = new ConsentSigner();
 
   constructor(deps: UpdateTarget["deps"]) {
     this.deps = deps;
   }
 
-  // A read: takes no lock, so it cannot block an operation in flight.
   async preview(input: {
     target: DeployTarget;
     add?: string;
   }): Promise<UpdatePreviewResult> {
-    // Before any filesystem or apm access.
     if (
       input.target.kind === "repo" &&
       !(await this.deps.registry.isRegistered(input.target.repoPath))
@@ -217,15 +186,12 @@ export class UpdateTarget {
     }
   }
 
-  // Re-reads everything under the target lock: the token proves the reader
-  // saw this state, never that this state still holds.
   async run(input: {
     target: DeployTarget;
     token: string;
     add?: string;
     confirmedCopyReceipt?: string;
   }): Promise<UpdateRunResult> {
-    // Before any filesystem or apm access.
     if (
       input.target.kind === "repo" &&
       !(await this.deps.registry.isRegistered(input.target.repoPath))
@@ -254,7 +220,6 @@ export class UpdateTarget {
     },
     key: string,
   ): Promise<UpdateRunResult> {
-    // Never rethrow: a raw apm message may carry a token.
     try {
       const priced = await this.price(input.target, input.add);
       if (!priced.ok) {
@@ -264,8 +229,6 @@ export class UpdateTarget {
       if (!this.accepts(scope, input.token)) {
         return { ok: false, error: "status-out-of-date" };
       }
-      // An unfinished operation converges first, so a retry never has to
-      // reconcile two intents (#951).
       if ((await this.deps.selection.pending(key)) !== null) {
         return { ok: false, error: "operation-unfinished" };
       }
@@ -336,16 +299,12 @@ export class UpdateTarget {
     }
   }
 
-  // Read back per copy; apm's own marker decides nothing here.
   private async outcome(
     scope: UpdateScope,
     origin: GitOrigin,
   ): Promise<UpdateOutcomeRow[]> {
-    // A repo install runs for every tool, so each copy is read on its own.
     const tools = SUPPORTED_TOOLS;
     const kept = new Set(scope.desired);
-    // A clean copy proves only that copy and record agree; the record must also
-    // name the chosen release before a skill is claimed to have moved.
     const landed = await this.deps.selection
       .readTarget(scope.target, origin)
       .catch(() => null);
@@ -378,14 +337,10 @@ export class UpdateTarget {
     return rows;
   }
 
-  // `scope` is what the update found now, never what the caller claims
-  // (#364, #953).
   accepts(scope: UpdateScope, token: string | undefined): boolean {
     return this.signer.matches(this.token(scope), token);
   }
 
-  // Shared by preview and run, so the preview and the token's scope never
-  // disagree.
   private async price(
     target: DeployTarget,
     add?: string,
@@ -431,8 +386,6 @@ export class UpdateTarget {
       return { ok: false, error: "inventory-unreadable" };
     }
 
-    // A release without the requested skill is never adopted on the reader's
-    // behalf (#955).
     if (add !== undefined && !next.has(add)) {
       return { ok: false, error: "skill-not-in-release" };
     }
@@ -443,8 +396,6 @@ export class UpdateTarget {
       ...added,
     ];
 
-    // The install rewrites the whole Selection, so every selected copy is at
-    // risk. A copy equal to the chosen release is not an edit (#952).
     const copies = await this.deps.copyGuard.check({
       write: "update",
       target,
@@ -452,7 +403,6 @@ export class UpdateTarget {
       ...toolScope,
       release: latest.name,
     });
-    // Refused before any consent is offered: no consent makes the install land.
     const linkedPath = linkedPathAmong(copies, desired);
     if (linkedPath) {
       return { ok: false, error: "destination-symlinked", linkedPath };
@@ -462,7 +412,6 @@ export class UpdateTarget {
       copies,
     );
     if (!decision.ok && decision.receipt === null) {
-      // No consent exists for a copy nobody could read.
       return {
         ok: false,
         error:
@@ -484,8 +433,6 @@ export class UpdateTarget {
     const unchanged = state.selection.filter(
       (name) => next.has(name) && current.get(name) === next.get(name),
     );
-    // Shown to read, not to pick: Update adds nothing automatically. New since
-    // the target's own release, so a skipped release's arrivals count (#1219).
     const newInRelease = [...next.keys()].filter(
       (name) =>
         !current.has(name) &&
@@ -528,7 +475,6 @@ export class UpdateTarget {
     };
   }
 
-  // Order-independent on every list: the tool probe orders its own answer.
   private token(scope: UpdateScope): string {
     return this.signer.sign({
       kind: "update-preflight",
@@ -558,8 +504,6 @@ export class UpdateTarget {
   }
 }
 
-// "updated" needs the deployment record to name the chosen release; an
-// unreadable record leaves the row unknown.
 function whereRecorded(
   state: UpdateSkillState,
   onRelease: boolean | null,

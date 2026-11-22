@@ -15,7 +15,6 @@ export function createApp(deps: AppDeps) {
 
   app.get("/api/health", (c) => c.json({ ok: true, component: "server" }));
 
-  // App-wide, so a new write route is protected by default.
   if (deps.enforceOriginHost) {
     const safeMethods = new Set(["GET", "HEAD"]);
     app.use("*", async (c, next) => {
@@ -37,7 +36,6 @@ export function createApp(deps: AppDeps) {
   return app;
 }
 
-// The env object, not a copy: a MAESTRO_HOME set after import is still read.
 export const app = createApp({
   ...composeUseCases(nodeUseCasePorts(process.env)),
   enforceOriginHost: true,

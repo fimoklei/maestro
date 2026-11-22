@@ -1,5 +1,3 @@
-// Moves a clone to its upstream when nothing local would be lost, and says
-// where it stands when it cannot (#978). Git's words never leave this module.
 import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -22,8 +20,6 @@ export async function readCloneSync(root: string): Promise<CloneSync> {
   }
 }
 
-// Landed paths are staged so git's own fast-forward check accepts them and
-// still refuses anything edited since. A refusal unstages them again.
 export async function catchUpClone(root: string): Promise<void> {
   try {
     const { sync, upstream, landed, unstaged } = await locate(root);
@@ -40,15 +36,12 @@ export async function catchUpClone(root: string): Promise<void> {
         await git(root, ["reset", "-q", "--", ...unstaged]);
       }
     }
-  } catch {
-    // The next read reports where the clone stands.
-  }
+  } catch {}
 }
 
 type Located = {
   sync: CloneSync;
   upstream: string;
-  // Local paths the fast-forward rewrites, each already equal to upstream.
   landed: string[];
   unstaged: string[];
 };
@@ -65,7 +58,6 @@ async function locate(root: string): Promise<Located> {
   if (head === null) {
     return at("unreadable");
   }
-  // A detached HEAD and a branch with no upstream both fail here (git 2.50.1).
   const upstream = await text(root, ["rev-parse", "--verify", "@{u}"]);
   if (upstream === null) {
     return at("no-upstream");
@@ -81,13 +73,11 @@ async function locate(root: string): Promise<Located> {
     list(root, ["diff", "--name-only", "--no-renames", head, upstream]),
     list(root, ["diff", "--name-only", "--no-renames"]),
     list(root, ["diff", "--cached", "--name-only", "--no-renames", "HEAD"]),
-    // Ignored files included: git overwrites one that upstream starts tracking.
     list(root, ["ls-files", "--others"]),
   ]);
   const changed = [...new Set([...worktree, ...staged, ...untracked])].filter(
     (path) => moved.has(path),
   );
-  // A staged version that differs from the file on disk is work of its own.
   const splitStage = changed.some(
     (path) => staged.has(path) && worktree.has(path),
   );
@@ -107,8 +97,6 @@ async function list(root: string, args: string[]): Promise<Set<string>> {
   return new Set(listing.split("\0").filter(Boolean));
 }
 
-// `update-index`, not `add`: `add` refuses a path gone from both index and
-// disk, which a staged `git rm` leaves (git 2.50.1).
 async function stage(root: string, paths: string[], options = gitOptions()) {
   await git(
     root,
@@ -117,7 +105,6 @@ async function stage(root: string, paths: string[], options = gitOptions()) {
   );
 }
 
-// Uses a throwaway index, so nothing stages in the author's own (#574).
 async function matchesUpstream(
   root: string,
   upstream: string,
@@ -156,7 +143,6 @@ async function exitsZero(
     await git(root, args, options);
     return true;
   } catch (error) {
-    // execFile rejects with an Error that carries the exit code.
     if ((error as { code?: unknown }).code === 1) {
       return false;
     }

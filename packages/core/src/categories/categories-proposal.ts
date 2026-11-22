@@ -1,7 +1,3 @@
-// The categories pull request: the row on Categories in Settings, the
-// dialog's difference against the next release, and Create pull request. The
-// file is built on the fetched default-branch tip from the operator's list in
-// the config, never from the clone's working tree.
 import type { GitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { HarnessFetchGate } from "../harness/harness-fetch-gate";
@@ -55,27 +51,20 @@ import { heldBeside } from "./held-items";
 import { readHarnessCategoriesAt } from "./released-harness-categories";
 
 const SUBJECT = CATEGORIES_SUBJECT;
-// The pull request's title and the commit's subject.
 const TITLE = "Set Harness categories";
 const BODY = "Proposed from the Maestro cockpit.";
 const REQUEST_REF = `${PROPOSAL_REFS}/${subjectBranchLeaf(SUBJECT)}`;
 const EMPTY: CategoryRecord = { names: [], assignments: [] };
 
-// A file with an error compares as no categories; the caller says so.
 const recordIn = (file: HarnessCategoriesFile): CategoryRecord =>
   file.kind === "valid" ? file.record : EMPTY;
 
-/** Whether the write would take the operator's list. */
 type ListReadiness = "ready" | "empty" | "over-limits";
 
-/** `empty` and `over-limits` block Update pull request as they block Create. */
 type OwnListAgainstRequest = "same" | "differs" | "empty" | "over-limits";
 
-/** What the row Propose to Harness states; first match wins. */
 export type CategoriesProposalRow =
-  // The Harness or GitHub could not be read.
   | { state: "unread" }
-  // The clone's origin is no GitHub repository.
   | { state: "no-usable-origin" }
   | { state: "waiting-on-other"; author: string; number: number; url: string }
   | {
@@ -83,14 +72,9 @@ export type CategoriesProposalRow =
       status: "waiting-for-review" | "changes-requested";
       number: number;
       url: string;
-      // The operator's list against the file on the pull request's branch.
       list: OwnListAgainstRequest;
     }
-  // The branch is pushed and no pull request opens it. `list` blocks Create
-  // pull request as `empty` would.
   | { state: "pull-request-missing"; list: ListReadiness }
-  // The newest ended pull request was closed without merging; Create pull
-  // request opens a new one.
   | {
       state: "closed";
       number: number;
@@ -99,8 +83,6 @@ export type CategoriesProposalRow =
       byOther: boolean;
       list: ListReadiness;
     }
-  // The Categories row is under Pending release; `number` is its newest
-  // merged pull request.
   | {
       state: "merged-not-released";
       number: number;
@@ -108,24 +90,17 @@ export type CategoriesProposalRow =
       list: ListReadiness;
     }
   | { state: "empty" }
-  // Over the categories file's limits.
   | { state: "over-limits" }
   | { state: "start" };
 
-/** A category and the skills and prompts the difference counts in it. */
 export type CategoryCount = { name: string } & ItemCount;
 
-/** An item the pull request gives another category; null is none. */
 export type MovedItem = {
   type: HarnessPrimitiveType;
   name: string;
   category: string | null;
 };
 
-/**
- * The operator's list against a categories file. `deleted` counts the items
- * that end without a category; `uncompared`: the file has an error.
- */
 export type CategoriesDifference =
   | {
       kind: "changes";
@@ -136,11 +111,6 @@ export type CategoriesDifference =
   | { kind: "unchanged" }
   | { kind: "uncompared" };
 
-/**
- * Create pull request compares with the next release. Update pull request
- * compares with the file on the open pull request's branch; its `deleted`
- * still counts against the next release.
- */
 export type CategoriesProposalPreview =
   | CategoriesDifference
   | {
@@ -149,8 +119,6 @@ export type CategoriesProposalPreview =
       difference: CategoriesDifference;
       deleted: CategoryCount[];
     }
-  // Create pull request after #`number` was closed: `deletesBranch` where
-  // every commit on its branch carries the operator's git email.
   | {
       kind: "after-close";
       number: number;
@@ -158,7 +126,6 @@ export type CategoriesProposalPreview =
       difference: CategoriesDifference;
     };
 
-/** The preview kinds a dialog can confirm from. */
 export const CATEGORIES_PREVIEW_KINDS = [
   "changes",
   "unchanged",
@@ -176,14 +143,10 @@ export type CategoriesProposalError =
   | "list-too-large"
   | "list-unchanged"
   | "proposed-by-other"
-  // Update pull request: the list equals the file on its branch.
   | "request-unchanged"
-  // The pull request moved on since the dialog read it, as a close while
-  // Update pull request stood.
   | "proposal-changed"
   | "push-elsewhere"
   | "promote-failed"
-  // The closed pull request's branch is deleted; the new one was not pushed.
   | "push-failed-after-delete"
   | "promote-in-progress";
 
@@ -197,7 +160,6 @@ export type CategoriesProposalPreviewResult =
   | { ok: true; preview: CategoriesProposalPreview }
   | Refused;
 
-/** What Create or Update pull request answers once the branch is pushed. */
 export type CategoriesProposalCreated = { pullRequest: PullRequestOutcome };
 
 export type CategoriesProposalSubmitResult =
@@ -222,7 +184,6 @@ const LIST_REFUSAL = {
   "over-limits": "list-too-large",
 } as const satisfies Record<string, CategoriesProposalError>;
 
-// The dialog may still open on a list equal to the pull request: it says so.
 const rowRefusal = (
   row: CategoriesProposalRow,
 ): CategoriesProposalError | null => {
@@ -248,7 +209,6 @@ const rowRefusal = (
   }
 };
 
-// The write a preview leads to; a dialog confirms only the write it showed.
 const writeOf = (kind: CategoriesProposalPreview["kind"]) =>
   kind === "update" || kind === "after-close" ? kind : "create";
 
@@ -269,7 +229,6 @@ type ClosedRow = Omit<
   "list"
 >;
 
-// Another contributor's open request outranks the operator's own.
 const openRow = (
   requests: readonly ReviewRequest[],
   viewer: ViewerRead,
@@ -296,7 +255,6 @@ const openRow = (
       };
 };
 
-// The Harness row's newest ended request, where it reads Proposal closed.
 const closedRow = (harnessRow: HarnessStageRow | null): ClosedRow | null => {
   const [ended] = harnessRow?.requests ?? [];
   return harnessRow?.status === "proposal-closed" && ended !== undefined
@@ -330,10 +288,6 @@ const hasName = (names: readonly string[], name: string) =>
 const sameCategory = (a: string | null, b: string | null) =>
   a === null || b === null ? a === b : sameCategoryName(a, b);
 
-/**
- * The difference a pull request with `own` makes to `next`. A name spelled in
- * another case is the same category; the respelling alone is still a change.
- */
 const differenceOf = (
   own: CategoryRecord,
   next: CategoryRecord,
@@ -364,7 +318,6 @@ const differenceOf = (
   const moved: MovedItem[] = [...items.values()].flatMap((item) => {
     const from = categoryIn(next, item);
     const to = categoryIn(own, item);
-    // Counted under its added or deleted category instead.
     const counts =
       (from === null && to !== null && addedNames.includes(to)) ||
       (to === null && from !== null && deletedNames.includes(from));
@@ -381,7 +334,6 @@ const differenceOf = (
   };
 };
 
-// A file with an error cannot be compared; the pull request replaces it whole.
 const differenceAgainst = (
   own: CategoryRecord,
   file: HarnessCategoriesFile,
@@ -391,25 +343,17 @@ const differenceAgainst = (
     ? { kind: "uncompared" }
     : differenceOf(own, holds(recordIn(file)));
 
-/** What the pull request reads, beside the operator's list. */
 type Reading = {
   open: WaitingOnOther | OwnOpen | null;
   harnessRow: HarnessStageRow | null;
   merged: MergedRow | null;
-  // The operator's list as the writer would write it.
   record: CategoryRecord;
   list: Exclude<ListReadiness, "ready"> | null;
   againstNext: CategoriesDifference;
-  // Null unless the operator's own pull request is open.
   againstRequest: CategoriesDifference | null;
-  // The commit-author check on the branch; one that could not run stacks.
   ownsBranch: boolean;
 };
 
-// The spec's order, first match wins: another contributor's open pull
-// request, the operator's own, pull request missing, closed without merging,
-// merged and not released, an empty or over-limit list, start. A list the
-// write refuses keeps an earlier state's sentence and blocks its button.
 const rowOf = ({
   open,
   harnessRow,
@@ -457,7 +401,6 @@ const previewOf = (
   return againstNext;
 };
 
-// The refusal of a write that would change nothing.
 const unchangedRefusal = (
   preview: CategoriesProposalPreview,
 ): CategoriesProposalError | null => {
@@ -520,11 +463,6 @@ export class CategoriesProposal {
     return ready.ok ? { ok: true, preview: ready.value.preview } : ready;
   }
 
-  /**
-   * Every refusal is checked again here, after a fresh fetch and read.
-   * `previewed` is the preview the dialog showed; a write it did not show is
-   * refused.
-   */
   async submit(
     previewed: CategoriesProposalPreview["kind"],
   ): Promise<CategoriesProposalSubmitResult> {
@@ -548,7 +486,6 @@ export class CategoriesProposal {
     }
     const unchanged = unchangedRefusal(preview);
     if (unchanged !== null) return { ok: false, error: unchanged };
-    // A fresh branch from the tip; never a force push.
     const deletes = preview.kind === "after-close" && preview.deletesBranch;
     if (
       deletes &&
@@ -595,7 +532,6 @@ export class CategoriesProposal {
     };
   }
 
-  // A fresh fetch and review read, then every refusal the row states.
   private async ready(harness: HarnessKey): Promise<Assessment> {
     if ((await this.deps.fetchGate.fetchFresh(harness.root)) !== "fetched") {
       return { ok: false, error: "no-answer" };
@@ -620,7 +556,6 @@ export class CategoriesProposal {
     if (requests === null) return { ok: false, error: "no-answer" };
     const branch = await this.deps.git.readListProposal(harness.root, SUBJECT);
     if (branch === null) return { ok: false, error: "no-answer" };
-    // The Harness row's own rule, so Settings shows a state exactly as long.
     const harnessRow = listReviewRow(
       {
         origin,
@@ -663,7 +598,6 @@ export class CategoriesProposal {
     };
   }
 
-  // Null where the config's categories section does not parse.
   private async ownList(harness: HarnessKey): Promise<CategoryRecord | null> {
     const section = readCategorySection(
       (await this.deps.store.read()).categories,
@@ -671,8 +605,6 @@ export class CategoriesProposal {
     return section === null ? null : recordOf(section, harness);
   }
 
-  // The categories pull requests and the viewer; null where GitHub's answer
-  // cannot prove that nobody's request is open.
   private async readRequests(
     origin: GitOrigin,
     base: string,
@@ -696,9 +628,6 @@ export class CategoriesProposal {
     return { reviews, matching, viewer, open };
   }
 
-  // The operator's list against the next release, and against the file on
-  // the open pull request's branch where `ownOpen`; null where git could not
-  // answer. Only items the Working harness or the next release holds count.
   private async compareLists(
     root: string,
     head: string,
@@ -744,8 +673,6 @@ export class CategoriesProposal {
     };
   }
 
-  // The Harness row's own rule: the release diff's list part, and the newest
-  // merged request. Tags nobody could read claim nothing.
   private async mergedNotReleased(
     root: string,
     tags: HarnessTag[] | null,

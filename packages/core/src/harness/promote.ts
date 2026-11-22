@@ -1,4 +1,3 @@
-// Proposes one primitive's working-tree content on its own branch.
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { HarnessFetchGate } from "./harness-fetch-gate";
@@ -32,7 +31,6 @@ export class Promote {
     this.deps = deps;
   }
 
-  // One promotion per harness at a time.
   async execute(ref: PrimitiveRef): Promise<PromoteResult> {
     if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
@@ -48,7 +46,6 @@ export class Promote {
     if (!run.ok) {
       return { ok: false, error: "promote-in-progress" };
     }
-    // The single proposal does not report its pull request's outcome.
     const result = run.value;
     return result.ok
       ? {

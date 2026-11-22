@@ -13,9 +13,6 @@ const globalTarget: DeployTarget = { kind: "global" };
 
 const TOOL_DIR = { claude: ".claude/skills", codex: ".agents/skills" };
 
-// Real copies on an in-memory tree. Keys are `${name}:${tool}`; a bare name
-// sets every tool's copy, and a tool key is only ever "diverged" (one tool's
-// file is edited on a clean copy). Unlisted names are clean copies.
 function guardOver(
   states: Record<string, DeployedContentState | "throws">,
   fallback: DeployedContentState = "clean",
@@ -140,7 +137,6 @@ describe("LocalCopyGuard", () => {
     const priced = await guard.check({ ...scope, names: ["tdd"] });
     const receipt = guard.receipt(scope, priced);
 
-    // Someone edits the copy between the refusal and the confirmation.
     fake.editFile("/repo/.claude/skills/tdd/SKILL.md", "edited\n");
     const fresh = await guard.check({ ...scope, names: ["tdd"] });
     expect(guard.admits(scope, fresh, receipt).ok).toBe(false);
@@ -157,6 +153,23 @@ describe("LocalCopyGuard", () => {
     const fresh = await guard.check({ ...scope, names: ["tdd"] });
     expect(fresh.findings).toEqual(priced.findings);
     expect(guard.admits(scope, fresh, receipt).ok).toBe(false);
+  });
+
+  it("refuses a receipt once a copy's verdict changed over the same bytes", async () => {
+    const { guard } = guardOver({ "tdd:": "diverged" });
+    const scope = { write: "deploy", target: repo } as const;
+    const priced = await guard.check({ ...scope, names: ["tdd"] });
+    const reclassified = {
+      ...priced,
+      findings: priced.findings.map((f) => ({
+        ...f,
+        verdict: "unverified" as const,
+      })),
+    };
+
+    expect(
+      guard.admits(scope, reclassified, guard.receipt(scope, priced)).ok,
+    ).toBe(false);
   });
 
   it("refuses a receipt minted for another write", async () => {
@@ -347,6 +360,28 @@ describe("LocalCopyGuard", () => {
       { name: "grill", tool: "claude", linkedPath: null },
       { name: "grill", tool: "codex", linkedPath: null },
     ]);
+  });
+
+  it("still blocks an edited copy whose bytes could not be read for consent", async () => {
+    const fake = inMemoryDeployedContent();
+    fake.setCopy(repo, "tdd", "diverged");
+    const guard = new LocalCopyGuard({
+      content: {
+        readLockfile: (target) => fake.content.readLockfile(target),
+        classify: (input) => fake.content.classify(input),
+        linkedSkillPath: (input) => fake.content.linkedSkillPath(input),
+        contentDigest: async () => {
+          throw new Error("unreadable bytes");
+        },
+      },
+    });
+    const scope = { write: "deploy", target: repo } as const;
+    const check = await guard.check({ ...scope, names: ["tdd"] });
+
+    expect(guard.admits(scope, check)).toMatchObject({
+      ok: false,
+      blocked: "local-edits",
+    });
   });
 
   it("takes a malformed receipt as no consent at all", async () => {

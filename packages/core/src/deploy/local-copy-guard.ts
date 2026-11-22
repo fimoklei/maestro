@@ -1,5 +1,3 @@
-// The one guard between a write and a deployed copy carrying work: every write
-// classifies through `check` and is licensed through `admits`.
 import type { LockfileReading } from "../lockfile/lockfile";
 import type {
   DeployedContentPort,
@@ -9,7 +7,6 @@ import type {
 import type { SupportedTool } from "./deploy-tools";
 import { ConsentSigner } from "./signed-consent";
 
-// "clean" also covers a copy equal in full to the chosen release, and no copy.
 export type CopyVerdict =
   | "clean"
   | "local-edits"
@@ -26,8 +23,6 @@ const VERDICTS: Record<DeployedContentState, CopyVerdict> = {
   "lockfile-malformed": "lockfile-malformed",
 };
 
-// Worst first. An unreadable copy outranks an edited one: consent for what was
-// read cannot cover what was not.
 const BLOCKING: readonly Exclude<CopyVerdict, "clean">[] = [
   "unreadable",
   "lockfile-malformed",
@@ -35,12 +30,8 @@ const BLOCKING: readonly Exclude<CopyVerdict, "clean">[] = [
   "unverified",
 ];
 
-// Everything else has no readable evidence to consent to: fail closed (#952).
 const CONSENTABLE = new Set<CopyVerdict>(["local-edits", "unverified"]);
 
-// `tool: null` is the whole copy, where the write does not split by tool.
-// `linkedPath` is the symlinked skill folder apm skips while reporting success
-// (#1215); each write decides whether it refuses over one.
 export type CopyFinding = {
   name: string;
   tool: SupportedTool | null;
@@ -48,7 +39,6 @@ export type CopyFinding = {
   linkedPath: string | null;
 };
 
-// A deploy's receipt never licenses a removal.
 type LocalCopyWrite = "deploy" | "remove" | "update";
 
 export type LocalCopyScope = {
@@ -56,8 +46,6 @@ export type LocalCopyScope = {
   target: DeployTarget;
 };
 
-// `digest` binds the bytes consent would cover, so a second edit under the same
-// verdict retires the consent.
 export type LocalCopyCheck = {
   findings: readonly CopyFinding[];
   digest: string | null;
@@ -80,7 +68,6 @@ export function worstVerdict(
   );
 }
 
-// The first symlinked folder among `names`, which a write refuses over.
 export function linkedPathAmong(
   check: LocalCopyCheck,
   names: readonly string[],
@@ -91,7 +78,6 @@ export function linkedPathAmong(
   );
 }
 
-// Shared with the Update preflight token, so the two never bind different facts.
 export function copyKeys(check: LocalCopyCheck): string[] {
   return check.findings.map(copyKey).sort();
 }
@@ -112,12 +98,9 @@ export class LocalCopyGuard {
     this.deps = deps;
   }
 
-  // A copy equal in full to `release` is clean; an unreadable release grants no
-  // such pass.
   async check(
     input: LocalCopyScope & {
       names: readonly string[];
-      // Absent, one answer covers the whole copy.
       tools?: readonly SupportedTool[];
       release?: string;
     },
@@ -149,7 +132,6 @@ export class LocalCopyGuard {
     };
   }
 
-  // A receipt minted for other content is no consent for this (#364, #952).
   admits(
     scope: LocalCopyScope,
     check: LocalCopyCheck,
@@ -168,7 +150,6 @@ export class LocalCopyGuard {
       : { ok: false, blocked, check, receipt: expected };
   }
 
-  // Every fact the consent covers is signed, so changing any retires it.
   receipt(scope: LocalCopyScope, check: LocalCopyCheck): string {
     return this.signer.sign({
       kind: "local-copy",
@@ -182,7 +163,6 @@ export class LocalCopyGuard {
     });
   }
 
-  // Null can only widen a refusal, never license a write.
   private async digest(
     input: LocalCopyScope,
     name: string,
@@ -197,7 +177,6 @@ export class LocalCopyGuard {
       .catch(() => null);
   }
 
-  // A check that threw is never reported as a clean copy.
   private async classify(
     input: LocalCopyScope & { release?: string },
     lockfile: LockfileReading,

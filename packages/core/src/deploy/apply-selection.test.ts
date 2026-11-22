@@ -37,19 +37,18 @@ ${copyPaths(skills, tools)
   .join("\n")}
 `;
 
-// The manifest, lockfile and files, moved by the fake apm as the real one moves them.
 function world() {
   const files = new Map<string, string>();
   const calls: { command: string; ref: string; skills?: string[] }[] = [];
   let landing: string[] | null = null;
   let skipped: string | null = null;
+  let persisted: string[] | null = null;
 
   const fs = {
     readFile: async (path: string) => files.get(path) ?? null,
     writeFile: async (path: string, contents: string) => {
       files.set(path, contents);
     },
-    // No stamp: nothing is remembered, every read goes to the file.
     stamp: async () => null,
     isFileEntry: async (path: string) => files.has(path),
   };
@@ -75,10 +74,18 @@ function world() {
       }
     }
     skipped = null;
-    // apm keeps the row of a copy it failed to place.
     files.set("/repo/apm.lock.yaml", lockfile(release, landed, tools));
-    // apm persists the Selection into apm.yml itself, creating the dependency when absent.
-    files.set("/repo/apm.yml", manifest([...skills].sort()));
+    files.set(
+      "/repo/apm.yml",
+      manifest(persisted ?? unionWithManifestSkills(skills)),
+    );
+  };
+
+  const unionWithManifestSkills = (skills: readonly string[]) => {
+    const listed = [
+      ...(files.get("/repo/apm.yml") ?? "").matchAll(/^ {8}- (.+)$/gm),
+    ].map((match) => match[1] as string);
+    return [...new Set([...listed, ...skills])].sort();
   };
 
   const apm = {
@@ -119,7 +126,9 @@ function world() {
     landsOnly: (skills: string[]) => {
       landing = skills;
     },
-    // The next install leaves this one tool's copy of a skill off disk.
+    persistsSelection: (skills: string[]) => {
+      persisted = skills;
+    },
     skipsCopy: (tool: SupportedTool, skill: string) => {
       [skipped = null] = copyPaths([skill], [tool]);
     },
@@ -322,6 +331,21 @@ describe("SelectionWriter.apply", () => {
     expect(result).toEqual({ ok: false, error: "apply-incomplete" });
   });
 
+  it("keeps the operation when the manifest still names a removed skill", async () => {
+    stage.files.set("/repo/apm.yml", manifest(["caveman", "prototype"]));
+    stage.persistsSelection(["caveman", "prototype"]);
+
+    const result = await apply(
+      write({
+        kind: "remove",
+        previous: ["caveman", "prototype"],
+        desired: ["prototype"],
+      }),
+    );
+
+    expect(result).toEqual({ ok: false, error: "apply-incomplete" });
+  });
+
   it("reports a failed install without claiming anything about disk", async () => {
     const apm = {
       ...stage.deps.apm,
@@ -358,6 +382,23 @@ describe("SelectionWriter.apply", () => {
     expect(await stage.operations.read("/repo")).toMatchObject({
       kind: "deploy",
     });
+  });
+
+  it("completes a refused uninstall once disk shows the Harness gone", async () => {
+    const apm = {
+      ...stage.deps.apm,
+      removeSkill: async (input: { ref: string }) => {
+        await stage.deps.apm.removeSkill(input);
+        return { ok: false as const };
+      },
+    };
+
+    const result = await new SelectionWriter({ ...stage.deps, apm }).apply(
+      write({ kind: "remove", previous: ["prototype"], desired: [] }),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(await stage.operations.read("/repo")).toBeNull();
   });
 
   it("reports a timed-out uninstall apart from a failed one", async () => {

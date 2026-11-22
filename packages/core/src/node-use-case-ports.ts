@@ -1,4 +1,3 @@
-// The production outside world for `composeUseCases`.
 import { homedir } from "node:os";
 import type { UseCasePorts } from "./compose-use-cases";
 import { ApmCliDriver } from "./deploy/apm-cli-driver";
@@ -55,8 +54,6 @@ export function nodeUseCasePorts(env: NodeJS.ProcessEnv): UseCasePorts {
       probeHead,
       githubPage: readGitHubPage,
     },
-    // Optional: without gh or its sign-in, only the review stage degrades. The
-    // adapter passes gh only the ambient env.
     gh: new GhCliAdapter(),
     folderChooser: platformFolderChooser(process.platform),
   };

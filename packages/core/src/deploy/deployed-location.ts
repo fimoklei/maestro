@@ -13,9 +13,6 @@ import {
   type ToolRoots,
 } from "./deploy-tools";
 
-// A global install splits lockfile from tree: the lockfile lives under ~/.apm
-// but deployed_file_hashes keys are HOME-relative, or absolute for a folder
-// outside HOME.
 export class DeployedLocation {
   private readonly env: NodeJS.ProcessEnv;
   private readonly realpath: (path: string) => string;
@@ -25,14 +22,12 @@ export class DeployedLocation {
     this.realpath = realpath;
   }
 
-  /** What deployed_file_hashes keys are relative to. */
   treeRoot(target: DeployTarget): string {
     return target.kind === "repo"
       ? target.repoPath
       : resolveHomeDirectory(this.env);
   }
 
-  /** Read per access from the environment apm receives. */
   globalLayout(): GlobalLayout {
     return resolveGlobalLayout({
       env: this.env,
@@ -46,7 +41,6 @@ export class DeployedLocation {
     return target.kind === "repo" ? REPO_TOOL_ROOTS : this.globalLayout().roots;
   }
 
-  /** Each tool's absolute presence marker path. */
   presenceMarkers(): Record<SupportedTool, string> {
     const home = resolveHomeDirectory(this.env);
     const { markers } = this.globalLayout();

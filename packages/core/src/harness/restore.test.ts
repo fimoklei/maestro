@@ -20,7 +20,6 @@ const FOLDER: CopyEntryFacts = {
   identity: "1:2:3",
 };
 
-// `tdd` is committed at local HEAD and deleted from disk.
 function build(overrides?: {
   root?: string | undefined;
   head?: string | null;
@@ -28,7 +27,6 @@ function build(overrides?: {
   atHead?: string[] | null;
   describes?: (CopyEntryFacts | null)[];
   write?: "missing" | "failed";
-  // The disk before the restore starts; by default, no `tdd` on it.
   disk?: Parameters<typeof harnessDisk>[0];
   moveFails?: boolean;
   locks?: InFlightLocks;
@@ -60,7 +58,6 @@ function build(overrides?: {
 
   const moved: [string, string][] = [];
   const removed: string[] = [];
-  // The late re-check, right before the move.
   const describes = overrides?.describes ?? [null];
   let described = 0;
   const restore = new Restore({
@@ -171,7 +168,6 @@ describe("Restore", () => {
     expect(git.written).toEqual([]);
   });
 
-  // Fail-closed: an unasked question is not a clean index.
   it("refuses when the staged question could not be asked", async () => {
     const { restore } = build({ staged: null });
     await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
@@ -206,7 +202,6 @@ describe("Restore", () => {
     expect(git.written).toEqual([]);
   });
 
-  // Real git lists no link, so the skill reads as deleted and Restore is offered.
   it("refuses a destination that is a link", async () => {
     const { restore, git } = build({
       disk: { links: { [DESTINATION]: "/elsewhere/tdd" } },
@@ -218,7 +213,6 @@ describe("Restore", () => {
     expect(git.written).toEqual([]);
   });
 
-  // Something created the folder between the first look and the move.
   it("refuses a destination that appeared while the copy was built", async () => {
     const { restore, moved, removed } = build({ describes: [FOLDER] });
     await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
@@ -250,7 +244,6 @@ describe("Restore", () => {
     expect(removed).toEqual([STAGING]);
   });
 
-  // The trees said the skill is there, so this is a broken read, not absence.
   it("refuses when the committed subtree could no longer be read", async () => {
     const { restore, moved, removed } = build({ write: "missing" });
     await expect(restore.execute(skillRef("tdd"), HEAD)).resolves.toEqual({
@@ -261,7 +254,6 @@ describe("Restore", () => {
     expect(removed).toEqual([STAGING]);
   });
 
-  // An unread destination is never an empty one.
   it("refuses when the skills folder cannot be read at all", async () => {
     const { restore, git } = build({
       disk: { unreadable: [SKILLS] },
@@ -273,7 +265,6 @@ describe("Restore", () => {
     expect(git.written).toEqual([]);
   });
 
-  // Asked first, so an unanswerable working tree refuses under its own name.
   describe("an ambiguous working tree", () => {
     const ambiguities: WorktreeAmbiguity[] = [
       "sparse-checkout",
@@ -287,7 +278,6 @@ describe("Restore", () => {
       it(`refuses under ${ambiguity}, before any other fact is read`, async () => {
         const { restore, git, moved } = build({
           ambiguity,
-          // Each would refuse under its own code; none is reached, proving the order.
           head: "commit-xyz",
           staged: true,
         });

@@ -1,5 +1,3 @@
-// Reads a target's apm.lock.yaml plus what is on disk under it, keeping absent,
-// skipped, phantom and malformed apart.
 import { join, resolve } from "node:path";
 import { type CopyReadingPort, readEach } from "../deploy/copy-reading";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
@@ -54,17 +52,12 @@ type DeployStateResult =
       pinnedPerSkill?: PinnedPerSkill;
       extraFiles?: number;
       pendingOperation?: PendingOperation;
-      // Absent where the repository has no page on GitHub (#1180).
       github?: GitHubPage;
-      // The release's page in the connected Harness; absent where nothing links.
       releaseGitHub?: GitHubPage;
-      // The latest release's page, where the target is behind it.
       latestReleaseGitHub?: GitHubPage;
     }
   | { ok: false; error: "malformed" };
 
-// `otherOrigins`: skill entries no detected tool's prefix claims, named by
-// their repo rather than silently dropped.
 type GlobalDeployStateResult =
   | ({
       ok: true;
@@ -74,20 +67,15 @@ type GlobalDeployStateResult =
     } & GlobalTargetState)
   | { ok: false; error: "malformed" };
 
-// Omitting any of these leaves an unknown reading, never an unmeasured claim.
 export type DeployStateExtras = {
   releaseHead?: Pick<ReleaseHeadReader, "read">;
   content?: Pick<DeployedContentPort, "classify"> &
     Pick<CopyReadingPort, "harnessHolds">;
-  // Without it a per-skill pin gets no reading: attributing one would be a guess.
   harnessOrigin?: () => Promise<GitOrigin | null>;
   operations?: {
     pending(target: DeployTarget): Promise<PendingOperation | null>;
   };
-  // The repository's own page on GitHub, read from its origin (#1180).
   githubPage?: (repoPath: string) => Promise<GitHubPage | null>;
-  // The connected Harness's own page on GitHub, which its release and skill
-  // links hang off (#1181).
   harnessPage?: () => Promise<GitHubPage | null>;
 };
 
@@ -107,12 +95,10 @@ export class DeployStateReader {
     };
   }
 
-  // Null on every failure: an unreadable origin reads as no Harness connected.
   protected async connectedOrigin(): Promise<GitOrigin | null> {
     return (await this.extras.harnessOrigin?.().catch(() => null)) ?? null;
   }
 
-  // Read at most once per call, and only once an entry could link to it.
   protected connectedPage(): () => Promise<GitHubPage | null> {
     let page: Promise<GitHubPage | null> | undefined;
     return () => {
@@ -127,7 +113,6 @@ export class DeployStateReader {
     );
     const raw = await this.fs.readFile(join(repoPath, "apm.lock.yaml"));
     if (raw === null) {
-      // A first Deploy that stopped leaves no lockfile; its retry must survive.
       const unfinished = await this.readPending({ kind: "repo", repoPath });
       return {
         ok: true,
@@ -149,7 +134,6 @@ export class DeployStateReader {
     const harnessPage = this.connectedPage();
     const pins: SkillPin[] = [];
     let root: LockfileEntry | undefined;
-    // The root package's own skills; a leftover per-skill row is not selected.
     const selection: string[] = [];
     for (const entry of parsed.entries) {
       const reading = readPackage(entry);
@@ -196,7 +180,6 @@ export class DeployStateReader {
 
     const target: DeployTarget = { kind: "repo", repoPath };
     const pinnedPerSkill = tallyPins(pins);
-    // Exclusive with Pinned per skill: such a target follows no single release.
     const releaseHead =
       root === undefined || pinnedPerSkill !== undefined
         ? undefined
@@ -212,7 +195,6 @@ export class DeployStateReader {
         ? 0
         : countExtraRootPackageFiles(root, skillPrefixes(REPO_TOOL_ROOTS));
     const pendingOperation = await this.readPending(target);
-    // Spread, never a null key: a missing reading must not reach JSON (#416).
     return {
       ok: true,
       primitives,
@@ -236,15 +218,12 @@ export class DeployStateReader {
     );
   }
 
-  // An unreadable copy carries no chip: the write path refuses it instead.
-  // A copy equal to the latest release holds no unreleased work (#1213).
   private async markCopies(
     primitives: DeployedPrimitive[],
     target: DeployTarget,
     lockfile: LockfileReading,
     latestRelease: string | undefined,
   ): Promise<void> {
-    // Call classify on the port, never detached: it reads `this`.
     const content = this.extras.content;
     if (content === undefined) {
       return;
@@ -281,8 +260,6 @@ export class DeployStateReader {
   }
 }
 
-// Unlike an origin, a failed read stays apart from no page: the link cell
-// shows it as its own Unknown, never a failed Deploy-state read (#1180, #1181).
 async function readPage(
   read: () => Promise<GitHubPage | null> | undefined,
 ): Promise<GitHubPage | null> {
@@ -302,7 +279,6 @@ function unreadableAsSkipped(
   }));
 }
 
-// A separate class so a missing tool-presence dependency fails to compile (#187).
 export class GlobalDeployStateReader extends DeployStateReader {
   private readonly toolPresence: ToolPresencePort;
   private readonly treeRoot: () => string;
@@ -316,14 +292,9 @@ export class GlobalDeployStateReader extends DeployStateReader {
     deps: {
       fs: FileSystemPort;
       toolPresence: ToolPresencePort;
-      // What deployed_files are relative to: a global install writes the
-      // lockfile under ~/.apm and the files under HOME.
       treeRoot?: () => string;
-      // Where Global writes; Claude Code's folder follows CLAUDE_CONFIG_DIR.
       globalLayout: () => GlobalLayout;
-      // Each Global copy is read against the Target release through it.
       content?: Pick<DeployedContentPort, "classify"> & CopyReadingPort;
-      // The release tags the Behind check reads, newest first; null unread.
       releaseTags?: () => Promise<readonly string[] | null>;
     } & DeployStateExtras,
   ) {
@@ -340,7 +311,6 @@ export class GlobalDeployStateReader extends DeployStateReader {
     const detected = await this.toolPresence.detectGlobalTools();
     const raw = await this.fs.readFile(join(rootPath, "apm.lock.yaml"));
     if (raw === null) {
-      // A first Deploy that stopped leaves no lockfile; its retry must survive.
       const unfinished = await this.readPending({ kind: "global" });
       return {
         ok: true,
@@ -365,13 +335,11 @@ export class GlobalDeployStateReader extends DeployStateReader {
       detected,
       {
         layout: this.globalLayout(),
-        // A folder outside HOME is recorded absolute; resolve keeps it whole.
         fileExists: (file) => this.fs.isFileEntry(resolve(tree, file)),
         origin: await this.connectedOrigin(),
         harnessPage: this.connectedPage(),
       },
     );
-    // Exclusive with Pinned per skill, as on the repo card.
     const releaseHead =
       release === undefined || target.pinnedPerSkill !== undefined
         ? undefined
@@ -393,8 +361,6 @@ export class GlobalDeployStateReader extends DeployStateReader {
     };
   }
 
-  // Each copy against the Target release, not only its record: a narrowed
-  // install moves resolved_ref but keeps a skipped folder's old hashes.
   private async readCopies(
     folders: GlobalFolderState[],
     release: string | undefined,
@@ -470,7 +436,6 @@ export class GlobalDeployStateReader extends DeployStateReader {
   }
 }
 
-// Spread, never a null key (#416).
 function latestPageField(
   release: GitHubPage | undefined,
   head: ReleaseHead | undefined,

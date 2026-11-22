@@ -1,5 +1,3 @@
-// Proposes one primitive's removal on its proposal branch. A deletion is never
-// inferred from absence: it takes a confirmation (#580).
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { HarnessFetchGate } from "./harness-fetch-gate";
@@ -31,7 +29,6 @@ export class PromoteDeletion {
     this.deps = deps;
   }
 
-  // Shares the promotion lock, keyed by harness root.
   async execute(
     ref: PrimitiveRef,
     seenRemoteTree: string,
@@ -50,7 +47,6 @@ export class PromoteDeletion {
     if (!run.ok) {
       return { ok: false, error: "promote-in-progress" };
     }
-    // The single proposal does not report its pull request's outcome.
     const result = run.value;
     return result.ok
       ? {
