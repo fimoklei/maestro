@@ -376,13 +376,23 @@ ${NO_PREFERENCE} { .b { animation: spin 1s; } }
 // Light green and amber 11 miss 4.5:1 (#1086), so step 11 colours only a glyph:
 // aria-hidden, role="img", or a MARK constant.
 const STEP_ELEVEN = /text-(?:green|amber)-11\b/;
+const OPENING_TAG = /<[A-Za-z]/;
+const CLOSES_TAG = /<\/|\/>/;
 const MARK_CONTEXT = /aria-hidden="true"|role="img"|\bglyph:|const \w*MARK\w*/;
 
 function wordsOnStepEleven(source: string): string[] {
   const lines = source.split("\n");
   return lines.flatMap((line, index) => {
     if (!STEP_ELEVEN.test(line)) return [];
-    const context = lines.slice(Math.max(0, index - 10), index + 1).join("\n");
+    // From the element's opening tag, or ten lines up when that is nearer.
+    const tag = lines.findLastIndex(
+      (each, at) => at <= index && OPENING_TAG.test(each),
+    );
+    const sameElement =
+      tag !== -1 &&
+      !lines.slice(tag, index).some((each) => CLOSES_TAG.test(each));
+    const from = Math.max(0, Math.min(index - 10, sameElement ? tag : index));
+    const context = lines.slice(from, index + 1).join("\n");
     return MARK_CONTEXT.test(context) ? [] : [line.trim()];
   });
 }
@@ -399,6 +409,30 @@ const MARK = { good: "text-green-11" };
       'const INK = { good: "text-green-11" };',
       '<p className="text-amber-11">Behind</p>',
     ]);
+  });
+
+  // #1837: a mark's attributes can push `role="img"` far above its colour.
+  it("passes a mark whose role sits anywhere in the same tag", () => {
+    const attributes = Array.from(
+      { length: 12 },
+      (_, index) => `  data-${index}="x"`,
+    ).join("\n");
+    expect(
+      wordsOnStepEleven(`<span
+  role="img"
+${attributes}
+  className="text-amber-11"
+>`),
+    ).toEqual([]);
+  });
+
+  it("flags a word below a closed mark, however near its tag", () => {
+    const filler = Array.from({ length: 12 }, () => "  // filler").join("\n");
+    expect(
+      wordsOnStepEleven(`<span role="img">✓</span>
+${filler}
+const INK = { good: "text-green-11" };`),
+    ).toEqual(['const INK = { good: "text-green-11" };']);
   });
 
   it("no source file colours a word with green or amber 11", () => {
