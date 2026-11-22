@@ -300,6 +300,9 @@ deployments:                    # one row per deployed file per deploy root
   and absolute outside it (`/Volumes/work/claude/skills/tdd/SKILL.md`); long
   absolute hash keys use YAML's `? ` key form. `.agents` never moves.
   Fixtures: `apm.lock.global-claude-config-dir-{inside,outside}-home.yaml`.
+  Setting the variable on a deployment made without it moves the copies: the
+  next `install -g` deletes the `.claude` copies and records only the new
+  folder (measured 2026-11-22, #1872).
 
 ## Drift — `apm outdated`
 
@@ -466,10 +469,16 @@ lockfile entry went.
    file and running the same uninstall again completes cleanly. Fixture:
    `apm-uninstall-retained.txt`. Maestro's removal guard refuses a diverged
    copy in front of this (`apm-driver.md` § Remove, #775).
-4. **The `Cleaned N stale files` count is what it deleted this run**, so it
+4. **With `CLAUDE_CONFIG_DIR` set, every uninstall aborts** (measured
+   2026-11-22, #1947), with or without an earlier switch of folder. The
+   `could not remove tracked target files` block of item 3 lists every file
+   under `$CLAUDE_CONFIG_DIR`, exit 1. Files, `apm.yml` and the lockfile stay
+   as they were, `apm_modules/` is already gone, and a retry fails the same
+   way. With the variable unset, the same sequence succeeds.
+5. **The `Cleaned N stale files` count is what it deleted this run**, so it
    moves with the state it found (14 for a clean two-tool copy, 12 with one
    file retained). Never parse it.
-5. Match every phrase whitespace-normalized and lowercased — the output is
+6. Match every phrase whitespace-normalized and lowercased — the output is
    Rich-rendered like install's (`LEARNINGS.md` ·
    rich-wraps-phrases-mid-sentence).
 
