@@ -1,4 +1,3 @@
-// What one in-memory commit holds, and the hashes git would give it.
 import { createHash } from "node:crypto";
 import { HARNESS_CATEGORIES_FILE } from "../inventory/harness-layout";
 import type {
@@ -9,27 +8,21 @@ import type {
 import type { ProposalSubject } from "./proposal-subject";
 import type { HarnessSkillTree } from "./released-content";
 
-// Skill name → its SKILL.md text, which stands for the whole folder; null is
-// a folder with no SKILL.md.
 export type Skills = Record<string, string | null>;
 
-// Prompt name → its file text.
 export type Prompts = Record<string, string>;
 
-// `files`: any other file by its path, the categories file included.
 export type Content = {
   skills: Skills;
   prompts: Prompts;
   files: Record<string, string>;
 };
 
-// The tree hash git would give this content.
 export const treeHash = (content: string | null): string =>
   createHash("sha1")
     .update(content ?? "\0no-manifest")
     .digest("hex");
 
-// The blob hash git would give this text; never a tree hash of the same text.
 export const blobHash = (text: string): string =>
   createHash("sha1").update(`blob\0${text}`).digest("hex");
 
@@ -72,13 +65,11 @@ export const objectsOf = (
   })),
 ];
 
-/** The categories file's blob hash; null where the content lacks it. */
 export const listFileHash = (content: Content): string | null => {
   const text = content.files[HARNESS_CATEGORIES_FILE];
   return text === undefined ? null : blobHash(text);
 };
 
-/** `at` with each subject put back as `source` holds it, or removed. */
 export const withSubjectsFrom = (
   at: Content,
   source: Content,
@@ -107,14 +98,12 @@ export const withSubjectsFrom = (
   return { skills, prompts, files };
 };
 
-// `undefined` is a primitive the content lacks.
 export const textOf = (
   content: Pick<Content, "skills" | "prompts">,
   { type, name }: PrimitiveRef,
 ): string | null | undefined =>
   type === "skill" ? content.skills[name] : content.prompts[name];
 
-// `undefined` is a subject the content lacks.
 export const subjectTextOf = (
   content: Content,
   subject: ProposalSubject,

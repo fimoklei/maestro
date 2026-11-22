@@ -1,6 +1,3 @@
-// The in-process lock every apm write to one target takes. Refuse, don't queue.
-
-// A canonical repo path is always absolute, so it can never collide with this.
 export const GLOBAL_LOCK_KEY = "global";
 
 export type LockedRunResult<T> = { ok: true; value: T } | { ok: false };

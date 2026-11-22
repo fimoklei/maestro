@@ -1,5 +1,3 @@
-// Proposes several primitives in one action: each its own branch and pull
-// request, in order, inside one hold of the per-Harness lock.
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import type { HarnessFetchGate } from "./harness-fetch-gate";
@@ -16,10 +14,6 @@ import {
 } from "./propose-item";
 import type { HarnessGitPort } from "./read-harness-state";
 
-/**
- * One ticked item. A deletion carries the default-branch tree its
- * confirmation showed; any other item carries none.
- */
 export type BatchRequest = PrimitiveRef & { seenRemoteTree?: string };
 
 type Deletion = PrimitiveRef & { seenRemoteTree: string };
@@ -27,38 +21,29 @@ type Deletion = PrimitiveRef & { seenRemoteTree: string };
 const isDeletion = (item: BatchRequest): item is Deletion =>
   item.seenRemoteTree !== undefined;
 
-/** One item's refusal: a single proposal's own outcome, never a new kind. */
 export type BatchItemError =
   | "invalid-skill"
   | ProposeChangeError
   | ProposeDeletionError;
 
-/** A proposed item: its branch, its compare page, and its pull request. */
 export type BatchProposal = PrimitiveRef & {
   branch: string;
   compareUrl: string;
   pullRequest: PullRequestOutcome;
 };
 
-/** What one item came to, handed over as soon as it finishes. */
 export type BatchItemOutcome =
   | ({ ok: true } & BatchProposal)
   | (PrimitiveRef & { ok: false; error: BatchItemError });
 
-/**
- * The batch's end: identical failures collapse into one line. `gh` is absent
- * once an item's review read found no `gh` to ask.
- */
 export type BatchReport = {
   proposed: BatchProposal[];
   failed: { error: BatchItemError; items: PrimitiveRef[] }[];
   gh: "available" | "absent";
 };
 
-/** One line of the streamed answer: an item as it finishes, then the report last. */
 export type BatchLine = { item: BatchItemOutcome } | { report: BatchReport };
 
-/** A refusal that stops the batch before any push. */
 export type ProposeBatchError =
   | "not-configured"
   | "no-usable-origin"
@@ -84,8 +69,6 @@ export class ProposeBatch {
     this.deps = deps;
   }
 
-  // One item failing never stops the next; each keeps its own fetch and
-  // re-check right before its push (#579).
   async execute(
     items: readonly BatchRequest[],
     onItem: (outcome: BatchItemOutcome) => void,
@@ -114,8 +97,6 @@ export class ProposeBatch {
     return run.ok ? run.value : { ok: false, error: "promote-in-progress" };
   }
 
-  // A deletion the default branch moved past refuses the whole batch before
-  // any push. Other items never do (#580).
   private async deletionsRefusal(
     root: string,
     items: readonly BatchRequest[],

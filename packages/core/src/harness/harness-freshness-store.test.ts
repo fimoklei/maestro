@@ -6,7 +6,6 @@ import { HarnessFreshnessStore } from "./harness-freshness-store";
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 const HARNESS = "/home/me/agent-harness";
 
-// One disk, so a "restart" is a second store over the same files.
 function buildStore(fs = new InMemoryFileSystem()) {
   const config = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
   return {

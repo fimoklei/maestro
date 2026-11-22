@@ -1,5 +1,3 @@
-// Which items the Harness holds: the latest release's names, then the Working
-// harness on disk, so an item imported but not yet released keeps its category.
 import { join } from "node:path";
 import {
   type HarnessObject,
@@ -14,10 +12,8 @@ import {
 import type { HarnessTag } from "../harness/read-harness-state";
 import { highestReleaseTag } from "../harness/release-tag";
 
-/** Whether the Harness holds an item; one it was not asked about reads as held. */
 export type HeldItems = { holds: (ref: PrimitiveRef) => boolean };
 
-/** Null: the release or the disk could not be read, so nothing is known. */
 export type ReadHeldItems = (
   root: string,
   refs: readonly PrimitiveRef[],
@@ -43,8 +39,6 @@ const releasedKeys = async (
   return objects === null ? null : new Set(objects.map(primitiveKey));
 };
 
-// A type's folder that does not exist holds nothing; inspecting it would read
-// as unreadable.
 const onDisk = async (
   fs: PrimitiveEntryFs,
   root: string,
@@ -55,7 +49,6 @@ const onDisk = async (
   return entry.kind === "unreadable" ? null : entry.kind === "plain";
 };
 
-/** The items of `refs` that `known` names or the Working harness holds on disk. */
 export const heldBeside = async (
   fs: PrimitiveEntryFs,
   root: string,

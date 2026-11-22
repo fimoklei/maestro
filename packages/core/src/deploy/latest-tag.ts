@@ -1,6 +1,3 @@
-// Parses the table `apm view <owner>/<repo> versions` prints; it has no --json.
-// Sorted here because apm's row order is not contractual.
-
 const tagRowPattern = /│\s*(v\d+\.\d+\.\d+)\s*│\s*tag\s*│/;
 
 export const resolveLatestTagFromVersionsTable = (
@@ -14,7 +11,6 @@ export const resolveLatestTagFromVersionsTable = (
   if (tags.length === 0) {
     return null;
   }
-  // Numeric collation: v0.10.0 beats v0.9.0.
   return tags.reduce((latest, tag) =>
     tag.localeCompare(latest, "en", { numeric: true }) > 0 ? tag : latest,
   );

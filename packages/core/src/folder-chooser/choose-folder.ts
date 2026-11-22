@@ -7,13 +7,10 @@ export type ChooseFolderError =
   | "chooser-busy"
   | "chooser-failed";
 
-/** `path: null` is nothing picked: a cancel, or the time limit. */
 export type ChooseFolderResult =
   | { ok: true; path: string | null }
   | { ok: false; error: ChooseFolderError };
 
-// One chooser at a time; its answer is checked exactly as a typed path is.
-// `chooser` is null on a platform with no helper.
 export class ChooseFolder {
   private readonly chooser: FolderChooserPort | null;
   private readonly fs: FileSystemPort;
@@ -50,7 +47,6 @@ export class ChooseFolder {
       if (answer.kind === "failed") {
         return { ok: false, error: "chooser-failed" };
       }
-      // One line, an absolute path; nothing else in the output crosses.
       const lines = answer.output.split(/\r?\n/).filter((line) => line !== "");
       if (lines.length !== 1) {
         return { ok: false, error: "chooser-failed" };

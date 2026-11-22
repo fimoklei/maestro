@@ -3,15 +3,11 @@ import type { FileSystemPort, RawDirEntry } from "../registry/file-system";
 import { isSkippedEntry } from "./copy-skill-folder";
 import type { CopyTreeFsPort } from "./copy-tree-fs";
 
-// Needs the executable bit too: git records it as a change.
 export type SameTreeFs = Pick<FileSystemPort, "readFile" | "listRawEntries"> &
   Pick<CopyTreeFsPort, "describe">;
 
 const NOTHING: ReadonlySet<string> = new Set();
 
-// Same names, kinds, bytes and executable bits, with the copy's skip applied.
-// Anything not provably identical is a difference. `exclude` applies at the
-// top level only.
 export async function sameTree(
   fs: SameTreeFs,
   left: string,

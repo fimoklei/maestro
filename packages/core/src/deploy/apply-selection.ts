@@ -1,4 +1,3 @@
-// The one owner of a Selection change.
 import type { FileSystemPort } from "../registry/file-system";
 import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
 import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
@@ -18,13 +17,11 @@ import { readTargetSelection, type TargetSelection } from "./target-selection";
 
 export type SelectionWrite = {
   target: DeployTarget;
-  // The target's lock key, which is also the operation record's key.
   key: string;
   kind: TargetOperationKind;
   origin: GitOrigin;
   release: string;
   previous: readonly string[];
-  // Empty means a named uninstall: apm refuses `skills: []`.
   desired: readonly string[];
   tools?: readonly SupportedTool[];
 };
@@ -87,7 +84,6 @@ async function applySelection(
   const manifestPath = deps.location.manifestPath(write.target);
   const before = await deps.fs.readFile(manifestPath);
   const reading = readHarnessSelection(before, write.origin.ownerRepo);
-  // Refuse before the record and before apm, so no half-stated intent remains.
   if (reading.kind === "not-recognised") {
     return { ok: false, error: "manifest-not-recognised" };
   }
@@ -111,13 +107,9 @@ async function applySelection(
 
   if (write.desired.length === 0) {
     const removed = await deps.apm.removeSkill({ target: write.target, ref });
-    // Verify disk regardless: a blocked uninstall deletes the rest of the
-    // Selection first.
     return await verify(deps, write, refusalFor(removed));
   }
 
-  // `--skill` only adds to the persisted list, so the exact Selection must be
-  // in `skills:` before the install. apm creates an absent dependency itself.
   if (reading.kind === "selection" && before !== null) {
     const rewritten = writeHarnessSelection(
       before,
@@ -151,8 +143,6 @@ function refusalFor(
   return ran.reason === "timed-out" ? "apply-timed-out" : "apply-failed";
 }
 
-// Completion is disk plus the deployment record plus the manifest agreeing with
-// the desired Selection. A matching tag alone proves nothing (#951).
 async function verify(
   deps: ApplySelectionDeps,
   write: SelectionWrite,
@@ -182,8 +172,6 @@ async function matches(
   if (landed.kind !== "root" || landed.release !== write.release) {
     return false;
   }
-  // A write naming no tools is a repo install, which apm runs for every tool.
-  // A folder outside the write keeps its copies; they say nothing about it.
   const tools = write.tools ?? SUPPORTED_TOOLS;
   const written = landed.copies
     .filter((copy) => tools.includes(copy.tool))
@@ -191,7 +179,6 @@ async function matches(
   if (!sameNames([...new Set(written)], write.desired)) {
     return false;
   }
-  // A name present for one tool proves nothing about another's copy.
   const everyCopy = tools.every((tool) =>
     write.desired.every((name) =>
       landed.copies.some((copy) => copy.tool === tool && copy.name === name),
@@ -200,7 +187,6 @@ async function matches(
   if (!everyCopy) {
     return false;
   }
-  // The next install reads the manifest: a name it still holds is unfinished.
   const manifest = readHarnessSelection(
     await deps.fs.readFile(deps.location.manifestPath(write.target)),
     write.origin.ownerRepo,

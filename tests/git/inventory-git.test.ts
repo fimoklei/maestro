@@ -113,6 +113,24 @@ describe("InventoryGitAdapter", () => {
     );
   });
 
+  it("rejects a divergence check against a tag the clone lacks", async () => {
+    await expect(
+      adapter().skillDivergesFromTag("v9.9.9", "tdd"),
+    ).rejects.toThrow();
+  });
+
+  it("sees no divergence in a tracked skill file the ignore rules cover", async () => {
+    await writeFile(join(root, ".apm", "skills", "tdd", "notes.log"), "kept\n");
+    await git("add", "-f", ".");
+    await git("commit", "-m", "track an ignored file");
+    await git("tag", "v0.2.0");
+    await writeFile(join(root, ".gitignore"), "*.log\n");
+
+    await expect(adapter().skillDivergesFromTag("v0.2.0", "tdd")).resolves.toBe(
+      false,
+    );
+  });
+
   it("ignores changes outside the skill's own directory", async () => {
     await addSkill("other");
     await git("add", ".");

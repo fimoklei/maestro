@@ -1,4 +1,3 @@
-// The `--` separator keeps tag and name data, never command text.
 import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -24,8 +23,6 @@ export class InventoryGitAdapter implements InventoryGitPort {
 
   async skillExistsAtTag(tag: string, name: string): Promise<boolean> {
     const root = await this.root();
-    // Rejects for a tag the clone lacks, so a stale clone is an error, not
-    // "not published".
     const { stdout } = await run("git", [
       "-C",
       root,
@@ -38,7 +35,6 @@ export class InventoryGitAdapter implements InventoryGitPort {
     return stdout.trim().length > 0;
   }
 
-  // Compares disk, tracked or not, against the tag's tree (#750).
   async skillDivergesFromTag(tag: string, name: string): Promise<boolean> {
     const root = await this.root();
     const subtree = harnessSkillSubpath(name);
@@ -46,12 +42,8 @@ export class InventoryGitAdapter implements InventoryGitPort {
     const options = indexOptions(join(indexDir, "index"));
 
     try {
-      // Seeded from HEAD: git exempts only tracked files from the ignore rules.
       await run("git", ["-C", root, "read-tree", "HEAD"], options);
-      // No pathspec: one naming the skill is fatal where neither HEAD nor the
-      // disk has it, which must read as diverged.
       await run("git", ["-C", root, "add", "-A"], options);
-      // Only exit 1 means a difference; every other failure propagates.
       return await run(
         "git",
         [
@@ -79,8 +71,6 @@ export class InventoryGitAdapter implements InventoryGitPort {
     }
   }
 
-  // Blob bytes hashed the way apm records a deployed file. Null for every
-  // failure, which the guard reads as no proof of equality (#952).
   async readSkillFilesAtTag(
     tag: string,
     name: string,
@@ -107,9 +97,6 @@ export class InventoryGitAdapter implements InventoryGitPort {
   }
 }
 
-// Maestro's fetched tag first: a release published from Maestro is pushed,
-// never tagged locally (#1213), and a moved tag updates only the fetched copy.
-// The local tag only where the fetched one is absent.
 async function tagRef(root: string, tag: string): Promise<string> {
   const fetched = `${MAESTRO_TAGS}/${tag}`;
   return run("git", [

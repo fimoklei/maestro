@@ -71,6 +71,25 @@ describe("the pull-request row on Categories in Settings", () => {
     expect((await row()).body).toMatchObject({ state: "waiting-on-other" });
   });
 
+  it("states another contributor's open pull request ahead of the operator's own", async () => {
+    const { tipHolds, own, review, row } = world();
+    tipHolds(["tdd"]);
+    await own(["Planning"]);
+    review.answer(
+      answered([
+        request({ number: 47, url: `${PULL}/47` }),
+        request({ author: "mira" }),
+      ]),
+    );
+
+    expect((await row()).body).toEqual({
+      state: "waiting-on-other",
+      author: "mira",
+      number: 46,
+      url: `${PULL}/46`,
+    } satisfies CategoriesProposalRow);
+  });
+
   it.each([
     [null, "waiting-for-review"],
     ["review-required", "waiting-for-review"],

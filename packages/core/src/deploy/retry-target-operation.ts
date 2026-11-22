@@ -1,5 +1,3 @@
-// Reruns a saved operation that never finished, under the same target lock and
-// behind a fresh local-copy check (#951).
 import type { ToolPresencePort } from "../tools/tool-presence-port";
 import type { SelectionWriter } from "./apply-selection";
 import type {
@@ -33,12 +31,10 @@ export type RetryTargetOperationError =
   | "retry-failed";
 
 export type RetryTargetOperationResult =
-  // `outcome`: Global only, each folder's copy of the retried Selection.
   | { ok: true; completed: PendingOperation; outcome?: FolderOutcomes }
   | {
       ok: false;
       error: RetryTargetOperationError;
-      // Present only where consent can clear the refusal (#952).
       copyReceipt?: string;
     };
 
@@ -99,7 +95,9 @@ export class RetryTargetOperation {
     } catch {
       return { ok: false, error: "retry-failed" };
     }
-    const run = await this.deps.locks.run(key, () => this.retry(input, key));
+    const run = await this.deps.locks.run(key, () =>
+      this.retryUnderLock(input, key),
+    );
     return run.ok ? run.value : { ok: false, error: "retry-in-progress" };
   }
 
@@ -109,19 +107,15 @@ export class RetryTargetOperation {
       : GLOBAL_LOCK_KEY;
   }
 
-  private async retry(
+  private async retryUnderLock(
     input: { target: DeployTarget; confirmedCopyReceipt?: string },
     key: string,
   ): Promise<RetryTargetOperationResult> {
-    // Swallow rather than rethrow: a raw apm message may carry a token.
     try {
-      // Read under the lock, so a retry cannot start beside the operation it is
-      // recovering from.
       const record = await this.deps.selection.pending(key);
       if (record === null) {
         return { ok: false, error: "nothing-to-retry" };
       }
-      // The saved tools, never what this machine shows now.
       const tools = record.tools ?? undefined;
       const scope = { write: record.kind, target: input.target } as const;
       const check = await this.copyGuard.check({
@@ -195,7 +189,6 @@ export class RetryTargetOperation {
   }
 }
 
-// Every origin Maestro deploys from is github.com; the record keeps owner/repo.
 function originOf(harness: string) {
   return { host: "github.com", ownerRepo: harness };
 }

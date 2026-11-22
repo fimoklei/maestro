@@ -5,27 +5,20 @@ export type DeployedPrimitive = {
   type: "skill";
   name: string;
   version: string;
-  // Absent means "clean", never "not checked": an unread copy carries no key.
   copy?: "local-edits" | "edits-in-harness" | "unverified";
-  // The skill's folder in the connected Harness at this release; absent where
-  // nothing links (#1181).
   github?: GitHubPage;
 };
 
-// Null is always "not known", never a count that was not measured.
 export type ReleaseHead = {
   release: string;
   latestRelease: string | null;
   changed: number | null;
-  // Absent wherever `changed` is null: it is the same comparison.
   changedSkills?: readonly string[];
   selection?: readonly string[];
   selected: number;
-  // Last successful comparison, kept when a later one fails.
   comparedAt: string | null;
 };
 
-// Biggest group first. Never empty: no group is no status.
 export type PinnedPerSkill = readonly { release: string; skills: number }[];
 
 export type SkippedEntry =

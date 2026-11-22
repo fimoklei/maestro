@@ -1,6 +1,3 @@
-// Reads the central inventory from the local clone's latest release, never the
-// working tree and never the network. A malformed SKILL.md is skipped; a
-// prompt with missing or broken frontmatter is listed with no description.
 import { z } from "zod";
 import { parseGitOrigin } from "../deploy/git-origin";
 import { isValidSkillSlug } from "../deploy/package-ref";
@@ -17,8 +14,6 @@ import {
 } from "./pending-release";
 import type { ReadReleasedPrimitives } from "./released-primitives";
 
-// `path` is where the primitive lives in the Harness. `pendingRelease` is a
-// merged change to it that waits for the next release.
 export type InventorySkill = {
   type: "skill";
   name: string;
@@ -27,8 +22,6 @@ export type InventorySkill = {
   pendingRelease: PendingRelease;
 };
 
-// `text` is what Copy prompt copies. `nameValid` is false for a file name that
-// breaks the name rule; the prompt is still listed and copyable.
 export type InventoryPrompt = PromptFile & {
   type: "prompt";
   name: string;
@@ -39,10 +32,6 @@ export type InventoryPrompt = PromptFile & {
 
 export type InventoryPrimitive = InventorySkill | InventoryPrompt;
 
-// An empty `primitives` only ever means a successful read found nothing
-// released; `unreadable` is a connected harness whose release could not be read.
-// `unreadTypes` names the types whose released files could not be read; the
-// other types still list.
 export type InventoryResult =
   | {
       ok: true;
@@ -51,7 +40,6 @@ export type InventoryResult =
     }
   | { ok: false; error: "not-configured" | "unreadable" };
 
-// The frontmatter `name` is prose; the directory name is the identity.
 const frontmatterSchema = z.object({
   description: z.string(),
 });
@@ -103,7 +91,6 @@ export class InventoryReader {
     this.readPendingRelease = deps.readPendingRelease;
   }
 
-  // Canonicalised, so browser path comparisons match server registration.
   async configuredPath(): Promise<string | null> {
     const path = await this.resolvePath();
     if (path === undefined) {
@@ -140,12 +127,10 @@ export class InventoryReader {
       return { ok: false, error: "not-configured" };
     }
 
-    // Fail-closed: a thrown git call is an unread release, never an empty one.
     const released = await this.readReleased(root).catch(() => null);
     if (released === null) {
       return { ok: false, error: "unreadable" };
     }
-    // The release still lists without its pending facts.
     const pending = await this.readPendingRelease(root).catch(() => null);
 
     const primitives: InventoryPrimitive[] = [];

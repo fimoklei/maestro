@@ -1,6 +1,3 @@
-// The git steps that differ by primitive type: a skill is a folder (a tree),
-// a prompt one file (a blob), as is the categories list. Nothing leaves as
-// stdout or stderr.
 import { execFile } from "node:child_process";
 import { access, lstat, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -36,18 +33,15 @@ import type { HarnessPromoteRef, ListProposalRefs } from "./read-harness-state";
 
 const run = promisify(execFile);
 
-// No line-ending rewrite: a CRLF clone would get bytes the commit never held
-// (#914). A `.gitattributes` smudge filter still applies.
 const NO_CONVERSION = ["-c", "core.autocrlf=false", "-c", "core.eol=lf"];
 
-// Tab-separated so a name containing spaces stays one field.
+const UNQUOTED_NAMES = "-z";
+
 const PROPOSAL_FORMAT = `%(refname:lstrip=${PROPOSAL_REFS.split("/").length})\t%(objectname)`;
 
-/** One primitive's object in a tree: its hash and the mode git records. */
 export type PrimitiveObject = { hash: string; mode: string };
 
 const wasKilled = (error: unknown): boolean =>
-  // execFile rejects with an Error that sets `killed` on a timeout.
   (error as { killed?: boolean }).killed === true;
 
 const pathExists = (path: string): Promise<boolean> =>
@@ -56,8 +50,7 @@ const pathExists = (path: string): Promise<boolean> =>
     () => false,
   );
 
-// Null only when the command failed; raw stdout, since `-z` names must stay untouched.
-const readOutput = async (
+const readRawOutput = async (
   root: string,
   args: string[],
 ): Promise<string | null> => {
@@ -69,7 +62,6 @@ const readOutput = async (
   }
 };
 
-/** Whether anything, a link included, sits at the primitive's path; never follows a link. */
 export const primitiveOnDisk = (
   root: string,
   ref: PrimitiveRef,
@@ -79,24 +71,19 @@ export const primitiveOnDisk = (
     () => false,
   );
 
-// Null on an unreadable ref or a listing the parser does not recognise. A
-// missing type folder is zero primitives of that type, never null.
 export async function listPrimitivesAt(
   root: string,
   ref: string,
 ): Promise<HarnessObject[] | null> {
   const listed: HarnessObject[] = [];
   for (const type of HARNESS_PRIMITIVE_TYPES) {
-    // `-z`: otherwise git quotes any non-ASCII name.
-    const listing = await readOutput(root, [
+    const listing = await readRawOutput(root, [
       "ls-tree",
-      "-z",
+      UNQUOTED_NAMES,
       `${ref}:${primitiveDir(type)}`,
     ]);
     if (listing === null) {
-      // Tells an unresolvable ref from one without this folder. `^{tree}`:
-      // the working listing passes a bare tree hash (#580).
-      const resolves = await readOutput(root, [
+      const resolves = await readRawOutput(root, [
         "rev-parse",
         "--verify",
         "--quiet",
@@ -116,9 +103,6 @@ export async function listPrimitivesAt(
   return listed;
 }
 
-// One throwaway index covers every type folder, so all types come from one
-// snapshot. Seeded from HEAD: git exempts only tracked files from the ignore
-// rules, so an index built from nothing would drop tracked-but-ignored files.
 export async function listWorkingPrimitives(
   root: string,
 ): Promise<HarnessObject[] | null> {
@@ -144,7 +128,6 @@ export async function listWorkingPrimitives(
     await run("git", ["-C", root, "read-tree", "HEAD"], options).catch(
       () => {},
     );
-    // A folder gone from disk is gone from the snapshot, not left as HEAD has it.
     if (absent.length > 0) {
       await run(
         "git",
@@ -170,9 +153,6 @@ export async function listWorkingPrimitives(
   }
 }
 
-// The same throwaway-index snapshot as `listWorkingPrimitives`, for the named
-// paths only, compared with `commit`. A file only the commit holds is not
-// lost work, so it is left out.
 export async function readWorkingDifferences(
   root: string,
   refs: readonly PrimitiveRef[],
@@ -217,7 +197,7 @@ export async function readWorkingDifferences(
         root,
         "diff",
         "--cached",
-        "-z",
+        UNQUOTED_NAMES,
         "--name-only",
         "--no-renames",
         "--diff-filter=AMT",
@@ -238,7 +218,6 @@ export async function readWorkingDifferences(
   }
 }
 
-// Throws where the primitive is not on disk.
 export async function hashWorkingPrimitive(
   root: string,
   ref: PrimitiveRef,
@@ -260,15 +239,14 @@ export async function hashWorkingPrimitive(
   return object;
 }
 
-// The outer null is a failed read; `object: null` is a path the tree lacks.
 const readObjectAt = async (
   root: string,
   treeish: string,
   path: string,
 ): Promise<{ object: PrimitiveObject | null } | null> => {
-  const listing = await readOutput(root, [
+  const listing = await readRawOutput(root, [
     "ls-tree",
-    "-z",
+    UNQUOTED_NAMES,
     treeish,
     "--",
     path,
@@ -281,7 +259,6 @@ const readObjectAt = async (
   return { object: mode && hash ? { hash, mode } : null };
 };
 
-/** The subject's object on a commit; `object: null` where it lacks it, null on a failed read. */
 export const readSubjectObject = (
   root: string,
   commit: string,
@@ -289,7 +266,6 @@ export const readSubjectObject = (
 ): Promise<{ object: PrimitiveObject | null } | null> =>
   readObjectAt(root, commit, subjectPath(subject));
 
-/** The primitive's hash on a ref, or null where the ref lacks it. */
 export const readPrimitiveHash = (
   root: string,
   treeish: string,
@@ -297,15 +273,11 @@ export const readPrimitiveHash = (
 ): Promise<string | null> =>
   runGitText(root, ["rev-parse", `${treeish}:${primitivePath(ref)}`]);
 
-/** One subject's content in a new commit; `object: null` removes it. */
 export type SubjectChange = {
   subject: ProposalSubject;
   object: PrimitiveObject | null;
 };
 
-// Each base copy is dropped first: `read-tree --prefix` refuses a path the
-// index already holds. `parents` leads with the proposal branch's tip when one
-// exists, so the push fast-forwards (#578).
 export async function commitSubjectsOnto(
   root: string,
   changes: readonly SubjectChange[],
@@ -381,9 +353,6 @@ const emptyByType = <T>(): Record<HarnessPrimitiveType, Record<string, T>> => ({
   prompt: {},
 });
 
-// Whether `base` took in the branch: its tip is on `base`, or a commit the
-// branch lacks holds its content (a squash or rebase merge). A failed read is
-// never proof.
 const hasLanded = async (
   root: string,
   ref: ProposalSubject,
@@ -419,8 +388,6 @@ const hasLanded = async (
   return false;
 };
 
-// Each branch is read only for the primitive it is named for; a null tree is
-// a branch proposing to delete it. A branch of no known family is skipped.
 export async function readProposalRefs(
   root: string,
   base: string,
@@ -455,7 +422,6 @@ export async function readProposalRefs(
   return refs;
 }
 
-// A list's branch is read apart: no primitive family takes its leaf.
 export async function readListProposal(
   root: string,
   subject: ListSubject,
@@ -492,7 +458,6 @@ export async function readListProposal(
   };
 }
 
-// The newest commit on `ref` that touched each subject, keyed by `subjectKey`.
 export async function readAuthors(
   root: string,
   ref: string,
@@ -514,7 +479,6 @@ export async function readAuthors(
   return Object.fromEntries(authors);
 }
 
-/** The list file's blob hash on a ref; `hash: null` where it lacks the file, null on a failed read. */
 export async function readListHash(
   root: string,
   ref: string,
@@ -546,7 +510,6 @@ export async function readStagedDifference(
     );
     return false;
   } catch (error) {
-    // execFile rejects with an Error that carries the exit code.
     return !wasKilled(error) && (error as { code?: number }).code === 1
       ? true
       : null;

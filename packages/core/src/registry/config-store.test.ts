@@ -29,7 +29,6 @@ describe("ConfigStore", () => {
     const store = new ConfigStore({ fs, configPath: () => path });
 
     await store.write({ repos: [{ path: "/Users/me/project" }] });
-    // Proves the path is resolved per access, not frozen at construction.
     path = "/sandbox/.maestro/config.json";
 
     await expect(store.read()).resolves.toEqual({ repos: [] });
@@ -56,7 +55,6 @@ describe("ConfigStore", () => {
   });
 
   it("reads a fetch time that is not a real moment as no record at all", async () => {
-    // A bad timestamp costs an age label; refusing the file would take the registry down.
     const fs = new InMemoryFileSystem({
       files: {
         [CONFIG_PATH]: JSON.stringify({
@@ -193,5 +191,32 @@ describe("ConfigStore", () => {
     (await store.read()).repos.push({ path: "/Users/me/stray" });
 
     await expect(store.read()).resolves.toEqual({ repos: [] });
+  });
+
+  it("never lets a caller's change to a remembered config leak into the next read", async () => {
+    const fs = new InMemoryFileSystem({
+      files: { [CONFIG_PATH]: JSON.stringify({ repos: [] }) },
+    });
+    const store = new ConfigStore({ fs, configPath: () => CONFIG_PATH });
+    await store.read();
+
+    (await store.read()).repos.push({ path: "/Users/me/stray" });
+
+    await expect(store.read()).resolves.toEqual({ repos: [] });
+  });
+
+  it("runs the next update after one that rejects", async () => {
+    const store = new ConfigStore({
+      fs: new InMemoryFileSystem(),
+      configPath: () => CONFIG_PATH,
+    });
+
+    await expect(
+      store.update(() => {
+        throw new Error("refused");
+      }),
+    ).rejects.toThrow("refused");
+
+    await expect(store.update(() => ({ result: "ran" }))).resolves.toBe("ran");
   });
 });

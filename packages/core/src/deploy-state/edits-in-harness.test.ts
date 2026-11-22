@@ -16,8 +16,7 @@ const GLOBAL_ROOT = `${HOME}/.apm`;
 const LOCKFILE = `${GLOBAL_ROOT}/apm.lock.yaml`;
 const FIXTURES = new URL("../../../../tests/fixtures/", import.meta.url);
 
-// apm deployed v1.0.0 to both tools, then v2.0.0 to Claude Code only.
-const NARROWED = readFileSync(
+const BOTH_AT_V1_THEN_CLAUDE_AT_V2 = readFileSync(
   new URL("apm.lock.1799-narrowed-global.yaml", FIXTURES),
   "utf8",
 );
@@ -36,15 +35,13 @@ function released(tag: string, name: string): Record<string, string> | null {
 const EDIT = "imported edit\n";
 
 function globalWith(options: {
-  // Each folder's copy of code-review, edited where set.
   claude?: string;
   agents?: string;
-  // The Working harness's code-review, where set; null: no Harness connected.
   harness?: string | null;
   tags?: readonly string[];
 }) {
   const tree = new InMemoryCopyTree();
-  tree.write(LOCKFILE, NARROWED);
+  tree.write(LOCKFILE, BOTH_AT_V1_THEN_CLAUDE_AT_V2);
   for (const name of ["code-review", "commit-message"]) {
     tree.write(
       `${HOME}/.claude/skills/${name}/SKILL.md`,
@@ -192,11 +189,8 @@ describe("Edits in the Harness on Global", () => {
 
 const REPO = "/repo";
 
-// tdd and grill deployed per skill to a repository at v0.5.1; both diverged.
 function repoWith(options: {
-  // The Working harness's tdd, where set.
   harness?: string;
-  // Each tool's tdd copy, overriding the fake's edit.
   claude?: string;
   codex?: string;
 }) {

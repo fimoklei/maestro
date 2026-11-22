@@ -12,14 +12,12 @@ import {
 import { dirname } from "node:path";
 import type { FileStamp, FileSystemPort, RawDirEntry } from "./file-system";
 
-// So two writes in one process never share a temp filename.
 let writeCounter = 0;
 
 function isNotFound(error: unknown): boolean {
   return (
     typeof error === "object" &&
     error !== null &&
-    // An object, checked above; fs errors carry their errno code.
     (error as { code?: string }).code === "ENOENT"
   );
 }
@@ -56,8 +54,6 @@ export class NodeFileSystem implements FileSystemPort {
     }
   }
 
-  // lstat, not stat: following the symlink would disclose whether an
-  // unchecked target exists.
   async exists(path: string): Promise<boolean> {
     try {
       await lstat(path);
@@ -116,14 +112,12 @@ export class NodeFileSystem implements FileSystemPort {
     await rename(tmp, path);
   }
 
-  // "wx": the kernel refuses an existing destination.
   async createNewFile(path: string, contents: string): Promise<boolean> {
     await mkdir(dirname(path), { recursive: true });
     try {
       await writeFile(path, contents, { encoding: "utf8", flag: "wx" });
       return true;
     } catch (error) {
-      // fs/promises rejects with an Error that carries its errno code.
       if ((error as { code?: string }).code === "EEXIST") {
         return false;
       }

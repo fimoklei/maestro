@@ -1,6 +1,5 @@
 import type { FileAtRef } from "./read-harness-state";
 
-/** A commit's file as the adapter reads it: absent, too large, or its text. */
 export const fileAtRef = (
   text: string | undefined,
   maxBytes: number,

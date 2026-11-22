@@ -1,9 +1,6 @@
-// The consumer's apm.yml, read and rewritten around one key: the Selection
-// under the single dependency on the connected Harness.
-import { isMap, isSeq, parseDocument, type YAMLMap } from "yaml";
+import { isMap, isScalar, isSeq, parseDocument, type YAMLMap } from "yaml";
 import { isValidSkillSlug } from "./package-ref";
 
-// "absent": apm creates the dependency itself on the first Deploy.
 export type ManifestSelection =
   | { kind: "absent" }
   | { kind: "selection"; skills: string[] }
@@ -11,8 +8,6 @@ export type ManifestSelection =
 
 const NOT_RECOGNISED = { kind: "not-recognised" } as const;
 
-// The repository root, with or without the host, any tag. A ref with a subpath
-// is a per-skill dependency, not this editor's.
 const rootRefFor = (ownerRepo: string) =>
   new RegExp(`^(?:[^/]+/)?${escapeForPattern(ownerRepo)}(?:#.*)?$`);
 
@@ -27,19 +22,16 @@ export function readHarnessSelection(
   if (entries === null) {
     return NOT_RECOGNISED;
   }
-  if (entries.length === 0) {
+  const [entry, ...others] = entries;
+  if (entry === undefined) {
     return { kind: "absent" };
   }
-  // Picking one would edit a dependency the reader never chose between.
-  if (entries.length > 1) {
+  if (others.length > 0) {
     return NOT_RECOGNISED;
   }
-  // Exactly one entry: none and several returned above.
-  return skillsOf(entries[0] as YAMLMap);
+  return skillsOf(entry);
 }
 
-// Null where the shape is not this editor's to edit. An empty selection is
-// refused too: apm rejects `skills: []`.
 export function writeHarnessSelection(
   raw: string,
   ownerRepo: string,
@@ -50,21 +42,17 @@ export function writeHarnessSelection(
   }
   const doc = parseDocumentOrNull(raw);
   const entries = doc === null ? null : harnessEntries(raw, ownerRepo, doc);
-  if (doc === null || entries === null || entries.length !== 1) {
+  const [entry, ...others] = entries ?? [];
+  if (doc === null || entry === undefined || others.length > 0) {
     return null;
   }
-  // Exactly one entry: the length check above returned otherwise.
-  const entry = entries[0] as YAMLMap;
   if (skillsOf(entry).kind !== "selection") {
     return null;
   }
-  // Sorted, as apm rewrites it.
   entry.set("skills", doc.createNode([...skills].sort()));
   return doc.toString();
 }
 
-// Null where the document, the list or a matching item is a shape Maestro
-// refuses to touch.
 function harnessEntries(
   raw: string,
   ownerRepo: string,
@@ -91,7 +79,6 @@ function harnessEntries(
       }
       continue;
     }
-    // A bare string naming the Harness root carries no editable `skills:`.
     const ref = plainString(item);
     if (ref !== null && rootRef.test(ref)) {
       return null;
@@ -117,9 +104,7 @@ function plainString(node: unknown): string | null {
   if (typeof node === "string") {
     return node;
   }
-  // Read like a YAML scalar node; `value` stays unknown and is checked below.
-  const value = (node as { value?: unknown } | null)?.value;
-  return typeof value === "string" ? value : null;
+  return isScalar(node) && typeof node.value === "string" ? node.value : null;
 }
 
 function parseDocumentOrNull(

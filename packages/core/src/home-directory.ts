@@ -21,7 +21,6 @@ export function resolveApmScratchCwd(env: NodeJS.ProcessEnv): string {
   return join(resolveMaestroHome(env), ".apm-scratch");
 }
 
-// Derived from HOME, as apm does, so a test or smoke run never touches ~/.apm.
 export function resolveApmGlobalRoot(env: NodeJS.ProcessEnv): string {
   return join(resolveHomeDirectory(env), ".apm");
 }

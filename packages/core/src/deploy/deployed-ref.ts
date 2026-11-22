@@ -1,5 +1,3 @@
-// A remove reuses the ref from the target's own lockfile, never from what the
-// inventory points at today.
 import { RELEASE_TAG_PATTERN } from "../harness/release-tag";
 import { harnessSkillSubpath } from "../inventory/harness-layout";
 import {
@@ -21,13 +19,8 @@ export type DeployedRefLookup =
 
 const SUPPORTED_HOST = "github.com";
 
-// Two segments and nothing else: keeps a traversal or an extra segment out of
-// the ref.
 const OWNER_REPO = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
-// The lockfile lives in the user's repo and alone decides which package apm
-// removes, so every field is checked against the shape our own deploy writes:
-// an args array stops injection, only this stops substitution.
 function refForDeployedSkill(
   entries: readonly LockfileEntry[],
   name: string,
@@ -35,21 +28,18 @@ function refForDeployedSkill(
   const matches = entries.filter(
     (candidate) => claudeSkillName(candidate) === name,
   );
-  if (matches.length === 0) {
+  const [entry, ...rivals] = matches;
+  if (entry === undefined) {
     return { ok: false, reason: "not-deployed" };
   }
-  // Picking either would remove a package the user never chose between.
-  if (matches.length > 1) {
+  if (rivals.length > 0) {
     return { ok: false, reason: "ref-unresolvable" };
   }
 
-  // Exactly one match: zero and several returned above.
-  const entry = matches[0] as LockfileEntry;
   const trustworthy =
     entry.host === SUPPORTED_HOST &&
     entry.repo_url !== undefined &&
     OWNER_REPO.test(entry.repo_url) &&
-    // basename() alone would accept `vendor/other/tdd` for a row reading "tdd".
     entry.virtual_path === harnessSkillSubpath(name) &&
     RELEASE_TAG_PATTERN.test(entry.resolved_ref);
   if (!trustworthy) {
@@ -63,8 +53,6 @@ function refForDeployedSkill(
   };
 }
 
-// An absent lockfile is "nothing deployed", never an error: apm deletes the
-// file when the last dependency goes.
 export class DeployedRefAdapter {
   private readonly fs: FileSystemPort;
   private readonly location: DeployedLocation;
@@ -88,7 +76,6 @@ export class DeployedRefAdapter {
     if (!parsed.ok) {
       return { ok: false, reason: "lockfile-malformed" };
     }
-    // An unreadable entry may be this very skill's (#58, #357).
     if (unreadableCovers(parsed.unreadable, input.name)) {
       return { ok: false, reason: "lockfile-malformed" };
     }

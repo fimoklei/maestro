@@ -2,8 +2,7 @@ import { describe, expect, it } from "vitest";
 import { InMemoryFileSystem } from "../registry/file-system.fake";
 import { inspectPrimitiveEntry } from "./harness-primitive-dir";
 
-// Nothing in the type folder, so only the folder's own resolution shows.
-const fsWith = (realpath: (path: string) => Promise<string>) => ({
+const emptyTypeFolderFs = (realpath: (path: string) => Promise<string>) => ({
   realpath,
   exists: async () => false,
   isFileEntry: async () => false,
@@ -14,7 +13,7 @@ const TDD = { type: "skill", name: "tdd" } as const;
 
 describe("inspectPrimitiveEntry's type folder", () => {
   it("returns the real skills folder inside the harness", async () => {
-    const fs = fsWith(async (path) =>
+    const fs = emptyTypeFolderFs(async (path) =>
       path.replace("/link-to-harness", "/real/harness"),
     );
 
@@ -26,7 +25,7 @@ describe("inspectPrimitiveEntry's type folder", () => {
   });
 
   it("returns the real prompts folder for a prompt", async () => {
-    const fs = fsWith(async (path) => path);
+    const fs = emptyTypeFolderFs(async (path) => path);
 
     expect(
       await inspectPrimitiveEntry(fs, "/harness", {
@@ -41,7 +40,7 @@ describe("inspectPrimitiveEntry's type folder", () => {
   });
 
   it("refuses a symlinked skills folder that points outside the harness", async () => {
-    const fs = fsWith(async (path) =>
+    const fs = emptyTypeFolderFs(async (path) =>
       path === "/harness/.apm/skills" ? "/elsewhere/skills" : path,
     );
 
@@ -51,7 +50,7 @@ describe("inspectPrimitiveEntry's type folder", () => {
   });
 
   it("reports an unreadable harness root", async () => {
-    const fs = fsWith(async (path) => {
+    const fs = emptyTypeFolderFs(async (path) => {
       if (path === "/harness") {
         throw new Error("EACCES");
       }
@@ -64,7 +63,7 @@ describe("inspectPrimitiveEntry's type folder", () => {
   });
 
   it("reports a missing skills folder as unreadable", async () => {
-    const fs = fsWith(async (path) => {
+    const fs = emptyTypeFolderFs(async (path) => {
       if (path === "/harness/.apm/skills") {
         throw new Error("ENOENT");
       }
@@ -116,8 +115,7 @@ describe("inspectPrimitiveEntry", () => {
     });
   });
 
-  // Occupied, not a link: the caller decides what a wrong kind means.
-  it("finds a plain file standing where a skill folder belongs", async () => {
+  it("finds a plain file standing where a skill folder belongs, leaving the wrong kind to the caller", async () => {
     const fs = harness({ files: { [`${SKILLS}/tdd`]: "mine" } });
 
     expect(await inspectPrimitiveEntry(fs, "/harness", skill)).toEqual({

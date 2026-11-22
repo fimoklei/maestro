@@ -23,7 +23,6 @@ const NO_PROMPTS: HarnessHashes = {
   working: {},
 };
 
-// Skill-only stage input: the trees and movements of one type.
 type SkillStageInput = Omit<StageInput, "trees" | "release"> & {
   trees: HarnessSkillTrees | null;
   release: Omit<HarnessMovement, "type">[] | null;
@@ -34,7 +33,6 @@ const ORIGIN: GitOrigin = {
   ownerRepo: "fimoklei/agent-harness",
 };
 
-// A null tree is a branch proposing to delete its skill.
 const onBranch = (
   tree: string | null,
   authorship: BranchAuthorship = "own",
@@ -81,7 +79,6 @@ const reviewOf = (
   complete = true,
 ): HarnessReviewRead => ({ outcome: "read", requests, complete, limit: 100 });
 
-// The Change each movement's Pending release row shows.
 const CHANGE_OF = {
   added: "addition",
   changed: "edit",
@@ -116,7 +113,6 @@ const stages = (over: Partial<SkillStageInput> = {}) => {
 const rowsOf = (stage: HarnessStageRead): HarnessStageRow[] =>
   stage.outcome === "read" ? stage.rows : [];
 
-// Asserts the row exists, so the expectation is never quietly skipped.
 const oneRow = (stage: HarnessStageRead): HarnessStageRow => {
   const [row] = rowsOf(stage);
   if (row === undefined) {
@@ -152,7 +148,6 @@ describe("Pending proposal membership", () => {
     ]);
   });
 
-  // No tree on origin/HEAD or local HEAD, and no proposal branch (#798).
   it("marks a skill that exists only in the working tree as local only", () => {
     const trees = {
       remote: {},
@@ -206,7 +201,6 @@ describe("Pending proposal membership", () => {
   });
 
   it("reads a skill restored after a proposed deletion as work to send", () => {
-    // An update to the same proposal, not a deletion of its own (#847).
     const restored: HarnessSkillTrees = {
       remote: { tdd: "same" },
       promote: { tdd: onBranch(null) },
@@ -221,7 +215,6 @@ describe("Pending proposal membership", () => {
   });
 
   it("keeps local edits visible after a proposal, instead of hiding them behind it", () => {
-    // Regression: the promote branch once hid the author's later edit (#518).
     const trees = {
       remote: { tdd: "same" },
       promote: { tdd: onBranch("pushed") },
@@ -256,7 +249,6 @@ describe("Pending proposal membership", () => {
   });
 
   it("keeps comparing against a branch whose request is still open", () => {
-    // Merged content, but GitHub still calls the request open.
     const trees = {
       remote: { tdd: "pushed" },
       promote: { tdd: onBranch("pushed") },
@@ -353,15 +345,13 @@ describe("Pending review membership", () => {
     working: { tdd: "pushed" },
   };
 
-  // The branch name is shared: without a request naming its author, the
-  // commits decide whose it is, and an unread author is nobody's (#1639).
   it.each([
     ["own", true],
     ["others", false],
     ["no-email", false],
     ["unknown", false],
   ] as const)(
-    "reads a branch whose authorship is %s as owned: %s",
+    "reads a branch with no request naming its author, whose commits' authorship is %s, as owned: %s",
     (authorship, owned) => {
       const trees = {
         ...pushed,
@@ -644,7 +634,6 @@ describe("Pending review membership", () => {
 describe("A spent proposal branch", () => {
   const TIP = "9f1c0b2a4d6e8f0a1b3c5d7e9f0a1b2c3d4e5f60";
 
-  // Content still differs from origin/HEAD: only a merged request ends it.
   const ahead: HarnessSkillTrees = {
     remote: { tdd: "same" },
     promote: {
@@ -705,7 +694,6 @@ describe("A spent proposal branch", () => {
     expect(statuses(built.proposal)).toEqual(["tdd:new-local-work"]);
   });
 
-  // A merged branch left on GitHub after its item was withdrawn from release.
   it("counts a branch whose content landed on the default branch as spent without a review read", () => {
     const trees = {
       ...ahead,
@@ -943,8 +931,7 @@ describe("stage memberships are independent", () => {
   });
 });
 
-// Restore skill is offered from the local trees alone, never a remote read.
-describe("Local restoration eligibility", () => {
+describe("Local restoration eligibility, from the local trees alone", () => {
   const DELETED: HarnessSkillTrees = {
     remote: { tdd: "same" },
     promote: {},
@@ -987,7 +974,6 @@ describe("Local restoration eligibility", () => {
     expect(oneRow(stages({ trees }).proposal).restorable).toBe(false);
   });
 
-  // A review row's `deletion` comes from the promote branch, not from disk.
   it("never reads a branch's proposed deletion as a folder to restore", () => {
     const restored: HarnessSkillTrees = {
       remote: { tdd: "same" },
@@ -1066,8 +1052,7 @@ describe("Folder on disk", () => {
   });
 });
 
-// Judged against the default branch in every stage (#1399).
-describe("The change a row carries", () => {
+describe("The change a row carries, judged against the default branch in every stage", () => {
   it.each([
     [
       "a skill the default branch lacks",
@@ -1159,7 +1144,6 @@ describe("The change a row carries", () => {
     ]);
   });
 
-  // Before merge a rename is two folders: one new, one gone.
   it("reads a renamed folder before merge as one addition and one deletion", () => {
     const trees = {
       remote: { testing: "same" },
@@ -1185,7 +1169,6 @@ describe("The change a row carries", () => {
 });
 
 describe("Another contributor's open proposal", () => {
-  // The local copy differs from the branch, so the skill sits in both stages.
   const trees: HarnessSkillTrees = {
     remote: { tdd: "remote" },
     promote: { tdd: onBranch("theirs") },
@@ -1308,7 +1291,6 @@ describe("a skill and a prompt with one name", () => {
 
 describe("a prompt imported under a deleted name", () => {
   it("reads as Changed, not Deleted, in Pending proposal", () => {
-    // Deleted in the Working Harness, then written again by Import prompt.
     const prompt: HarnessHashes = {
       remote: { "review-pr": "released" },
       promote: {},

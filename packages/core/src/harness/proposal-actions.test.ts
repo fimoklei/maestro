@@ -33,7 +33,6 @@ const request = (over: Partial<ReviewRequest> = {}): ReviewRequest => ({
 const SKILLS = "/harness/.apm/skills";
 const STAGING = `${SKILLS}/.maestro-copy-1`;
 
-// The pushed `maestro/tdd` still holds the skill: a change.
 const PROMOTE_TREE: Skills = { tdd: "proposed tdd" };
 
 const readOf = (requests: ReviewRequest[]): HarnessReviewRead => ({
@@ -51,17 +50,13 @@ type Calls = {
 
 function build(overrides?: {
   root?: string | undefined;
-  // Mutates the clone; the default is a fetched `maestro/tdd` over a default
-  // branch that holds the same `tdd`.
   world?: (git: InMemoryHarnessGit) => void;
   review?: HarnessReviewRead;
   viewer?: ViewerRead;
   write?: ReviewWriteOutcome;
-  // null: a ref nobody could read.
   promoteTree?: Skills | null;
   remoteTree?: Skills | null;
   disk?: Parameters<typeof harnessDisk>[0];
-  // A move into this path fails once.
   failMoveInto?: string;
   locks?: InFlightLocks;
 }) {
@@ -176,7 +171,6 @@ describe("ProposalActions · create", () => {
     ]);
   });
 
-  // An unfetched or unreadable branch names no kind; guessing one would mistitle it.
   it("opens nothing when the skill's pushed branch could not be read", async () => {
     const { actions, calls } = build({ promoteTree: null });
 
@@ -187,7 +181,6 @@ describe("ProposalActions · create", () => {
     expect(calls.created).toEqual([]);
   });
 
-  // Addition or edit is judged against the default branch; unread, it names neither.
   it.each([
     ["could not be read", { remoteTree: null }],
     [

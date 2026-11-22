@@ -74,7 +74,6 @@ function make(
     inventoryPath: path,
   }),
 ) {
-  // Pre-offered: every test but the one below arrives from a refused connect.
   const offers = new ScaffoldOffers();
   offers.offer(REPO);
   return new ScaffoldHarness({
@@ -159,7 +158,6 @@ describe("ScaffoldHarness", () => {
   });
 
   it("scaffolds onto the unborn branch of a freshly cloned empty repository", async () => {
-    // An empty clone has no origin/HEAD; the branch is the one the remote advertised.
     const git = new FakeGit({
       default: null,
       current: "trunk",
@@ -276,7 +274,6 @@ describe("ScaffoldHarness", () => {
     ).resolves.toEqual({ ok: false, error: "not-a-repository" });
   });
 
-  // A subdirectory reads as a GitHub clone: the enclosing repo answers origin.
   it("refuses a subdirectory of a repository, which reads as one", async () => {
     const git = new FakeGit();
     git.repositoryRootAnswer = false;
@@ -288,7 +285,6 @@ describe("ScaffoldHarness", () => {
     expect(git.pushes).toEqual([]);
   });
 
-  // It pushes with ambient credentials, so the client may not pick the path (#556).
   it("refuses a path connect never offered to scaffold", async () => {
     const fs = emptyRepo();
     const git = new FakeGit();
@@ -319,14 +315,13 @@ describe("ScaffoldHarness", () => {
     });
   });
 
-  it("reports a rejected push and leaves the local commit in place", async () => {
+  it("reports a rejected push, keeps the local commit and sets no origin/HEAD", async () => {
     const git = new FakeGit(undefined, { push: "rejected" });
 
     const result = await make(emptyRepo(), git).scaffold(REPO);
 
     expect(result).toEqual({ ok: false, error: "push-rejected" });
     expect(git.commits).toHaveLength(1);
-    // Nothing was pushed, so nothing may claim the remote's default branch.
     expect(git.originHeads).toEqual([]);
   });
 
@@ -349,8 +344,7 @@ describe("ScaffoldHarness", () => {
     expect(git.pushes).toEqual([]);
   });
 
-  // A half-scaffold would answer already-a-harness on retry (#556).
-  it("removes everything it wrote when the commit fails", async () => {
+  it("removes and unstages everything it wrote when the commit fails", async () => {
     const fs = emptyRepo();
     const git = new FakeGit(undefined, { commit: "commit-failed" });
 
@@ -359,7 +353,6 @@ describe("ScaffoldHarness", () => {
     for (const entry of SCAFFOLD_ENTRIES) {
       expect(await fs.exists(`${REPO}/${entry}`)).toBe(false);
     }
-    // Deleting the files without this would leave the index claiming them.
     expect(git.unstaged.sort()).toEqual([
       ".apm/skills/.gitkeep",
       ".github/workflows/skill-check.yml",
@@ -368,6 +361,20 @@ describe("ScaffoldHarness", () => {
       "README.md",
       "apm.yml",
     ]);
+  });
+
+  it("keeps the repository's own CONTRIBUTING.md when the commit fails", async () => {
+    const fs = new InMemoryFileSystem({
+      directories: { [REPO]: REPO },
+      files: { [`${REPO}/CONTRIBUTING.md`]: "our own policy\n" },
+    });
+    const git = new FakeGit(undefined, { commit: "commit-failed" });
+
+    await make(fs, git).scaffold(REPO);
+
+    expect(await fs.readFile(`${REPO}/CONTRIBUTING.md`)).toBe(
+      "our own policy\n",
+    );
   });
 
   it("reports a failed write and removes the files it got as far as", async () => {
@@ -433,7 +440,6 @@ describe("ScaffoldHarness", () => {
 
     await make(emptyRepo(), git).scaffold(REPO);
 
-    // The port has no tag operation at all, so the scaffold cannot make one.
     expect(Object.keys(git)).not.toContain("tags");
     expect(git.commits[0]?.message).not.toMatch(/v\d+\.\d+\.\d+/);
   });
@@ -449,7 +455,6 @@ describe("ScaffoldHarness", () => {
     await scaffold.scaffold(REPO);
 
     expect(connected).toEqual([REPO]);
-    // The store is connect's to write, never the scaffold's.
     const stored = await new ConfigStore({
       fs,
       configPath: () => CONFIG_PATH,

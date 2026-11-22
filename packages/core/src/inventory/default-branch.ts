@@ -1,11 +1,8 @@
-// The connected Harness's default branch, read offline and never guessed
-// (#553).
 import { runGitText } from "../git/run-git-text";
 
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 const REMOTE_BRANCHES = "refs/remotes/origin";
 
-// Any narrower refspec leaves refs the repair below must not reason from.
 const ALL_BRANCHES = `refs/heads/*:${REMOTE_BRANCHES}/*`;
 
 export const resolveDefaultBranch = async (
@@ -29,8 +26,6 @@ export const resolveDefaultBranch = async (
   return await readRemoteDefaultBranch(repoPath);
 };
 
-// Whole, never `--short`: a target outside `origin/` or one a prune deleted
-// still reads back as a plausible name.
 export const readRemoteDefaultBranch = async (
   repoPath: string,
 ): Promise<string | null> => {
@@ -44,12 +39,10 @@ export const readRemoteDefaultBranch = async (
   return target.slice(`${REMOTE_BRANCHES}/`.length);
 };
 
-// Proof needs both: a clone that mirrors every branch, holding exactly one.
 const provenSoleBranch = async (repoPath: string): Promise<string | null> => {
   if (!(await fetchesEveryBranch(repoPath))) {
     return null;
   }
-  // lstrip keeps a slash inside a branch name; `origin/HEAD` is listed too.
   const listing = await runGitText(repoPath, [
     "for-each-ref",
     "--format=%(refname:lstrip=3)",
@@ -71,7 +64,6 @@ const fetchesEveryBranch = async (repoPath: string): Promise<boolean> => {
     (
       await runGitText(repoPath, ["config", "--get-all", "remote.origin.fetch"])
     )?.split("\n") ?? [];
-  // Any `^` exclusion leaves the namespace incomplete.
   if (refspecs.some((refspec) => refspec.startsWith("^"))) {
     return false;
   }

@@ -3,16 +3,17 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 
-// `--show-toplevel` prints the resolved path, so pass a realpath'd one.
-export const isRepositoryRoot = async (repoPath: string): Promise<boolean> => {
+export const isRepositoryRoot = async (
+  realRepoPath: string,
+): Promise<boolean> => {
   try {
     const { stdout } = await run("git", [
       "-C",
-      repoPath,
+      realRepoPath,
       "rev-parse",
       "--show-toplevel",
     ]);
-    return stdout.trim() === repoPath;
+    return stdout.trim() === realRepoPath;
   } catch {
     return false;
   }

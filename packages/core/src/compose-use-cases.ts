@@ -1,6 +1,3 @@
-// The one place every use case is wired. Production passes the Node adapters
-// (`nodeUseCasePorts`); a test passes in-memory ones.
-
 import { Categories } from "./categories/categories";
 import { CategoriesProposal } from "./categories/categories-proposal";
 import { heldItemsFrom } from "./categories/held-items";
@@ -75,12 +72,9 @@ import type { FileSystemPort } from "./registry/file-system";
 import { Registry } from "./registry/registry";
 import type { ToolPresencePort } from "./tools/tool-presence-port";
 
-// The outside world only: filesystem, apm, git, gh, home and environment.
 export type UseCasePorts = {
-  // Read per access, so a MAESTRO_HOME or HOME set after startup is honoured.
   env: NodeJS.ProcessEnv;
   home: () => string;
-  // Resolves the symlinks of a path's longest existing prefix, as apm does.
   lenientRealpath: (path: string) => string;
   fs: FileSystemPort;
   copyTree: CopyTreeFsPort;
@@ -98,13 +92,11 @@ export type UseCasePorts = {
         | "readSkillManifestsAtTag"
         | "readPromptTextsAtTag"
       >;
-    // Bound to the Harness root the composition resolves per call.
     inventory: (
       resolveRoot: () => Promise<string | undefined>,
     ) => InventoryGitPort;
     clone: CloneRepositoryPort;
     scaffold: HarnessScaffoldGitPort;
-    // The URL as configured, before any transport rewrite.
     originUrl: (path: string) => Promise<string | null>;
     defaultBranch: (path: string) => Promise<string | null>;
     isRepositoryRoot: (path: string) => Promise<boolean>;
@@ -112,22 +104,18 @@ export type UseCasePorts = {
     githubPage: (path: string) => Promise<GitHubPage | null>;
   };
   gh: HarnessReviewPort;
-  // Null on a platform with no chooser helper.
   folderChooser: FolderChooserPort | null;
 };
 
 export type UseCases = ReturnType<typeof composeUseCases>;
 
-// How old an `apm outdated` answer for one Target a Drift read may reuse.
 const OUTDATED_MAX_AGE_MS = 30_000;
-// How old a sign-in read the Harness read may reuse.
 const VIEWER_READ_MAX_AGE_MS = 30_000;
 
 export function composeUseCases(ports: UseCasePorts) {
   const { env, fs, git } = ports;
   const harnessGit = git.harness;
   const { copyTree: copyTreeFs, toolPresence, deployedCleanup } = ports;
-  // Resolved per access, not at construction: the config path follows the env.
   const store = new ConfigStore({
     fs,
     configPath: () => resolveMaestroConfigPath(env),
@@ -139,7 +127,6 @@ export function composeUseCases(ports: UseCasePorts) {
   });
   const inventoryPath = async () =>
     resolveInventoryPath(await store.read(), env);
-  // Resolved per read, so a path saved after startup is picked up without a restart.
   const inventory = new InventoryReader({
     fs,
     resolvePath: inventoryPath,
@@ -157,7 +144,6 @@ export function composeUseCases(ports: UseCasePorts) {
     return await fs.realpath(path).catch(() => undefined);
   };
   const inventoryGit = git.inventory(harnessRoot);
-  // Shared instance, so guard and cleanup agree on a global deploy's lockfile root and tree.
   const deployedLocation = new DeployedLocation(env, ports.lenientRealpath);
   const globalLayout = () => deployedLocation.globalLayout();
   const canonicalPath = (path: string) => fs.realpath(path);
@@ -168,14 +154,12 @@ export function composeUseCases(ports: UseCasePorts) {
     now: () => new Date(),
     maxAgeMs: OUTDATED_MAX_AGE_MS,
   });
-  // A new release or proposal changes what Behind means for every Target.
   const droppingOutdated = <Args extends unknown[], Result>(useCase: {
     execute: (...args: Args) => Promise<Result>;
   }) => ({
     execute: (...args: Args) =>
       useCase.execute(...args).finally(() => apm.dropAll()),
   });
-  // Measured against the latest release too, as Update target measures (#1213).
   const releaseAwareContent = new DeployedContentAdapter({
     location: deployedLocation,
     inventoryGit,
@@ -186,8 +170,6 @@ export function composeUseCases(ports: UseCasePorts) {
     location: deployedLocation,
     fs: copyTreeFs,
   });
-  // The configured origin names the Harness; an `insteadOf` only moves where
-  // git connects.
   const readHarnessOrigin = rememberOrigin({
     fs,
     readOrigin: (root) => harnessGit.readOrigin(root),
@@ -210,11 +192,8 @@ export function composeUseCases(ports: UseCasePorts) {
     releaseTags: () => releaseHead.releaseTags(),
     harnessOrigin,
     content: releaseAwareContent,
-    // Read per request, not captured at construction: the retry use-case is
-    // built further down, and the record it reads changes with every write.
     operations: { pending: (target) => retryOperation.pending(target) },
     githubPage: git.githubPage,
-    // What a target's release and skills link to (#1181).
     harnessPage: async () => {
       const root = await harnessRoot();
       return root === undefined ? null : await git.githubPage(root);
@@ -227,14 +206,12 @@ export function composeUseCases(ports: UseCasePorts) {
     root: harnessRoot,
     now: () => new Date(),
   });
-  // One gate for every read of the clone, keyed on the resolved root.
   const harnessFetchGate = new HarnessFetchGate({
     git: harnessGit,
     freshness: harnessFreshness,
     now: () => new Date(),
     fetched: (root) => reviewGate.fetched(root),
   });
-  // A deploy always fetches, so it never deploys from a stale clone (#666).
   const syncHarness = async () => {
     const root = await harnessRoot();
     if (root !== undefined) {
@@ -271,7 +248,6 @@ export function composeUseCases(ports: UseCasePorts) {
     apm,
     operations: new TargetOperationStore({ store }),
   });
-  // What a Global write left per folder, against the release it installed.
   const outcomes = new FolderOutcomeReader({
     content: releaseAwareContent,
     releaseTags: () => releaseHead.releaseTags(),
@@ -290,7 +266,6 @@ export function composeUseCases(ports: UseCasePorts) {
     // apm's success marker says nothing about what it recorded, so the lockfile
     // is read back before the deploy is called clean (#358).
     recordedPackage: new RecordedPackageAdapter(),
-    // Probed per deploy, so a global install targets only tools the machine has.
     toolPresence,
     globalLayout,
     harnessOrigin,
@@ -300,7 +275,6 @@ export function composeUseCases(ports: UseCasePorts) {
   const remove = new RemoveDeployedSkill({
     registry,
     deployedRef: new DeployedRefAdapter({ fs, location: deployedLocation }),
-    // apm deletes an edited file silently: a removal must prove nothing is lost first.
     copyGuard,
     deployedContent,
     apm,
@@ -326,7 +300,6 @@ export function composeUseCases(ports: UseCasePorts) {
     resolveRoot: harnessRoot,
     git: harnessGit,
     freshness: harnessFreshness,
-    // Opening the Harness screen and Re-read Harness always fetch (#1630).
     fetchHarness: (root) => harnessFetchGate.fetchFresh(root),
     review: reviewGate.reads(VIEWER_READ_MAX_AGE_MS),
   });
@@ -335,7 +308,6 @@ export function composeUseCases(ports: UseCasePorts) {
     fs,
     store,
     offers: scaffoldOffers,
-    // The configured URL, not a transport rewrite's: apm's refs are built from it.
     originUrl: git.originUrl,
     defaultBranch: git.defaultBranch,
     isRepositoryRoot: git.isRepositoryRoot,
@@ -368,7 +340,6 @@ export function composeUseCases(ports: UseCasePorts) {
     ],
   });
 
-  // The key the operator's own list is saved under.
   const categoryHarness = async () => {
     const root = await harnessRoot();
     return root === undefined
@@ -429,7 +400,6 @@ export function composeUseCases(ports: UseCasePorts) {
       resolveRoot: harnessRoot,
       locks: harnessPromoteLocks,
     }),
-    // Confirmation's own remote read, never the plan's cached one (#520).
     publish: droppingOutdated(
       new PublishRelease({
         resolveRoot: harnessRoot,
@@ -557,7 +527,6 @@ export function composeUseCases(ports: UseCasePorts) {
     }),
     retryOperation,
     drift,
-    // Tests inject a sandbox so the real ~/.apm is never touched.
     resolveGlobalRoot: () => resolveApmGlobalRoot(env),
   };
 }

@@ -1,4 +1,3 @@
-// One change to a Harness's category record, pure: every change kind runs here.
 import { type PrimitiveRef, primitiveKey } from "../harness/harness-primitive";
 import {
   categoryNameProblem,
@@ -22,7 +21,6 @@ export type AppliedChange =
       error: "name-invalid" | "category-not-found" | "item-not-found";
     };
 
-/** The record without entries for items the Harness no longer holds; null held drops none. */
 export const withoutStale = (
   record: CategoryRecord,
   held: HeldItems | null,
@@ -34,11 +32,9 @@ export const withoutStale = (
         assignments: record.assignments.filter((each) => held.holds(each)),
       };
 
-/** The stored name the given name matches, ignoring case and outer spaces. */
 const storedName = (record: CategoryRecord, name: string): string | undefined =>
   record.names.find((each) => sameCategoryName(each, trimCategoryName(name)));
 
-// A case-only rename keeps its slot; only another category's name is taken.
 const rename = (
   record: CategoryRecord,
   change: Extract<CategoryChange, { kind: "rename" }>,
@@ -67,7 +63,6 @@ const rename = (
   };
 };
 
-// The destination must outlive the delete, so the category itself is none.
 const remove = (
   record: CategoryRecord,
   change: Extract<CategoryChange, { kind: "delete" }>,

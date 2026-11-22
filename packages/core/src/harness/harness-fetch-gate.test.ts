@@ -40,7 +40,6 @@ function buildGate(
   };
 }
 
-// The next fetch waits until the returned release is called.
 function holdFetches(git: InMemoryHarnessGit): () => void {
   let release = () => {};
   git.fetchHold = new Promise<void>((resolve) => {
@@ -166,7 +165,6 @@ describe("HarnessFetchGate", () => {
     });
   });
 
-  // The review read pairs with the refs a fetch brought (#1738).
   it("reports each fetch that ran once it lands, never a reused one", async () => {
     const { git, gate, fetched } = buildGate();
     const release = holdFetches(git);
@@ -190,8 +188,7 @@ describe("HarnessFetchGate", () => {
     expect(fetched).toEqual([ROOT]);
   });
 
-  // A read between the two would pair the new refs with the old review read.
-  it("reports the fetch before the clone catches up", async () => {
+  it("reports the fetch before the clone catches up, so no read pairs the new refs with an old review read", async () => {
     const git = new InMemoryHarnessGit().settled({ tdd: "ours" }, "aaa");
     git.cloneSync = "behind";
     git.teammatePushes("bbb", { tdd: "theirs" });

@@ -35,7 +35,6 @@ describe("resolveApmScratchCwd", () => {
   });
 });
 
-// HOME-redirectable, so tests never touch the real ~/.apm.
 describe("resolveApmGlobalRoot", () => {
   it("resolves the apm user-scope directory under the home directory", () => {
     expect(resolveApmGlobalRoot({ HOME: "/sandbox/home" })).toBe(

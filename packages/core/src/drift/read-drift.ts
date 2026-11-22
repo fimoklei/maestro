@@ -1,6 +1,3 @@
-// Joins apm's Behind judgment with release-tree content facts. Behind is the
-// fallback wherever those facts are unanswered.
-
 import type { DeployTarget } from "../deploy/deploy-skill";
 import type { DeployedLocation } from "../deploy/deployed-location";
 import type { GitOrigin } from "../deploy/git-origin";
@@ -24,9 +21,6 @@ import {
   type VersionDrift,
 } from "./parse-outdated";
 
-// "behind" claims a newer release exists and this skill moved in it;
-// "older-tag" claims the same release with the skill's content unchanged;
-// "no-longer-released" proves this deployed name vanished from the release.
 type DriftReading = "behind" | "older-tag" | "no-longer-released";
 
 export type ReadDriftEntry = VersionDrift & { reading: DriftReading };
@@ -37,8 +31,6 @@ export type DriftResult =
 
 export type HarnessContentPort = {
   readOrigin(root: string): Promise<GitOrigin | null>;
-  // Resolved in Maestro's tag namespace, never `refs/tags`, which may hold an
-  // unpushed local tag (#516).
   readSkillTreesAtTag(
     root: string,
     tag: string,
@@ -54,7 +46,6 @@ export class ReadDrift {
     location: DeployedLocation;
     resolveRoot: () => Promise<string | undefined>;
     git: HarnessContentPort;
-    // May reuse a recent fetch of the Harness.
     fetchHarness: (root: string) => Promise<unknown>;
   };
 
@@ -84,8 +75,6 @@ export class ReadDrift {
     };
   }
 
-  // Every pinned name not proven unmoved or absent falls back to Behind. A root
-  // package's skills get an entry each, but only where both releases answered.
   private async contentReadings(
     target: DeployTarget,
     behind: readonly VersionDrift[],
@@ -99,8 +88,6 @@ export class ReadDrift {
     if (root === undefined) {
       return { pinReadings, packageSkills };
     }
-    // Tags must be current before any ref resolves; a failed fetch falls back
-    // to the tags on disk.
     await this.deps.fetchHarness(root).catch(() => undefined);
     const origin = await this.deps.git.readOrigin(root);
     if (origin === null) {
@@ -147,7 +134,6 @@ export class ReadDrift {
             releases.current.get(name),
             releases.latest.get(name),
           );
-          // An unmoved skill keeps the package's release: nothing to mark.
           if (reading !== undefined && reading !== "older-tag") {
             packageSkills.push({ ...entry, name, reading });
           }
@@ -155,7 +141,6 @@ export class ReadDrift {
         continue;
       }
       const pin = pins.get(entry.name);
-      // A skill pinned to another repository never gets a content answer.
       if (
         pin === undefined ||
         pin.host !== origin.host ||
@@ -193,7 +178,6 @@ export class ReadDrift {
   }
 }
 
-// Undefined where the skill is absent at the target's own release: no proof.
 function contentReading(
   before: string | undefined,
   after: string | undefined,
@@ -232,7 +216,6 @@ function rootPackageFrom(
   };
 }
 
-// A name pinned twice gets no answer: picking one would be a guess.
 function pinsFrom(entries: readonly LockfileEntry[]): Map<string, GitOrigin> {
   const pins = new Map<string, GitOrigin>();
   const duplicated = new Set<string>();

@@ -1,5 +1,3 @@
-// Turns an empty GitHub repository into a Harness: the canonical shape, one
-// commit carrying only that shape, and a push to the default branch. No tag.
 import { join } from "node:path";
 import { parseGitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
@@ -33,7 +31,6 @@ export type ScaffoldHarnessError =
   | "push-offline"
   | "connect-failed";
 
-// On `push-rejected` and `push-offline` the commit stays in the clone on purpose.
 export type ScaffoldHarnessResult =
   | { ok: true; outcome: "scaffolded"; inventoryPath: string }
   | { ok: false; error: "path-occupied"; path: string }
@@ -51,7 +48,6 @@ export class ScaffoldHarness {
     fs: FileSystemPort;
     git: HarnessScaffoldGitPort;
     locks: InFlightLocks;
-    // Must be the register connect writes its offers to.
     offers: ScaffoldOffers;
     originUrl: (path: string) => Promise<string | null>;
     connect: (path: string) => Promise<ConnectInventoryResult>;
@@ -64,14 +60,11 @@ export class ScaffoldHarness {
     this.connect = deps.connect;
   }
 
-  // Serialized in-process on the canonical root; another process is caught by
-  // the exclusive create in writeFiles.
   async scaffold(input: string): Promise<ScaffoldHarnessResult> {
     const validated = await validateRepoPath(input, this.fs);
     if (!validated.ok) {
       return { ok: false, error: validated.error };
     }
-    // Only an offered path, or any clone could get a write, commit and push.
     if (!this.offers.holds(validated.path)) {
       return { ok: false, error: "not-offered" };
     }
@@ -84,10 +77,8 @@ export class ScaffoldHarness {
   private async scaffoldValidated(
     root: string,
   ): Promise<ScaffoldHarnessResult> {
-    // Re-read repository truth: the path came from the client.
     const originUrl = await this.originUrl(root);
     const origin = originUrl === null ? null : parseGitOrigin(originUrl);
-    // The origin read answers from an enclosing repository too (#556).
     if (origin === null || !(await this.git.isRepositoryRoot(root))) {
       return { ok: false, error: "not-a-repository" };
     }
@@ -99,7 +90,6 @@ export class ScaffoldHarness {
     if (branch === null) {
       return { ok: false, error: "no-default-branch" };
     }
-    // The commit lands on the checked-out branch.
     if ((await this.git.currentBranch(root)) !== branch) {
       return { ok: false, error: "not-on-default-branch" };
     }
@@ -118,7 +108,6 @@ export class ScaffoldHarness {
 
     const paths = files.map((file) => file.path);
     if ((await this.git.commit(root, paths, COMMIT_MESSAGE)) !== "committed") {
-      // Else a retry meets this attempt's apm.yml as already-a-harness.
       await this.git.unstage(root, paths);
       await this.rollback(root, createdSkippable);
       return { ok: false, error: "commit-failed" };
@@ -131,7 +120,6 @@ export class ScaffoldHarness {
         error: pushed === "offline" ? "push-offline" : "push-rejected",
       };
     }
-    // An empty clone has no `origin/HEAD` and the push does not write it.
     await this.git.setOriginHead(root, branch);
 
     const connected = await this.connect(root);
@@ -140,7 +128,6 @@ export class ScaffoldHarness {
       : { ok: false, error: "connect-failed" };
   }
 
-  // The unborn-HEAD fallback holds only while the repository is empty.
   private async scaffoldBranch(root: string): Promise<string | null> {
     const known = await this.git.defaultBranch(root);
     if (known !== null) {
@@ -151,8 +138,6 @@ export class ScaffoldHarness {
       : await this.git.currentBranch(root);
   }
 
-  // `createdSkippable` lets a rollback remove only what this call wrote, never
-  // a caller's own CONTRIBUTING.md (#678).
   private async writeFiles(
     root: string,
     files: ScaffoldFile[],
@@ -173,7 +158,6 @@ export class ScaffoldHarness {
         if (file.skipIfExists) {
           continue;
         }
-        // Arrived since occupiedEntry, from another process.
         await this.rollback(root, createdSkippable);
         return { ok: false, error: "path-occupied", path: file.path };
       }

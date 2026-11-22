@@ -4,13 +4,11 @@ import { readGlobalTarget } from "./global-target";
 
 type LockfileEntry = Parameters<typeof readGlobalTarget>[0][number];
 
-// Per-skill entries are never probed on disk; a root-package one is (#941).
 const ALL_ON_DISK = {
   layout: DEFAULT_GLOBAL_LAYOUT,
   fileExists: async () => true,
 };
 
-// deployed_files prefixes decide which folder the copy sits in.
 function skillEntry(
   name: string,
   ref: string,
@@ -192,5 +190,56 @@ describe("readGlobalTarget", () => {
         packageType: "hybrid",
       },
     ]);
+  });
+
+  it("reads no copy from a sibling folder whose name starts like a tool's", async () => {
+    const entry = skillEntry("tdd", "v0.5.1", [".claudex/skills/tdd"]);
+
+    const result = await readGlobalTarget([entry], ["claude"], ALL_ON_DISK);
+
+    expect(copiesBy(result)).toEqual([
+      ["~/.claude/skills", true, []],
+      ["~/.agents/skills", false, []],
+    ]);
+  });
+
+  it("follows the first root package as the Harness dependency", async () => {
+    const rootPackage = (ref: string): LockfileEntry => ({
+      repo_url: "fimoklei/agent-harness",
+      resolved_ref: ref,
+      package_type: "apm_package",
+      deployed_files: [".claude/skills/tdd/SKILL.md"],
+    });
+
+    const result = await readGlobalTarget(
+      [rootPackage("v0.3.2"), rootPackage("v0.2.0")],
+      ["claude"],
+      ALL_ON_DISK,
+    );
+
+    expect(result.release).toBe("v0.3.2");
+    expect(result.primitives).toEqual([
+      { type: "skill", name: "tdd", version: "v0.3.2" },
+    ]);
+  });
+
+  it("reads the Harness page once for every entry that links, and never where none could", async () => {
+    let reads = 0;
+    const deps = {
+      ...ALL_ON_DISK,
+      harnessPage: async () => {
+        reads += 1;
+        return null;
+      },
+    };
+    const entries = [
+      skillEntry("tdd", "v0.5.1", [".claude/skills/tdd"]),
+      skillEntry("grill", "v0.5.1", [".claude/skills/grill"]),
+    ];
+
+    await readGlobalTarget(entries, ["claude"], deps);
+    expect(reads).toBe(1);
+    await readGlobalTarget([], ["claude"], deps);
+    expect(reads).toBe(1);
   });
 });

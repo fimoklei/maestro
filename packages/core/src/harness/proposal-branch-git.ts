@@ -47,7 +47,6 @@ export async function readUnproposedFiles(
       "-z",
       "--name-only",
       "--no-renames",
-      // A file only the branch holds is not lost work.
       "--diff-filter=AMT",
       tip.stdout,
       "--",
@@ -69,15 +68,11 @@ export async function readUnproposedFiles(
   }
 }
 
-/** The author email this clone commits under; null where none is set. */
 export async function readCommitEmail(root: string): Promise<string | null> {
   const email = await runGit(root, ["config", "--get", "user.email"]);
   return email.ok && email.stdout !== "" ? email.stdout.toLowerCase() : null;
 }
 
-// Whether every commit the fetched branch adds over `base` carries `email`.
-// The branch name is shared, so a teammate can push to it without a pull
-// request (#1639).
 export async function readBranchAuthorship(
   root: string,
   subject: ProposalSubject,
@@ -104,9 +99,6 @@ export async function readBranchAuthorship(
     : "others";
 }
 
-// Never `--force`: the lease binds the deletion to the fetched tip every
-// check read, so a push that landed since survives (#1639). The remote is
-// asked after a failure: a branch already gone is the outcome the caller wants.
 export async function deleteProposalBranch(
   root: string,
   subject: ProposalSubject,

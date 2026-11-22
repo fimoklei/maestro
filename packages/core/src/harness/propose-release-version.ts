@@ -1,5 +1,3 @@
-// Proposes one repository-wide version from the team delta (#519).
-
 import type { SubjectMovement } from "./harness-movements";
 import { RELEASE_TAG_PATTERN } from "./release-tag";
 
@@ -12,10 +10,8 @@ export type VersionProposal = {
   versions: Record<SemverStep, string>;
 };
 
-// BigInt: past the safe integer range Number rounds or prints `1e+21`.
 type SemverParts = { major: bigint; minor: bigint; patch: bigint };
 
-// Null (no tag, or not semver) means a first release.
 const parseTag = (tag: string | null): SemverParts | null => {
   const match = tag === null ? null : RELEASE_TAG_PATTERN.exec(tag);
   if (match === null) {
@@ -43,8 +39,6 @@ const REASONS: Record<SemverStep, string> = {
 
 const NOTHING_CHANGED = "Nothing has changed since the last release.";
 
-// Only a skill change steps past patch: no target holds a prompt or the
-// categories list.
 const stepFromMovements = (movements: SubjectMovement[]): SemverStep => {
   const skills = movements.filter((m) => m.type === "skill");
   if (skills.some((m) => m.kind === "removed" || m.kind === "renamed")) {
@@ -66,7 +60,6 @@ export const proposeReleaseVersion = (
     patch: bump(from, "patch"),
   };
 
-  // A never-tagged harness starts at v0.1.0, the minor step.
   if (parts === null) {
     return {
       previousTag: null,

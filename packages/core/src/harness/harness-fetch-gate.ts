@@ -1,5 +1,5 @@
 // Every fetch of the Harness clone goes through here: two fetches race over
-// the same git refs. Key it on the resolved root, never the configured path.
+// the same git refs.
 import { ReuseGate } from "../reuse-gate";
 import type {
   HarnessFetchOutcome,
@@ -8,7 +8,6 @@ import type {
 } from "./read-harness-state";
 import { recordFetch } from "./record-fetch";
 
-// How old a fetch a recent read may reuse.
 const RECENT_MAX_AGE_MS = 30_000;
 
 export class HarnessFetchGate {
@@ -16,8 +15,6 @@ export class HarnessFetchGate {
     git: Pick<HarnessGitPort, "fetch" | "catchUp">;
     freshness: HarnessFreshnessPort;
     now: () => Date;
-    // Told as soon as a fetch that ran lands, whatever its outcome: a failed
-    // fetch may still have moved refs.
     fetched: (root: string) => void;
   };
   private readonly gate: ReuseGate<HarnessFetchOutcome>;
@@ -27,30 +24,30 @@ export class HarnessFetchGate {
     this.gate = new ReuseGate({ now: deps.now, keep: () => true });
   }
 
-  /** Always fetches; joins a fetch already in flight. */
-  fetchFresh(root: string): Promise<HarnessFetchOutcome> {
-    return this.fetch(root, 0);
+  fetchFresh(resolvedRoot: string): Promise<HarnessFetchOutcome> {
+    return this.fetch(resolvedRoot, 0);
   }
 
-  /** May answer with a fetch younger than the reuse window. */
-  fetchRecent(root: string): Promise<HarnessFetchOutcome> {
-    return this.fetch(root, RECENT_MAX_AGE_MS);
+  fetchRecent(resolvedRoot: string): Promise<HarnessFetchOutcome> {
+    return this.fetch(resolvedRoot, RECENT_MAX_AGE_MS);
   }
 
-  invalidate(root: string): void {
-    this.gate.invalidate(root);
+  invalidate(resolvedRoot: string): void {
+    this.gate.invalidate(resolvedRoot);
   }
 
-  private fetch(root: string, maxAgeMs: number): Promise<HarnessFetchOutcome> {
-    return this.gate.run(root, maxAgeMs, async () => {
+  private fetch(
+    resolvedRoot: string,
+    maxAgeMs: number,
+  ): Promise<HarnessFetchOutcome> {
+    return this.gate.run(resolvedRoot, maxAgeMs, async () => {
       let outcome: HarnessFetchOutcome;
       try {
-        outcome = await recordFetch(this.deps, root, this.deps.now());
+        outcome = await recordFetch(this.deps, resolvedRoot, this.deps.now());
       } finally {
-        this.deps.fetched(root);
+        this.deps.fetched(resolvedRoot);
       }
-      // Catching up writes the working tree; it never loses local work (#978).
-      await this.deps.git.catchUp(root);
+      await this.deps.git.catchUp(resolvedRoot);
       return outcome;
     });
   }

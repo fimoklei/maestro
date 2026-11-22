@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import type { HarnessTag } from "../harness/read-harness-state";
 import type { HarnessSkillTree } from "../index";
@@ -23,7 +24,6 @@ const tags = (...names: string[]): HarnessTag[] =>
 const trees = (content: Record<string, string>): HarnessSkillTree[] =>
   Object.entries(content).map(([name, treeHash]) => ({ name, treeHash }));
 
-// tdd and jobs change, review disappears, grill and brief stay, wizard arrives.
 const TREES: Record<string, HarnessSkillTree[]> = {
   "v0.3.2": trees({ tdd: "a", grill: "b", jobs: "c", review: "d", brief: "e" }),
   "v0.3.4": trees({
@@ -33,7 +33,6 @@ const TREES: Record<string, HarnessSkillTree[]> = {
     brief: "e",
     wizard: "f",
   }),
-  // The release that appears between preview and confirm.
   "v0.3.5": trees({
     tdd: "a2",
     grill: "b",
@@ -63,15 +62,17 @@ type Options = {
   treesAt?: (tag: string) => HarnessSkillTree[] | null;
   origin?: { host: string; ownerRepo: string } | null;
   detected?: SupportedTool[];
+  detectedAfterPreview?: SupportedTool[];
+  tagsThrow?: boolean;
+  canonicalPath?: (path: string) => Promise<string>;
+  releasedText?: (name: string) => string;
+  recordUnreadableAfterWrite?: boolean;
   registered?: boolean;
   copies?: Record<string, DeployedContentState>;
   target?: DeployTarget;
-  // Reading this skill's copy back after the write fails, as an EACCES would.
   unreadableAfter?: string;
   add?: string;
-  // A skill folder that is a symlink on disk.
   linked?: { name: string; tool: SupportedTool };
-  // Copies the operator edited on disk, which apm keeps when it drops them.
   edited?: { name: string; tool: SupportedTool }[];
 };
 
@@ -80,7 +81,6 @@ const TREE_ROOT = "/target";
 
 function subject(options: Options = {}) {
   const world = selectionWorld({ harness: HARNESS, treeRoot: TREE_ROOT });
-  // `selection: null` leaves no lockfile: a target that follows no release.
   if (options.selection !== null) {
     world.seed({
       release: options.release ?? "v0.3.2",
@@ -91,10 +91,18 @@ function subject(options: Options = {}) {
     world.edits(tool, name);
   }
   const locks = new InFlightLocks();
-  // Copies live on a real in-memory tree: the listed ones in their state, the
-  // rest clean, placed when first read.
+  let detections = 0;
   const copyTarget = options.target ?? REPO;
-  const copies = inMemoryDeployedContent();
+  const releasedText = options.releasedText;
+  const copies = inMemoryDeployedContent(
+    releasedText === undefined
+      ? {}
+      : {
+          release: (_tag, name) => ({
+            "SKILL.md": `sha256:${createHash("sha256").update(releasedText(name)).digest("hex")}`,
+          }),
+        },
+  );
   const placed = new Set<string>();
   const onRead = placedOnRead(copies.content, (_target, name) => {
     if (placed.has(name)) {
@@ -115,8 +123,6 @@ function subject(options: Options = {}) {
     copies.tree.remove(folder);
     copies.tree.symlink(folder, `/elsewhere/${name}`);
   }
-  // Before the write the recorded baseline decides; afterwards a copy is clean
-  // while the deployment record lists every file the write placed.
   const classify = async (
     input: Omit<Parameters<typeof copies.content.classify>[0], "target">,
   ) => {
@@ -139,24 +145,34 @@ function subject(options: Options = {}) {
       : ("diverged" as const);
   };
   const update = new UpdateTarget({
-    selection: world.writer,
+    selection: {
+      apply: (input) => world.writer.apply(input),
+      pending: (key) => world.writer.pending(key),
+      readTarget: (target, origin) =>
+        options.recordUnreadableAfterWrite && world.calls.length > 0
+          ? Promise.reject(new Error("record unreadable"))
+          : world.writer.readTarget(target, origin),
+    },
     deployedCleanup: world.cleanup,
     deployedContent: {
       readLockfile: onRead.readLockfile,
       classify,
     },
-    // Global's per-folder read is proven in its own tests and the update route's.
     outcomes: {
       read: async ({ release }) => ({ release, folders: [] }),
     },
-    canonicalPath: async (path) => path,
+    canonicalPath: options.canonicalPath ?? (async (path) => path),
     locks,
     registry: { isRegistered: async () => options.registered ?? true },
     git: {
-      readTags: async () =>
-        options.tagNames === null
+      readTags: async () => {
+        if (options.tagsThrow) {
+          throw new Error("git exited 128: token ghp_secret");
+        }
+        return options.tagNames === null
           ? null
-          : tags(...(options.tagNames ?? ["v0.3.2", "v0.3.4"])),
+          : tags(...(options.tagNames ?? ["v0.3.2", "v0.3.4"]));
+      },
       readSkillTreesAtTag: async (_root, tag) =>
         options.treesAt ? options.treesAt(tag) : (TREES[tag] ?? null),
     },
@@ -166,7 +182,13 @@ function subject(options: Options = {}) {
         ? { host: "github.com", ownerRepo: "fimoklei/harness" }
         : options.origin,
     toolPresence: {
-      detectGlobalTools: async () => options.detected ?? ["claude"],
+      detectGlobalTools: async () => {
+        detections += 1;
+        return (
+          (detections > 1 ? options.detectedAfterPreview : undefined) ??
+          options.detected ?? ["claude"]
+        );
+      },
     },
     copyGuard: new LocalCopyGuard({
       content: {
@@ -420,6 +442,18 @@ describe("UpdateTarget.preview local-copy protection", () => {
   });
 });
 
+describe("UpdateTarget.preview copies equal to the chosen release", () => {
+  it("asks no consent for an edited copy that already equals the chosen release", async () => {
+    const preview = await previewed({
+      copies: { tdd: "diverged" },
+      releasedText: (name) => (name === "tdd" ? "tdd, edited\n" : `${name}\n`),
+    });
+
+    expect(preview.localEdits).toEqual({ discard: [], unverified: [] });
+    expect(preview.copyReceipt).toBeNull();
+  });
+});
+
 describe("UpdateTarget.preview refusals", () => {
   it("refuses an unregistered repository", async () => {
     const result = await subject({ registered: false }).preview();
@@ -655,7 +689,6 @@ describe("UpdateTarget preflight token", () => {
   });
 });
 
-// A repo install runs for every tool; its outcome reads each copy.
 const everyTool = (name: string, state: UpdateSkillState) =>
   (["claude", "codex"] as const).map((tool) => ({ name, tool, state }));
 
@@ -689,7 +722,6 @@ describe("UpdateTarget.run", () => {
     expect(running.world.files.get("/target/apm.yml")).not.toContain("review");
   });
 
-  // What each Global folder got is proven through the update route.
   it("writes every detected tool of the global target", async () => {
     const running = await confirmed({
       target: GLOBAL,
@@ -761,6 +793,17 @@ describe("UpdateTarget.run", () => {
     ]);
   });
 
+  it("reports a dropped skill the install left on disk as not removed", async () => {
+    const running = await confirmed();
+    running.world.landsOnly(["tdd", "grill", "jobs", "review", "brief"]);
+
+    const result = await running.run({ token: running.token });
+
+    expect(result).toMatchObject({
+      outcome: expect.arrayContaining(everyTool("review", "not-removed")),
+    });
+  });
+
   it("keeps the operation and states what did not land when the install is partial", async () => {
     const running = await confirmed();
     running.world.landsOnly(["tdd"]);
@@ -803,6 +846,18 @@ describe("UpdateTarget.run", () => {
       name: "tdd",
       tool: "claude",
       state: "not-updated",
+    });
+  });
+
+  it("claims no skill moved when the record cannot be read back", async () => {
+    const running = await confirmed({ recordUnreadableAfterWrite: true });
+
+    const result = await running.run({ token: running.token });
+
+    expect(result).toMatchObject({
+      outcome: expect.arrayContaining([
+        { name: "tdd", tool: "claude", state: "unknown" },
+      ]),
     });
   });
 
@@ -1065,6 +1120,49 @@ describe("UpdateTarget.run", () => {
       ...(refused.ok ? {} : { confirmedCopyReceipt: refused.copyReceipt }),
     });
     expect(result.ok).toBe(true);
+  });
+
+  it("accepts its token when the tool probe answers in another order", async () => {
+    const running = await confirmed({
+      target: GLOBAL,
+      detected: ["claude", "codex"],
+      detectedAfterPreview: ["codex", "claude"],
+    });
+
+    expect(await running.run({ token: running.token })).toMatchObject({
+      ok: true,
+    });
+  });
+
+  it("answers a failed update with no word of the error it caught", async () => {
+    const running = subject({ tagsThrow: true });
+
+    expect(await running.run({ token: "0".repeat(64) })).toStrictEqual({
+      ok: false,
+      error: "update-failed",
+    });
+  });
+
+  it("prices an update while a write holds the target's lock", async () => {
+    const running = subject();
+    void running.locks.run("/repo", () => new Promise<void>(() => undefined));
+
+    expect(await running.preview()).toMatchObject({ ok: true });
+  });
+
+  it("locks on the canonical path, so a symlinked spelling cannot sidestep it", async () => {
+    const running = await confirmed({
+      canonicalPath: async () => "/real/repo",
+    });
+    void running.locks.run(
+      "/real/repo",
+      () => new Promise<void>(() => undefined),
+    );
+
+    expect(await running.run({ token: running.token })).toStrictEqual({
+      ok: false,
+      error: "update-in-progress",
+    });
   });
 
   it("refuses a second write while one is running on the same target", async () => {

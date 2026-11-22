@@ -25,7 +25,6 @@ import {
 import { isValidSkillSlug } from "./package-ref";
 import { RemoveConsentIssuer } from "./remove-consent";
 
-// Reads the ref from the target's own lockfile, never from the caller.
 export type DeployedRefPort = {
   resolve(input: {
     target: DeployTarget;
@@ -34,12 +33,9 @@ export type DeployedRefPort = {
 };
 
 type RemoveDeployedSkillInput = {
-  // Plain string: the skill-only rule is checked here, not by the schema.
   type: string;
   name: string;
   target: DeployTarget;
-  // From this request's own `preflight`; licenses deleting a copy with local
-  // edits (#458).
   confirmedRemovalReceipt?: string;
 };
 
@@ -59,31 +55,24 @@ export type RemoveDeployedSkillError =
   | "manifest-not-recognised"
   | "operation-unfinished"
   | "remove-incomplete"
-  // Kept apart: only the release-following path keeps an operation to retry.
   | "remove-timed-out"
   | "remove-timed-out-unrecorded"
   | "remove-failed";
 
-// Kept apart: "nothing to compare against" and "could not check" must not
-// share a wording.
 export type RemoveWarning = "cannot-verify-local-edits" | "check-did-not-run";
 
-// No consent clears a diverged copy: apm keeps the edited file and aborts
-// after deleting the rest of the copy (#775).
 const GUARD_REFUSALS: Partial<Record<CopyVerdict, RemoveDeployedSkillError>> = {
   "local-edits": "deployed-diverged-from-lock",
   unreadable: "deployed-unreadable",
   "lockfile-malformed": "lockfile-malformed",
 };
 
-// Absent means nothing to lose, so every other state must appear here.
 const GUARD_WARNINGS: Partial<Record<CopyVerdict, RemoveWarning>> = {
   unverified: "cannot-verify-local-edits",
   unreadable: "check-did-not-run",
   "lockfile-malformed": "check-did-not-run",
 };
 
-/** One Global folder the removal deletes from; `detected: false` only where it holds a copy. */
 export type RemoveToolCheck = {
   tool: SupportedTool;
   path: string;
@@ -100,11 +89,9 @@ const repoCheck = (verdict: CopyVerdict): RemoveCheck => ({
   warning: GUARD_WARNINGS[verdict] ?? null,
 });
 
-// An empty check is unreadable, never clean.
-const soleVerdict = (copies: LocalCopyCheck): CopyVerdict =>
+const soleVerdictOrUnreadable = (copies: LocalCopyCheck): CopyVerdict =>
   copies.findings[0]?.verdict ?? "unreadable";
 
-// The tools whose copies refuse the removal.
 const editedTools = (findings: readonly CopyFinding[]): SupportedTool[] =>
   findings.flatMap((finding) =>
     finding.verdict === "local-edits" && finding.tool !== null
@@ -112,10 +99,6 @@ const editedTools = (findings: readonly CopyFinding[]): SupportedTool[] =>
       : [],
   );
 
-/**
- * The Global folders whose local edits refused the removal. `notWritten`: those
- * Global does not write, whose copy no deploy restores.
- */
 type EditedFolders = { folders?: string[]; notWritten?: string[] };
 
 function editedFolders(
@@ -132,7 +115,6 @@ function editedFolders(
   };
 }
 
-// A probe that could not answer is "unknown", never "removed".
 export type RemoveTargetState = "removed" | "not-removed" | "unknown";
 
 export type RemoveToolOutcome = {
@@ -145,7 +127,6 @@ export type RemoveOutcome =
   | { scope: "repo"; state: RemoveTargetState }
   | { scope: "global"; tools: readonly RemoveToolOutcome[] };
 
-// apm's uninstall reports one outcome for all tools, so each is read off disk.
 const PROBE_STATES: Record<DeployedContentState, RemoveTargetState> = {
   "not-deployed": "removed",
   clean: "not-removed",
@@ -155,7 +136,6 @@ const PROBE_STATES: Record<DeployedContentState, RemoveTargetState> = {
   "lockfile-malformed": "unknown",
 };
 
-// A failed check never falls back to "no warning" — it proves nothing.
 export type RemovePreflightError =
   | "unsupported-primitive-type"
   | "invalid-name"
@@ -185,8 +165,6 @@ type RemovedScope =
   | { kind: "repo" }
   | { kind: "global"; tools: readonly SupportedTool[] };
 
-// `version` and `scope` are what the removal ran against, never what the caller
-// had in view (#383).
 type RemoveDeployedSkillResult =
   | {
       ok: true;
@@ -197,8 +175,6 @@ type RemoveDeployedSkillResult =
         scope: RemovedScope;
       };
     }
-  // `outcome` only where apm ran; the other two only on a cost nobody agreed
-  // to, so no attempt mixes a fresh cost with a stale consent (#364).
   | ({
       ok: false;
       error: RemoveDeployedSkillError;
@@ -215,8 +191,6 @@ type RemovePreflightResult =
     }
   | ({ ok: false; error: RemovePreflightError } & EditedFolders);
 
-// Each receipt belongs to this target's own preflight: one target's
-// confirmation never licenses another's removal (#458).
 export type BulkRemoveTarget = {
   target: DeployTarget;
   confirmedRemovalReceipt?: string;
@@ -234,7 +208,6 @@ type BulkRemoveFailedRow = {
   outcome?: RemoveOutcome;
 };
 
-// One row per target: identical reasons are never collapsed.
 export type BulkRemoveReport = {
   name: string;
   removed: BulkRemovedRow[];
@@ -246,23 +219,16 @@ export class RemoveDeployedSkill {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
     deployedRef: DeployedRefPort;
-    // apm deletes an edited copy silently; this guard stops lost work (#952).
     copyGuard?: Pick<LocalCopyGuard, "check">;
-    // Post-removal probe: tells an absent copy from a clean one, which the
-    // guard's verdicts collapse.
     deployedContent: Pick<
       DeployedContentPort,
       "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
     >;
     apm: Pick<ApmDriverPort, "removeSkill">;
     toolPresence: ToolPresencePort;
-    // Where Global writes, so folder names follow CLAUDE_CONFIG_DIR.
     globalLayout: () => GlobalLayout;
-    // realpath, so the lock cannot be sidestepped by a symlinked spelling.
     canonicalPath: (path: string) => Promise<string>;
-    // Shared with the deploy use-case: both rewrite the same apm.lock.yaml.
     locks: InFlightLocks;
-    // Absent: the per-skill uninstall path (#933, #951).
     selection?: SelectionWriter;
     harnessOrigin?: () => Promise<GitOrigin | null>;
   };
@@ -276,7 +242,6 @@ export class RemoveDeployedSkill {
       deps.copyGuard ?? new LocalCopyGuard({ content: deps.deployedContent });
   }
 
-  // A read: never takes the apm write lock, so it cannot block a deploy.
   async preflight(
     input: RemoveDeployedSkillInput,
   ): Promise<RemovePreflightResult> {
@@ -318,19 +283,13 @@ export class RemoveDeployedSkill {
     }
   }
 
-  // Shared by both halves, so the check names the copies the removal guards
-  // and the removal proves the request agreed to the cost it finds (#364, #1680).
   private async price(
     input: RemoveDeployedSkillInput,
     scope: ResolvedScope & { ok: true },
     release: string | undefined,
-    /** A named uninstall deletes the copies in every folder its lockfile
-     * records; an install with -t only the detected folders. */
     namedUninstall: boolean,
   ): Promise<Priced> {
     const copies = await this.runCheck(input, scope, release, namedUninstall);
-    // One diverged copy refuses the whole set: apm's uninstall has no -t, so it
-    // would abort on that copy after deleting the others (#775).
     if (copies.findings.some((finding) => finding.verdict === "local-edits")) {
       return {
         ok: false,
@@ -344,7 +303,7 @@ export class RemoveDeployedSkill {
     }
     const check: RemoveCheck =
       scope.scope === "repo"
-        ? repoCheck(soleVerdict(copies))
+        ? repoCheck(soleVerdictOrUnreadable(copies))
         : {
             scope: "global",
             tools: await this.folderChecks(input, scope.detected, copies),
@@ -352,8 +311,6 @@ export class RemoveDeployedSkill {
     return { ok: true, copies, check };
   }
 
-  // Every detected folder, and an undetected one only where the removal
-  // deletes a copy there.
   private async folderChecks(
     input: RemoveDeployedSkillInput,
     detected: readonly SupportedTool[],
@@ -384,7 +341,6 @@ export class RemoveDeployedSkill {
     return checks;
   }
 
-  // Read-only: the plan's own read decides it again under the lock.
   private async isNamedUninstall(
     target: DeployTarget,
     name: string,
@@ -399,8 +355,6 @@ export class RemoveDeployedSkill {
       : true;
   }
 
-  // A target pinned per skill refuses every deploy, so Deploy again cannot
-  // reset its edits (#966).
   private async localEditsRefusal(
     target: DeployTarget,
   ): Promise<LocalEditsRefusal> {
@@ -420,7 +374,6 @@ export class RemoveDeployedSkill {
     release: string | undefined,
     namedUninstall: boolean,
   ): Promise<LocalCopyCheck> {
-    // Only the folders the apm call touches: local edits elsewhere lose nothing.
     const tools =
       scope.scope === "repo"
         ? undefined
@@ -470,8 +423,6 @@ export class RemoveDeployedSkill {
     return run.ok ? run.value : { ok: false, error: "remove-in-progress" };
   }
 
-  // Each target runs the single removal unchanged. Sequential on purpose: the
-  // run must not contend with its own target lock.
   async executeBatch(input: {
     name: string;
     targets: readonly BulkRemoveTarget[];
@@ -528,8 +479,6 @@ export class RemoveDeployedSkill {
       : { ok: true, scope: "global", detected };
   }
 
-  // Runs before any filesystem or apm access: an unregistered path must reach
-  // neither.
   private async rejectBadRequest(
     input: RemoveDeployedSkillInput,
   ): Promise<
@@ -558,7 +507,13 @@ export class RemoveDeployedSkill {
     name: string,
     lockKey: string,
   ): Promise<
-    | { kind: "root"; origin: GitOrigin; release: string; previous: string[] }
+    | {
+        kind: "root";
+        selection: SelectionWriter;
+        origin: GitOrigin;
+        release: string;
+        previous: string[];
+      }
     | { kind: "per-skill"; ref: string; version: string }
     | { kind: "refused"; error: RemoveDeployedSkillError }
   > {
@@ -578,6 +533,7 @@ export class RemoveDeployedSkill {
         }
         return {
           kind: "root",
+          selection,
           origin,
           release: current.release,
           previous: current.deployed,
@@ -597,7 +553,6 @@ export class RemoveDeployedSkill {
   ): Promise<RemoveDeployedSkillResult> {
     const target = input.target;
     const detected = scope.scope === "global" ? scope.detected : undefined;
-    // Never rethrow: a raw apm message may carry a token.
     try {
       const plan = await this.planRemoval(target, input.name, lockKey);
       if (plan.kind === "refused") {
@@ -605,8 +560,6 @@ export class RemoveDeployedSkill {
       }
       const version = plan.kind === "root" ? plan.release : plan.version;
 
-      // Priced again under the lock, so a baseline lost since the check stops
-      // the removal (#364, #952).
       const priced = await this.price(
         input,
         scope,
@@ -631,8 +584,6 @@ export class RemoveDeployedSkill {
           input.confirmedRemovalReceipt,
         )
       ) {
-        // Restates the whole question, so the next attempt cannot pair this
-        // cost with an older consent (#364).
         return {
           ok: false,
           error: "cost-not-acknowledged",
@@ -649,8 +600,6 @@ export class RemoveDeployedSkill {
         return {
           ok: false,
           error: failure,
-          // From disk, not apm: a blocked uninstall deletes the rest of the
-          // Selection first.
           outcome: await this.probeOutcome(
             target,
             input.name,
@@ -678,15 +627,18 @@ export class RemoveDeployedSkill {
     }
   }
 
-  // Null when it landed.
   private async narrowSelection(
-    plan: { origin: GitOrigin; release: string; previous: string[] },
+    plan: {
+      selection: SelectionWriter;
+      origin: GitOrigin;
+      release: string;
+      previous: string[];
+    },
     input: RemoveDeployedSkillInput,
     lockKey: string,
     detected: readonly SupportedTool[] | undefined,
   ): Promise<RemoveDeployedSkillError | null> {
-    // A root plan is only made where `deps.selection` is set.
-    const applied = await (this.deps.selection as SelectionWriter).apply({
+    const applied = await plan.selection.apply({
       target: input.target,
       key: lockKey,
       kind: "remove",
@@ -708,7 +660,6 @@ export class RemoveDeployedSkill {
           : "remove-failed";
   }
 
-  // Null when apm proved the removal.
   private async uninstallPackage(
     target: DeployTarget,
     ref: string,

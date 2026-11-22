@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseOutdated } from "./parse-outdated";
 
-// Captured `apm outdated -g` output, inlined to keep this lane free of file I/O.
-// Identity is the skill name: the last segment of the Package cell.
-const outdatedTable = `
+const capturedOutdatedTable = `
                                           Dependency Status
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
 ┃ Package                           ┃ Current    ┃ Latest     ┃ Status       ┃ Source               ┃
@@ -15,7 +13,7 @@ const outdatedTable = `
 
 describe("parseOutdated", () => {
   it("returns the deployed -> latest version pair per behind skill", () => {
-    expect(parseOutdated(outdatedTable)).toEqual({
+    expect(parseOutdated(capturedOutdatedTable)).toEqual({
       ok: true,
       behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
     });
@@ -56,7 +54,6 @@ describe("parseOutdated", () => {
   });
 
   it("fails when apm reports outdated deps but no row parses", () => {
-    // An unrecognised table must fail, never read as up-to-date.
     const driftedFormat = [
       "│ owner/repo/skills/tdd │ v1.0.0 │ v1.1.0 │ outdated │ git tags │ extra │",
       "[!] 1 outdated dependency found",
@@ -69,7 +66,6 @@ describe("parseOutdated", () => {
   });
 
   it("reports a dep apm could not check as unverified, never up-to-date", () => {
-    // An unresolvable remote is unverified: never up-to-date, never a crash.
     const couldNotCheck = [
       "                                          Dependency Status",
       "│ fimoklei/agent-harness/skills/tdd │ v0.5.1 │ - │ unknown │ │",
@@ -82,7 +78,6 @@ describe("parseOutdated", () => {
   });
 
   it("reads 'unknown' outside the Status column as ordinary data, not uncheckable", () => {
-    // Only Status states apm's conclusion; other cells may read "unknown".
     const unknownVersion =
       "│ owner/repo/skills/tdd │ unknown │ v0.5.1 │ outdated │ git tags │";
     expect(parseOutdated(unknownVersion)).toEqual({
@@ -92,13 +87,11 @@ describe("parseOutdated", () => {
   });
 
   it("finds the Status column on an uncheckable row despite its empty Source cell", () => {
-    // The Source cell is empty; dropping empty cells would shift Status left.
     const rowOnly = "│ owner/repo/skills/tdd │ v0.5.0 │ - │ unknown │ │";
     expect(parseOutdated(rowOnly)).toEqual({ ok: false, reason: "unverified" });
   });
 
   it("never lets an uncheckable dep hide behind a checkable outdated one", () => {
-    // Any uncheckable dep makes the whole result unverified.
     const mixed = [
       "│ owner/repo/skills/tdd │ v0.5.0 │ v0.5.1 │ outdated │ git tags │",
       "│ owner/repo/skills/foo │ v1.0.0 │ - │ unknown │ │",
@@ -107,8 +100,7 @@ describe("parseOutdated", () => {
     expect(parseOutdated(mixed)).toEqual({ ok: false, reason: "unverified" });
   });
 
-  // These cells reach the browser: a bad shape fails the whole read.
-  describe("shape of the fields it forwards", () => {
+  describe("shape of the fields it forwards to the browser", () => {
     const row = (name: string, current: string, latest: string) =>
       `│ ${name} │ ${current} │ ${latest} │ outdated │ git tags │`;
 
@@ -151,7 +143,6 @@ describe("parseOutdated", () => {
     });
 
     it("accepts the prerelease tags a real harness publishes", () => {
-      // Generous on purpose: too strict turns a real behind row into a failed read.
       expect(
         parseOutdated(row("owner/repo/skills/tdd", "v1.2.3-rc.1", "v1.2.4")),
       ).toEqual({

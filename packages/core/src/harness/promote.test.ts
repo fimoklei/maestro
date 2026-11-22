@@ -14,7 +14,6 @@ import type { HarnessFreshness } from "./read-harness-state";
 
 const AT = new Date("2026-08-09T12:00:00.000Z");
 
-// A gate a Drift or Harness read shares with the push.
 const readGate = (git: InMemoryHarnessGit) =>
   new HarnessFetchGate({
     git,
@@ -58,7 +57,6 @@ const FRESHNESS: HarnessFreshness = {
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
 };
 
-// A new skill on disk, on a clone level with an origin/HEAD that lacks it.
 const newSkillWorld = () => {
   const git = new InMemoryHarnessGit().settled({}, "head");
   git.working = { tdd: "mine" };
@@ -146,7 +144,6 @@ describe("Promote", () => {
     expect(git.pushed.map((push) => push.base)).toEqual(["head"]);
   });
 
-  // Decided against the default branch just fetched, never the cockpit's read.
   it.each<[string, InMemoryHarnessGit, string]>([
     ["lacks", newSkillWorld(), "Add skill: tdd"],
     [
@@ -181,7 +178,6 @@ describe("Promote", () => {
   );
 
   it("sends an update to the open proposal without touching the request", async () => {
-    // Leaving the request alone keeps GitHub's review verdict standing (#827).
     const created: NewReviewRequest[] = [];
     const promote = buildPromote(newSkillWorld(), {
       review: { ...EMPTY_REVIEW, requests: [openRequest()] },
@@ -243,7 +239,6 @@ describe("Promote", () => {
   });
 
   it("still pushes when GitHub cannot be asked, leaving the request missing", async () => {
-    // A gh failure degrades the review capability alone; the branch still lands.
     const git = newSkillWorld();
     const promote = buildPromote(git, {
       review: { outcome: "unavailable", reason: "no-gh" },
@@ -316,7 +311,6 @@ describe("Promote", () => {
 
     await promote.execute(skillRef("tdd"));
 
-    // Once per fetch: the recheck right before the push fetches again (#579).
     expect(recorded).toEqual([
       { outcome: "fetched", lastFetchedAt: AT.toISOString() },
       { outcome: "fetched", lastFetchedAt: AT.toISOString() },
@@ -359,7 +353,6 @@ describe("Promote", () => {
     });
   });
 
-  // Real git hashes the link itself and would push it to the proposal branch.
   it("refuses a prompt file that is a link, pushing nothing", async () => {
     const git = newSkillWorld();
     git.workingPrompts = { "pr-review": "Review" };
@@ -427,7 +420,6 @@ describe("Promote", () => {
   });
 
   it("falls back to calling a difference concurrent when no merge base exists", async () => {
-    // Unrelated histories: nothing tells the author's change from a teammate's.
     const git = new InMemoryHarnessGit();
     git.commit("theirs", { tdd: "theirs" });
     git.commit("mine", { tdd: "mine" });
@@ -458,7 +450,6 @@ describe("Promote", () => {
   });
 
   it("never lets a teammate's change to a different skill block this promotion", async () => {
-    // Only `jobs` moved on origin/HEAD since the fork, so `tdd` is ours (#579).
     const git = new InMemoryHarnessGit();
     git.commit("fork", { tdd: "same", jobs: "old" });
     git.commit("head", { tdd: "same", jobs: "theirs" }, { parent: "fork" });
@@ -476,7 +467,6 @@ describe("Promote", () => {
   });
 
   it("re-checks after its pre-push refetch, catching a teammate's push landing in between", async () => {
-    // The first check passes; the teammate's push arrives with the second fetch (#579).
     const git = new InMemoryHarnessGit().settled({ tdd: "same" }, "head-1");
     git.working = { tdd: "mine" };
     git.arrivals.push(() => {});
@@ -505,7 +495,6 @@ describe("Promote", () => {
   });
 
   it("asks for the merge base against the exact commit each check just read, never a mutable ref", async () => {
-    // One captured commit per read, never a shared ref a fetch could move (#579).
     const git = new InMemoryHarnessGit().settled({ tdd: "same" }, "head-1");
     git.working = { tdd: "mine" };
     git.arrivals.push(() => {});
@@ -540,7 +529,6 @@ describe("Promote", () => {
 
     await buildPromote(git, { fetchGate: gate }).execute(skillRef("tdd"));
 
-    // The first check's fetch and the recheck's, never the read's.
     expect(git.fetches).toBe(3);
   });
 

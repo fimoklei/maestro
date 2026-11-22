@@ -1,7 +1,3 @@
-// The Harness read reuses one review read per Harness until its clone is
-// fetched, so the pull requests always match the refs beside them (#1738). A
-// Proposal action through `writes` drops that answer, so its result shows at
-// once. The sign-in read is reused within a window.
 import type { GitOrigin } from "../deploy/git-origin";
 import { ReuseGate } from "../reuse-gate";
 import type {
@@ -10,7 +6,6 @@ import type {
   ViewerRead,
 } from "./harness-review-port";
 
-// Only a read is reused: once gh is signed in, the next read must say so.
 const keepRead = (answer: { outcome: string }) => answer.outcome === "read";
 
 export class ReviewReadGate {
@@ -18,12 +13,10 @@ export class ReviewReadGate {
   private readonly root: () => Promise<string | undefined>;
   private readonly reviews: ReuseGate<HarnessReviewRead>;
   private readonly viewers: ReuseGate<ViewerRead>;
-  // Rechecks read fresh: a mutation is never judged on a remembered answer.
   readonly writes: HarnessReviewPort;
 
   constructor(deps: {
     review: HarnessReviewPort;
-    // The resolved Harness root names the key, as it does for the fetch gate.
     root: () => Promise<string | undefined>;
     now: () => Date;
   }) {
@@ -34,7 +27,6 @@ export class ReviewReadGate {
       keep: keepRead,
     });
     this.viewers = new ReuseGate<ViewerRead>({ now: deps.now, keep: keepRead });
-    // Dropped whatever the outcome: a write GitHub refused may still have landed.
     const dropAfter =
       <A extends unknown[], R>(
         write: (origin: GitOrigin, ...args: A) => Promise<R>,
@@ -67,7 +59,6 @@ export class ReviewReadGate {
     };
   }
 
-  /** The clone at `root` was fetched: its next review read asks GitHub. */
   fetched(root: string): void {
     this.reviews.invalidate(root);
   }

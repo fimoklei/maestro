@@ -11,9 +11,7 @@ const GLOBAL_ROOT = `${HOME}/.apm`;
 const LOCKFILE = `${GLOBAL_ROOT}/apm.lock.yaml`;
 const FIXTURES = new URL("../../../../tests/fixtures/", import.meta.url);
 
-// v1.0.0 to both tools, then v2.0.0 to Claude Code only: the .agents copies
-// stay at v1.0.0, as on a machine where Codex is no longer detected.
-const NARROWED = readFileSync(
+const BOTH_AT_V1_THEN_CLAUDE_AT_V2 = readFileSync(
   new URL("apm.lock.1799-narrowed-global.yaml", FIXTURES),
   "utf8",
 );
@@ -33,16 +31,15 @@ const SKILLS = ["code-review", "commit-message"];
 
 type Copies = Partial<Record<string, string | null>>;
 
-// `agents`: the release each .agents copy holds, null for no copy there.
 function claudeOnlyGlobal(
   options: {
-    agents?: Copies;
+    agentsAt?: Copies;
     detected?: SupportedTool[];
     claudeMissing?: string;
   } = {},
 ) {
   const tree = new InMemoryCopyTree();
-  tree.write(LOCKFILE, NARROWED);
+  tree.write(LOCKFILE, BOTH_AT_V1_THEN_CLAUDE_AT_V2);
   for (const name of SKILLS) {
     if (name !== options.claudeMissing) {
       tree.write(
@@ -51,7 +48,7 @@ function claudeOnlyGlobal(
       );
     }
     const agents =
-      options.agents === undefined ? "v1.0.0" : options.agents[name];
+      options.agentsAt === undefined ? "v1.0.0" : options.agentsAt[name];
     if (agents !== null && agents !== undefined) {
       tree.write(
         `${HOME}/.agents/skills/${name}/SKILL.md`,
@@ -105,7 +102,7 @@ describe("GlobalDeployStateReader on an undetected tool's folder", () => {
 
   it("reads a copy equal to the Target release as at the release", async () => {
     const reader = claudeOnlyGlobal({
-      agents: { "code-review": "v2.0.0", "commit-message": "v1.0.0" },
+      agentsAt: { "code-review": "v2.0.0", "commit-message": "v1.0.0" },
     });
 
     expect(await strayCopies(reader)).toStrictEqual([
@@ -122,7 +119,7 @@ describe("GlobalDeployStateReader on an undetected tool's folder", () => {
 
   it("names no skill whose folder there is gone", async () => {
     const reader = claudeOnlyGlobal({
-      agents: { "code-review": null, "commit-message": "v1.0.0" },
+      agentsAt: { "code-review": null, "commit-message": "v1.0.0" },
     });
 
     expect(await strayCopies(reader)).toStrictEqual([
@@ -142,7 +139,7 @@ describe("GlobalDeployStateReader on an undetected tool's folder", () => {
 
   it("names nothing where the folder holds no copy", async () => {
     const reader = claudeOnlyGlobal({
-      agents: { "code-review": null, "commit-message": null },
+      agentsAt: { "code-review": null, "commit-message": null },
     });
 
     expect(await strayCopies(reader)).toStrictEqual([
