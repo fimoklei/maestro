@@ -506,7 +506,7 @@
   "packages/web/src/ui/dialog.stories.tsx": 3,
   "packages/web/src/ui/dialog.test.tsx": 6,
   "packages/web/src/ui/dialog.tsx": 42,
-  "packages/web/src/ui/empty-state.tsx": 6,
+  "packages/web/src/ui/empty-state.tsx": 5,
   "packages/web/src/ui/fact-list.stories.tsx": 1,
   "packages/web/src/ui/fact-list.test.tsx": 2,
   "packages/web/src/ui/fact-list.tsx": 6,

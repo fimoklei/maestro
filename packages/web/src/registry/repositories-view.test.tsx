@@ -54,9 +54,7 @@ describe("Repositories", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "The repositories you deploy skills to appear here, with the state of each folder.",
-      ),
+      screen.getByText("Register a Git repository to deploy skills to it."),
     ).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: REGISTER })).toHaveLength(2);
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();

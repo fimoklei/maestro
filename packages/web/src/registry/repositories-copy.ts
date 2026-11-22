@@ -27,7 +27,7 @@ export const FOLDER_HINT = "Must be a Git repository.";
 
 export const EMPTY_TITLE = "No repositories yet";
 export const EMPTY_SENTENCE =
-  "The repositories you deploy skills to appear here, with the state of each folder.";
+  "Register a Git repository to deploy skills to it.";
 
 export const STATUS_READINGS: Record<RepoStatus, StatusReading> = {
   ready: reading("Ready", "good"),

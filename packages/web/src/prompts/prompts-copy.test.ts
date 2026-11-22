@@ -14,10 +14,11 @@ import {
 // The approved sentences; the rendered tests of the Prompts screen show them
 // in place.
 describe("Prompts copy", () => {
-  it("offers the empty screen as an outcome, not a failure", () => {
+  it("says how to begin: import prompts on the Harness screen", () => {
     expect(NO_RELEASED_PROMPTS).toEqual({
       title: "No released prompts yet",
-      description: "Prompts from the latest release appear here.",
+      description:
+        "Select Import prompts on the Harness screen to add prompts to the Harness.",
     });
   });
 

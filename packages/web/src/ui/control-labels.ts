@@ -15,6 +15,7 @@ export const IMPORT = "Import";
 export const IMPORT_LOCAL_EDITS = "Import local edits";
 export const IMPORT_PROMPTS = "Import prompts";
 export const IMPORT_SKILLS = "Import skills";
+export const OPEN_HARNESS = "Open Harness";
 export const OPEN_CATEGORIES_IN_SETTINGS = "Open Categories in Settings";
 export const PROPOSE_CHANGE = "Propose change";
 export const PUBLISH_RELEASE = "Publish release";

@@ -14,6 +14,7 @@ import {
   CREATE_RELEASE,
   DISCARD_CHANGE,
   EDIT_PROMPT,
+  IMPORT,
   IMPORT_LOCAL_EDITS,
   PROPOSE_CHANGE,
   rereadLabel,
@@ -53,7 +54,7 @@ export const harnessCounts = (stages: readonly HarnessStage[]): BandCount[] => [
 
 export const JOURNEY_EMPTY = {
   title: "No changes yet",
-  body: "Skills and prompts you import or edit in your clone will appear here.",
+  body: `${IMPORT} skills or prompts, then propose them for review.`,
 } as const;
 
 const FAMILIES: Record<StageStatus, StatusFamily> = {

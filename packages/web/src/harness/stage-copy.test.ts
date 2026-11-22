@@ -16,6 +16,7 @@ import {
   deployedCopiesLine,
   detailSentence,
   harnessCounts,
+  JOURNEY_EMPTY,
   pullRequestState,
   requestedReviewers,
   reviewerLine,
@@ -24,6 +25,15 @@ import {
   statusReading,
 } from "./stage-copy";
 import { pullRequest } from "./stage-row-fixture";
+
+describe("the empty Harness", () => {
+  it("says how to begin: import, then propose for review", () => {
+    expect(JOURNEY_EMPTY).toEqual({
+      title: "No changes yet",
+      body: "Import skills or prompts, then propose them for review.",
+    });
+  });
+});
 
 // Contract tests: the words live once, in the copy module and the rendered
 // Harness tests. These prove the rules every reading and sentence keeps.

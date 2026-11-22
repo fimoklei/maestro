@@ -346,7 +346,7 @@ describe("ReleaseDialog", () => {
     expect(screen.queryByRole("group")).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "No changes yet. Changes merged after the last release appear here.",
+        "No change has merged since the latest release. A proposed change can be released once its pull request is merged on GitHub.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Releasing as")).not.toBeInTheDocument();
@@ -458,7 +458,7 @@ describe("ReleaseDialog", () => {
     expect(onPublish).toHaveBeenCalledWith("patch", recomputed);
   });
 
-  it("holds publish back when nothing has changed since the last release", async () => {
+  it("holds publish back when nothing has changed since the latest release", async () => {
     const onPublish = vi.fn();
     renderReady({ delta: [], blocked: "empty-delta" }, { onPublish });
 
@@ -559,7 +559,21 @@ describe("ReleaseDialog", () => {
 
     expectDescription(
       screen.getByRole("dialog"),
-      "No changes yet. Changes merged after the last release appear here.",
+      "No change has merged since the latest release. A proposed change can be released once its pull request is merged on GitHub.",
+    );
+  });
+
+  it("states an empty first release by what the next release lacks", () => {
+    renderReady({
+      delta: [],
+      blocked: "empty-delta",
+      previousTag: null,
+      previousTagCommit: null,
+    });
+
+    expectDescription(
+      screen.getByRole("dialog"),
+      "The next release doesn't contain skills or prompts yet. A skill or prompt can be released once its pull request is merged on GitHub.",
     );
   });
 

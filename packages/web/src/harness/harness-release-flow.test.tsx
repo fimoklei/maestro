@@ -876,7 +876,7 @@ describe("Harness release", () => {
     );
     expect(alert).toHaveTextContent("Nothing to release");
     expect(alert).toHaveTextContent(
-      "Nothing was published. No change has merged since the last release.",
+      "Nothing was published. No change has merged since the latest release.",
     );
   });
 

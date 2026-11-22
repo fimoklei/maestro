@@ -500,7 +500,7 @@ describe("Harness home base", () => {
     expect(screen.getByText("All released")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Skills and prompts you import or edit in your clone will appear here.",
+        "Import skills or prompts, then propose them for review.",
       ),
     ).toBeInTheDocument();
     // The empty state repeats Import skills, the first item of band 1's

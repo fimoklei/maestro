@@ -25,7 +25,7 @@ import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { machine, named, phrase } from "../ui/phrase";
-import { ROOT_SKILL_FILE } from "./dialog-copy";
+import { NO_CHANGE_SINCE_RELEASE, ROOT_SKILL_FILE } from "./dialog-copy";
 import { ITEM_WORDS, type ItemWords } from "./item-words";
 
 // A new code in core fails typecheck here until it has a row.
@@ -73,8 +73,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   "empty-delta": {
     level: "error",
     label: NOTHING_TO_RELEASE,
-    message:
-      "Nothing was published. No change has merged since the last release.",
+    message: `Nothing was published. ${NO_CHANGE_SINCE_RELEASE}`,
   },
   "root-skill-file": {
     level: "error",
