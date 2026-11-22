@@ -193,3 +193,12 @@ export const UNPROPOSED_UNKNOWN_NOTICE: NoticeContent = {
   message: `${WITHDRAW_PROPOSAL} discards any change you made after proposing. ${KEEP_OUTSIDE_CLONE}`,
   detail: "Maestro could not compare your clone with the proposal branch.",
 };
+
+export const NO_CHANGE_SINCE_RELEASE =
+  "No change has merged since the latest release.";
+
+export const EMPTY_RELEASE_PLAN = {
+  released: `${NO_CHANGE_SINCE_RELEASE} A proposed change can be released once its pull request is merged on GitHub.`,
+  unreleased:
+    "The next release doesn't contain skills or prompts yet. A skill or prompt can be released once its pull request is merged on GitHub.",
+} as const;

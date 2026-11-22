@@ -324,7 +324,9 @@ describe("SkillsPanel", () => {
       await screen.findByText("No released skills yet"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Skills from the latest release appear here."),
+      screen.getByText(
+        "Select Import skills on the Harness screen to add skills to the Harness.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Open Harness" }),

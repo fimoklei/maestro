@@ -105,10 +105,10 @@ describe("the screen's own words", () => {
     });
   });
 
-  it("states the empty registry and what appears here", () => {
+  it("states the empty registry and how to begin", () => {
     expect(EMPTY_TITLE).toBe("No repositories yet");
     expect(EMPTY_SENTENCE).toBe(
-      "The repositories you deploy skills to appear here, with the state of each folder.",
+      "Register a Git repository to deploy skills to it.",
     );
   });
 

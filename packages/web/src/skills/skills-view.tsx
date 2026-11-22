@@ -46,6 +46,7 @@ import { Button } from "../ui/button";
 import {
   DELETE_SKILL,
   DEPLOY_SKILL,
+  OPEN_HARNESS,
   rereadLabel,
   SET_CATEGORY,
   UPDATE_TARGET,
@@ -384,7 +385,7 @@ export function SkillsView({
         action:
           onOpenHarness === undefined ? undefined : (
             <Button variant="quiet" onClick={onOpenHarness}>
-              Open Harness
+              {OPEN_HARNESS}
             </Button>
           ),
       }}

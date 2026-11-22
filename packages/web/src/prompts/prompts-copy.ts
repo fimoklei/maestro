@@ -1,5 +1,5 @@
 import type { PromptPart } from "@maestro/core/prompt-file";
-import { COPY_PROMPT } from "../ui/control-labels";
+import { COPY_PROMPT, IMPORT_PROMPTS } from "../ui/control-labels";
 import { named, phrase } from "../ui/phrase";
 import { CLEAR_FILTERS } from "../ui/view-options-copy";
 
@@ -13,7 +13,7 @@ export const promptsFactValue = (shown: number, total: number): string =>
 // Empty is an offer, not a failure: the action opens where prompts are made.
 export const NO_RELEASED_PROMPTS = {
   title: "No released prompts yet",
-  description: "Prompts from the latest release appear here.",
+  description: `Select ${IMPORT_PROMPTS} on the Harness screen to add prompts to the Harness.`,
 };
 export const NO_SEARCH_MATCH = {
   title: "No prompts match the search",

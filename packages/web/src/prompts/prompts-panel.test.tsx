@@ -169,7 +169,9 @@ describe("PromptsPanel", () => {
       await screen.findByRole("heading", { name: "No released prompts yet" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Prompts from the latest release appear here."),
+      screen.getByText(
+        "Select Import prompts on the Harness screen to add prompts to the Harness.",
+      ),
     ).toBeInTheDocument();
   });
 

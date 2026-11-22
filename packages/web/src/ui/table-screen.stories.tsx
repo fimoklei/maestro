@@ -89,8 +89,7 @@ function Screen({
         }
         empty={{
           title: "No repositories yet",
-          description:
-            "The repositories you deploy skills to appear here, with the state of each folder.",
+          description: "Register a Git repository to deploy skills to it.",
           icon: <FolderGit2 strokeWidth={1.5} className="size-4" />,
           action: <Button>Register repository</Button>,
         }}

@@ -9,6 +9,7 @@ import {
   DISCARD_HINT,
   discardBody,
   discardTitle,
+  EMPTY_RELEASE_PLAN,
   FINDING_TEXT,
   inFlightNotice,
   listWithdrawBody,
@@ -154,6 +155,17 @@ describe("Harness dialog copy", () => {
       "missing-manifest": "has no SKILL.md.",
       "invalid-frontmatter": "has frontmatter Maestro cannot read.",
       "empty-description": "has an empty description.",
+    });
+  });
+});
+
+describe("the empty release plan", () => {
+  it("says what holds the release back, after a release and before the first", () => {
+    expect(EMPTY_RELEASE_PLAN).toEqual({
+      released:
+        "No change has merged since the latest release. A proposed change can be released once its pull request is merged on GitHub.",
+      unreleased:
+        "The next release doesn't contain skills or prompts yet. A skill or prompt can be released once its pull request is merged on GitHub.",
     });
   });
 });

@@ -6,7 +6,6 @@ import { PhraseText } from "./phrase-text";
 export interface EmptyStateProps {
   /** `No {things} yet`. */
   title: string;
-  /** One sentence saying what appears here. */
   description: Copy;
   /** The heading's rank in the screen's outline. */
   headingLevel: 2 | 3;

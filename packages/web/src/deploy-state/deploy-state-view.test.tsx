@@ -148,7 +148,9 @@ describe("Deploy-state — one table of every target", () => {
       screen.getByRole("heading", { level: 2, name: "No targets yet" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Global and registered repositories appear here."),
+      screen.getByText(
+        "Select Register repository on the Repositories screen to deploy skills to a repository.",
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });

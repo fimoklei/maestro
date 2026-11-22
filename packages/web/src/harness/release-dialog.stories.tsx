@@ -149,6 +149,24 @@ export const NoChanges: Story = {
   },
 };
 
+export const NoChangesFirstRelease: Story = {
+  args: {
+    load: {
+      kind: "ready",
+      plan: {
+        ...PLAN,
+        previousTag: null,
+        previousTagCommit: null,
+        proposedStep: "minor",
+        reason: "First release.",
+        delta: [],
+        findings: [],
+        blocked: "empty-delta",
+      },
+    },
+  },
+};
+
 export const RootSkillFile: Story = {
   args: {
     load: {

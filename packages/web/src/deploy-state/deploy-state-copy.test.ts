@@ -200,7 +200,8 @@ describe("Deploy-state copy", () => {
     });
     expect(NO_TARGETS).toEqual({
       title: "No targets yet",
-      description: "Global and registered repositories appear here.",
+      description:
+        "Select Register repository on the Repositories screen to deploy skills to a repository.",
     });
   });
 

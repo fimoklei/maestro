@@ -4,6 +4,7 @@ import { plainText } from "../ui/phrase";
 import * as skillsCopy from "./skills-copy";
 import {
   globalOptionLabel,
+  NO_RELEASED_SKILLS,
   NO_TARGET_CHOSEN,
   NO_TARGET_REMOVABLE,
   skillStateLine,
@@ -19,6 +20,16 @@ describe("the bulk causes", () => {
     expect(TARGETS_LOADING).toBe("Loading targets…");
     expect(NO_TARGET_CHOSEN).toBe("Choose a target.");
     expect(NO_TARGET_REMOVABLE).toBe("No target can be removed.");
+  });
+});
+
+describe("the empty screen", () => {
+  it("says how to begin: import skills on the Harness screen", () => {
+    expect(NO_RELEASED_SKILLS).toEqual({
+      title: "No released skills yet",
+      description:
+        "Select Import skills on the Harness screen to add skills to the Harness.",
+    });
   });
 });
 

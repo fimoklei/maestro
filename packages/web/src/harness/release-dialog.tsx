@@ -12,6 +12,7 @@ import { PhraseText } from "../ui/phrase-text";
 import { SegmentedControl } from "../ui/segmented-control";
 import { StatusLine } from "../ui/status-line";
 import {
+  EMPTY_RELEASE_PLAN,
   FINDING_TEXT,
   inFlightNotice,
   ROOT_SKILL_FILE,
@@ -202,7 +203,11 @@ function PlanBody({
       </Card>
       {empty ? (
         <p id={leadId} className="m-0 text-gray-11">
-          No changes yet. Changes merged after the last release appear here.
+          {
+            EMPTY_RELEASE_PLAN[
+              plan.previousTag === null ? "unreleased" : "released"
+            ]
+          }
         </p>
       ) : (
         <ReleaseDelta movements={plan.delta} />

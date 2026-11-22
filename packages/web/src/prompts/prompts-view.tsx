@@ -36,6 +36,7 @@ import {
   COPY_PROMPT,
   DELETE_PROMPT,
   EDIT_PROMPT,
+  OPEN_HARNESS,
   rereadLabel,
   SET_CATEGORY,
 } from "../ui/control-labels";
@@ -373,7 +374,7 @@ export function PromptsView({
           action:
             onOpenHarness === undefined ? undefined : (
               <Button variant="quiet" onClick={onOpenHarness}>
-                Open Harness
+                {OPEN_HARNESS}
               </Button>
             ),
         }}

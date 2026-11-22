@@ -256,7 +256,9 @@ describe("SkillsView — the table", () => {
       screen.getByRole("heading", { level: 2, name: "No released skills yet" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Skills from the latest release appear here."),
+      screen.getByText(
+        "Select Import skills on the Harness screen to add skills to the Harness.",
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
 

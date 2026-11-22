@@ -5,6 +5,7 @@ import type { SkillState } from "../inventory/skill-status";
 import {
   DEPLOY_SKILL,
   IMPORT_LOCAL_EDITS,
+  IMPORT_SKILLS,
   rereadLabel,
   UPDATE_TARGET,
 } from "../ui/control-labels";
@@ -15,7 +16,7 @@ import { CLEAR_FILTERS } from "../ui/view-options-copy";
 // Empty is an offer, not a failure: the action is the one step that fills the list.
 export const NO_RELEASED_SKILLS = {
   title: "No released skills yet",
-  description: "Skills from the latest release appear here.",
+  description: `Select ${IMPORT_SKILLS} on the Harness screen to add skills to the Harness.`,
 };
 
 // The Skills band 2 and table (#1040).
