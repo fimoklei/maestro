@@ -1,5 +1,3 @@
-// The one owner of `.maestro/categories.yml`, the Harness categories: read
-// from any ref, written as file text. Nothing else parses or writes the file.
 import { Document, parseDocument } from "yaml";
 import { z } from "zod";
 import {
@@ -18,7 +16,6 @@ import type { CategoryRecord } from "./category-section";
 export const HARNESS_CATEGORIES_MAX_BYTES = 256 * 1024;
 const HARNESS_CATEGORIES_MAX_COUNT = 200;
 
-/** `skipped` counts the entries left out for an error in them. */
 export type HarnessCategoriesFile =
   | { kind: "absent" }
   | { kind: "valid"; record: CategoryRecord; skipped: number }
@@ -39,14 +36,11 @@ const assignmentSchema = z.object({
 });
 
 const isPrimitiveType = (type: string): type is HarnessPrimitiveType =>
-  // Widened only to ask includes() about any string; the guard narrows it back.
-  (HARNESS_PRIMITIVE_TYPES as readonly string[]).includes(type);
+  HARNESS_PRIMITIVE_TYPES.some((each) => each === type);
 
 const byteLength = (text: string): number =>
   new TextEncoder().encode(text).byteLength;
 
-// Core schema and no custom tags: a tag the schema lacks is a warning, and any
-// warning fails the file.
 const parseYaml = (text: string): { ok: true; value: unknown } | null => {
   try {
     const doc = parseDocument(text, { schema: "core", uniqueKeys: true });
@@ -86,7 +80,6 @@ const assignmentsOf = (raw: readonly unknown[], names: readonly string[]) => {
       continue;
     }
     const { type, name } = parsed.data;
-    // A type a later Maestro knows is no error in this file.
     if (!isPrimitiveType(type)) continue;
     const category = names.find((each) =>
       sameCategoryName(each, trimCategoryName(parsed.data.category)),
@@ -102,10 +95,6 @@ const assignmentsOf = (raw: readonly unknown[], names: readonly string[]) => {
   return { assignments, skipped };
 };
 
-/**
- * The file text for a list within the file's limits; the serializer quotes
- * each name YAML would read as another value.
- */
 export const writeHarnessCategoriesFile = (record: CategoryRecord): string =>
   new Document({
     version: 1,
@@ -117,7 +106,6 @@ export const writeHarnessCategoriesFile = (record: CategoryRecord): string =>
     })),
   }).toString({ lineWidth: 0 });
 
-/** Whether the file for `record` would break the reader's count or size limit. */
 export const exceedsHarnessCategoriesLimits = (record: CategoryRecord) =>
   record.names.length > HARNESS_CATEGORIES_MAX_COUNT ||
   byteLength(writeHarnessCategoriesFile(record)) > HARNESS_CATEGORIES_MAX_BYTES;

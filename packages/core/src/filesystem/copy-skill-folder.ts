@@ -1,5 +1,3 @@
-// One skill folder copied whole or not at all: judged before written, staged,
-// and exposed as one rename (#573).
 import { join, relative, sep } from "node:path";
 import type { CopyEntryFacts, CopyTreeFsPort } from "./copy-tree-fs";
 import { isOperatingSystemFile } from "./operating-system-files";
@@ -8,8 +6,6 @@ import { isWithinRoot } from "./path-containment";
 const MAX_FILES = 1000;
 const MAX_BYTES = 50 * 1024 * 1024;
 
-// Skipped at any depth and not counted toward the limits. `same-tree.ts` must
-// skip the same entries.
 export function isSkippedEntry(name: string): boolean {
   return name === ".git" || isOperatingSystemFile(name);
 }
@@ -19,14 +15,12 @@ export type CopySkillFolderError =
   | "not-found"
   | "not-a-directory"
   | "destination-exists"
-  // One class on purpose: naming which kind would reveal an unreadable path.
   | "unsafe-link"
   | "hard-linked-file"
   | "special-file"
   | "too-many-files"
   | "too-large"
   | "source-changed"
-  // Never carries the filesystem's reason.
   | "copy-failed";
 
 export type CopySkillFolderResult =
@@ -37,15 +31,10 @@ export type CopySkillFolderInput = {
   source: string;
   destinationParent: string;
   name: string;
-  // Never inferred: without it an existing destination is refused (#731).
   replaceExisting?: boolean;
-  // Runs on the staged copy, before the publishing rename. False refuses the
-  // whole operation (#576).
   finalize?: (payload: string) => Promise<boolean>;
 };
 
-// `link` is the symlink the file was reached through; its containment is
-// proved again right before the read.
 type PlannedFile = {
   relPath: string;
   readPath: string;
@@ -53,7 +42,6 @@ type PlannedFile = {
   facts: CopyEntryFacts;
 };
 
-// The identity catches a directory swapped after the walk.
 type PlannedDir = { relPath: string; readPath: string; identity: string };
 
 type Plan = {
@@ -78,8 +66,6 @@ export class CopySkillFolder {
     }
     const destination = join(input.destinationParent, input.name);
 
-    // Canonical: containment checks compare resolved paths, and a symlinked
-    // prefix (macOS /var) would fail them all against a raw root.
     const root = await this.fs.realpath(input.source);
     if (root === null) {
       return { ok: false, error: "not-found" };
@@ -112,7 +98,6 @@ export class CopySkillFolder {
     return this.materialize(input, destination, root, plan);
   }
 
-  // Decides, never writes. Returns the refusal that stops everything, or null.
   private async planDirectory(
     walk: Walk,
     dir: string,
@@ -174,7 +159,6 @@ export class CopySkillFolder {
     relPath: string,
     ancestors: Set<string>,
   ): Promise<CopySkillFolderError | null> {
-    // Prove containment before reading anything about the target, even its type.
     const target = await this.fs.realpath(path);
     if (target === null || !isWithinRoot(target, walk.root)) {
       return "unsafe-link";
@@ -188,7 +172,6 @@ export class CopySkillFolder {
       return "source-changed";
     }
     if (facts.kind === "directory") {
-      // A link back onto an ancestor would recurse forever.
       if (ancestors.has(target)) {
         return "unsafe-link";
       }
@@ -219,7 +202,6 @@ export class CopySkillFolder {
     return this.planDirectory(walk, dir, relPath, new Set([...ancestors, dir]));
   }
 
-  // Every exit except the publishing rename removes the staging tree.
   private async materialize(
     input: CopySkillFolderInput,
     destination: string,
@@ -233,8 +215,6 @@ export class CopySkillFolder {
     } catch {
       return { ok: false, error: "copy-failed" };
     }
-    // A plain subdirectory: the staging directory's private mode must not
-    // become the skill folder's.
     const payload = join(staging, "payload");
     try {
       await this.fs.makeDir(payload);
@@ -258,7 +238,6 @@ export class CopySkillFolder {
       if (finalize !== undefined && !(await finalize(payload))) {
         return { ok: false, error: "copy-failed" };
       }
-      // Re-read at the point of use, the last moment before it is claimed.
       const existing = await this.fs.describe(destination);
       if (existing !== null && input.replaceExisting !== true) {
         return { ok: false, error: "destination-exists" };
@@ -276,7 +255,6 @@ export class CopySkillFolder {
     }
   }
 
-  // A replaced folder is moved aside first and moved back if the swap fails.
   private async publish(
     payload: string,
     destination: string,
@@ -295,8 +273,6 @@ export class CopySkillFolder {
     }
   }
 
-  // Reads through an opened descriptor, so a name swapped after the check
-  // cannot redirect the read.
   private async copyOne(
     root: string,
     payload: string,
@@ -331,8 +307,6 @@ export class CopySkillFolder {
     }
   }
 
-  // Call right before the read: the entry, and where a link points, may have
-  // changed since the plan judged them.
   private async verifyUnchanged(
     root: string,
     file: PlannedFile,
@@ -359,12 +333,10 @@ export class CopySkillFolder {
   }
 }
 
-// Both inputs must already be realpath output.
 function landsOnSkipped(root: string, target: string): boolean {
   return relative(root, target).split(sep).some(isSkippedEntry);
 }
 
-// Refuses anything that could climb out of the destination parent.
 function isSingleSegment(name: string): boolean {
   return (
     name !== "" &&

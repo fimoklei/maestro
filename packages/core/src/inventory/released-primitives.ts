@@ -1,21 +1,16 @@
-// Read from git, never the working tree: Inventory shows what was released.
 import type { HarnessObject } from "../harness/harness-primitive";
 import type { HarnessTag } from "../harness/read-harness-state";
 import { highestReleaseTag } from "../harness/release-tag";
 
-// `manifest` is the raw SKILL.md, or null where the release ships none.
 export type ReleasedSkill = { name: string; manifest: string | null };
 
-// `text` is the whole file, frontmatter included.
 type ReleasedPrompt = { name: string; text: string };
 
-// `prompts` is null when their files cannot be read; the skills still list.
 type ReleasedPrimitives = {
   skills: ReleasedSkill[];
   prompts: ReleasedPrompt[] | null;
 };
 
-// Null is an unreadable release; empty lists are "looked, found none".
 export type ReadReleasedPrimitives = (
   root: string,
 ) => Promise<ReleasedPrimitives | null>;
@@ -38,8 +33,6 @@ type ReleasedPrimitivesGitPort = {
   ): Promise<Record<string, string> | null>;
 };
 
-// A listed prompt without its text leaves every prompt unread, so none
-// vanishes from the list unseen.
 const promptsOf = (
   names: string[],
   texts: Record<string, string>,

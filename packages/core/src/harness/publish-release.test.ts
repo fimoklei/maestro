@@ -16,7 +16,6 @@ const FRESHNESS: HarnessFreshness = {
   lastFetchedAt: "2026-08-01T07:00:00.000Z",
 };
 
-// A gate a Drift or Harness read shares with the release.
 const readGate = (git: InMemoryHarnessGit) =>
   new HarnessFetchGate({
     git,
@@ -25,7 +24,6 @@ const readGate = (git: InMemoryHarnessGit) =>
     fetched: () => {},
   });
 
-// Distinct from the world in every field a stale dialog would still show.
 const RECOMPUTED: ReleasePlan = {
   delta: [],
   previousTag: "v1.3.0",
@@ -39,7 +37,6 @@ const RECOMPUTED: ReleasePlan = {
   blocked: "empty-delta",
 };
 
-// Both travel so a remote that moved under either one is refused.
 const CONFIRMED: ReleaseConfirmation = {
   step: "patch",
   previousTag: "v1.2.3",
@@ -47,7 +44,6 @@ const CONFIRMED: ReleaseConfirmation = {
   revision: "head",
 };
 
-// v1.2.3 tags `old`; origin/HEAD `head` added `research` since.
 const releasable = (
   atHead: Record<string, string> = { research: "new" },
   rootFiles?: string[],
@@ -235,7 +231,6 @@ describe("PublishRelease", () => {
   });
 
   it("refuses a release whose branch tip moved between the read and the push", async () => {
-    // `--atomic` means nothing was created (#520).
     const git = releasable();
     git.publishOutcome = "stale-tip";
 
@@ -271,7 +266,6 @@ describe("PublishRelease", () => {
   });
 
   it("refuses a plan whose previous tag was force-moved to another commit", async () => {
-    // The tag name is unchanged but now points elsewhere (#521).
     const git = releasable();
     git.tags = [{ name: "v1.2.3", commit: "moved" }];
 
@@ -299,7 +293,6 @@ describe("PublishRelease", () => {
   });
 
   it("fetches again before recomputing, so the refused plan is not handed back", async () => {
-    // The local refs are already behind; a recompute would repeat the refused plan.
     const git = releasable();
     git.publishOutcome = "stale-tip";
 
@@ -319,7 +312,6 @@ describe("PublishRelease", () => {
   });
 
   it("recomputes nothing when the fetch behind the refusal could not reach the remote", async () => {
-    // `planRelease` reads local refs, so it cannot notice this itself (#521).
     const git = releasable();
     git.publishOutcome = "stale-tip";
     git.fetchOutcomes = ["fetched", "offline"];

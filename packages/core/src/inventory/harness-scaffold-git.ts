@@ -1,5 +1,3 @@
-// The git a scaffold needs, and nothing more: no tag operation, and identity,
-// signing and force-push are never configured. Outcomes never carry git output.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { gitOptions } from "../git/non-interactive";
@@ -13,30 +11,25 @@ const run = promisify(execFile);
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 const REMOTE_BRANCHES = "refs/remotes/origin";
 
-// A rejection is any non-success reply; Maestro does not tell the causes apart.
 export type ScaffoldPushOutcome = "pushed" | "rejected" | "offline";
 
 export type ScaffoldCommitOutcome = "committed" | "commit-failed";
 
 export interface HarnessScaffoldGitPort {
-  // Every other read here answers from the enclosing repository.
   isRepositoryRoot(root: string): Promise<boolean>;
 
   defaultBranch(root: string): Promise<string | null>;
 
-  // Includes a branch with no commit yet.
   currentBranch(root: string): Promise<string | null>;
 
   hasCommits(root: string): Promise<boolean>;
 
-  // Leaves the rest of the index and the working tree untouched.
   commit(
     root: string,
     paths: string[],
     message: string,
   ): Promise<ScaffoldCommitOutcome>;
 
-  // Index only; the working tree is not touched.
   unstage(root: string, paths: string[]): Promise<void>;
 
   push(root: string, branch: string): Promise<ScaffoldPushOutcome>;
@@ -53,7 +46,6 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
     return resolveDefaultBranch(root);
   }
 
-  // `--short` is safe on HEAD's own branch, unlike on a prunable remote symref.
   currentBranch(root: string): Promise<string | null> {
     return runGitText(root, ["symbolic-ref", "--short", "HEAD"]);
   }
@@ -65,8 +57,6 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
     );
   }
 
-  // `add` first: a partial commit cannot name an untracked path (git 2.50.1).
-  // `-- <paths>` leaves unrelated staged work alone.
   async commit(
     root: string,
     paths: string[],
@@ -81,7 +71,6 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
     }
   }
 
-  // `rm --cached`, not `reset`: on a first commit there is no HEAD to reset to.
   async unstage(root: string, paths: string[]): Promise<void> {
     try {
       await this.git(root, [
@@ -99,8 +88,6 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
 
   async push(root: string, branch: string): Promise<ScaffoldPushOutcome> {
     try {
-      // Full refspec, so a tag or same-named ref never travels. Never force.
-      // `--set-upstream`: a clone's tracking config is not guaranteed (#668).
       await this.git(root, [
         "push",
         "--set-upstream",
@@ -109,13 +96,11 @@ export class GitHarnessScaffoldAdapter implements HarnessScaffoldGitPort {
       ]);
       return "pushed";
     } catch (error) {
-      // execFile rejects with an Error that sets `killed` on a timeout.
       const killed = (error as { killed?: boolean }).killed === true;
       if (killed) {
         return "offline";
       }
       return classifyFetchFailure(
-        // execFile rejects with an Error that carries stderr.
         String((error as { stderr?: string }).stderr),
       ) === "offline"
         ? "offline"

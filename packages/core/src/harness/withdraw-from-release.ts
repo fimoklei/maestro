@@ -1,7 +1,3 @@
-// Takes a Pending release primitive, or the categories list, out of the next
-// release: one commit on the default branch makes it equal to the latest
-// release (#1729). The Working Harness is never written for a primitive, so
-// the author's copy waits under Pending proposal.
 import { createHash } from "node:crypto";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { HarnessStageRow, HarnessStages } from "./harness-stages";
@@ -27,14 +23,9 @@ export type WithdrawFromReleaseError =
   | WorktreeAmbiguity
   | "no-answer"
   | "not-pending-release"
-  // An open pull request for one of the item's names, or an unknown read.
   | "proposal-open"
-  // The default branch or the latest release no longer holds what the
-  // confirmation was built from.
   | "confirmation-stale"
-  // The clone's HEAD is not the default branch's tip.
   | "clone-not-current"
-  // The remote declined a direct push; no pull request is opened instead.
   | "push-refused"
   | "offline"
   | "push-elsewhere"
@@ -45,7 +36,6 @@ export type WithdrawFromReleaseCheck =
   | { ok: true; confirmation: string }
   | { ok: false; error: WithdrawFromReleaseError };
 
-// `name` is the Pending proposal row the withdrawal leaves behind.
 export type WithdrawFromReleaseResult =
   | { ok: true; name: string }
   | { ok: false; error: WithdrawFromReleaseError };
@@ -62,26 +52,21 @@ const PUSH_ERROR: Record<
   "push-failed": "withdraw-failed",
 };
 
-// Everything the confirmation is built from, read in one pass.
 type WithdrawalPlan = {
   names: ProposalSubject[];
-  // The Pending proposal row the withdrawal leaves: a rename's old name.
   selected: string;
   confirmation: string;
   defaultBranch: string;
   tip: string;
-  // The latest release's commit; null where none exists.
   release: string | null;
   message: string;
 };
 
-// A row names the list by its type.
 const sameRef =
   (a: ProposalSubject) =>
   (b: { type: string; name: string }): boolean =>
     a.type === b.type && subjectName(a) === b.name;
 
-// The Change decides only the names: a rename touches its previous name too.
 const namesOf = (row: HarnessStageRow): ProposalSubject[] => {
   if (row.type === "categories") {
     return [CATEGORIES_SUBJECT];
@@ -126,7 +111,6 @@ export class WithdrawFromRelease {
     this.deps = deps;
   }
 
-  /** The token the press must carry back. */
   async inspect(subject: ProposalSubject): Promise<WithdrawFromReleaseCheck> {
     const root = await this.rootFor(subject);
     if (typeof root !== "string") {
@@ -138,7 +122,6 @@ export class WithdrawFromRelease {
       : { ok: true, confirmation: plan.confirmation };
   }
 
-  // Shares the harness-root lock with every other Harness write.
   async execute(
     subject: ProposalSubject,
     confirmation: string,
@@ -168,7 +151,6 @@ export class WithdrawFromRelease {
     subject: ProposalSubject,
     confirmation: string,
   ): Promise<WithdrawFromReleaseResult> {
-    // Re-read at the press, never taken from the request.
     const plan = await this.readPlan(root, subject);
     if ("error" in plan) {
       return { ok: false, error: plan.error };
@@ -188,7 +170,6 @@ export class WithdrawFromRelease {
       : { ok: false, error: PUSH_ERROR[pushed] };
   }
 
-  // The worktree check runs first, for the confirmation and the push alike.
   private async readPlan(
     root: string,
     subject: ProposalSubject,
@@ -247,8 +228,6 @@ export class WithdrawFromRelease {
     };
   }
 
-  // Each name's object hash at `ref`, in order; null where it is absent. The
-  // list file is hashed, never parsed, so a faulty file never blocks.
   private async hashes(
     root: string,
     ref: string | null,

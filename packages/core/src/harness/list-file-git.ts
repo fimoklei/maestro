@@ -1,6 +1,3 @@
-// A list proposed as one file on its own branch. Built in a throwaway index
-// from the fetched default-branch tip: never checks out, stages in the
-// author's index, or reads the working tree. Nothing leaves as stdout.
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -18,8 +15,6 @@ import { remoteBranchHolds } from "./remote-branch-holds";
 
 const run = promisify(execFile);
 
-// A branch that lacks the tip takes it as a second parent, so the pull
-// request shows the whole change and merges without a conflict.
 const parentsOf = async (
   root: string,
   tip: string | null,

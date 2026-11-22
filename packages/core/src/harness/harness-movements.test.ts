@@ -98,7 +98,6 @@ describe("diffPrimitives", () => {
   });
 
   it("refuses to name a rename when two copies could equally be the one", () => {
-    // Duplicated content points at both copies; picking either would be a guess.
     expect(
       diffPrimitives(
         [{ type: "skill", name: "tdd", hash: "t1" }],

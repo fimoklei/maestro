@@ -9,8 +9,6 @@ import { runHelper } from "./run-helper";
 
 const OSASCRIPT = "/usr/bin/osascript";
 
-// A constant: the start folder arrives as `item 1 of argv`, never as script
-// text. No `System Events`, so macOS asks for no permission.
 const SCRIPT = [
   "on run argv",
   "return POSIX path of (choose folder default location (POSIX file (item 1 of argv)) with invisibles)",
@@ -46,7 +44,6 @@ export class MacosFolderChooser implements FolderChooserPort {
     if (outcome.exitCode === 0) {
       return { kind: "picked", output: outcome.stdout };
     }
-    // stderr is read for this one marker and never passed on.
     if (outcome.exitCode === 1 && outcome.stderr.includes(USER_CANCELED)) {
       return { kind: "cancelled" };
     }

@@ -1,5 +1,3 @@
-// The operator's own category list for the connected Harness: every rule lives
-// here, and every change runs one path: read, validate, drop stale, apply, write.
 import type {
   HarnessPrimitiveType,
   PrimitiveRef,
@@ -32,7 +30,6 @@ import {
 
 export type { CategoryChange } from "./apply-change";
 
-/** What Categories in Settings states about the latest release's Harness categories. */
 export type HarnessCategories =
   | { kind: "none" }
   | { kind: "unread" }
@@ -41,7 +38,6 @@ export type HarnessCategories =
       kind: "listed";
       tag: string;
       count: number;
-      /** The release differs from the Harness categories the operator last saw. */
       changed: boolean;
     };
 
@@ -54,7 +50,6 @@ export type CategoryList = {
   assignments: { type: HarnessPrimitiveType; name: string; category: string }[];
 };
 
-/** Why a copy of the Harness categories cannot run: git could not answer, or the latest release has no valid category. */
 type CopyRefusal = "harness-categories-unread" | "no-harness-categories";
 
 export type CategoryError =
@@ -68,7 +63,6 @@ export type CategoryError =
 
 type Refused =
   | { ok: false; error: "name-exists"; existing: string }
-  // `configPath`: the file the operator repairs by hand.
   | { ok: false; error: "categories-unreadable"; configPath: string }
   | {
       ok: false;
@@ -84,16 +78,12 @@ export type CategoryResult =
   | { ok: true; list: CategoryList; added?: string }
   | Refused;
 
-/** What the copy dialog states before the copy: the release, its valid categories, and each mode's effect. */
 export type CopyPreview = {
   tag: string;
   count: number;
-  /** Entries the file left out for an error in them. */
   skipped: number;
-  /** False for an empty own list, which copies without the choice. */
   choice: boolean;
   modes: Record<CopyMode, CopyFacts>;
-  /** Rows, as the modes name them, for categories new since the operator last looked. */
   fresh: string[];
 };
 
@@ -128,7 +118,6 @@ export class Categories {
     this.git = deps.git;
   }
 
-  /** Also answers the change signal; a release equal to the own list is recorded as seen here. */
   async readHarness(): Promise<HarnessCategoriesResult> {
     const read = await this.releasedList();
     if (!read.listed) return read.result;
@@ -144,10 +133,6 @@ export class Categories {
     };
   }
 
-  /**
-   * For the Connect gate: offering the copy records the release as seen. A
-   * release without a valid category, or a broken section, records nothing.
-   */
   async markHarnessSeen(): Promise<HarnessCategoriesResult> {
     const read = await this.releasedList();
     if (!read.listed) return read.result;
@@ -174,8 +159,6 @@ export class Categories {
     };
   }
 
-  // The connected Harness and its latest release's valid list; anything else
-  // is the answer as it stands.
   private async releasedList(): Promise<
     | { listed: false; result: HarnessCategoriesResult }
     | {
@@ -197,7 +180,6 @@ export class Categories {
       : { listed: false, result: { ok: true, harness: released } };
   }
 
-  // Never a signal for a broken section: nothing could be recorded as seen.
   private async changedSinceSeen(
     harness: HarnessKey,
     released: CategoryRecord,
@@ -248,7 +230,6 @@ export class Categories {
     const held = await this.held(harness.root, asked);
     return this.store.update<CategoryResult>((config) => {
       const section = readCategorySection(config.categories);
-      // Never written over: the operator repairs a broken section by hand.
       if (section === null) return { result: this.unreadable() };
       const applied = applyChange(
         withoutStale(recordOf(section, harness), held),
@@ -270,10 +251,7 @@ export class Categories {
     });
   }
 
-  /**
-   * Reads the new categories against last seen, then records the release as
-   * seen, in one config update, so no earlier mark loses the fact.
-   */
+  // Reads fresh and marks seen in one config update, so no mark loses the fact.
   async previewCopy(): Promise<CopyPreviewResult> {
     const source = await this.copySource();
     if (!source.ok) return source;
@@ -317,7 +295,6 @@ export class Categories {
     });
   }
 
-  /** One change that sets names and assignments together, from the release as it stands now; the release counts as seen. */
   async copyFromHarness(mode: CopyMode): Promise<CategoryResult> {
     const source = await this.copySource();
     if (!source.ok) return source;
@@ -345,8 +322,7 @@ export class Categories {
     });
   }
 
-  // Read before any update, so no other config write waits on git. The own
-  // list read here only names the items to ask Inventory about.
+  // Read before any update, so no other config write waits on git.
   private async copySource() {
     const harness = await this.harness();
     if (harness === null) {

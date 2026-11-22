@@ -1,4 +1,3 @@
-// Advisory: a finding explains release risk, never blocks a release (#519).
 import { parse } from "yaml";
 
 export type StructuralProblem =
@@ -8,11 +7,9 @@ export type StructuralProblem =
 
 export type StructuralFinding = { skill: string; problem: StructuralProblem };
 
-/** A closed frontmatter block and the text after it; null without one. */
 export const splitFrontmatter = (
   raw: string,
 ): { block: string; body: string } | null => {
-  // Both delimiters are whole lines: `---junk` closes nothing.
   const match = /^---\r?\n(?:([\s\S]*?)\r?\n)?---[ \t]*(?:\r?\n|$)/.exec(raw);
   return match === null
     ? null
@@ -32,15 +29,12 @@ export const readFrontmatter = (
   } catch {
     return null;
   }
-  // A list or a bare scalar parses but is not frontmatter.
   if (typeof data !== "object" || data === null || Array.isArray(data)) {
     return null;
   }
-  // A non-null object that is not an array, checked above.
   return { block, data: data as Record<string, unknown> };
 };
 
-// `raw` is null when the file is absent; "" is a present but blank file.
 export const validateSkillStructure = (
   raw: string | null,
 ): StructuralProblem | null => {

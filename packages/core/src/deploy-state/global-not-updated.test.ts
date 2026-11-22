@@ -11,9 +11,7 @@ const GLOBAL_ROOT = `${HOME}/.apm`;
 const LOCKFILE = `${GLOBAL_ROOT}/apm.lock.yaml`;
 const FIXTURES = new URL("../../../../tests/fixtures/", import.meta.url);
 
-// The lockfile apm wrote after v1.0.0 to both tools, then v2.0.0 to Claude
-// Code only: the .agents copies stay at v1.0.0 under a v2.0.0 resolved_ref.
-const NARROWED = readFileSync(
+const BOTH_AT_V1_THEN_CLAUDE_AT_V2 = readFileSync(
   new URL("apm.lock.1799-narrowed-global.yaml", FIXTURES),
   "utf8",
 );
@@ -24,7 +22,6 @@ const releasedFile = (tag: string, name: string) =>
 const sha = (bytes: Buffer | string) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 
-// The fixture Harness's skill at a tag, hashed as the git reader hashes it.
 function released(tag: string, name: string): Record<string, string> | null {
   const file = releasedFile(tag, name);
   return existsSync(file) ? { "SKILL.md": sha(readFileSync(file)) } : null;
@@ -36,7 +33,7 @@ function narrowedGlobal(
   options: { tags?: readonly string[] | null; edit?: string } = {},
 ) {
   const tree = new InMemoryCopyTree();
-  tree.write(LOCKFILE, NARROWED);
+  tree.write(LOCKFILE, BOTH_AT_V1_THEN_CLAUDE_AT_V2);
   for (const name of ["code-review", "commit-message"]) {
     tree.write(
       `${HOME}/.claude/skills/${name}/SKILL.md`,

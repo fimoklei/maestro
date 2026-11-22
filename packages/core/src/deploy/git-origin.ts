@@ -1,19 +1,9 @@
-// Anything unparseable, or whose transport apm's ref cannot carry, is null:
-// "origin unavailable", never a guess (#152).
-
 export type GitOrigin = { host: string; ownerRepo: string };
 
-// scp-like SSH form has no `://` and uses a colon before the path. User and
-// host exclude `@`, so each `@` has one place to match: no polynomial
-// backtracking on repeated `@`.
 const scpPattern = /^[^/@]+@([^:@]+):(.+?)(?:\.git)?$/;
 
-// file:, git: and http: parse cleanly but cannot round-trip to a usable skill
-// ref (#152).
 const usableSchemes = new Set(["https:", "ssh:"]);
 
-// `URL` blanks a default port only for the schemes it knows, which excludes
-// ssh.
 const defaultPorts = new Map([
   ["https:", "443"],
   ["ssh:", "22"],
@@ -22,7 +12,6 @@ const defaultPorts = new Map([
 const deployableHosts = new Set(["github.com"]);
 
 const fromHostAndPath = (rawHost: string, path: string): GitOrigin | null => {
-  // `URL` lowercases the host only for the schemes it knows.
   const host = rawHost.toLowerCase();
   if (!deployableHosts.has(host)) {
     return null;
@@ -38,15 +27,12 @@ const fromHostAndPath = (rawHost: string, path: string): GitOrigin | null => {
 };
 
 export const parseGitOrigin = (url: string): GitOrigin | null => {
-  // `URL` drops userinfo, so a credentialed remote never leaks its token.
   if (url.includes("://")) {
     try {
       const parsed = new URL(url);
       if (!usableSchemes.has(parsed.protocol)) {
         return null;
       }
-      // Refused, not dropped: dropping the port would send apm to the default
-      // one and fail at the first deploy (#152).
       const isDefaultPort =
         parsed.port.length === 0 ||
         parsed.port === defaultPorts.get(parsed.protocol);

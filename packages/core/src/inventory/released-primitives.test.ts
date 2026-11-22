@@ -104,7 +104,6 @@ describe("releasedPrimitivesFromGit", () => {
     await expect(read(ROOT)).resolves.toEqual({ skills: [], prompts: [] });
   });
 
-  // Null is unreadable, never "never released".
   it("reports unreadable when the tag namespace cannot be read", async () => {
     const read = releasedPrimitivesFromGit(gitOver({ tags: null }));
 
@@ -135,7 +134,6 @@ describe("releasedPrimitivesFromGit", () => {
     });
   });
 
-  // A listed prompt with no text would otherwise vanish from the list.
   it("keeps the skills and marks the prompts unread when a listed prompt has no text", async () => {
     const read = releasedPrimitivesFromGit(
       gitOver({

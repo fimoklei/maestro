@@ -19,14 +19,12 @@ import { selectionWorld } from "./selection-writer-fake";
 const repo = (repoPath: string): DeployTarget => ({ kind: "repo", repoPath });
 const globalTarget: DeployTarget = { kind: "global" };
 
-// A real copy of `name` at the registered repo, in the named drift state.
 const copyAt = (
   state: DeployedContentState,
   target: DeployTarget = repo("/registered/repo"),
   name = "tdd",
 ): DeployedContentPort => deployedCopies([{ target, name, state }]).content;
 
-// Several skills at the registered repo, each in its named state.
 const editedCopies = (
   states: Record<string, DeployedContentState>,
 ): DeployedContentPort =>
@@ -38,7 +36,6 @@ const editedCopies = (
     })),
   ).content;
 
-// No drift, with the linked-directory answer scripted.
 const withLinks = (
   linkedSkillPath: DeployedContentPort["linkedSkillPath"],
 ): DeployedContentPort => {
@@ -51,8 +48,6 @@ const withLinks = (
   };
 };
 
-// `deployedContent` is the whole port: the guard reads its `classify`, the
-// use-case only asks it for a linked destination.
 const buildDeps = (
   overrides?: Partial<
     Omit<ConstructorParameters<typeof DeploySkill>[0], "deployedContent">
@@ -90,7 +85,6 @@ const buildDeps = (
         ok: true as const,
         tag: "v0.5.1",
       }),
-      // Never reached: the install runs inside the Selection writer (#951).
       deploySkill: async () => ({ ok: true as const }),
     },
     harnessOrigin: async () => ({
@@ -136,7 +130,6 @@ const buildDeps = (
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
     selection: world.writer,
-    // The per-folder read is proven in its own tests and the bulk route's.
     outcomes: {
       read: async ({ release }: { release: string }) => ({
         release,
@@ -151,8 +144,7 @@ const buildDeps = (
 };
 
 describe("DeploySkill", () => {
-  it("refuses to call an install that placed nothing a clean deploy", async () => {
-    // apm prints its success marker whatever landed (#358, #951).
+  it("refuses to call an install that placed nothing a clean deploy, whatever apm reported", async () => {
     const { deps, world } = buildDeps();
     world.landsOnly([]);
 
@@ -184,7 +176,6 @@ describe("DeploySkill", () => {
     );
   });
 
-  // Echoes the names read, one written copy each in Claude Code's folder.
   const echoedOutcomes = {
     read: async ({
       release,
@@ -299,8 +290,6 @@ describe("DeploySkill", () => {
   });
 
   it("deploys a corrected release over a copy apm itself left unverifiable", async () => {
-    // Without a baseline the guard would refuse this copy as unverifiable, but it
-    // is apm's own, not local work (#358).
     const { deps } = buildDeps({
       deployedContent: copyAt("unverifiable"),
       recordedPackage: {
@@ -349,7 +338,6 @@ describe("DeploySkill", () => {
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
     });
-    // The repository root with the whole Selection, never a per-skill subpath ref.
     expect(deployed).toEqual([
       {
         command: "install",
@@ -503,6 +491,29 @@ describe("DeploySkill", () => {
       });
       expect(deployed).toEqual([]);
     });
+
+    it("refuses as unreleased when reading the latest release throws", async () => {
+      const { deps, deployed, world } = buildDeps({
+        apm: {
+          resolveLatestTag: async () => {
+            throw new Error("apm crashed");
+          },
+          deploySkill: async () => ({ ok: true as const }),
+        },
+        inventoryGit: {
+          skillExistsAtTag: async () => true,
+          skillDivergesFromTag: async (tag: string) => tag === "v1.1.0",
+          readSkillFilesAtTag: async () => null,
+        },
+      });
+      world.seed({ release: "v1.1.0", skills: ["review"] });
+
+      expect(await deployTdd(deps)).toEqual({
+        ok: false,
+        error: "local-diverged-from-tag",
+      });
+      expect(deployed).toEqual([]);
+    });
   });
 
   it("deploys a known skill globally at the latest tag", async () => {
@@ -530,7 +541,6 @@ describe("DeploySkill", () => {
   });
 
   it("targets only the detected tool on a single-tool machine", async () => {
-    // Anything wider makes apm write a copy for a tool the user lacks (#131).
     const { deps, deployed } = buildDeps({
       globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => ["claude"] },
@@ -554,8 +564,6 @@ describe("DeploySkill", () => {
   });
 
   it("scopes the destination guard to the detected tools on a global deploy", async () => {
-    // A leftover .agents copy from a two-tool install must not force a false
-    // refusal (#136).
     const { deps, classified } = buildDeps({
       globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => ["claude"] },
@@ -584,8 +592,6 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
-    // The release about to install, so a copy already equal to it is not read as
-    // local edits (#952).
     expect(classified).toEqual([
       {
         target: repo("/registered/repo"),
@@ -597,7 +603,6 @@ describe("DeploySkill", () => {
   });
 
   it("refuses a global deploy when no supported tool is detected, before apm", async () => {
-    // Both apm methods throw, proving apm is never invoked (#131).
     const { deps, deployed } = buildDeps({
       globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
       toolPresence: { detectGlobalTools: async () => [] },
@@ -669,7 +674,6 @@ describe("DeploySkill", () => {
   });
 
   it("rejects a non-skill primitive type, before touching any port", async () => {
-    // The edge accepts any string, so the skill-only rule lives in core (#15).
     const { deps, deployed } = buildDeps();
     const result = await new DeploySkill(deps).execute({
       type: "hook",
@@ -705,7 +709,6 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
-  // A prompt is never deployed; its name proves no skill exists.
   it("rejects a skill name that only a released prompt holds", async () => {
     const { deps, deployed } = buildDeps({
       inventory: {
@@ -795,7 +798,6 @@ describe("DeploySkill", () => {
     expect(result).toEqual({ ok: false, error: "inventory-not-configured" });
   });
 
-  // Calling it "not configured" would send the author to re-connect a live harness.
   it("reports an unreadable inventory apart from an unconfigured one", async () => {
     const { deps } = buildDeps({
       inventory: {
@@ -898,7 +900,6 @@ describe("DeploySkill", () => {
   });
 
   it("reports destination-symlinked, with no path when no destination is a link", async () => {
-    // A link that vanished before the probe leaves no path, never a guessed one (#748).
     const { deps, world } = buildDeps();
     world.refuseWith({ ok: false, reason: "destination-symlinked" });
     const result = await new DeploySkill(deps).execute({
@@ -993,8 +994,6 @@ describe("DeploySkill", () => {
   });
 
   it("reports no-published-tag when the latest tag does not contain the skill", async () => {
-    // apm view is repo-level: a tag existing says nothing about it containing the
-    // skill (#15).
     const { deps, deployed } = buildDeps({
       inventoryGit: {
         skillExistsAtTag: async () => false,
@@ -1052,7 +1051,6 @@ describe("DeploySkill", () => {
   });
 
   it("refuses to deploy when the deployed copy diverges from the lockfile", async () => {
-    // A same-ref apm install silently resets a locally edited deployed copy (#56).
     const { deps, deployed } = buildDeps({
       deployedContent: copyAt("diverged"),
     });
@@ -1115,7 +1113,6 @@ describe("DeploySkill", () => {
   });
 
   it("offers no consent past a malformed lockfile", async () => {
-    // The refusal mints no receipt, and a made-up one clears nothing (#58, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: copyAt("lockfile-malformed"),
     });
@@ -1300,8 +1297,6 @@ describe("DeploySkill", () => {
   });
 
   it("rejects a concurrent deploy to the same repo while one is in progress", async () => {
-    // The lock keys on the canonical path, so a symlinked spelling of the repo
-    // cannot race the same lockfile (#15).
     let release: () => void = () => undefined;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -1336,6 +1331,40 @@ describe("DeploySkill", () => {
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
     });
+  });
+
+  it("rejects a concurrent deploy through a symlinked spelling of the same repo", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const { deps } = buildDeps({
+      registry: { isRegistered: async () => true },
+      apm: {
+        resolveLatestTag: async () => ({ ok: true, tag: "v0.5.1" }),
+        deploySkill: async () => {
+          await gate;
+          return { ok: true as const };
+        },
+      },
+      canonicalPath: async (_path: string) => "/canonical/repo",
+    });
+    const useCase = new DeploySkill(deps);
+
+    const first = useCase.execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/registered/repo"),
+    });
+    const second = await useCase.execute({
+      type: "skill",
+      name: "tdd",
+      target: repo("/link/to/registered/repo"),
+    });
+
+    expect(second).toEqual({ ok: false, error: "deploy-in-progress" });
+    release();
+    await first;
   });
 
   it("rejects a concurrent global deploy while one is in progress", async () => {
@@ -1389,7 +1418,6 @@ describe("DeploySkill", () => {
       ok: false,
       error: "deploy-failed",
     });
-    // Refused for what the first attempt left behind, not for a lock never released.
     await expect(useCase.execute(input)).resolves.toEqual({
       ok: false,
       error: "operation-unfinished",
@@ -1428,7 +1456,6 @@ describe("DeploySkill", () => {
   });
 
   it("reports a failure while the install's operation is still pending as a deploy that did not finish", async () => {
-    // The guard reads links before the install too; only the refusal's probe fails.
     let installs: readonly unknown[] = [];
     const { deps, deployed, world } = buildDeps({
       deployedContent: withLinks(async () => {
@@ -1523,8 +1550,6 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("holds back an edited copy as a forceable row with a receipt its own deploy accepts", async () => {
-    // Two held back: a receipt minted before the install would cover docs too,
-    // which a single deploy of review never reads.
     const { deps, deployed } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
       deployedContent: editedCopies({ review: "diverged", docs: "diverged" }),
@@ -1561,7 +1586,6 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("reports a held name as not started when a failure follows a landed install", async () => {
-    // The install landed and cleared its operation; the held name's re-check fails.
     const edited = editedCopies({ review: "diverged" });
     let installs: readonly unknown[] = [];
     const { deps, deployed, world } = buildDeps({
@@ -1611,8 +1635,6 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("never honours a receipt smuggled into the batch input", async () => {
-    // A hand-built request body must never carry a batch-wide overwrite
-    // consent through (#292, #952).
     const { deps, deployed } = buildDeps({
       deployedContent: editedCopies({ tdd: "diverged" }),
     });
@@ -1642,7 +1664,6 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("installs nothing while a deployed copy outside the batch holds edits", async () => {
-    // The one install rewrites every copy in the Selection, staged or not.
     const { deps, deployed, world } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
       deployedContent: editedCopies({ docs: "diverged" }),
@@ -1840,8 +1861,6 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("keeps each link apm would skip on its own failure line, before apm", async () => {
-    // Each link has its own path and the Report spells out one rm per link
-    // (#748), so linked skills never merge into one line.
     const { deps, deployed } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
       deployedContent: withLinks(async ({ name }) =>
@@ -1871,8 +1890,6 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("leaves a linked skill out of the receipt a held row's own deploy accepts", async () => {
-    // docs is refused over its link, so a single deploy of review never reads
-    // docs' edited copy.
     const copies = editedCopies({ review: "diverged", docs: "diverged" });
     const { deps } = buildDeps({
       inventory: skills("review", "docs"),
@@ -1911,9 +1928,6 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("carries the linked path and the Update target recovery a single deploy carries", async () => {
-    // Routing a single Deploy through bulk once dropped both (aae48156): a
-    // skill missing from the followed release must stay attention, so the
-    // Report offers Update target, and a link must keep its path.
     const { deps, world } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
       inventoryGit: {
@@ -1949,7 +1963,6 @@ describe("DeploySkill.executeBatch", () => {
   });
 
   it("reports a target pinned per skill as attention, with no force to offer", async () => {
-    // A bulk deploy never grants consent or moves a release (#951).
     const { deps, world } = buildDeps();
     world.files.set(
       "/target/apm.lock.yaml",
@@ -2050,7 +2063,6 @@ describe("DeploySkill.deployAgain", () => {
     }),
   });
 
-  // commit-message is on Global with local edits in the Claude Code folder.
   const heldOnGlobal = () => {
     const fake = deployedCopies([
       {
@@ -2151,7 +2163,6 @@ describe("DeploySkill.deployAgain", () => {
   });
 
   it("never lets one skill's receipt cover another skill's edited copy", async () => {
-    // docs is not deployed yet, but an edited copy sits in its folder.
     const fake = deployedCopies([
       { target: globalTarget, name: "docs", state: { claude: "diverged" } },
     ]);

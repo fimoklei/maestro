@@ -1,5 +1,3 @@
-// The canonical empty Harness. apm scaffolds `apm.yml` and nothing else;
-// `plugin.json` belongs to the plugin-author workflow, not here.
 import { stringify } from "yaml";
 import {
   operatingSystemFileList,
@@ -7,7 +5,6 @@ import {
 } from "../filesystem/operating-system-files";
 import { HARNESS_MANIFEST, HARNESS_SKILLS_DIR } from "./harness-layout";
 
-// skipIfExists: never overwrite, a caller's own file wins (#678).
 export type ScaffoldFile = {
   path: string;
   contents: string;
@@ -17,10 +14,8 @@ export type ScaffoldFile = {
 const WORKFLOW = ".github/workflows/skill-check.yml";
 const GITIGNORE = ".gitignore";
 
-// Keeps operating-system files out of every proposal's `git add -A` (#921).
 const GITIGNORE_CONTENTS = operatingSystemGitignore();
 
-// Parents included, so an occupied `.github/` is refused before any write.
 export const SCAFFOLD_ENTRIES = [
   ".apm",
   HARNESS_SKILLS_DIR,
@@ -33,7 +28,6 @@ export const SCAFFOLD_ENTRIES = [
   HARNESS_MANIFEST,
 ];
 
-// Exactly what a rollback removes.
 export const SCAFFOLD_ROOTS = [
   ".apm",
   ".github",
@@ -58,11 +52,8 @@ export const canonicalHarnessFiles = (ownerRepo: string): ScaffoldFile[] => {
   ];
 };
 
-// `true`, `null` and `123` are legal repo names that parse as non-strings.
 const scalar = (value: string) => stringify(value).trimEnd();
 
-// `apm init -y`'s own output. The git tag is the real version (#642); APM's
-// schema requires this field, so never repair it back to 1.0.0.
 const manifest = (repo: string) => `name: ${scalar(repo)}
 version: 0.0.0
 description: ${scalar(`APM project for ${repo}`)}
@@ -95,7 +86,6 @@ Nothing is tagged yet. \`v0.1.0\` is the first release of real skill content,
 not of this scaffold.
 `;
 
-// The review and release policy (#629, #715).
 const contributing = (ownerRepo: string) => `# Contributing
 
 \`README.md\` says what this Harness is. This file says what to do, step by step.

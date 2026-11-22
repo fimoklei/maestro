@@ -1,4 +1,3 @@
-// Copies one external skill folder into the Working harness: no branch, commit or push.
 import { basename, isAbsolute, join, resolve } from "node:path";
 import type { ToolRoots } from "../deploy/deploy-tools";
 import { parseGitOrigin } from "../deploy/git-origin";
@@ -41,14 +40,11 @@ import {
 export type ImportSourceBlocker =
   | "source-unreadable"
   | "outside-root"
-  // Deployed by another Harness, or recorded under a name the Harness cannot hold.
   | "deployed-copy"
-  // The deployment record names no `host` or `repo_url`.
   | "origin-unproven"
   | "missing-manifest"
   | "invalid-frontmatter"
   | "empty-description"
-  // Update mode only: replacing would destroy uncommitted work in the harness copy.
   | "harness-copy-uncommitted"
   | "harness-unreadable"
   | "nothing-to-carry-back";
@@ -63,14 +59,12 @@ export type ImportSkillError =
   | CopySkillFolderError;
 
 export type ImportCheck = {
-  // Update replaces a skill with an edited copy of its own deployed output (#732).
   mode: ImportMode;
   // In update mode, the recorded skill's name, never the caller's.
   name: string;
   sourceBlocker: ImportSourceBlocker | null;
   nameBlocker: ImportNameBlocker | null;
   advisories: ManifestAdvisory[];
-  // `metadata.category` in SKILL.md; null where it names no valid category.
   category: string | null;
 };
 
@@ -79,14 +73,11 @@ export type ImportCheckResult =
   | { ok: false; error: "not-configured" };
 
 export type ImportSkillResult =
-  // `skipped` counts the `.git` entries left out, at every depth.
   | { ok: true; mode: ImportMode; name: string; skipped: number }
   | { ok: false; error: ImportSkillError };
 
 export type ImportSkillInput = { source: string; name?: string };
 
-// `deployed_files` are relative to `treeRoot`, which for global installs is
-// HOME, not the lockfile's folder (#667).
 export type DeployedTarget = {
   treeRoot: string;
   lockfilePath: string;
@@ -104,7 +95,6 @@ type ImportFs = Pick<
   | "listRawEntries"
 >;
 
-// The manifest is compared apart, with the name stamped in.
 const MANIFEST_ONLY = new Set(["SKILL.md"]);
 
 export class ImportSkill {
@@ -112,13 +102,10 @@ export class ImportSkill {
   private readonly deps: {
     resolveRoot: () => Promise<string | undefined>;
     fs: ImportFs;
-    // Mode bits: git records an executable bit, so the comparison must see it.
     facts: Pick<CopyTreeFsPort, "describe">;
-    // The source path comes from the browser: keep it inside this ceiling.
     homeRoot: () => string;
     copy: { copy(input: CopyRequest): Promise<CopySkillFolderResult> };
     git: Pick<HarnessGitPort, "readFacts" | "readMovementTrees">;
-    // The global install and each registered repository.
     deployedTargets: () => Promise<DeployedTarget[]>;
   };
 
@@ -131,7 +118,6 @@ export class ImportSkill {
     };
   }
 
-  // Judges the source and the name without writing anything.
   async check(input: ImportSkillInput): Promise<ImportCheckResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
@@ -144,17 +130,14 @@ export class ImportSkill {
     return await this.land(input, "single");
   }
 
-  /** As `execute`, but refuses a folder that would replace a held skill. */
   async add(input: ImportSkillInput): Promise<ImportSkillResult> {
     return await this.land(input, "add");
   }
 
-  /** As `execute`, but also replaces a skill of any origin the Harness holds. */
   async replace(input: ImportSkillInput): Promise<ImportSkillResult> {
     return await this.land(input, "replace");
   }
 
-  /** What `replace` would do: the name it lands under, whether it replaces, and why not. */
   async judgeReplace(input: ImportSkillInput): Promise<
     | {
         ok: true;
@@ -191,7 +174,6 @@ export class ImportSkill {
     if (root === undefined) {
       return { ok: false, error: "not-configured" };
     }
-    // Judged again: never trust the check the browser saw.
     const { check, source } = await this.inspect(root, input);
     const blocker = await this.blocker(root, check, source, policy);
     if (blocker !== null) {
@@ -228,7 +210,6 @@ export class ImportSkill {
     };
   }
 
-  // A replaced skill of another origin passes the guards an update passes.
   private async blocker(
     root: string,
     check: ImportCheck,
@@ -249,7 +230,6 @@ export class ImportSkill {
     return check.nameBlocker;
   }
 
-  // Null where a symlinked `.apm` resolves outside the harness.
   private async skillsDir(root: string): Promise<string | null> {
     const resolved = await ensureHarnessPrimitiveDir(
       this.deps.fs,
@@ -269,7 +249,6 @@ export class ImportSkill {
         ? null
         : await this.readManifest(join(source, "SKILL.md"));
     const within = source !== null && (await this.withinHome(source));
-    // Only a folder inside the ceiling is read for provenance.
     const provenance: Provenance =
       source === null || !within
         ? { kind: "none" }
@@ -288,7 +267,6 @@ export class ImportSkill {
         raw,
         provenance,
       }),
-      // Update mode requires a taken name.
       nameBlocker:
         provenance.kind === "own" ? null : await this.judgeName(root, name),
       advisories: raw === null ? [] : manifestAdvisories(raw),
@@ -381,7 +359,6 @@ export class ImportSkill {
     return await sameTree(this.tree, source, held, MANIFEST_ONLY);
   }
 
-  // An uncheckable guard fails closed.
   private async judgeHarnessCopy(
     root: string,
     name: string,
@@ -396,7 +373,6 @@ export class ImportSkill {
       : "harness-copy-uncommitted";
   }
 
-  // From the lockfiles, never guessed from where the folder sits (#667).
   private async readProvenance(
     root: string,
     source: string,
@@ -424,7 +400,6 @@ export class ImportSkill {
     return { kind: "none" };
   }
 
-  // Null where the entry cannot prove both origin and name.
   private async ownSkillName(
     root: string,
     entry: LockfileEntry,
@@ -435,7 +410,6 @@ export class ImportSkill {
     if (name === null || !isValidSkillSlug(name)) {
       return null;
     }
-    // Parsed, so two spellings of one remote match. `repo_url` is owner/repo.
     const facts = await this.deps.git.readFacts(root).catch(() => null);
     const origin =
       facts == null || facts.originUrl === null
@@ -453,7 +427,6 @@ export class ImportSkill {
       : null;
   }
 
-  // A missing or unparseable lockfile records no deploys.
   private async readEntries(lockfilePath: string): Promise<LockfileEntry[]> {
     const raw = await this.deps.fs.readFile(lockfilePath).catch(() => null);
     if (raw === null) {
@@ -487,7 +460,6 @@ export class ImportSkill {
       : null;
   }
 
-  // Makes the staged manifest's name match the directory; false refuses the import.
   private async stampName(payload: string, name: string): Promise<boolean> {
     const manifest = join(payload, "SKILL.md");
     const raw = await this.readManifest(manifest);
@@ -510,7 +482,6 @@ export class ImportSkill {
   }
 }
 
-// Why a folder cannot be added as a new skill; an update counts as a taken name.
 const addBlocker = (
   check: ImportCheck,
 ): ImportSourceBlocker | ImportNameBlocker | null =>
@@ -518,10 +489,8 @@ const addBlocker = (
     ? "name-taken"
     : (check.sourceBlocker ?? check.nameBlocker);
 
-// `single` replaces only an own deployed copy, `add` nothing, `replace` any held skill.
 type LandPolicy = "single" | "add" | "replace";
 
-// An own deployed copy holds its name by definition.
 const replacesHeld = (check: ImportCheck): boolean =>
   check.mode === "update" || check.nameBlocker === "name-taken";
 
@@ -530,8 +499,6 @@ type CopyRequest = Pick<
   "source" | "destinationParent" | "name" | "replaceExisting" | "finalize"
 >;
 
-// The lockfile is untrusted: an absolute row counts only inside a folder apm
-// records absolute, a Global folder outside HOME.
 function withinTarget(file: string, roots: ToolRoots): boolean {
   return (
     !isAbsolute(file) ||
@@ -541,7 +508,6 @@ function withinTarget(file: string, roots: ToolRoots): boolean {
   );
 }
 
-// A Root package names no one skill: only a deployed skill's directory row does.
 function recordedSkillName(
   entry: LockfileEntry,
   file: string,

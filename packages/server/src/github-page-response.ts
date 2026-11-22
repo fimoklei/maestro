@@ -1,5 +1,3 @@
-// A GitHub page, shape-checked at the edge. A link failing the check crosses
-// as unknown: dropping it would claim no page exists.
 import {
   type DeployedPrimitive,
   type GitHubPage,
@@ -8,7 +6,6 @@ import {
 } from "@maestro/core";
 import { z } from "zod";
 
-// A repository's page, or a page under it such as a skill folder at a tag.
 const linkSchema = z.object({
   kind: z.literal("link"),
   url: z
@@ -20,20 +17,17 @@ const linkSchema = z.object({
     ),
 });
 
-// Spread into a response body: absent where there is no page, never null.
 export function githubPageField<
   K extends "github" | "releaseGitHub" | "latestReleaseGitHub",
 >(key: K, page: GitHubPage | undefined): Partial<Record<K, GitHubPage>> {
   if (page === undefined) return {};
   const link = linkSchema.safeParse(page);
-  // A computed key widens to string; `key` is the K the caller named.
   return { [key]: link.success ? link.data : UNKNOWN_PAGE } as Record<
     K,
     GitHubPage
   >;
 }
 
-// Each skill row's folder in the connected Harness (#1181).
 export const checkedPrimitives = (primitives: readonly DeployedPrimitive[]) =>
   primitives.map(({ github, ...primitive }) => ({
     ...primitive,

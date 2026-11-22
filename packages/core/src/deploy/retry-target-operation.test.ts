@@ -8,13 +8,18 @@ import { selectionWorld } from "./selection-writer-fake";
 const HARNESS = "fimoklei/agent-harness";
 const target: DeployTarget = { kind: "repo", repoPath: "/repo" };
 
-function buildUseCase(state: DeployedContentState = "clean") {
+function buildUseCase(
+  state: DeployedContentState = "clean",
+  readLockfile?: () => Promise<never>,
+) {
   const world = selectionWorld();
+  const content = copiesIn(state).content;
   const retry = new RetryTargetOperation({
     registry: { isRegistered: async () => true },
     selection: world.writer,
     deployedCleanup: world.cleanup,
-    deployedContent: copiesIn(state).content,
+    deployedContent:
+      readLockfile === undefined ? content : { ...content, readLockfile },
     toolPresence: { detectGlobalTools: async () => ["claude" as const] },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
@@ -23,8 +28,6 @@ function buildUseCase(state: DeployedContentState = "clean") {
   return { world, retry };
 }
 
-// The interrupted deploy this recovery starts from: apm ran, nothing landed,
-// and the intent is on disk.
 const interrupted = {
   key: "/repo",
   target,
@@ -235,7 +238,6 @@ describe("RetryTargetOperation", () => {
     });
   });
 
-  // A release published since the preview is not the one the reader chose (#954).
   it("reruns an interrupted update at the release the reader chose", async () => {
     const { world, retry } = buildUseCase();
     world.seed({ release: "v0.5.0", skills: ["prototype", "review"] });
@@ -263,6 +265,18 @@ describe("RetryTargetOperation", () => {
         skills: ["prototype", "review"],
       },
     ]);
+  });
+
+  it("answers a failed retry with no word of the error it caught", async () => {
+    const { world, retry } = buildUseCase("clean", async () => {
+      throw new Error("apm exited 1: token ghp_secret");
+    });
+    await world.operations.begin(interrupted);
+
+    expect(await retry.execute({ target })).toEqual({
+      ok: false,
+      error: "retry-failed",
+    });
   });
 
   it("refuses an unregistered repository before reading anything", async () => {

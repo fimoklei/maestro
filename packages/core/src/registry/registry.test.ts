@@ -6,7 +6,6 @@ import { Registry } from "./registry";
 
 const CONFIG_PATH = "/home/me/.maestro/config.json";
 
-// An empty env, so the ambient MAESTRO_INVENTORY_PATH cannot leak in.
 const resolveCentralInventoryPath = (
   config: Parameters<typeof resolveInventoryPath>[0],
 ) => resolveInventoryPath(config, {});
@@ -56,7 +55,6 @@ describe("Registry", () => {
 
     await registry.register("/Users/me/project");
 
-    // A symlink to it is the same repository.
     await expect(registry.register("/Users/me/link")).resolves.toEqual({
       ok: false,
       error: "already-registered",
@@ -240,7 +238,6 @@ describe("Registry", () => {
         ok: true,
         repos: [],
       });
-      // The rest of the config survives the rewrite.
       await expect(store.read()).resolves.toEqual({
         repos: [],
         inventoryPath: "/inv",
@@ -325,7 +322,6 @@ describe("Registry", () => {
       const fs = new InMemoryFileSystem({
         directories: {
           ...gitRepos("/Users/me/project"),
-          // A symlink whose realpath is the registered repo.
           "/Users/me/link": "/Users/me/project",
         },
       });

@@ -6,7 +6,6 @@ import {
 
 const HARNESS = "fimoklei/agent-harness";
 
-// The shape apm 0.29.0 wrote in the #957 canary, trimmed to what the editor reads.
 const manifest = (body: string) => `name: proj
 version: 1.0.0
 # Which agent platforms to deploy to.
@@ -104,8 +103,8 @@ describe("readHarnessSelection", () => {
 describe("writeHarnessSelection", () => {
   it("writes the exact selection, sorted as apm records it", () => {
     const written = writeHarnessSelection(oneHarness, HARNESS, [
-      "prototype",
       "review",
+      "prototype",
     ]);
     expect(readHarnessSelection(written ?? "", HARNESS)).toEqual({
       kind: "selection",
@@ -128,6 +127,18 @@ describe("writeHarnessSelection", () => {
 
   it("refuses an empty selection, which apm rejects outright", () => {
     expect(writeHarnessSelection(oneHarness, HARNESS, [])).toBeNull();
+  });
+
+  it("refuses to choose between two dependencies on the connected Harness", () => {
+    const twice = manifest(`    - git: ${HARNESS}
+      ref: v0.6.0
+      skills:
+        - prototype
+    - git: ${HARNESS}
+      ref: v0.5.0
+      skills:
+        - caveman`);
+    expect(writeHarnessSelection(twice, HARNESS, ["review"])).toBeNull();
   });
 
   it("refuses a shape it does not recognise", () => {

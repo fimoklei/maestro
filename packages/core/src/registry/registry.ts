@@ -1,4 +1,3 @@
-// The consuming-repo registry: the allowlist every path-taking endpoint checks.
 import { join } from "node:path";
 import type { ConfigStore, MaestroConfig } from "./config-store";
 import type { FileSystemPort } from "./file-system";
@@ -6,7 +5,6 @@ import { type RepoPathError, validateRepoPath } from "./repo-path";
 
 export type RegisteredRepo = { path: string };
 
-/** What the registry can tell about a registered folder without apm. */
 export type RepoStatus = "ready" | "folder-missing" | "not-a-git-repo";
 
 export type RegisterError =
@@ -67,12 +65,10 @@ export class Registry {
     return (await this.isGitRepo(path)) ? "ready" : "not-a-git-repo";
   }
 
-  // A worktree's `.git` is a file, so presence is the test, not its type.
   private isGitRepo(path: string): Promise<boolean> {
     return this.fs.exists(join(path, ".git"));
   }
 
-  // Call before any filesystem or apm access. Exact match after realpath.
   async resolveRegistered(input: string): Promise<RegisteredRepo | undefined> {
     let real: string;
     try {
@@ -88,7 +84,6 @@ export class Registry {
     return (await this.resolveRegistered(input)) !== undefined;
   }
 
-  /** What `register` would answer, with nothing written: the after-pick check. */
   async check(input: string): Promise<CheckResult> {
     return this.checkAgainst(input, await this.store.read());
   }
@@ -119,8 +114,6 @@ export class Registry {
     return validated;
   }
 
-  // Read-modify-write through the store's one lock, so a concurrent connect or
-  // freshness record is never dropped.
   async register(input: string): Promise<RegisterResult> {
     return this.store.update<RegisterResult>(async (config) => {
       const checked = await this.checkAgainst(input, config);
@@ -129,7 +122,6 @@ export class Registry {
       }
       const next = [...config.repos, { path: checked.path }];
 
-      // Spread: the store rewrites the whole file.
       return {
         config: { ...config, repos: next },
         result: { ok: true, repos: next },
@@ -137,7 +129,6 @@ export class Registry {
     });
   }
 
-  // By the stored path, never a realpath: a gone folder must still be droppable.
   async unregister(path: string): Promise<UnregisterResult> {
     return this.store.update<UnregisterResult>(async (config) => {
       if (!config.repos.some((repo) => repo.path === path)) {

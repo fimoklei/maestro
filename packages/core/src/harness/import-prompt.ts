@@ -1,4 +1,3 @@
-// Writes one prompt file into the Working Harness: no branch, commit or push.
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { FileSystemPort } from "../registry/file-system";
 import {
@@ -20,14 +19,11 @@ import {
   writePromptFile,
 } from "./prompt-file";
 
-// The refusal for a prompt file that is a link, or that cannot be read.
 const entryRefusal = (
   kind: "unsafe" | "unreadable",
 ): "destination-unsafe" | "destination-unreadable" =>
   kind === "unsafe" ? "destination-unsafe" : "destination-unreadable";
 
-// Taken only while `<name>.md` is in the Working Harness: a name deleted
-// there is free again.
 export type ImportPromptCheck = {
   mode: ImportMode;
   nameBlocker: "empty-name" | "invalid-name" | null;
@@ -48,46 +44,37 @@ export type ReadPromptResult =
   | { ok: true; prompt: PromptFile }
   | { ok: false; error: ReadPromptError };
 
-/** One file of a batch; only `replace` lets it take the place of a held prompt. */
 export type PromptImportDraft = PromptDraft & { replace: boolean };
 
-/** Why one file of a batch was not written; the rest still run. */
 export type PromptImportRefusal =
   | PromptFieldProblem
-  // Sent without `replace` while the Harness holds the name, or an earlier
-  // file of the batch took it.
   | "prompt-taken"
   | "destination-unsafe"
   | "destination-unreadable"
   | "write-failed";
 
-/** One file of a batch, in the order it was sent; `update` replaced a held prompt. */
 export type PromptImportOutcome = { name: string } & (
   | { imported: true; mode: ImportMode }
   | { imported: false; refusal: PromptImportRefusal }
 );
 
-/** Refuses the whole batch before any file is written. */
 export type ImportPromptsError =
   | "not-configured"
   | "destination-unsafe"
   | "destination-unreadable"
   | "import-in-progress";
 
-/** What the batch import route answers on success. */
 export type ImportPromptsAnswer = { outcomes: PromptImportOutcome[] };
 
 export type ImportPromptsResult =
   | ({ ok: true } & ImportPromptsAnswer)
   | { ok: false; error: ImportPromptsError };
 
-/** The edited fields, and the prompt as `read` gave it when the dialog opened. */
 export type PromptEdit = PromptFile & { name: string; read: PromptFile };
 
 export type EditPromptError =
   | ReadPromptError
   | PromptFieldProblem
-  // The file no longer reads as the `read` the dialog was filled with.
   | "prompt-changed"
   | "import-in-progress"
   | "write-failed";
@@ -117,7 +104,6 @@ export class ImportPrompt {
     if (nameBlocker !== null) {
       return { ok: true, check: { mode: "add", nameBlocker } };
     }
-    // A missing or unsafe folder holds no prompt; the import states why.
     const entry = await inspectPrimitiveEntry(this.deps.fs, root, {
       type: "prompt",
       name,
@@ -129,7 +115,6 @@ export class ImportPrompt {
     };
   }
 
-  /** The prompt as the Working Harness holds it, never the Released harness. */
   async read(name: string): Promise<ReadPromptResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
@@ -145,7 +130,6 @@ export class ImportPrompt {
     return { ok: true, prompt: found.prompt };
   }
 
-  // Rewrites only a file that is there: an edit never creates a prompt.
   async edit(input: PromptEdit): Promise<EditPromptResult> {
     const [problem] = promptFieldProblems(input);
     if (problem !== undefined) {
@@ -161,7 +145,6 @@ export class ImportPrompt {
     return run.ok ? run.value : { ok: false, error: "import-in-progress" };
   }
 
-  // The other front matter keys come from the file as it reads under the lock.
   private async rewrite(
     root: string,
     { name, read, ...edited }: PromptEdit,
@@ -185,11 +168,6 @@ export class ImportPrompt {
     return { ok: true, name };
   }
 
-  /**
-   * Each file is judged by the prompt field rules, in field order,
-   * and refused where the name is taken and it does not ask to replace. One
-   * refusal never stops the rest.
-   */
   async importMany(
     drafts: readonly PromptImportDraft[],
   ): Promise<ImportPromptsResult> {
@@ -212,7 +190,6 @@ export class ImportPrompt {
       replace,
       problem: promptDraftProblems(draft)[0],
     }));
-    // A batch the field rules refuse whole leaves no empty prompts folder.
     if (judged.some(({ problem }) => problem === undefined)) {
       const folder = await this.ensureFolder(root);
       if (folder !== null) {
@@ -220,7 +197,6 @@ export class ImportPrompt {
       }
     }
     const outcomes: PromptImportOutcome[] = [];
-    // In order: an earlier file's write takes its name from a later one.
     const written = new Set<string>();
     for (const { draft, replace, problem } of judged) {
       const landed =
@@ -255,7 +231,6 @@ export class ImportPrompt {
       : "destination-unreadable";
   }
 
-  // A link is refused before it is written: the write never follows it.
   private async entry(root: string, name: string) {
     const entry = await inspectPrimitiveEntry(this.deps.fs, root, {
       type: "prompt",
@@ -282,7 +257,6 @@ export class ImportPrompt {
     }
   }
 
-  // A taken name is written over only where `replace` allows it.
   private async writeOne(
     root: string,
     draft: PromptDraft,
@@ -298,7 +272,6 @@ export class ImportPrompt {
       : { ok: false, error: "write-failed" };
   }
 
-  // A link is refused before it is read: the read never follows it.
   private async load(
     root: string,
     name: string,

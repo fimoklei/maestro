@@ -1,4 +1,3 @@
-// The consent only preflight can mint: the receipt (#458).
 import type { DeployTarget } from "./deploy-skill";
 import type { RemoveCheck } from "./remove-deployed-skill";
 import { ConsentSigner } from "./signed-consent";
@@ -19,7 +18,6 @@ export type RemoveScope = {
 export class RemoveConsentIssuer {
   private readonly signer = new ConsentSigner();
 
-  // Proves this server priced the removal itself (#458).
   receipt(scope: RemoveScope, check: RemoveCheck): string {
     return this.signer.sign({
       kind: "receipt",
@@ -28,8 +26,6 @@ export class RemoveConsentIssuer {
     });
   }
 
-  // `check` is what the removal found just now, never what the caller claims
-  // (#364).
   accepts(
     scope: RemoveScope,
     check: RemoveCheck,

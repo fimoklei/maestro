@@ -250,6 +250,11 @@ describe("promoting a skill deletion", { timeout: 30_000 }, () => {
       await refuses("sparse-checkout");
     });
 
+    it("refuses while sparse checkout is switched on by a config value of 1", async () => {
+      await git(root, "config", "core.sparseCheckout", "1");
+      await refuses("sparse-checkout");
+    });
+
     it("refuses while a merge is in progress", async () => {
       await conflictingBranch();
       await git(root, "merge", "theirs").catch(() => {});

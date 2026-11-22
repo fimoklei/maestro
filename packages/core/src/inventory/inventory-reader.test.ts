@@ -9,7 +9,6 @@ function skillFile(name: string, description: string): string {
   return `---\nname: ${name}\ndescription: ${description}\n---\n\n# ${name}\n`;
 }
 
-// Content comes from the release, never from what is on disk.
 const connected = () =>
   new InMemoryFileSystem({ directories: { [INVENTORY]: INVENTORY } });
 
@@ -46,6 +45,43 @@ describe("InventoryReader", () => {
     });
   });
 
+  it("still lists the release when its pending changes cannot be read", async () => {
+    const reader = new InventoryReader({
+      fs: connected(),
+      resolvePath: () => INVENTORY,
+      readPendingRelease: () => Promise.reject(new Error("git unavailable")),
+      readReleased: async () => ({
+        skills: [{ name: "tdd", manifest: skillFile("tdd", "Loop") }],
+        prompts: [],
+      }),
+    });
+
+    await expect(reader.read()).resolves.toMatchObject({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", pendingRelease: null }],
+    });
+  });
+
+  it("claims no pending change for an addition that shares a released name", async () => {
+    const reader = new InventoryReader({
+      fs: connected(),
+      resolvePath: () => INVENTORY,
+      readPendingRelease: async () => ({
+        movements: [{ type: "skill", name: "tdd", kind: "added" }],
+        defaultBranch: "main",
+      }),
+      readReleased: async () => ({
+        skills: [{ name: "tdd", manifest: skillFile("tdd", "Loop") }],
+        prompts: [],
+      }),
+    });
+
+    await expect(reader.read()).resolves.toMatchObject({
+      ok: true,
+      primitives: [{ type: "skill", name: "tdd", pendingRelease: null }],
+    });
+  });
+
   it("lists every skill in the inventory", async () => {
     const reader = readerOver([
       { name: "tdd", manifest: skillFile("tdd", "TDD loop") },
@@ -79,7 +115,6 @@ describe("InventoryReader", () => {
 
   it("skips a skill whose SKILL.md is missing and lists the rest", async () => {
     const reader = readerOver([
-      // "broken" is a directory in the release that ships no SKILL.md.
       { name: "broken", manifest: null },
       { name: "tdd", manifest: skillFile("tdd", "TDD loop") },
     ]);
@@ -99,7 +134,6 @@ describe("InventoryReader", () => {
     });
   });
 
-  // The directory is the skill's identity; a disagreeing frontmatter name is prose.
   it("names a skill by its directory, not by its frontmatter name", async () => {
     const reader = readerOver([
       {
@@ -125,7 +159,6 @@ describe("InventoryReader", () => {
 
   it("skips a skill with malformed frontmatter and lists the rest", async () => {
     const reader = readerOver([
-      // "bad" has a SKILL.md but its frontmatter lacks a description.
       { name: "bad", manifest: "---\nname: bad\n---\n\n# bad\n" },
       { name: "tdd", manifest: skillFile("tdd", "TDD loop") },
     ]);
@@ -177,7 +210,6 @@ describe("InventoryReader", () => {
     });
   });
 
-  // A skill only on disk was never published, so nobody can deploy it (#841).
   it("never reads a skill from the working tree", async () => {
     const fs = new InMemoryFileSystem({
       directories: {

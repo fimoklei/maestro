@@ -1,8 +1,5 @@
 import { normalizeCommandOutput } from "../normalize-command-output";
 
-// Only the class leaves this file, never git's text.
-
-// No answer at all. A rejected key is a reply, so an ordinary failed fetch.
 const OFFLINE_PHRASES = [
   "could not resolve host",
   "could not resolve proxy",

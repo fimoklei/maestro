@@ -6,8 +6,6 @@ import {
   sameStamp,
 } from "../registry/file-system";
 
-// The origin lives in the clone's `.git/config`, so an unchanged stamp of
-// that file means an unchanged origin.
 export function rememberOrigin(deps: {
   fs: Pick<FileSystemPort, "stamp">;
   readOrigin: (root: string) => Promise<GitOrigin | null>;

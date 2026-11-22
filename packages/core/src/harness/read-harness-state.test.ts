@@ -30,7 +30,6 @@ function stubFreshness(
   };
 }
 
-// v0.5.0 tags `aaa`, which origin/HEAD, local HEAD and disk all hold.
 const releasedWorld = (skills: Record<string, string> = { tdd: "same" }) => {
   const git = new InMemoryHarnessGit().settled(skills, "aaa");
   git.tags = [
@@ -40,7 +39,6 @@ const releasedWorld = (skills: Record<string, string> = { tdd: "same" }) => {
   return git;
 };
 
-// The default branch moved from the v0.5.0 release `aaa` to `bbb`; the clone is level with it.
 const mergedSinceRelease = (
   atRelease: Record<string, string>,
   atTip: Record<string, string>,
@@ -59,7 +57,6 @@ function buildRead(
     root?: string | undefined;
     resolveRoot?: () => Promise<string | undefined>;
     freshness?: ReturnType<typeof stubFreshness>;
-    // Defaults to a complete read that found no request.
     review?: HarnessReviewRead;
     readReviews?: HarnessReviewPort["readReviews"];
     readViewer?: HarnessReviewPort["readViewer"];
@@ -160,7 +157,6 @@ describe("ReadHarnessState", () => {
   });
 
   it("calls the comparison unknown when a ref's skills could not be read", async () => {
-    // An unreadable ref is not an empty harness: every skill would read as removed.
     const git = mergedSinceRelease({ tdd: "t1" }, { tdd: "t2" });
     git.unreadable.add("aaa");
 
@@ -197,7 +193,6 @@ describe("ReadHarnessState", () => {
   });
 
   it("reads a default branch that moved without touching a skill as released", async () => {
-    // A commit after the tag can move the branch and change no skill (#845).
     const read = buildRead(mergedSinceRelease({ tdd: "t1" }, { tdd: "t1" }));
 
     await expect(read.execute()).resolves.toMatchObject({
@@ -226,7 +221,6 @@ describe("ReadHarnessState", () => {
   });
 
   it("never calls a harness unreleased on tags no fetch has confirmed", async () => {
-    // Before the first fetch an empty tag list means "not looked yet" (#516).
     const git = releasedWorld();
     git.tags = [];
     const read = buildRead(git, { freshness: stubFreshness() });
@@ -281,7 +275,6 @@ describe("ReadHarnessState stages", () => {
           proposal: {
             rows: [
               { name: "docs", status: "not-yet-proposed" },
-              // The author's own proposal is never a teammate's change.
               {
                 name: "tdd",
                 status: "new-local-work",
@@ -296,7 +289,6 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("finds a skill that exists only on a promote branch", async () => {
-    // A new skill pushed for review is in none of the other three refs.
     const git = releasedWorld({});
     git.commit("fresh-tip", { fresh: "pushed" }, { parent: "aaa" });
     git.promote = { fresh: "fresh-tip" };
@@ -322,8 +314,6 @@ describe("ReadHarnessState stages", () => {
       ok: true,
       state: {
         stages: {
-          // The folder still on disk differs from the proposed deletion,
-          // which is the author's own work, never a teammate's.
           proposal: {
             rows: [
               {
@@ -366,7 +356,6 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("reads a renamed directory as one deletion and one addition", async () => {
-    // Renames are not inferred (#575).
     const git = releasedWorld({ "old-name": "same" });
     git.working = { "new-name": "same" };
 
@@ -405,7 +394,6 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("never reads a skill this clone has not pulled yet as a local deletion", async () => {
-    // A clone that is behind, never the author's own deletion (#575).
     const git = new InMemoryHarnessGit().settled({}, "mine");
     git.commit("theirs", { tdd: "newer" }, { parent: "mine" });
     git.tip = "theirs";
@@ -433,7 +421,6 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("calls the local stages unknown when a local ref could not be read", async () => {
-    // An empty table would claim nothing is waiting, which this read cannot back.
     const git = releasedWorld();
     git.unreadable.add("HEAD");
 
@@ -450,7 +437,6 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("flags a local edit whose remote content already moved on as a concurrent change", async () => {
-    // A teammate pushed the same skill to origin/HEAD (#579).
     const git = new InMemoryHarnessGit().settled({ tdd: "same" }, "fork");
     git.commit("theirs", { tdd: "theirs" }, { parent: "fork" });
     git.tip = "theirs";
@@ -498,7 +484,6 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("never flags the author's own unpushed commit as a teammate's change", async () => {
-    // Local is ahead, not behind: the author's own unpushed commit (#579).
     const git = new InMemoryHarnessGit().settled({ tdd: "old" }, "base");
     git.commit("mine", { tdd: "mine-1" }, { parent: "base" });
     git.head = "mine";
@@ -515,7 +500,6 @@ describe("ReadHarnessState stages", () => {
   });
 
   it("never lets a teammate's change to a different skill block this one's promotion", async () => {
-    // origin/HEAD never moved `tdd` since the fork; only `grilling` (#579).
     const git = new InMemoryHarnessGit();
     git.commit("base", { tdd: "same", grilling: "old" });
     git.commit(
@@ -696,7 +680,6 @@ describe("ReadHarnessState refresh", () => {
   });
 
   it("reads back the same harness it fetched, even if the connection changed", async () => {
-    // Reconnecting mid-read would fetch one harness and report the other's facts.
     const roots = ["/harness-a", "/harness-b"];
     const git = releasedWorld();
     git.root = "/harness-a";
@@ -746,7 +729,6 @@ describe("ReadHarnessState refresh", () => {
   });
 
   it("answers two refreshes at once with one fetch", async () => {
-    // StrictMode and a second tab make two fetches of one clone race each other.
     let releaseFetch = () => {};
     const git = releasedWorld();
     git.fetchHold = new Promise<void>((resolve) => {

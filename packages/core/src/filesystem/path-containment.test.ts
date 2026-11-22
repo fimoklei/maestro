@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { isWithinRoot } from "./path-containment";
 
-// Both inputs are realpath output, so containment is a plain prefix check.
 describe("isWithinRoot", () => {
   it("accepts the root itself", () => {
     expect(isWithinRoot("/home/user", "/home/user")).toBe(true);

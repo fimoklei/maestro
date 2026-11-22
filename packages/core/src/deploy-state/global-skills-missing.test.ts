@@ -20,8 +20,7 @@ const releasedBytes = (tag: string, name: string) =>
 const sha = (bytes: Buffer) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 
-// Global deployed v2.0.0 to Claude Code only; Codex was installed after.
-const CLAUDE_ONLY = [
+const CLAUDE_ONLY_AT_V2 = [
   "lockfile_version: '1'",
   "dependencies:",
   "- repo_url: fimoklei/maestro-fixture-harness",
@@ -73,7 +72,7 @@ function globalRead(lockfile: string, onDisk: Record<string, string[]>) {
 
 describe("GlobalDeployStateReader on a detected folder that lacks skills", () => {
   it("names every Selection skill a newly detected tool's folder lacks", async () => {
-    const result = await globalRead(CLAUDE_ONLY, { ".claude": SKILLS });
+    const result = await globalRead(CLAUDE_ONLY_AT_V2, { ".claude": SKILLS });
 
     expect(
       result.ok &&
@@ -85,7 +84,7 @@ describe("GlobalDeployStateReader on a detected folder that lacks skills", () =>
   });
 
   it("names a recorded copy whose files are gone", async () => {
-    const both = CLAUDE_ONLY.replace(
+    const both = CLAUDE_ONLY_AT_V2.replace(
       "  deployed_files:\n",
       "  deployed_files:\n  - .agents/skills/code-review/SKILL.md\n  - .agents/skills/commit-message/SKILL.md\n",
     );
@@ -100,7 +99,7 @@ describe("GlobalDeployStateReader on a detected folder that lacks skills", () =>
   });
 
   it("keeps Global's one skill list whole", async () => {
-    const result = await globalRead(CLAUDE_ONLY, { ".claude": SKILLS });
+    const result = await globalRead(CLAUDE_ONLY_AT_V2, { ".claude": SKILLS });
 
     expect(
       result.ok && result.primitives.map((primitive) => primitive.name),
@@ -109,7 +108,7 @@ describe("GlobalDeployStateReader on a detected folder that lacks skills", () =>
 
   it("names nothing missing in a folder whose tool is not detected", async () => {
     const tree = new InMemoryCopyTree();
-    tree.write(LOCKFILE, CLAUDE_ONLY);
+    tree.write(LOCKFILE, CLAUDE_ONLY_AT_V2);
     for (const name of SKILLS) {
       tree.write(
         `${HOME}/.claude/skills/${name}/SKILL.md`,

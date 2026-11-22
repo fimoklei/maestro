@@ -15,7 +15,6 @@ export function registerFolderRoutes(app: Hono, deps: Deps) {
     c.json({ available: await deps.folderChooser.available() }),
   );
 
-  // A write: it opens a window on the reader's machine, so the guard covers it.
   app.post("/api/folder-chooser", async (c) => {
     const body = await parseBody(c, chooseFolderBodySchema, PATH_BODY);
     if (!body.ok) {
@@ -34,7 +33,6 @@ export function registerFolderRoutes(app: Hono, deps: Deps) {
     c.json({ repos: await deps.registry.listWithStatus() }),
   );
 
-  // POST, so the origin-host guard covers this path probe (#1009).
   app.post("/api/registry/repos/check", async (c) => {
     const body = await parseBody(c, registerBodySchema, PATH_BODY);
     if (!body.ok) {

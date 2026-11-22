@@ -41,21 +41,15 @@ type Copy = DeployedContentState;
 
 function target(
   overrides: {
-    // Per skill, per tool: what the content port reads for that copy.
     // `both`: the reading of both tools asked together, where it differs.
     copies?: Record<string, { claude?: Copy; codex?: Copy; both?: Copy }>;
     lockfile?: string[];
     registered?: boolean;
     pending?: boolean;
-    // The copy into the Harness fails for this skill: a full disk, say.
     copyFails?: string;
-    // Tree per skill at v1.0.0, the release every copy was deployed from.
     release?: Record<string, string>;
-    // The global install: lockfile under ~/.apm, skills under HOME.
     global?: boolean;
-    // The newest release Deploy-state's row measures the repo against.
     latestRelease?: string;
-    // Skills whose edited copy the Working harness already holds.
     imported?: string[];
   } = {},
 ) {
@@ -88,7 +82,6 @@ function target(
     files[`${ROOT}/.apm/skills/${name}/SKILL.md`] = HELD;
   }
 
-  // The lockfile records what the content port recorded for each copy.
   const withRecordedHashes = (text: string) =>
     text.replace(/^- virtual_path: \.apm\/skills\/(.+)$/gm, (line, name) => {
       const hashes = Object.entries(
@@ -119,7 +112,6 @@ function target(
       path === lockfilePath
         ? withRecordedHashes(files[path] as string)
         : (files[path] ?? null),
-    // No stamp: nothing is remembered, every read goes to the file.
     stamp: async () => null,
     listRawEntries: async (path: string) => {
       const prefix = `${path}/`;
@@ -145,9 +137,6 @@ function target(
     },
   };
 
-  // The content port reads a real copy tree built from `copies`, per tool. A
-  // not-deployed tool beside `both: "diverged"` is a folder deleted after apm
-  // recorded it, so the copies read edited only together.
   const toolCopy = (
     reading: { claude?: Copy; codex?: Copy; both?: Copy },
     tool: "claude" | "codex",
@@ -186,7 +175,6 @@ function target(
   }
   const content = deployed.content;
 
-  // Every skill committed locally as "tree-1", the content v1.0.0 released.
   const committed = Object.fromEntries(
     Object.keys(copies).map((name) => [name, "tree-1"]),
   );
@@ -312,7 +300,6 @@ const GLOBAL_TARGET = { kind: "global" as const };
 
 const CODEX_EDITED = `${EDITED}More.\n`;
 
-// Both Global copies carry local edits, and the Codex folder's differ.
 function differingGlobalCopies() {
   const world = target({
     global: true,
@@ -375,7 +362,6 @@ describe("ImportLocalEdits.check", () => {
   });
 
   it("refuses a skill Import skill would add rather than update", async () => {
-    // No record lists the deployed folder: ImportSkill proves no origin.
     const { useCase } = target({
       lockfile: [
         "- virtual_path: .apm/skills/code-review",
@@ -396,7 +382,6 @@ describe("ImportLocalEdits.check", () => {
       copies: {
         "code-review": { claude: "diverged" },
         tdd: { claude: "diverged" },
-        // apm records hashes per entry, so a lost record leaves both folders unverified.
         lint: { claude: "unverifiable", codex: "unverifiable" },
       },
       lockfile: [
@@ -431,7 +416,6 @@ describe("ImportLocalEdits.check", () => {
       ],
     });
     git.working = { "code-review": "tree-2", tdd: "tree-1" };
-    // Import stamps the recorded name into the frontmatter before comparing.
     files[`${ROOT}/.apm/skills/tdd/SKILL.md`] = EDITED.replace(
       "name: code-review",
       "name: tdd",
@@ -447,8 +431,6 @@ describe("ImportLocalEdits.check", () => {
   });
 
   it("judges a Local edits row whose edit no single tool folder holds, never calling it unedited", async () => {
-    // The Claude Code folder was deleted: together the copies read edited,
-    // apart the Codex copy reads clean and the other reads not deployed.
     const { useCase } = target({
       copies: {
         "code-review": { both: "diverged", claude: "not-deployed" },
@@ -534,8 +516,12 @@ describe("ImportLocalEdits.check", () => {
     await useCase.check(REPO_TARGET);
 
     expect(rootReads()).toBe(1);
-    // Its own one read, beside the one Import skill makes per skill it judges.
-    expect(git.movementReads).toBe(1 + 3);
+    const ownRead = 1;
+    const judgedSkills = 3;
+    const importSkillReadsPerJudgedSkill = 1;
+    expect(git.movementReads).toBe(
+      ownRead + judgedSkills * importSkillReadsPerJudgedSkill,
+    );
   });
 
   it("lists a global skill with identical Claude Code and Codex edits as eligible", async () => {
@@ -797,7 +783,6 @@ describe("ImportLocalEdits.execute", () => {
       ok: true,
       skills: [{ name: "code-review", refusal: null }],
     });
-    // A teammate's change pulled in: committed, so Import skill still allows it.
     git.commit("pulled", { "code-review": "tree-2" }, { parent: "local" });
     git.head = "pulled";
     git.working = { "code-review": "tree-2" };

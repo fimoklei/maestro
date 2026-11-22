@@ -1,5 +1,3 @@
-// Withdraw from release on the default branch: one commit pushed with a lease,
-// then followed locally. Nothing leaves as stdout or stderr.
 import { execFile } from "node:child_process";
 import { lstat, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -27,7 +25,6 @@ import { remoteBranchHolds } from "./remote-branch-holds";
 
 const run = promisify(execFile);
 
-// Null where `source` could not be read: never a guess at what it holds.
 const changesFrom = async (
   root: string,
   { source, refs }: DefaultBranchWithdrawal,
@@ -52,8 +49,6 @@ export async function withdrawOnDefaultBranch(
   withdrawal: DefaultBranchWithdrawal,
   deps: { pushLandsWhereItFetched: () => Promise<boolean> },
 ): Promise<WithdrawalPushOutcome> {
-  // The local follow-up below moves HEAD from `tip`; from anywhere else it
-  // would revert a commit nobody pushed.
   const head = await runGitText(root, ["rev-parse", "HEAD"]);
   if (head !== withdrawal.tip) {
     return "clone-not-current";
@@ -112,7 +107,6 @@ const push = async (
     return "pushed";
   } catch (error) {
     const failure = classifyGitError(error, classifyPushFailure);
-    // A worded refusal: the remote did not move the branch.
     if (failure === "stale-tip" || failure === "refused") {
       return failure;
     }
@@ -125,9 +119,7 @@ const push = async (
 };
 
 // The push is the commit point: a failed step here is reconciled by the next
-// fetch, never reported as a failed withdrawal. A primitive's working tree is
-// never touched, so the author's copy reads as uncommitted work and a catch-up
-// has nothing to fast-forward over it.
+// fetch, never reported as a failed withdrawal.
 const follow = async (
   root: string,
   { defaultBranch, tip, refs }: DefaultBranchWithdrawal,
@@ -151,8 +143,6 @@ const follow = async (
   }
 };
 
-// The list lives in Maestro's config, not the clone: a file equal to the
-// withdrawn one is no author's copy, and left alone it would stop catch-up.
 const setListBack = async (
   root: string,
   subject: ListSubject,
@@ -191,7 +181,6 @@ const setListBack = async (
   ).catch(() => undefined);
 };
 
-// The list file's blob id at `ref`; null where absent, undefined where unread.
 const blobAt = async (
   root: string,
   ref: string,
@@ -204,8 +193,6 @@ const blobAt = async (
 const isMissing = (error: unknown): boolean =>
   error instanceof Error && "code" in error && error.code === "ENOENT";
 
-// The working file's blob id; null where absent, undefined where it is not a
-// plain file or could not be hashed.
 const workingBlob = async (
   root: string,
   path: string,

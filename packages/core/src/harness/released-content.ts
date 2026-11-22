@@ -1,5 +1,3 @@
-// Content at a commit never changes, so it is remembered for the life of the
-// process, keyed by commit. A ref can move, so it resolves on every call.
 import { createHash } from "node:crypto";
 import { readBlobs } from "../git/cat-file-batch";
 import { runGitText } from "../git/run-git-text";
@@ -13,9 +11,6 @@ import { listPrimitivesAt } from "./harness-primitive-git";
 
 export type HarnessSkillTree = { name: string; treeHash: string };
 
-// shortcut: trees, manifests and files stay remembered per commit for the life
-// of the process, with no bound; cap them (least recently used) once a server
-// that reads many releases shows memory growth.
 export class ReleasedContentReader {
   // Only a full answer is remembered; a failure is asked again next time.
   private readonly trees = new ReuseGate<HarnessSkillTree[] | null>({
@@ -30,8 +25,6 @@ export class ReleasedContentReader {
   private readonly prompts = new Map<string, string | null>();
   private readonly files = new Map<string, Record<string, string>>();
 
-  // Null on a ref the clone cannot resolve or a listing this parser does not
-  // recognise; an empty array is a release without a skills directory.
   async skillTrees(
     root: string,
     ref: string,
@@ -44,8 +37,6 @@ export class ReleasedContentReader {
         );
   }
 
-  // Every type. Null on a ref the clone cannot resolve; a missing type folder
-  // is none of that type.
   async primitives(root: string, ref: string): Promise<HarnessObject[] | null> {
     const commit = await resolveCommit(root, ref);
     return commit === null
@@ -55,8 +46,6 @@ export class ReleasedContentReader {
         );
   }
 
-  // Null for a name whose SKILL.md is missing at `ref`, or for every name
-  // when `ref` does not resolve.
   async skillManifests(
     root: string,
     ref: string,
@@ -87,8 +76,6 @@ export class ReleasedContentReader {
     );
   }
 
-  // Each prompt file's text at `ref`, keyed by name; a name without a file
-  // there is absent. Null when `ref` does not resolve or a file cannot be read.
   async promptTexts(
     root: string,
     ref: string,
@@ -126,9 +113,6 @@ export class ReleasedContentReader {
     return texts;
   }
 
-  // Each file's bytes hashed the way apm records a deployed file, keyed
-  // inside the skill folder. Empty for a skill the release lacks; null when
-  // `ref` does not resolve or a file cannot be read.
   async skillFiles(
     root: string,
     ref: string,
@@ -158,8 +142,6 @@ const readTreesAt = async (
   root: string,
   commit: string,
 ): Promise<HarnessSkillTree[] | null> => {
-  // `-z`: otherwise git quotes any non-ASCII name. The commit resolved, so a
-  // failed listing is a release without a skills directory.
   const listing = await runGitText(root, [
     "ls-tree",
     "-z",
@@ -174,8 +156,6 @@ const readFilesAt = async (
   name: string,
 ): Promise<Record<string, string> | null> => {
   const subtree = harnessSkillSubpath(name);
-  // -z, so a path holding a quote or a newline survives the split. The
-  // commit resolved, so a failed listing is a skill the release lacks.
   const listing = await runGitText(root, [
     "ls-tree",
     "-r",

@@ -20,7 +20,6 @@ describe("isValidSkillSlug", () => {
   });
 
   it("refuses a name that would leave the skills directory", () => {
-    // The name becomes a git pathspec and a ref.
     expect(isValidSkillSlug("..")).toBe(false);
     expect(isValidSkillSlug(".")).toBe(false);
     expect(isValidSkillSlug("../secrets")).toBe(false);
@@ -33,6 +32,11 @@ describe("isValidSkillSlug", () => {
     expect(isValidSkillSlug("tdd..v2")).toBe(false);
     expect(isValidSkillSlug("tdd.")).toBe(false);
     expect(isValidSkillSlug("two words")).toBe(false);
+  });
+
+  it("refuses a name too long for a folder name and a git ref", () => {
+    expect(isValidSkillSlug("a".repeat(64))).toBe(true);
+    expect(isValidSkillSlug("a".repeat(65))).toBe(false);
   });
 
   it("refuses a dot, an underscore or a capital anywhere in the name", () => {

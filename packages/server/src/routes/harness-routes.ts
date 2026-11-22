@@ -15,7 +15,6 @@ import {
 
 type Deps = Pick<AppDeps, "harness" | "publish">;
 
-// No operation takes a path: the one connected harness is resolved server-side.
 export function registerHarnessRoutes(app: Hono, deps: Deps) {
   const harnessResponse = (c: Context, result: HarnessStateResult) => {
     if (!result.ok) {
@@ -30,7 +29,6 @@ export function registerHarnessRoutes(app: Hono, deps: Deps) {
     harnessResponse(c, await deps.harness.execute()),
   );
 
-  // A POST: fetching writes refs, so it belongs behind the Origin/Host guard.
   app.post("/api/harness/refresh", async (c) =>
     harnessResponse(c, await deps.harness.refresh()),
   );
@@ -44,8 +42,6 @@ export function registerHarnessRoutes(app: Hono, deps: Deps) {
     return c.json(result.plan);
   });
 
-  // Takes only the step and previous tag: the server re-reads the remote and
-  // computes the commit to tag itself (#520).
   app.post("/api/harness/release", async (c) => {
     const body = await parseBody(c, publishReleaseBodySchema, RELEASE_BODY);
     if (!body.ok) {
@@ -54,7 +50,6 @@ export function registerHarnessRoutes(app: Hono, deps: Deps) {
     const result = await deps.publish.execute(body.data);
     if (!result.ok) {
       const { status } = publishReleaseErrorResponses[result.error];
-      // Carries the replacing plan, so the dialog can take a new confirmation (#521).
       return c.json({ error: result.error, plan: result.recomputed }, status);
     }
     return c.json({ tag: result.tag, revision: result.revision });

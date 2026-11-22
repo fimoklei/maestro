@@ -9,7 +9,6 @@ export const runHelper: RunHelper = (file, args, options) =>
       { ...options, encoding: "utf8", maxBuffer: 64 * 1024, windowsHide: true },
       (error, stdout, stderr) => {
         resolve({
-          // A spawn failure carries a string code (ENOENT) and no exit code.
           exitCode:
             error === null
               ? 0

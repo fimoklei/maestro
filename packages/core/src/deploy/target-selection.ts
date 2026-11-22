@@ -1,6 +1,3 @@
-// Read from `deployed_files` plus file existence, never from `skill_subset` or
-// `skills:`: both keep names apm already dropped (#941).
-
 import { resolve } from "node:path";
 import { harnessSkillPin } from "../deploy-state/pinned-per-skill";
 import {
@@ -19,7 +16,6 @@ import { buildHarnessPackageRef } from "./package-ref";
 
 type DeployedCopy = { name: string; tool: SupportedTool };
 
-// A write must never read an unanswerable lockfile as an empty target (#58).
 export type TargetSelection =
   | { kind: "empty" }
   | {
@@ -27,7 +23,6 @@ export type TargetSelection =
       release: string;
       ref: string;
       deployed: string[];
-      // Per tool, so one tool's copy never stands in for another's.
       copies: DeployedCopy[];
     }
   | { kind: "pinned-per-skill" }
@@ -43,7 +38,6 @@ export async function readTargetSelection(deps: {
   origin: GitOrigin;
 }): Promise<TargetSelection> {
   const raw = await deps.fs.readFile(deps.location.lockfilePath(deps.target));
-  // apm deletes the lockfile with the last dependency: absent means empty.
   if (raw === null) {
     return { kind: "empty" };
   }
@@ -63,7 +57,6 @@ export async function readTargetSelection(deps: {
   }
   const root = roots[0];
   if (root === undefined) {
-    // Only after ruling out a root package: a target mid-migration holds both.
     return parsed.entries.some(
       (entry) => harnessSkillPin(entry, deps.origin) !== null,
     )
@@ -71,13 +64,11 @@ export async function readTargetSelection(deps: {
       : { kind: "empty" };
   }
 
-  // The lockfile is user data that reaches an apm command: check its shape.
   if (!RELEASE_TAG_PATTERN.test(root.resolved_ref)) {
     return { kind: "unreadable", reason: "ref-unresolvable" };
   }
   const treeRoot = deps.location.treeRoot(deps.target);
   const toolRoots = deps.location.toolRoots(deps.target);
-  // A Global folder outside HOME is recorded absolute; resolve keeps it whole.
   const skills = await deployedRootPackageSkills(
     root,
     skillPrefixes(toolRoots),

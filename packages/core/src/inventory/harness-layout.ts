@@ -1,5 +1,3 @@
-// The retired root `skills/` layout is not a fallback.
-
 export const HARNESS_MANIFEST = "apm.yml";
 
 export const HARNESS_SKILLS_DIR = ".apm/skills";
@@ -7,7 +5,6 @@ export const HARNESS_SKILLS_DIR = ".apm/skills";
 export const harnessSkillSubpath = (name: string): string =>
   `${HARNESS_SKILLS_DIR}/${name}`;
 
-// Outside `.apm/`, so APM never delivers a prompt.
 export const HARNESS_PROMPTS_DIR = ".maestro/prompts";
 
 export const HARNESS_CATEGORIES_FILE = ".maestro/categories.yml";

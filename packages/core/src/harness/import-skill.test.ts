@@ -8,7 +8,6 @@ const ROOT = "/harness";
 const SOURCE = "/work/Code Review";
 const MANIFEST =
   "---\nname: whatever\ndescription: Reviews code.\n---\n\nBody.\n";
-// The directory name is the skill's identity, so this names code-review.
 const HELD_MANIFEST = MANIFEST.replace("whatever", "code-review");
 const ORIGIN = "git@github.com:fimoklei/agent-harness.git";
 
@@ -38,7 +37,6 @@ const unreachableFacts = {
   },
 };
 
-// A clone at no root these tests resolve, so any read of it throws.
 const unreachableGit = new InMemoryHarnessGit();
 unreachableGit.root = "/unreachable";
 
@@ -47,15 +45,12 @@ function harness(
     files?: Record<string, string>;
     directories?: string[];
     executable?: string[];
-    // Reads that fail outright, unlike a missing or unparsable file.
     unreadable?: string[];
     deployedTargets?: { treeRoot: string; lockfilePath: string }[];
     copy?: () => Promise<CopySkillFolderResult>;
     originUrl?: string | null;
-    // The Harness clone's folders on disk; null is a clone nobody could read.
     harnessWorking?: Skills | null;
     homeRoot?: string;
-    // Link path → the path it resolves to.
     links?: Record<string, string>;
   } = {},
 ) {
@@ -127,7 +122,6 @@ function harness(
           },
   };
 
-  // `code-review` is committed locally, not yet on origin/HEAD.
   const git = new InMemoryHarnessGit();
   git.commit("remote", {});
   git.commit("local", { "code-review": HELD_MANIFEST }, { parent: "remote" });
@@ -389,7 +383,6 @@ describe("ImportSkill.check", () => {
     });
   });
 
-  // Only a Global folder apm moved out of HOME is recorded absolute (#1796).
   it("takes no provenance from an absolute row outside the target's folders", async () => {
     const deployed = "/elsewhere/skills/code-review";
     const { importSkill } = harness({
@@ -539,7 +532,6 @@ describe("ImportSkill.check", () => {
   });
 
   it("refuses a copy whose record names something that is not a skill slug", async () => {
-    // Not a slug, so it cannot be this Harness's own skill.
     const deployed = "/repo/.claude/skills/code-review";
     const { importSkill } = harness({
       files: {
@@ -563,7 +555,6 @@ describe("ImportSkill.check", () => {
   });
 
   it("keeps a copy outside the ceiling out of update mode, record or no record", async () => {
-    // Outside the ceiling the deployment records are never consulted.
     const { importSkill, deployed } = deployedInRepo(FROM_THIS_HARNESS, {
       homeRoot: "/elsewhere",
     });
@@ -707,7 +698,6 @@ describe("ImportSkill.check", () => {
     const { importSkill } = harness({
       files: {
         [`${authored}/SKILL.md`]: MANIFEST,
-        // Readable, this entry would claim the folder and open update mode.
         "/repo/apm.lock.yaml": lockfile(FROM_THIS_HARNESS),
       },
       directories: [authored, `${ROOT}/.apm/skills/code-review`],
@@ -872,7 +862,6 @@ describe("ImportSkill.execute", () => {
       name: "code-review",
       skipped: 0,
     });
-    // Never a path the caller supplied.
     expect(disk.copied).toMatchObject([
       {
         input: {

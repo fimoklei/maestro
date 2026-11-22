@@ -250,6 +250,19 @@ describe("writePromptFile", () => {
     );
   });
 
+  it("keeps a description longer than a YAML line on one line", () => {
+    const description = `${"long ".repeat(60)}end`;
+
+    expect(
+      writePromptFile({
+        frontmatter: "model: haiku",
+        description,
+        text: "Review it.",
+        example: "",
+      }),
+    ).toBe(`---\nmodel: haiku\ndescription: ${description}\n---\nReview it.`);
+  });
+
   it("writes only a description key above the text without front matter", () => {
     expect(
       writePromptFile({
@@ -291,6 +304,10 @@ describe("writePromptFile", () => {
     ["a directive", "%YAML 1.2\n---\nmodel: haiku"],
     ["a list", "- model"],
     ["broken YAML", "model: [unclosed"],
+    [
+      "a tag the description would not read back through",
+      "description: !!int 3",
+    ],
   ])(
     "writes only the description over front matter holding %s",
     (_, frontmatter) => {
@@ -355,7 +372,6 @@ describe("promptFieldProblems", () => {
   });
 
   it("counts the text limit in UTF-8 bytes, not characters", () => {
-    // 60,000 characters, 120,000 bytes.
     expect(promptFieldProblems({ ...valid, text: "é".repeat(60_000) })).toEqual(
       ["long-text"],
     );
@@ -377,7 +393,6 @@ describe("promptDraftProblems", () => {
   };
 
   it("counts the description block the written file adds toward 100 KB", () => {
-    // 102,400 bytes of text fit alone; the written file adds the block.
     expect(
       promptDraftProblems({ ...draft, text: "a".repeat(102_400) }),
     ).toEqual(["long-text"]);

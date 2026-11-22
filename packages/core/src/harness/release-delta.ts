@@ -1,6 +1,3 @@
-// The one diff between the latest release and the default branch. The Pending
-// release stage, the release plan and the empty-delta refusal all read it, so
-// they never disagree (#845).
 import {
   diffListFile,
   diffPrimitives,
@@ -13,7 +10,6 @@ import type { HarnessChange } from "./harness-stages";
 import { CATEGORIES_SUBJECT, subjectKey } from "./proposal-subject";
 import type { HarnessGitPort, HarnessTag } from "./read-harness-state";
 
-/** A movement with the Change its Pending release row shows. */
 export type PendingMovement = SubjectMovement & {
   change: HarnessChange;
   author: string | null;
@@ -28,7 +24,6 @@ const RELEASE_CHANGE: Record<HarnessMovement["kind"], HarnessChange> = {
 
 export type ReleaseDelta = {
   movements: PendingMovement[];
-  // Every primitive at `head`, read once with the movements.
   current: HarnessObject[];
 };
 
@@ -37,10 +32,6 @@ type DeltaGit = Pick<
   "readPrimitives" | "readListHash" | "readAuthors"
 >;
 
-/**
- * The categories file's part of the diff: one change at most. Empty where it
- * did not move; null where either side could not be read.
- */
 export const readListMovements = async (
   git: Pick<HarnessGitPort, "readListHash">,
   root: string,
@@ -59,9 +50,6 @@ export const readListMovements = async (
   return moved === null ? [] : [moved];
 };
 
-// Null where either side could not be read: a delta nobody could compute is
-// never empty. Content, not reachability: a tag off the default branch
-// compares like any other.
 export const readReleaseDelta = async (
   git: DeltaGit,
   root: string,
@@ -88,7 +76,6 @@ export const readReleaseDelta = async (
   ];
 
   const authored = await git.readAuthors(root, head, movements);
-  // A subject the default branch never saw has its author on the release ref.
   const orphaned = movements.filter(
     (movement) =>
       movement.kind === "removed" && authored[subjectKey(movement)] == null,

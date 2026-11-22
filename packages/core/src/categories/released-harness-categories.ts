@@ -1,4 +1,3 @@
-// The Harness categories at a ref, read through the one file reader.
 import type { HarnessGitPort, HarnessTag } from "../harness/read-harness-state";
 import { highestReleaseTag } from "../harness/release-tag";
 import { HARNESS_CATEGORIES_FILE } from "../inventory/harness-layout";
@@ -13,14 +12,12 @@ export type ReleasedCategoriesGitPort = Pick<HarnessGitPort, "readFileAt"> & {
   readTags(root: string): Promise<HarnessTag[] | null>;
 };
 
-/** `none`: no release, no file, or no valid category. `unread`: git could not answer. */
 export type ReleasedHarnessCategories =
   | { kind: "none" }
   | { kind: "unread" }
   | { kind: "faulty"; tag: string }
   | { kind: "listed"; tag: string; record: CategoryRecord; skipped: number };
 
-/** The file at `ref`; null where git could not read the ref. */
 export const readHarnessCategoriesAt = async (
   git: Pick<HarnessGitPort, "readFileAt">,
   root: string,

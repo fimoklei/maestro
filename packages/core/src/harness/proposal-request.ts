@@ -1,4 +1,3 @@
-// The pull-request step around a push to a primitive's proposal branch.
 import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
 import {
   type HarnessPrimitiveType,
@@ -22,7 +21,6 @@ export type ProposalTarget = {
   ref: PrimitiveRef;
 };
 
-// Before merge a rename is an addition and a deletion, so no proposal is one.
 export type ProposalKind = Exclude<HarnessChange, "rename">;
 
 const TITLE_PREFIX: Record<
@@ -41,14 +39,11 @@ const TITLE_PREFIX: Record<
   },
 };
 
-// Every prefix Maestro ever wrote, so a title from before the kinds still
-// counts as Maestro's own words (#1399).
 const OWN_PREFIXES = [
   ...Object.values(TITLE_PREFIX).flatMap((byKind) => Object.values(byKind)),
   "Promote skill:",
 ];
 
-// The subject of the commit that takes a primitive out of the next release.
 const WITHDRAW_PREFIX: Record<HarnessPrimitiveType, string> = {
   skill: "Withdraw skill:",
   prompt: "Withdraw prompt:",
@@ -57,12 +52,9 @@ const WITHDRAW_PREFIX: Record<HarnessPrimitiveType, string> = {
 export const withdrawalTitle = (ref: PrimitiveRef): string =>
   `${WITHDRAW_PREFIX[ref.type]} ${ref.name}`;
 
-// Also the subject of the commit a push lands: GitHub's compare page titles a
-// one-commit request by it, where no request is opened for the author.
 export const proposalTitle = (ref: PrimitiveRef, kind: ProposalKind): string =>
   `${TITLE_PREFIX[ref.type][kind]} ${ref.name}`;
 
-// A prompt deploys to no target, so its deletion body names none.
 const DELETION_AFTERWORD: Record<HarnessPrimitiveType, string> = {
   skill:
     " Targets keep the skill until each one runs Update target after the next release.",
@@ -137,8 +129,6 @@ export const requestProposal = (
     ...proposalText(target.ref, kind),
   });
 
-// Only Maestro's own title of another kind changes: any other title is
-// someone's words.
 const retitle = async (
   review: HarnessReviewPort,
   target: ProposalTarget,
@@ -149,19 +139,15 @@ const retitle = async (
   if (!own || request.title.startsWith(TITLE_PREFIX[target.ref.type][kind])) {
     return;
   }
-  // A failed retitle is not reported: the pushed branch is the truth.
   await review.editRequest(target.origin, request.number, {
     title: proposalText(target.ref, kind).title,
   });
 };
 
-// Missing: no `gh`, an unknown read, or GitHub refused to open one. `gh`
-// is absent only when the read found no `gh` to ask.
 export type PullRequestOutcome =
   | ({ state: "opened" | "updated" } & PullRequestRef)
   | { state: "missing"; gh: "available" | "absent" };
 
-// Read before the push, never from the cockpit: it decides open versus update.
 export const beforeProposalPush = async (
   review: HarnessReviewPort,
   target: ProposalTarget,
@@ -171,7 +157,6 @@ export const beforeProposalPush = async (
   | { ok: false; error: "extra-requests" | "proposed-by-other" }
 > => {
   const read = await review.readReviews(target.origin);
-  // Null is "unknown", never "none": it blocks no push and opens no request.
   const open =
     read.outcome === "read" && read.complete
       ? openProposals(read.requests, target)

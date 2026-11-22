@@ -18,12 +18,11 @@ const sha = (bytes: Buffer | string) =>
 
 const TAGS = ["v2.0.0", "v1.1.0", "v1.0.0"];
 
-// What a write left in each folder: a release's copy, an edit, or nothing.
 type Copy = { at: string } | { text: string } | "unreadable";
 
 function written(
   folders: Partial<Record<".claude" | ".agents", Record<string, Copy>>>,
-  options: { releaseReadable?: boolean } = {},
+  options: { releaseReadable?: boolean; historyReadable?: boolean } = {},
 ) {
   const tree = new InMemoryCopyTree();
   for (const [prefix, copies] of Object.entries(folders)) {
@@ -56,9 +55,20 @@ function written(
       },
     },
   });
+  const historyReadable = options.historyReadable !== false;
   return new FolderOutcomeReader({
-    content,
-    releaseTags: async () => TAGS,
+    content: {
+      openReading: (input) => content.openReading(input),
+      harnessHolds: (input) => content.harnessHolds(input),
+      readLockfile: (target) =>
+        historyReadable
+          ? content.readLockfile(target)
+          : Promise.reject(new Error("lockfile unreadable")),
+    },
+    releaseTags: async () => {
+      if (!historyReadable) throw new Error("tags unreadable");
+      return TAGS;
+    },
     globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
   });
 }
@@ -173,6 +183,23 @@ describe("FolderOutcomeReader after a Global write", () => {
 
     expect(outcome.folders[0]?.skills).toEqual([
       { name: "code-review", outcome: "not-confirmed" },
+    ]);
+  });
+
+  it("still reads each folder, naming no older release, when the tags and the lockfile fail", async () => {
+    const reader = written(
+      { ".claude": { "code-review": { at: "v1.1.0" } } },
+      { historyReadable: false },
+    );
+
+    const outcome = await reader.read({
+      release: "v2.0.0",
+      names: ["code-review"],
+      written: ["claude"],
+    });
+
+    expect(outcome.folders[0]?.skills).toEqual([
+      { name: "code-review", outcome: "not-updated", stillAt: null },
     ]);
   });
 

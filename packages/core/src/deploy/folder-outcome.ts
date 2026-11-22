@@ -10,18 +10,14 @@ import {
   type SupportedTool,
 } from "./deploy-tools";
 
-/** What a Global write left of one skill in one Global folder. */
 export type SkillOutcome =
   | { name: string; outcome: "written" | "missing" | "not-confirmed" }
   | { name: string; outcome: "not-updated"; stillAt: string | null };
 
 export type FolderOutcome = {
-  /** Starting with `~/` inside home, absolute outside it, as the screen names it. */
   path: string;
   tool: SupportedTool;
-  /** Global writes this folder only while its tool is detected. */
   detected: boolean;
-  /** Empty where the tool is not detected: the write skipped its folder. */
   skills: SkillOutcome[];
 };
 
@@ -36,16 +32,10 @@ const OUTCOME_OF_READING = {
   unreadable: "not-confirmed",
 } as const;
 
-/**
- * The per-folder outcome of a Global write, shared by Deploy and Update target:
- * each (skill, folder) copy measured against the release the write installed.
- */
 export class FolderOutcomeReader {
   private readonly deps: {
     content: CopyReadingPort & Pick<DeployedContentPort, "readLockfile">;
-    // Newest first; null or a failure names no older release.
     releaseTags: () => Promise<readonly string[] | null>;
-    // Where Global writes, so each folder is read and named as apm wrote it.
     globalLayout: () => GlobalLayout;
   };
 
@@ -53,11 +43,9 @@ export class FolderOutcomeReader {
     this.deps = deps;
   }
 
-  /** Never rejects: a copy nothing could read is `not-confirmed`. */
   async read(input: {
     release: string;
     names: readonly string[];
-    /** The tools the write targeted; their folders are read. */
     written: readonly SupportedTool[];
   }): Promise<FolderOutcomes> {
     const target = { kind: "global" } as const;

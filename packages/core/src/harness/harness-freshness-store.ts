@@ -12,7 +12,6 @@ export class HarnessFreshnessStore implements HarnessFreshnessPort {
     this.store = deps.store;
   }
 
-  // A record left by another root reads as never fetched.
   async read(root: string): Promise<HarnessFreshness> {
     const record = (await this.store.read()).harnessFreshness;
     return record === undefined || record.root !== root

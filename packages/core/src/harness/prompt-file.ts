@@ -1,4 +1,3 @@
-// The one owner of the prompt file format: read, write and the field rules.
 // Web imports it at runtime (`@maestro/core/prompt-file`), so no `node:` module.
 import { Document, isMap, parse, parseDocument, Scalar } from "yaml";
 import { isValidSkillSlug } from "../deploy/package-ref";
@@ -6,10 +5,8 @@ import { metadataCategory } from "./metadata-category";
 import { proposeSkillSlug } from "./skill-slug";
 import { readFrontmatter, splitFrontmatter } from "./validate-skill-structure";
 
-/** `example` is "" when the prompt has none, as `description` is. */
 export type PromptFile = { description: string; text: string; example: string };
 
-/** A prompt's two texts, of which one box or block shows one at a time. */
 export type PromptPart = Extract<keyof PromptFile, "text" | "example">;
 
 // A record so a field added to `PromptFile` fails to compile here until the
@@ -21,23 +18,18 @@ const PROMPT_FILE_FIELDS = Object.keys({
   example: true,
 } satisfies Record<keyof PromptFile, true>) as (keyof PromptFile)[];
 
-/** Whether two prompts hold the same fields, byte for byte. */
 export const samePrompt = (a: PromptFile, b: PromptFile): boolean =>
   PROMPT_FILE_FIELDS.every((field) => a[field] === b[field]);
 
-/** `frontmatter` is the YAML between the delimiters; "" when there is none. */
 export type PromptFileWrite = PromptFile & { frontmatter: string };
 
 export type PromptDraft = PromptFileWrite & { name: string };
 
-/** The fields the operator types; the front matter is not one. */
 export type PromptFields = Omit<PromptDraft, "frontmatter">;
 
-/** A missing, non-text or blank example is none: "". */
 export const exampleOf = (value: unknown): string =>
   typeof value === "string" && value.trim() !== "" ? value : "";
 
-// The front matter's fields; "" for each it lacks or holds as other than text.
 const frontmatterFields = (
   data: Record<string, unknown> | undefined,
 ): Omit<PromptFile, "text"> => ({
@@ -45,13 +37,11 @@ const frontmatterFields = (
   example: exampleOf(data?.example),
 });
 
-/** Missing or broken front matter reads as an empty description and example. */
 export const readPromptFile = (raw: string): PromptFile => ({
   ...frontmatterFields(readFrontmatter(raw)?.data),
   text: splitFrontmatter(raw)?.body ?? raw,
 });
 
-// A multi-line example is a literal block, so its lines read as typed.
 const exampleNode = (document: Document, example: string): Scalar => {
   const node = document.createNode(example);
   if (example.includes("\n")) {
@@ -77,15 +67,8 @@ const fieldsOnly = (description: string, example: string): string => {
   return `---\n${yamlOf(document)}---\n`;
 };
 
-// A document start, end or directive line would end the block for another
-// reader.
 const documentMarker = /^(?:---|\.\.\.|%)/m;
 
-// The serializer, never string joins, so a description or an example cannot
-// add a key or end the block. `lineWidth: 0` keeps the description on one
-// line. An empty example removes the key. Front matter that is not a YAML
-// map, or that would not read back as this file, gives way to a block holding
-// only the description and the example.
 export const writePromptFile = ({
   frontmatter,
   ...fields
@@ -111,7 +94,6 @@ const fileSuffix = /(?:\.prompt)?\.(?:md|txt)$/i;
 const oneLine = (value: string): string =>
   value.trim().replace(/\s*[\r\n]+\s*/g, " ");
 
-/** What fills the import dialog; pasted text passes a null `fileName`. */
 export const draftPrompt = (
   raw: string,
   fileName: string | null,
@@ -133,7 +115,6 @@ export const draftPrompt = (
   };
 };
 
-/** `metadata.category` in a drafted front matter block; null where it names none. */
 export const promptCategory = (frontmatter: string): string | null => {
   try {
     return metadataCategory(parse(frontmatter));
@@ -151,7 +132,6 @@ export type PromptFieldProblem =
   | "empty-text"
   | "long-text";
 
-/** The rule the name breaks, or null when it holds. */
 export const promptNameProblem = (
   name: string,
 ): "empty-name" | "invalid-name" | null => {
@@ -162,15 +142,12 @@ export const promptNameProblem = (
 const MAX_DESCRIPTION_LENGTH = 1024;
 const MAX_TEXT_BYTES = 102_400;
 
-/** Holds at most the 100 KB a prompt's text may hold. */
 export const withinPromptLimit = (value: string): boolean =>
   new TextEncoder().encode(value).byteLength <= MAX_TEXT_BYTES;
 
-/** The file this write produces, past 100 KB. */
 export const promptFileTooLong = (write: PromptFileWrite): boolean =>
   !withinPromptLimit(writePromptFile(write));
 
-/** Every rule the fields break, in field order; empty when all hold. */
 export const promptFieldProblems = ({
   name,
   description,
@@ -196,7 +173,6 @@ export const promptFieldProblems = ({
   return problems;
 };
 
-/** The field rules, and the 100 KB the written file may hold. */
 export const promptDraftProblems = (
   draft: PromptDraft,
 ): PromptFieldProblem[] => {

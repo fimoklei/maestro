@@ -1,6 +1,3 @@
-// Read from content hashes, never ancestry: merge, squash and rebase must report
-// the same movements (#517). A renamed-and-edited primitive reads as add plus
-// remove, and a rename never crosses types.
 import {
   HARNESS_PRIMITIVE_TYPES,
   type HarnessObject,
@@ -15,17 +12,14 @@ export type HarnessMovement = PrimitiveRef & {
   previousName?: string;
 };
 
-/** The categories list's movement, named by its type as its row is. One file is never renamed. */
 export type ListMovement = ListSubject & {
   name: ListSubject["type"];
   kind: Exclude<HarnessMovementKind, "renamed">;
   previousName?: never;
 };
 
-/** A primitive's movement, or the categories list's. */
 export type SubjectMovement = HarnessMovement | ListMovement;
 
-/** The list file's movement from its blob hashes; null where it did not move. */
 export const diffListFile = (
   subject: ListSubject,
   previous: string | null,
@@ -59,7 +53,6 @@ const diffOneType = (
   const addedByHash = groupByHash(added);
   const droppedByHash = groupByHash(dropped);
 
-  // A rename only where the content matches exactly one name on each side.
   const renamedHashes = new Set(
     [...droppedByHash]
       .filter(

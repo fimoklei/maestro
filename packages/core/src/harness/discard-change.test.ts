@@ -49,14 +49,12 @@ function build(overrides?: {
   stages?: HarnessStages | null;
   ambiguity?: WorktreeAmbiguity | null;
   remoteCommit?: string | null;
-  // The default branch's skills; null is a listing nobody could read.
   atRemote?: Record<string, string> | null;
   write?: "missing" | "failed";
   disk?: Parameters<typeof harnessDisk>[0];
   failMoveInto?: string;
   locks?: InFlightLocks;
 }) {
-  // An edited `tdd` on disk; the default branch holds "remote tdd".
   const git = new InMemoryHarnessGit().settled(
     { tdd: "remote tdd" },
     REMOTE_COMMIT,
@@ -169,9 +167,7 @@ describe("DiscardChange", () => {
     expect(moved).toEqual([]);
   });
 
-  // Propose change pushes the folder as it is, so the row moves to Pending
-  // review and no Pending proposal row is left.
-  it("refuses a change that moved to Pending review", async () => {
+  it("refuses a change already pushed, whose only row is under Pending review", async () => {
     const { discard, moved } = build({
       stages: {
         ...stagesWith([]),
@@ -276,7 +272,6 @@ describe("DiscardChange", () => {
     expect(moved).toEqual([]);
   });
 
-  // Real git lists no link as a prompt, so its row reads as a deletion.
   it("refuses a linked prompt the listing reads as deleted", async () => {
     const prompt = { type: "prompt", name: "pr-review" } as const;
     const file = "/harness/.maestro/prompts/pr-review.md";
@@ -296,6 +291,17 @@ describe("DiscardChange", () => {
       error: "destination-unsafe",
     });
     expect(moved).toEqual([]);
+  });
+
+  it("keeps a folder gone from disk since the rows were read as the deletion it is", async () => {
+    const { discard, moved, written } = build({ disk: { entries: [] } });
+
+    await expect(discard.execute(skillRef("tdd"), SEEN)).resolves.toEqual({
+      ok: false,
+      error: "nothing-to-discard",
+    });
+    expect(moved).toEqual([]);
+    expect(written).toEqual([]);
   });
 
   it("fails without moving anything when the copy cannot be written", async () => {

@@ -1,4 +1,3 @@
-// Puts one deleted primitive back from the last local commit: no fetch, branch or push (#888).
 import { join } from "node:path";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
@@ -15,7 +14,6 @@ export type RestoreError =
   | "invalid-skill"
   | WorktreeAmbiguity
   | "head-moved"
-  // Also an index that could not be read: unread is never clean.
   | "staged-changes"
   | "not-in-commit"
   | "destination-exists"
@@ -52,7 +50,6 @@ export class Restore {
     this.deps = deps;
   }
 
-  // Shares the harness-root lock with the publish path.
   async execute(
     ref: PrimitiveRef,
     seenHeadCommit: string,
@@ -75,13 +72,11 @@ export class Restore {
     ref: PrimitiveRef,
     seenHeadCommit: string,
   ): Promise<RestoreResult> {
-    // First: an ambiguous working tree makes every fact below unreadable.
     const ambiguity = await this.deps.git.readWorktreeAmbiguity(root);
     if (ambiguity !== null) {
       return { ok: false, error: ambiguity };
     }
 
-    // Re-read at the press, never taken from the row.
     const head = await this.deps.git.readLocalHeadCommit(root);
     if (head === null) {
       return { ok: false, error: "restore-failed" };
@@ -112,7 +107,6 @@ export class Restore {
     if (entry.kind === "unreadable") {
       return { ok: false, error: "destination-unreadable" };
     }
-    // Real git lists no link, so a linked primitive reads as deleted.
     if (entry.kind === "unsafe") {
       return { ok: false, error: "destination-unsafe" };
     }
@@ -123,7 +117,6 @@ export class Restore {
     return await this.writeThroughStaging(root, ref, head, entry.dir);
   }
 
-  // One rename publishes it, so an interruption leaves nothing half-written.
   private async writeThroughStaging(
     root: string,
     ref: PrimitiveRef,
@@ -144,14 +137,12 @@ export class Restore {
         commit,
         staging,
       );
-      // The trees just named it, so `missing` means unreadable, not uncommitted.
       if (written === "missing") {
         return { ok: false, error: "source-unreadable" };
       }
       if (written !== "written") {
         return { ok: false, error: "restore-failed" };
       }
-      // Read again as late as possible: a concurrent creation must be kept.
       if ((await this.deps.copyFs.describe(destination)) !== null) {
         return { ok: false, error: "destination-exists" };
       }

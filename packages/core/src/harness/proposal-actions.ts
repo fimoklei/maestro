@@ -1,4 +1,3 @@
-// The three proposal mutations, each rechecked against a fresh read.
 import type { GitOrigin } from "../deploy/git-origin";
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import { isValidSkillSlug } from "../deploy/package-ref";
@@ -42,9 +41,7 @@ export type ProposalActionError =
   | "invalid-skill"
   | "no-usable-origin"
   | "no-answer"
-  // No gh, no sign-in, or no network.
   | "review-unavailable"
-  // A bounded or failed read: it cannot prove absence.
   | "review-unknown"
   | "request-gone"
   | "extra-requests"
@@ -59,12 +56,9 @@ export type WithdrawError =
   | "destination-unsafe"
   | "destination-unreadable"
   | "withdraw-in-progress"
-  // A commit on a branch no open request names has another author, or its
-  // authors could not be read (#1639).
   | "branch-by-other"
   | "commit-email-missing"
   | "branch-authors-unknown"
-  // A withdrawal stops at the step that failed; the earlier steps stay done.
   | "replace-failed"
   | "close-failed"
   | "branch-delete-failed";
@@ -82,14 +76,12 @@ export type ProposalActionResult =
 type Ready = {
   ok: true;
   root: string;
-  // The fetched default-branch tip; null where it could not be read.
   head: string | null;
   origin: GitOrigin;
   base: string;
   matching: ReviewRequest[];
   open: ReviewRequest[];
   viewer: ViewerRead;
-  // The contributor whose open request holds the branch; null where none does.
   waiting: string | null;
 };
 
@@ -112,7 +104,6 @@ export class ProposalActions {
     review: HarnessReviewPort;
     fs: ReplaceDeps["fs"];
     copyFs: ReplaceDeps["copyFs"];
-    // Shared with every write to the Working Harness.
     locks: InFlightLocks;
   };
 
@@ -120,7 +111,6 @@ export class ProposalActions {
     this.deps = deps;
   }
 
-  // Pushes nothing: no newer local edit rides along.
   async create(ref: PrimitiveRef): Promise<ProposalActionResult> {
     const checked = await this.checkedFacts(ref);
     if (!checked.ok) {
@@ -132,7 +122,6 @@ export class ProposalActions {
     if (checked.open.length > 0) {
       return { ok: false, error: "request-exists" };
     }
-    // The pushed branch alone says which kind it proposes; an unread one names none.
     const pushed = await this.deps.git.readPrimitives(
       checked.root,
       `refs/remotes/origin/${proposalBranch(ref)}`,
@@ -150,7 +139,6 @@ export class ProposalActions {
     );
   }
 
-  // Judged against the default branch, as the Change column is.
   private async kindOf(
     checked: Ready,
     ref: PrimitiveRef,
@@ -181,7 +169,6 @@ export class ProposalActions {
     if (!checked.ok) {
       return checked;
     }
-    // More than one open request blocks the write: reopening would add a third.
     if (checked.open.length > 1) {
       return { ok: false, error: "extra-requests" };
     }
@@ -197,12 +184,6 @@ export class ProposalActions {
     return settle(await this.deps.review.reopenRequest(checked.origin, number));
   }
 
-  // Gives the proposal up: the Working Harness takes the default branch's copy,
-  // then the request closes, then the branch goes. Closing first keeps GitHub
-  // from closing the request itself when the branch disappears. A null number
-  // withdraws a branch with no open request, so nothing closes (#1639). The
-  // categories list is built from the config, never the clone, so no copy
-  // comes back for it.
   async withdraw(
     subject: ProposalSubject,
     number: number | null,
@@ -220,7 +201,6 @@ export class ProposalActions {
     return run.ok ? run.value : { ok: false, error: "withdraw-in-progress" };
   }
 
-  // What a withdrawal would lose, for its confirmation.
   async unproposedFiles(ref: PrimitiveRef): Promise<UnproposedFilesResult> {
     if (!isValidSkillSlug(ref.name)) {
       return { ok: false, error: "invalid-skill" };
@@ -252,12 +232,10 @@ export class ProposalActions {
     if (ambiguity !== null) {
       return { ok: false, error: ambiguity };
     }
-    // Checked before the clone changes: the branch deletion comes last.
     if (!(await this.deps.git.readPushesWhereItFetched(root))) {
       return { ok: false, error: "push-elsewhere" };
     }
     const { head } = checked;
-    // The list has no copy in the clone to replace.
     const atHead =
       head === null
         ? null
@@ -267,7 +245,6 @@ export class ProposalActions {
     if (head === null || atHead === null) {
       return { ok: false, error: "no-answer" };
     }
-    // With no open request naming its author, the commits do (#1639).
     if (number === null) {
       const authorship = await this.deps.git.readAuthoredHere(
         root,
@@ -363,8 +340,6 @@ const REPLACE_ERROR = {
   failed: "replace-failed",
 } as const satisfies Record<Exclude<ReplaceOutcome, "replaced">, WithdrawError>;
 
-// A number names the open request to close; null expects none open, and the
-// branch belongs to whoever opened its newest ended request.
 const refusesWithdrawal = (
   checked: Ready,
   number: number | null,

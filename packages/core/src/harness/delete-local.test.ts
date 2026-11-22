@@ -17,7 +17,6 @@ const PROMPT = { type: "prompt", name: "pr-review" } as const;
 const PROMPT_FILE = "/harness/.maestro/prompts/pr-review.md";
 const OTHER_FILE = "/harness/.maestro/prompts/other.md";
 
-// `tdd` exists only on disk; `jobs` has a local commit origin/HEAD lacks.
 const localOnlyWorld = () => {
   const git = new InMemoryHarnessGit();
   git.commit("remote", { jobs: "remote-jobs" });
@@ -117,7 +116,6 @@ describe("DeleteLocal", () => {
     expect(await disk.exists(FOLDER)).toBe(false);
   });
 
-  // Fail-closed: a clone nobody could read is not proof of what the folder holds.
   it("refuses when the clone cannot be read", async () => {
     const git = localOnlyWorld();
     git.unreadable.add("HEAD");
@@ -168,8 +166,7 @@ describe("DeleteLocal", () => {
     expect(await disk.isFileEntry(OTHER_FILE)).toBe(true);
   });
 
-  // Real git lists no link as a prompt, so it must not read as already gone.
-  it("refuses a linked prompt the clone's listing leaves out", async () => {
+  it("refuses a linked prompt the clone's listing leaves out, never reading it as already gone", async () => {
     const { deletion, disk } = build(localOnlyWorld(), {
       disk: { links: { [PROMPT_FILE]: OTHER_FILE } },
     });
@@ -294,7 +291,6 @@ describe("DeleteLocal.inspect", () => {
     });
   });
 
-  // #1597: the dialog states the path the server names, per type.
   it("names the Harness path of each folder or file in the clone", async () => {
     const git = inspectWorld();
     git.workingPrompts = { tdd: "prompt-tdd" };
@@ -310,7 +306,6 @@ describe("DeleteLocal.inspect", () => {
     });
   });
 
-  // Real git lists a link as mode 120000, which is no prompt.
   it("lists no prompt whose working file is a link", async () => {
     const git = inspectWorld();
     git.workingPrompts = { "pr-review": "review", commit: "commit" };

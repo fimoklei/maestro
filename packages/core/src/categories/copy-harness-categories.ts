@@ -1,5 +1,3 @@
-// The one computation behind a copy of the Harness categories: the copy
-// dialog's preview and the write both run it, so they cannot differ.
 import { type PrimitiveRef, primitiveKey } from "../harness/harness-primitive";
 import { withoutStale } from "./apply-change";
 import { compareCategoryNames, sameCategoryName } from "./category-name";
@@ -10,7 +8,6 @@ import {
 } from "./category-section";
 import type { HeldItems } from "./held-items";
 
-/** `add` keeps everything the operator has; `replace` makes the list the Harness list. */
 export type CopyMode = "add" | "replace";
 
 export const COPY_MODES = [
@@ -18,16 +15,12 @@ export const COPY_MODES = [
   "replace",
 ] as const satisfies readonly CopyMode[];
 
-/** What a copy does to the operator's categories, each group sorted by name. */
 export type CopyFacts = {
   added: string[];
   deleted: string[];
   unchanged: string[];
-  /** Names the copy spells as the Harness does, with the operator's spelling. */
   respelled: { name: string; was: string }[];
-  /** The operator's items that land in another category. */
   moved: ItemCount;
-  /** The operator's items that have no category afterwards. */
   uncategorised: ItemCount;
 };
 
@@ -39,7 +32,6 @@ const sorted = (names: readonly string[]) =>
 const findName = (names: readonly string[], name: string) =>
   names.find((each) => sameCategoryName(each, name));
 
-// The operator's spelling wins; an item that has a category keeps it.
 const add = (own: CategoryRecord, harness: CategoryRecord): CategoryRecord => {
   const spelling = new Map(
     harness.names.map((name) => [name, findName(own.names, name) ?? name]),
@@ -68,7 +60,6 @@ const add = (own: CategoryRecord, harness: CategoryRecord): CategoryRecord => {
   };
 };
 
-// Only an item that had a category counts: one that gains a category loses nothing.
 const taken = (before: CategoryRecord, after: CategoryRecord) => {
   const landed = new Map(
     after.assignments.map((each) => [primitiveKey(each), each.category]),
@@ -83,7 +74,6 @@ const taken = (before: CategoryRecord, after: CategoryRecord) => {
   return { moved: itemCount(moved), uncategorised: itemCount(uncategorised) };
 };
 
-/** The operator's list after a copy of the Harness list, and what the copy changes. */
 export const copyHarnessCategories = ({
   own,
   harness,
@@ -93,7 +83,6 @@ export const copyHarnessCategories = ({
   own: CategoryRecord;
   harness: CategoryRecord;
   mode: CopyMode;
-  /** Null: Inventory could not be read, so no assignment is dropped. */
   held: HeldItems | null;
 }): CopiedCategories => {
   const kept = withoutStale(own, held);

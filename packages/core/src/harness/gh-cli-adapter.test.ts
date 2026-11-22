@@ -3,7 +3,6 @@ import { GhCliAdapter } from "./gh-cli-adapter";
 
 const REVIEW_READ_LIMIT = 100;
 
-// Payloads are real `gh --json` captures replayed through `run`; gh never runs.
 type RunCall = {
   file: string;
   args: string[];
@@ -18,7 +17,6 @@ const origin = { host: "github.com", ownerRepo: "fimoklei/harness" };
 const capturedHeadOid = "a7cbf2efbd0eb978503342906593ef81ca724894";
 
 // Captured verbatim from `gh pr list --json …` (gh 2.86.0), one row kept.
-// `nameWithOwner` is empty in a list read; the owner is in `headRepositoryOwner`.
 const mergedRow = {
   // `author` from `gh pr view 8 --json author` (gh 2.101.0).
   author: {
@@ -63,7 +61,6 @@ const openForkRow = {
     login: "timmattison",
   },
   isDraft: false,
-  // gh prints null for a request nobody merged (gh 2.86.0).
   mergedAt: null,
   number: 14398,
   reviewDecision: "REVIEW_REQUIRED",
@@ -248,8 +245,7 @@ describe("GhCliAdapter", () => {
     });
   });
 
-  // One failing row fails the whole read, so a bot's request must pass.
-  it("reads an app's request with its prefixed login", async () => {
+  it("reads an app's request with its prefixed login, so a bot's row never fails the read", async () => {
     const { run } = fakeRun(JSON.stringify([botRow]));
 
     const result = await new GhCliAdapter({ run }).readReviews(origin);
@@ -260,8 +256,7 @@ describe("GhCliAdapter", () => {
     });
   });
 
-  // Captured from `gh pr list --repo EficodeDemoOrg/mythapi-demo --json …,author`
-  // (gh 2.101.0): GitHub hands a deleted account's requests to `ghost`.
+  // Captured from `gh pr list --repo EficodeDemoOrg/mythapi-demo --json …,author` (gh 2.101.0).
   it("reads a deleted account's request as ghost's", async () => {
     const author = {
       id: "MDQ6VXNlcjEwMTM3",
@@ -380,13 +375,12 @@ describe("GhCliAdapter", () => {
     expect(result).toMatchObject({ requests: [{ state: "closed" }] });
   });
 
-  // A merge time proves a merge; one disagreeing row never fails the read.
   it.each([
     ["MERGED", null, "merged"],
     ["CLOSED", "2026-09-04T17:30:12Z", "merged"],
     ["OPEN", "2026-09-04T17:30:12Z", "merged"],
   ])(
-    "reads state %s with mergedAt %s as %s",
+    "reads state %s with mergedAt %s as %s, never failing the read over the disagreement",
     async (state, mergedAt, reading) => {
       const { run } = fakeRun(
         JSON.stringify([
@@ -533,7 +527,6 @@ describe("GhCliAdapter", () => {
   });
 
   it("opens a request over a named branch, never the current one", async () => {
-    // `--head` skips gh's push-or-fork prompt; `--repo` ignores the cwd's repo.
     const { calls, run } = fakeRun(
       "https://github.com/fimoklei/harness/pull/9\n",
     );
@@ -611,7 +604,6 @@ describe("GhCliAdapter", () => {
   );
 
   it("reopens and closes a request by its number, keeping the branch", async () => {
-    // No `--delete-branch`: a closed proposal must stay recoverable (#827).
     const reopen = fakeRun("");
     const close = fakeRun("");
 
@@ -635,7 +627,6 @@ describe("GhCliAdapter", () => {
   });
 
   it("retitles a request by its number, sending no body", async () => {
-    // Without a body flag gh keeps the body: it may hold someone else's words.
     const { calls, run } = fakeRun(
       "https://github.com/fimoklei/harness/pull/45\n",
     );
@@ -772,6 +763,14 @@ describe("GhCliAdapter.readViewer", () => {
 
   it("fails the read on a login GitHub could not have issued", async () => {
     const { run } = fakeRun('{"login":"not a login"}');
+
+    const result = await new GhCliAdapter({ run }).readViewer(origin);
+
+    expect(result).toEqual({ outcome: "failed" });
+  });
+
+  it("fails the read on an app login, since no app signs in", async () => {
+    const { run } = fakeRun('{"login":"app/renovate"}');
 
     const result = await new GhCliAdapter({ run }).readViewer(origin);
 

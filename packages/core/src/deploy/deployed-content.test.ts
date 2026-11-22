@@ -11,8 +11,6 @@ const fakeRepoTarget: DeployTarget = { kind: "repo", repoPath: FAKE_REPO };
 const sha = (bytes: Buffer) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 
-// The adapter over an in-memory tree, with a release reader when `release` is
-// given: null makes the release unreadable.
 function adapterOn(options: { release?: Record<string, string> | null } = {}) {
   const tree = new InMemoryCopyTree();
   const lockfilePath = `${FAKE_REPO}/apm.lock.yaml`;
@@ -38,7 +36,6 @@ function adapterOn(options: { release?: Record<string, string> | null } = {}) {
           },
         }),
   });
-  // Writes the lockfile with deployed_file_hashes matching the copy as it is.
   const recordLockfile = (name: string) => {
     const lines = tree.filePaths().map((abs) => {
       const rel = abs.slice(FAKE_REPO.length + 1);
@@ -76,7 +73,6 @@ const classify = (
     }),
   );
 
-// A lockfile the test writes by hand, when the shape is the point.
 const writeYaml = (fake: ReturnType<typeof adapterOn>, yaml: string) =>
   fake.tree.write(fake.lockfilePath, yaml);
 
@@ -96,7 +92,6 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
   });
 
   it("reports lockfile-malformed for a present but non-YAML lockfile", async () => {
-    // An unreadable lockfile must never stand in for "nothing is deployed" (#58).
     const fake = adapterOn();
     fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "deployed\n");
     writeYaml(fake, "dependencies: [unterminated\n");
@@ -111,8 +106,6 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
   });
 
   it("reports lockfile-malformed when this skill's own entry cannot be read", async () => {
-    // The view skips an uninterpretable entry (#357); the guard must not read
-    // that skip as "nothing deployed" (#58).
     const fake = adapterOn();
     fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "deployed\n");
     writeYaml(
@@ -162,7 +155,6 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
   });
 
   it("reports not-deployed when the deployed copy was fully deleted", async () => {
-    // A fully-deleted copy is restored, never refused as "local edits" (#65).
     const fake = adapterOn();
     fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "deployed\n");
     fake.recordLockfile("tdd");
@@ -195,6 +187,32 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
     fake.recordLockfile("tdd");
     fake.tree.setUnreadable(at(".claude/skills/tdd"));
     await expect(classify(fake.content)).resolves.toBe("unreadable");
+  });
+
+  it("reports unreadable over a malformed lockfile when a subtree cannot be listed", async () => {
+    const fake = adapterOn();
+    fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "deployed\n");
+    writeYaml(fake, "dependencies: not-a-list\n");
+    fake.tree.setUnreadable(at(".claude/skills/tdd"));
+    await expect(classify(fake.content)).resolves.toBe("unreadable");
+  });
+
+  it("leaves a skill whose name extends this one out of its baseline", async () => {
+    const fake = adapterOn();
+    fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "tdd\n");
+    fake.tree.write(at(".claude/skills/tddx/SKILL.md"), "tddx\n");
+    fake.recordLockfile("tdd");
+    await expect(classify(fake.content)).resolves.toBe("clean");
+  });
+
+  it("hashes a binary file from its raw bytes", async () => {
+    const fake = adapterOn();
+    fake.tree.write(
+      at(".claude/skills/tdd/logo.png"),
+      Buffer.from([0x89, 0xff, 0xfe, 0x00]),
+    );
+    fake.recordLockfile("tdd");
+    await expect(classify(fake.content)).resolves.toBe("clean");
   });
 
   it("is clean when every deployed file matches its recorded hash", async () => {
@@ -262,7 +280,6 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
   });
 
   it("scopes the comparison to the tools the write targets", async () => {
-    // An untargeted tool's absent copy must not read as drift (#136).
     const fake = adapterOn();
     fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "skill\n");
     fake.tree.write(at(".agents/skills/tdd/SKILL.md"), "skill\n");
@@ -397,6 +414,75 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
       );
     });
 
+    it("reads a copy as clean when one folder still equals its record and the other equals the release", async () => {
+      const fake = adapterOn({ release });
+      for (const subtree of SUBTREES) {
+        fake.tree.write(at(`${subtree}/SKILL.md`), "skill\n");
+      }
+      fake.recordLockfile("tdd");
+      fake.tree.write(at(".agents/skills/tdd/SKILL.md"), "release\n");
+      await expect(classify(fake.content, { release: "v0.6.0" })).resolves.toBe(
+        "clean",
+      );
+    });
+
+    it("reads a copy as clean when one folder is absent and the other equals the release", async () => {
+      const fake = adapterOn({ release });
+      for (const subtree of SUBTREES) {
+        fake.tree.write(at(`${subtree}/SKILL.md`), "skill\n");
+      }
+      fake.recordLockfile("tdd");
+      fake.tree.remove(at(".claude/skills/tdd"));
+      fake.tree.write(at(".agents/skills/tdd/SKILL.md"), "release\n");
+      await expect(classify(fake.content, { release: "v0.6.0" })).resolves.toBe(
+        "clean",
+      );
+    });
+
+    it("reads a copy as at its release when it equals its record and the release cannot be read", async () => {
+      const fake = adapterOn({ release: null });
+      fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "skill\n");
+      fake.recordLockfile("tdd");
+      const reading = fake.content.openReading({
+        target: fakeRepoTarget,
+        release: "v0.6.0",
+        tags: ["v0.6.0"],
+        lockfile: await fake.content.readLockfile(fakeRepoTarget),
+      });
+      await expect(reading.read("tdd", "claude")).resolves.toEqual({
+        kind: "at-release",
+      });
+    });
+
+    it("names v0.9.0 as the older release a copy is still at under v0.10.0", async () => {
+      const tree = new InMemoryCopyTree();
+      const content = new DeployedContentAdapter({
+        location: {
+          treeRoot: () => FAKE_REPO,
+          lockfilePath: () => `${FAKE_REPO}/apm.lock.yaml`,
+          toolRoots: () => REPO_TOOL_ROOTS,
+        },
+        fs: tree,
+        inventoryGit: {
+          readSkillFilesAtTag: async (tag: string) => ({
+            "SKILL.md": sha(Buffer.from(`${tag}\n`)),
+          }),
+        },
+      });
+      tree.write(at(".claude/skills/tdd/SKILL.md"), "v0.9.0\n");
+      const reading = content.openReading({
+        target: fakeRepoTarget,
+        release: "v0.10.0",
+        tags: ["v0.10.0", "v0.9.0"],
+        lockfile: "missing",
+      });
+      await expect(reading.readWritten("tdd", "claude")).resolves.toEqual({
+        kind: "not-updated",
+        stillAt: "v0.9.0",
+        targetRelease: "v0.10.0",
+      });
+    });
+
     it("reads a copy with no recorded hashes as unverifiable, release or not", async () => {
       const fake = adapterOn({ release });
       fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "release\n");
@@ -459,7 +545,6 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
 
   describe("linkedSkillPath", () => {
     it("returns null when the tool's whole skills directory is a link", async () => {
-      // The link is one level up: the leaf path reads as absent, never as a link.
       const fake = adapterOn();
       fake.tree.symlink(at(".claude/skills"), "/elsewhere/skills");
       await expect(
@@ -523,7 +608,6 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
     });
 
     it("gives two different local edits two different digests (b7d14a1b)", async () => {
-      // Consent is for content: two edits that both read `diverged` must not share one digest.
       const fake = adapterOn();
       fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "skill\n");
       fake.recordLockfile("tdd");
@@ -546,8 +630,6 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
   });
 });
 
-// The global copy lives under HOME, its lockfile under ~/.apm, and apm keys the
-// hashes HOME-relative. Only the real DeployedLocation maps those two places.
 describe("DeployedContentAdapter, global target", () => {
   it("is clean when the HOME copy matches the hash its ~/.apm lockfile records", async () => {
     const tree = new InMemoryCopyTree();
@@ -582,7 +664,6 @@ describe("DeployedContentAdapter, global target", () => {
     ).resolves.toBe("clean");
   });
 
-  // apm 0.32.0 keys a folder outside HOME absolute (#1796).
   describe("with CLAUDE_CONFIG_DIR outside HOME", () => {
     const moved = () => {
       const tree = new InMemoryCopyTree();
