@@ -152,9 +152,7 @@ export const openProposalCause = ({
   }
   const requests = openRequests.length === 1 ? "pull request" : "pull requests";
   const numbers = listOf(openRequests.map((number) => `#${number}`));
-  // Another contributor's request offers that reader no Withdraw proposal,
-  // and it closes only one categories pull request.
-  return type === "categories" && (openByOther || openRequests.length > 1)
+  return openByOther || (type === "categories" && openRequests.length > 1)
     ? `Merge or close ${requests} ${numbers} on GitHub.`
     : `Merge ${requests} ${numbers} on GitHub, or select ${WITHDRAW_PROPOSAL}.`;
 };

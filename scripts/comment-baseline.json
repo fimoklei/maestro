@@ -266,7 +266,7 @@
   "packages/web/src/harness/release-dialog.tsx": 18,
   "packages/web/src/harness/release-withdrawal-dialog-host.tsx": 3,
   "packages/web/src/harness/release-withdrawal-dialog.tsx": 4,
-  "packages/web/src/harness/release-withdrawal-notice-copy.ts": 6,
+  "packages/web/src/harness/release-withdrawal-notice-copy.ts": 4,
   "packages/web/src/harness/restore-dialog.stories.tsx": 4,
   "packages/web/src/harness/restore-dialog.test.tsx": 2,
   "packages/web/src/harness/restore-dialog.tsx": 4,
