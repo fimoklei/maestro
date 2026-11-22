@@ -3,6 +3,7 @@ import {
   IN_SYNC,
   TARGET_CHIPS,
   TARGET_STATUS_WORDS,
+  targetRank,
   targetStatus,
   worstFolderReading,
 } from "./target-status";
@@ -418,5 +419,18 @@ describe("worstFolderReading", () => {
   it("waits while any folder has no reading yet", () => {
     expect(worstFolderReading([inSync, null])).toBeNull();
     expect(worstFolderReading([])).toBeNull();
+  });
+});
+
+describe("targetRank", () => {
+  it("sorts Edits in the Harness above In sync, and a target without a reading last", () => {
+    const held = targetStatus({
+      indicator: "ok",
+      editsInHarness: true,
+      pending: undefined,
+    });
+    const ranks = [IN_SYNC, null, held].map(targetRank);
+    expect(ranks[2]).toBeLessThan(ranks[0] ?? 0);
+    expect(ranks[1]).toBeGreaterThan(ranks[0] ?? 0);
   });
 });

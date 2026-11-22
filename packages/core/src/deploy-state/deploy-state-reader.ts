@@ -36,6 +36,7 @@ import {
 } from "./global-target";
 import { harnessPages, latestReleasePage, perSkillPage } from "./harness-pages";
 import { harnessSkillPin, type SkillPin, tallyPins } from "./pinned-per-skill";
+import { isCopyReading } from "./reading-order";
 import type { ReleaseHeadReader } from "./release-head";
 import {
   countExtraRootPackageFiles,
@@ -403,11 +404,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
         if (reading?.kind !== "missing") {
           written.add(primitive.name);
         }
-        if (
-          reading?.kind === "local-edits" ||
-          reading?.kind === "edits-in-harness" ||
-          reading?.kind === "unverified"
-        ) {
+        if (reading !== null && isCopyReading(reading.kind)) {
           primitive.copy = reading.kind;
         } else if (reading?.kind === "not-updated") {
           notUpdated.push({ name: primitive.name, stillAt: reading.stillAt });

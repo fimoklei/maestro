@@ -4,6 +4,7 @@ import {
   CATEGORY_COLUMN_META,
 } from "../categories/category-view";
 import type { SkillDeployment } from "../inventory/skill-deployments";
+import { inventoryRank } from "../inventory/skill-status";
 import { createDataTableColumns } from "../ui/data-table";
 import type { DataTableCardContent } from "../ui/data-table-card";
 import { NoValue } from "../ui/no-value";
@@ -11,11 +12,7 @@ import { RowMenu } from "../ui/row-menu";
 import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { ACTIONS_COLUMN_LABEL, rowActionsLabel } from "../ui/row-menu-copy";
 import { StatusBadge } from "../ui/status-badge";
-import {
-  readingRank,
-  STATUS_COLUMN_WIDTH,
-  type StatusReading,
-} from "../ui/status-reading";
+import { STATUS_COLUMN_WIDTH, type StatusReading } from "../ui/status-reading";
 import { StatusSkeleton } from "../ui/status-skeleton";
 import { ReachCard } from "./reach-card";
 
@@ -41,8 +38,6 @@ export type SkillRow = InventorySkill & {
     disabled?: boolean;
   }[];
 };
-
-const unranked = Number.MAX_SAFE_INTEGER;
 
 // The Status and Targets cells open the same card. The keyboard's row opens
 // the first shown keyboard card, so Status must stay before Targets: then it
@@ -89,8 +84,7 @@ export const skillsColumns = ({
           );
         },
         sortFn: (a, b) =>
-          (a.original.status ? readingRank(a.original.status) : unranked) -
-          (b.original.status ? readingRank(b.original.status) : unranked),
+          inventoryRank(a.original.status) - inventoryRank(b.original.status),
         meta: { width: STATUS_COLUMN_WIDTH },
       }),
       card: reachCard,

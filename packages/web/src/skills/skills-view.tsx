@@ -4,7 +4,6 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { categoryView } from "../categories/category-view";
 import { SetCategoryBarAction } from "../categories/set-category-bar-action";
 import { usePaneCategory } from "../categories/use-pane-category";
-import { EDITS_IN_HARNESS, LOCAL_EDITS } from "../deploy-state/target-status";
 import {
   type CloneReading,
   deleteItem,
@@ -20,11 +19,9 @@ import {
   skillReadAge,
 } from "../inventory/skill-deployments";
 import {
-  BEHIND,
-  NOT_DEPLOYED,
+  INVENTORY_STATUS_WORDS,
   SKILL_CHIPS,
   skillStatus,
-  UNKNOWN,
   UP_TO_DATE,
 } from "../inventory/skill-status";
 import { filterByName } from "../inventory/type-filter";
@@ -118,16 +115,6 @@ const rowDialog = (
     }
   }
 };
-
-// Worst first, as the Status sort orders them (#992).
-const STATUS_WORDS = [
-  LOCAL_EDITS,
-  EDITS_IN_HARNESS,
-  BEHIND,
-  UNKNOWN,
-  UP_TO_DATE,
-  NOT_DEPLOYED,
-].map((reading) => reading.word);
 
 export function SkillsView({
   primitives,
@@ -265,7 +252,7 @@ export function SkillsView({
       initial: initialCategory,
     }),
     status: {
-      words: STATUS_WORDS,
+      words: INVENTORY_STATUS_WORDS,
       of: (row) => row.status?.word ?? null,
     },
     columns: DISPLAY_OPTIONS,

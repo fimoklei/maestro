@@ -11,6 +11,11 @@ import {
 import type { InFlightLocks } from "../deploy/in-flight-locks";
 import type { GlobalDeployStateReader } from "../deploy-state/deploy-state-reader";
 import type { DeployedPrimitive } from "../deploy-state/deploy-state-types";
+import {
+  type CopyKind,
+  type ImportKind,
+  offersImport,
+} from "../deploy-state/reading-order";
 import type { ReleaseHeadGitPort } from "../deploy-state/release-head";
 import { type SameTreeFs, sameTree } from "../filesystem/same-tree";
 import type { Registry } from "../registry/registry";
@@ -57,7 +62,7 @@ export type ImportLocalEditsResult =
   | { ok: false; error: LocalEditsError };
 
 type Copy = {
-  copy: "local-edits" | "unverified";
+  copy: OfferedCopy;
   version: string;
   tools: { tool: SupportedTool; release: string | undefined }[];
 };
@@ -182,7 +187,7 @@ export class ImportLocalEdits {
     const release = state.releaseHead?.latestRelease ?? undefined;
     const copies = new Map<string, Copy>();
     for (const primitive of state.primitives) {
-      if (holdsWork(primitive.copy)) {
+      if (isOffered(primitive.copy)) {
         copies.set(primitive.name, {
           copy: primitive.copy,
           version: primitive.version,
@@ -221,7 +226,7 @@ export class ImportLocalEdits {
           version: primitive.version,
         };
         skill.tools.push({ tool: folder.tool, release });
-        if (holdsWork(primitive.copy) && skill.copy !== "local-edits") {
+        if (isOffered(primitive.copy) && skill.copy !== "local-edits") {
           skill.copy = primitive.copy;
           // The copy that is imported names the release it came from.
           skill.version = primitive.version;
@@ -385,8 +390,10 @@ export class ImportLocalEdits {
   }
 }
 
-const holdsWork = (copy: DeployedPrimitive["copy"]): copy is Copy["copy"] =>
-  copy === "local-edits" || copy === "unverified";
+type OfferedCopy = CopyKind & ImportKind;
+
+const isOffered = (copy: DeployedPrimitive["copy"]): copy is OfferedCopy =>
+  copy !== undefined && offersImport(copy);
 
 function outcome(name: string, judged: Judged): LocalEditsSkill {
   if (!("folder" in judged)) {
