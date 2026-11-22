@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { appendFileSync, cpSync, readdirSync, rmSync } from "node:fs";
 import { devNull } from "node:os";
 import { join } from "node:path";
+import { appendGitConfig, NO_BACKGROUND_GIT } from "./lib/git-config-env.mjs";
 
 // A real, public and empty GitHub repository: apm's install pre-flight only
 // asks the API whether it exists, and a failed redirect finds no tags there.
@@ -32,6 +33,7 @@ const FIXED_GIT_ENV = {
   GIT_COMMITTER_NAME: "Maestro fixture",
   GIT_COMMITTER_EMAIL: "fixture@maestro.invalid",
   GIT_COMMITTER_DATE: "2026-01-01T00:00:00Z",
+  ...appendGitConfig({}, NO_BACKGROUND_GIT),
 };
 
 const git = (cwd, args) =>
@@ -48,16 +50,10 @@ const git = (cwd, args) =>
  */
 export function fixtureRedirectEnv(bareDir, env) {
   const target = bareDir.replace(/\.git$/, "");
-  const first = Number(env.GIT_CONFIG_COUNT ?? 0) || 0;
-  const entries = {};
-  FIXTURE_URL_FORMS.forEach((form, index) => {
-    entries[`GIT_CONFIG_KEY_${first + index}`] = `url.${target}.insteadOf`;
-    entries[`GIT_CONFIG_VALUE_${first + index}`] = form;
-  });
-  return {
-    ...entries,
-    GIT_CONFIG_COUNT: String(first + FIXTURE_URL_FORMS.length),
-  };
+  return appendGitConfig(
+    env,
+    FIXTURE_URL_FORMS.map((form) => [`url.${target}.insteadOf`, form]),
+  );
 }
 
 /**
@@ -92,6 +88,9 @@ export function publishFixtureRelease({ workDir, bareDir, release }) {
   execFileSync("git", ["init", "-q", "--bare", "-b", "main", bareDir], {
     env: { ...process.env, ...FIXED_GIT_ENV },
   });
+  // A push into a local path drops `GIT_CONFIG_COUNT` for the receiving side.
+  for (const [key, value] of NO_BACKGROUND_GIT)
+    git(bareDir, ["config", key, value]);
   git(workDir, [
     "push",
     "-q",

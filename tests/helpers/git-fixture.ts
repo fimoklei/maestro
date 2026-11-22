@@ -3,6 +3,8 @@
 import { execFile } from "node:child_process";
 import { rm } from "node:fs/promises";
 import { promisify } from "node:util";
+import { vi } from "vitest";
+import { appendGitConfig } from "../../scripts/lib/git-config-env.mjs";
 
 const run = promisify(execFile);
 
@@ -92,7 +94,14 @@ export async function initGitClone(
   }
 }
 
-// git's background maintenance writes into `objects/` after a push
-// returns, so a plain `rm` fails with ENOTEMPTY; `maxRetries` absorbs that.
 export const removeGitTempTree = (path: string) =>
-  rm(path, { recursive: true, force: true, maxRetries: 5 });
+  rm(path, { recursive: true, force: true });
+
+/** Adds git config entries for this test after the ones the run already sets. */
+export function stubGitConfig(pairs: [key: string, value: string][]): void {
+  for (const [name, value] of Object.entries(
+    appendGitConfig(process.env, pairs),
+  )) {
+    vi.stubEnv(name, value);
+  }
+}
