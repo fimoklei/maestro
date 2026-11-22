@@ -33,8 +33,9 @@ and zoom the change touches, and each state you could not reach.
    `ab set media dark` or `ab set media light`. Read a region as text with
    `pnpm cockpit:snapshot "<selector>" [path]`, never a bare `agent-browser snapshot`;
    the open detail pane is `'aside[aria-label$=" detail"]'`.
-   Open a hover card with `ab mouse move <x> <y>` on the badge's pixel position,
-   read from a screenshot; take screen paths from `packages/web/src/shell/screens.tsx`.
+   Open a hover card with `pnpm cockpit:hover "<selector>"`: it hovers the
+   element and prints the open card's text; screenshot after it. Take screen
+   paths from `packages/web/src/shell/screens.tsx`.
    Scroll the detail pane with `ab eval 'document.querySelector("aside
    div.overflow-y-auto").scrollTop = <px>'`, then screenshot for the new pixel
    positions.
@@ -50,7 +51,9 @@ and zoom the change touches, and each state you could not reach.
    zoom (`ab set viewport 720 450 2`: a 1440×900 window at 200%), in one theme.
 5. Compare against the design source (`design.md` → Sources), then judge hierarchy, density,
    alignment and consistency. Fix each mismatch and screenshot again; done
-   when a fresh screenshot shows none.
+   when a fresh screenshot shows none. Name in chat, as you see it, every
+   defect a screenshot shows outside the change, with its screenshot and an
+   offer to open an issue.
 6. Click through the screen's primary flow once in smoke.
 7. Run the `verify-in-smoke` checks before treating the screenshot as proof.
 8. Save each screenshot under `~/Pictures/maestro/<branch>/`. In chat, give each as

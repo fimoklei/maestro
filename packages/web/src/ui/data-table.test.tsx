@@ -620,21 +620,23 @@ function stubResizeObserver() {
   );
 }
 
-function renderPlants(
-  props: Partial<React.ComponentProps<typeof DataTable<Plant>>> = {},
-) {
+type PlantsProps = Partial<React.ComponentProps<typeof DataTable<Plant>>>;
+
+const plantsTable = (props: PlantsProps = {}) => (
+  <div>
+    <DataTable
+      label="Plant table"
+      columns={plantColumns}
+      data={plants}
+      getRowId={(plant) => plant.name}
+      {...props}
+    />
+  </div>
+);
+
+function renderPlants(props: PlantsProps = {}) {
   stubResizeObserver();
-  return render(
-    <div>
-      <DataTable
-        label="Plant table"
-        columns={plantColumns}
-        data={plants}
-        getRowId={(plant) => plant.name}
-        {...props}
-      />
-    </div>,
-  );
+  return render(plantsTable(props));
 }
 
 const headers = () =>
@@ -645,6 +647,7 @@ const headers = () =>
 describe("DataTable column priority", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
   it("hides the lowest priority first once the shown columns plus 8rem no longer fit", () => {
@@ -698,6 +701,22 @@ describe("DataTable column priority", () => {
     expect(headers()).toEqual(["Name", "Colour", "Status"]);
     act(() => reportWidth(1200));
     expect(headers()).toEqual(["Name", "Colour", "Status"]);
+  });
+
+  // #1931: opening the detail pane narrows the table in the same commit; a
+  // frame drawn before the resize report squeezed the name to nothing.
+  it("refits the columns on a render that narrowed the table, before any resize report", () => {
+    let px = 600;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      () => new DOMRect(0, 0, px, 0),
+    );
+    const { rerender } = renderPlants();
+    expect(headers()).toEqual(["Name", "Colour", "Origin", "Status"]);
+
+    px = 300;
+    rerender(plantsTable({ openRowId: "fern" }));
+
+    expect(headers()).toEqual(["Name", "Status"]);
   });
 
   // #1184: a span over a hidden column adds an empty one that takes width.

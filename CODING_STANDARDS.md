@@ -81,6 +81,7 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
 | Feature code takes status, colour, icon, toast and checkbox from `ui/` | `design-guard` in `pnpm lint` |
 | Every rule file has a `paths:` that matches a file | `rules-guard` in `pnpm lint` |
 | A source file stays under 800 lines | Biome in `pnpm lint` |
+| Tests run in a sandbox home and change env only through `vi.stubEnv` | `tests/unit/test-isolation.test.ts` |
 
 Run from the repo root:
 
@@ -88,9 +89,10 @@ Run from the repo root:
   the uncommitted work reaches, selected as the commit gate selects them.
   After merging branches, `pnpm test:affected --since origin/main`.
   `pnpm test:loop` runs those three lanes whole; `pnpm test` runs all four.
-- CI runs the full suite on the pull request, so skip `pnpm test` locally
-  unless asked. A sub-agent brief repeats this line instead of naming its own
-  test commands.
+- CI runs the full suite on the pull request, so skip `pnpm test` and
+  `pnpm verify` locally unless asked, also when a change reaches every lane
+  (`vitest.config.ts`, a test helper): push and read CI. A sub-agent brief
+  repeats this line instead of naming its own test commands.
 - Lint fails on formatting → `pnpm format`.
 
 ## Adding a rule
