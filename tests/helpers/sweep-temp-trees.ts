@@ -29,8 +29,7 @@ export async function sweepStaleTempTrees(
       if ((await stat(path)).mtimeMs > cutoff) {
         continue;
       }
-      // `maxRetries` for the same push/`objects/` race `removeGitTempTree` hits.
-      await rm(path, { recursive: true, force: true, maxRetries: 5 });
+      await rm(path, { recursive: true, force: true });
     } catch {
       // Leaving a held tree costs a directory; failing costs the whole suite.
     }
