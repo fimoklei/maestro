@@ -881,6 +881,48 @@ describe("Withdraw from release while a proposal is open", () => {
     );
   });
 
+  it.each(["skill", "prompt"] as const)(
+    "asks to merge or close another contributor's %s pull request",
+    (type) => {
+      const byOther = { type, openRequests: [46], openByOther: true };
+      expect(openProposalCause(byOther)).toBe(
+        "Merge or close pull request #46 on GitHub.",
+      );
+      expect(openProposalCause({ ...byOther, openRequests: [46, 47] })).toBe(
+        "Merge or close pull requests #46 and #47 on GitHub.",
+      );
+    },
+  );
+
+  it.each(["skill", "prompt"] as const)(
+    "refuses a %s withdrawal with the tooltip's sentence for another contributor's pull request",
+    (type) => {
+      const item = {
+        type,
+        name: "review",
+        openRequests: [46],
+        openByOther: true,
+      };
+      expect(openProposalCause(item)).toBe(
+        "Merge or close pull request #46 on GitHub.",
+      );
+      expect(
+        readNotice(releaseWithdrawalNotice(refusal("proposal-open"), item)),
+      ).toEqual({
+        level: "error",
+        label: "Withdrawal blocked",
+        message:
+          "Nothing was withdrawn. Merge or close pull request #46 on GitHub.",
+      });
+    },
+  );
+
+  it("keeps Withdraw proposal for the reader's own skill pull request", () => {
+    expect(openProposalCause(skillOpen([46]))).toBe(
+      "Merge pull request #46 on GitHub, or select Withdraw proposal.",
+    );
+  });
+
   // Withdraw proposal closes one categories pull request, never several.
   it("asks to merge or close several own categories pull requests", () => {
     expect(
