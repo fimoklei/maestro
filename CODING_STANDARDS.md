@@ -25,8 +25,9 @@ not the shell, before starting the task.
 - Driving `git`, or building a git test remote → `git-driver.md`
 - Writing a script in `scripts/` → `scripts.md`
 
-**Reviewing a diff:** review against this file and every rule file whose
-`paths:` matches a changed file. Cite the file and the rule. A commit that
+**Reviewing a diff:** run `git fetch origin`, then diff against
+`origin/main`; a local `main` can trail it. Review against this file and
+every rule file whose `paths:` matches a changed file. Cite the file and the rule. A commit that
 changes what `packages/web` renders and lists no browser check in its body is
 a finding (`verify-ui` skill).
 
