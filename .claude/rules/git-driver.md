@@ -48,6 +48,9 @@ the empty-repository captures are in
   (`scripts/fixture-harness.mjs`). apm's `GIT_CONFIG_GLOBAL=/dev/null` leaves
   that channel active, so check it too before you call a run git-config
   isolated.
+- A push into a local path drops `GIT_CONFIG_COUNT` for the receiving side
+  (git 2.50.1). Put a setting `receive-pack` must read in the bare
+  repository's config or the home's config file.
 - Redirect only a GitHub name that exists: apm asks `api.github.com` whether
   the repository exists and aborts on a 404 before any git call. The empty
   `fimoklei/maestro-fixture-harness` serves this; reach deploy states with

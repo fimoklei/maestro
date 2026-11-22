@@ -1,5 +1,3 @@
-// Every POST body the server accepts, and the request-shape refusals for a wrong one.
-
 import {
   type BatchRequest,
   CATEGORIES_PREVIEW_KINDS,
@@ -20,20 +18,16 @@ import { refusalCodes } from "./error-responses";
 
 export const registerBodySchema = z.object({ path: z.string() });
 
-// `parent` is the folder a cloned Harness lands in — absent means the home
-// ceiling, and it is ignored entirely on the local-path route (#555).
 export const connectBodySchema = z.object({
   path: z.string(),
   parent: z.string().optional(),
   localOnly: z.boolean().optional(),
 });
 
-// The field's current value: the folder the chooser opens on.
 export const chooseFolderBodySchema = z.object({ path: z.string() });
 
 export const importSkillsCheckBodySchema = z.object({ source: z.string() });
 
-// An entry names a folder directly inside `source`: never a path.
 const folderEntry = z
   .string()
   .min(1)
@@ -46,18 +40,15 @@ export const importSkillsBodySchema = z.object({
     .min(1),
 }) satisfies z.ZodType<ImportSkillsInput>;
 
-// The edge applies the prompt field rules; core applies them again.
 const fieldsHold = (fields: PromptFields) =>
   promptFieldProblems(fields).length === 0;
 
-// A prompt's fields, each held to the 100 KB per-field limit.
 const promptFileSchema = z.object({
   description: z.string().refine(withinPromptLimit),
   text: z.string().refine(withinPromptLimit),
   example: z.string().refine(withinPromptLimit),
 }) satisfies z.ZodType<PromptFile>;
 
-// Strings plus a replace flag: core judges each file's fields, and a broken one is data.
 export const importPromptsBodySchema = z.object({
   prompts: z
     .array(
@@ -77,12 +68,10 @@ export const promptCheckBodySchema = z.object({ name: z.string() });
 
 export const promptReadBodySchema = z.object({ name: z.string() });
 
-// `read` is the prompt the dialog was filled with, as the read route gave it.
 export const promptEditBodySchema = promptFileSchema
   .extend({ name: z.string(), read: promptFileSchema })
   .refine(fieldsHold);
 
-// Trimmed and checked in core, which owns the name rules.
 export const addCategoryBodySchema = z.object({ name: z.string() });
 
 export const renameCategoryBodySchema = z.object({
@@ -95,7 +84,6 @@ export const deleteCategoryBodySchema = z.object({
   moveTo: z.string().nullable(),
 });
 
-// Names only: core checks each item against what the Harness holds.
 export const assignCategoryBodySchema = z.object({
   items: z
     .array(
@@ -109,18 +97,15 @@ export const copyCategoriesBodySchema = z.object({
   mode: z.enum(COPY_MODES),
 });
 
-// The preview the dialog showed; core refuses a write it did not show.
 export const categoriesProposalBodySchema = z.object({
   previewed: z.enum(CATEGORIES_PREVIEW_KINDS),
 });
 
-// Global carries no path, so no untrusted path crosses the boundary on it.
 const targetSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("repo"), repoPath: z.string() }),
   z.object({ kind: z.literal("global") }),
 ]);
 
-// Target and skill names only: core resolves every folder from the target's record.
 export const importLocalEditsCheckBodySchema = z.object({
   target: targetSchema,
 });
@@ -129,23 +114,18 @@ export const importLocalEditsBodySchema = z.object({
   target: targetSchema,
   names: z.array(z.string()).min(1),
   undo: z.array(z.string()),
-  // Matched in core against the folders it computed, never resolved as a path.
   selected: z.array(z.object({ name: z.string(), folder: z.string() })),
 });
 
-// Proves the confirmation came from this server's own preflight, not a client-built claim.
 const consentTokenSchema = z
   .string()
   .regex(/^[0-9a-f]{64}$/)
   .optional();
 
 export const deployBodySchema = z.object({
-  // "skills only" is a core business rule, so a non-skill type is a 422, not a 400.
   type: z.string(),
   name: z.string(),
   target: targetSchema,
-  // The receipt this deploy's own refusal minted, licensing the overwrite of
-  // exactly the copies it named (#66, #952).
   confirmedCopyReceipt: consentTokenSchema,
 });
 
@@ -154,15 +134,11 @@ export const retryOperationBodySchema = z.object({
   confirmedCopyReceipt: consentTokenSchema,
 });
 
-// No batch-wide consent: a copy with local edits always comes back as an
-// attention row, overwritten only per item via the single-deploy route (#292).
 export const bulkDeployBodySchema = z.object({
   names: z.array(z.string()).min(1),
   target: targetSchema,
 });
 
-// Each held row carries the receipt its own refusal minted; no batch-wide
-// consent (#952).
 export const deployAgainBodySchema = z.object({
   target: targetSchema,
   held: z
@@ -195,7 +171,6 @@ export const bulkRemoveBodySchema = z.object({
     .min(1),
 });
 
-// Which skills the release touches is the preview's answer, never the caller's claim.
 export const updatePreflightBodySchema = z.object({
   target: targetSchema,
   add: z.string().optional(),
@@ -208,9 +183,6 @@ export const updateBodySchema = z.object({
   confirmedCopyReceipt: consentTokenSchema,
 });
 
-// `previousTag` and `revision` prove the confirmation is against the plan the
-// author saw: the server refuses when the freshly read remote no longer agrees
-// with either, and computes what to tag from its own read (#520, #521).
 export const publishReleaseBodySchema = z.object({
   step: z.enum(["major", "minor", "patch"]),
   previousTag: z.string().nullable(),
@@ -218,9 +190,6 @@ export const publishReleaseBodySchema = z.object({
   revision: z.string(),
 });
 
-// A type and a name, never a path: the harness the primitive belongs to is
-// resolved server-side, so the browser cannot point a promotion at another
-// repository.
 const primitiveRefShape = {
   type: z.enum(HARNESS_PRIMITIVE_TYPES),
   name: z.string(),
@@ -228,11 +197,8 @@ const primitiveRefShape = {
 
 export const primitiveRefBodySchema = z.object(primitiveRefShape);
 
-// The categories list, the proposal subject that carries no name.
 const listSubjectShape = { type: z.literal("categories") };
 
-// Each item proposed in order; core re-reads every one before its push. An
-// item with a seenRemoteTree is a deletion, confirmed against that tree (#580).
 export const proposeBatchBodySchema = z.object({
   items: z
     .array(
@@ -244,43 +210,32 @@ export const proposeBatchBodySchema = z.object({
     .min(1),
 }) satisfies z.ZodType<{ items: BatchRequest[] }>;
 
-// The number is a claim, never an authorisation: it is rechecked against a fresh read (#827).
 export const proposalBodySchema = z.object({
   ...primitiveRefShape,
   number: z.number().int().positive(),
 });
 
-// Null withdraws a branch with no open request (#1639). The categories list
-// carries no name.
 const withdrawNumber = z.number().int().positive().nullable();
 export const withdrawBodySchema = z.union([
   z.object({ ...primitiveRefShape, number: withdrawNumber }),
   z.object({ ...listSubjectShape, number: withdrawNumber }),
 ]);
 
-// The hash is compared against a freshly fetched remote, never used as the
-// thing to remove (#580).
 export const deletionBodySchema = z.object({
   ...primitiveRefShape,
   seenRemoteTree: z.string(),
 });
 
-// The tree is compared against a freshly read working tree, never used as the
-// thing to delete.
 export const localDeletionBodySchema = z.object({
   ...primitiveRefShape,
   seenWorkingTree: z.string(),
 });
 
-// The tree is compared against a freshly read default branch, and is the copy
-// that replaces the folder (#1375).
 export const discardBodySchema = z.object({
   ...primitiveRefShape,
   seenRemoteTree: z.string(),
 });
 
-// The token is rebuilt from a fresh read and compared; the previous name of a
-// rename is read server-side, never taken from the body.
 export const releaseWithdrawalCheckBodySchema = z.union([
   primitiveRefBodySchema,
   z.object(listSubjectShape),
@@ -291,15 +246,11 @@ export const releaseWithdrawalBodySchema = z.union([
   z.object({ ...listSubjectShape, confirmation: z.string() }),
 ]);
 
-// The commit is compared against a freshly read HEAD, never used as the thing
-// to restore.
 export const restoreBodySchema = z.object({
   ...primitiveRefShape,
   seenHeadCommit: z.string(),
 });
 
-// The request-shape refusals, the only prose the server writes. The shape
-// rides in `detail`.
 export type RequestShape = { message: string; detail: string };
 
 export const PROMOTE_BODY: RequestShape = {
@@ -527,8 +478,6 @@ export const BULK_REMOVE_BODY: RequestShape = {
     "The request carries a skill name and a non-empty targets array, each entry carrying a target.",
 };
 
-// Every POST route's front door: unparsable JSON and a wrong shape are the
-// same 400, so a route only supplies its schema and its own wording.
 export async function parseBody<T>(
   c: Context,
   schema: z.ZodType<T>,

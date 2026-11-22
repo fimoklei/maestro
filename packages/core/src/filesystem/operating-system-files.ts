@@ -1,5 +1,3 @@
-// Ignore patterns: the scaffold's `.gitignore` is generated from this list.
-// A pattern is a literal name or a prefix followed by `*`.
 const OPERATING_SYSTEM_FILE_PATTERNS = [
   ".DS_Store",
   "._*",

@@ -65,8 +65,6 @@ const stagesWith = (rows: HarnessStageRow[]): HarnessStages => ({
   release: { outcome: "read", rows, bound: null },
 });
 
-// A Harness whose latest release, default branch and Working Harness each
-// hold the content named.
 function build(seed: {
   release: Content | null;
   merged: Content;
@@ -100,7 +98,6 @@ function build(seed: {
     locks: seed.locks ?? new InFlightLocks(),
   });
 
-  // What the default branch holds now, against content stated by hand.
   let expected = 0;
   const defaultBranchHolds = async (content: Content) => {
     expected += 1;
@@ -352,6 +349,20 @@ describe("WithdrawFromRelease", () => {
         release: { skills: { tdd: "released tdd" } },
         merged: { skills: { tdd: "merged tdd" } },
         rows: [releaseRow(skillRef("tdd"), "edit")],
+      });
+      git.ambiguity = "merge-in-progress";
+
+      await expect(withdrawal.inspect(skillRef("tdd"))).resolves.toEqual({
+        ok: false,
+        error: "merge-in-progress",
+      });
+    });
+
+    it("names an ambiguous working tree before reading the release stage", async () => {
+      const { withdrawal, git } = build({
+        release: { skills: { tdd: "released tdd" } },
+        merged: { skills: { tdd: "released tdd" } },
+        rows: [],
       });
       git.ambiguity = "merge-in-progress";
 

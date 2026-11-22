@@ -6,15 +6,6 @@ import type { LockfileReading } from "../lockfile/lockfile";
 import type { DeployTarget } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 
-/**
- * One skill's copy in one Global folder, measured against the Target release.
- * `at-release` also covers a copy whose changes the latest release holds
- * (#1213). `not-updated`: unedited, but not `targetRelease`, the Target
- * release it was compared with; `stillAt` is the newest older release it
- * equals, or null where none matches.
- * `edits-in-harness`: Local edits whose files equal the skill in the Working
- * harness; every guard still treats it as `local-edits`.
- */
 export type CopyReading =
   | { kind: "missing" }
   | { kind: "at-release" }
@@ -24,7 +15,6 @@ export type CopyReading =
   | { kind: "unverified" }
   | { kind: "unreadable" };
 
-/** What a write left: the copy against the release alone, never its lockfile record. */
 export type WrittenReading = Extract<
   CopyReading,
   { kind: "missing" | "at-release" | "not-updated" | "unreadable" }
@@ -35,7 +25,6 @@ type CopyReadingSession = {
   readWritten(name: string, tool: SupportedTool): Promise<WrittenReading>;
 };
 
-/** Each name's copy in one folder, read one at a time; null where the read failed. */
 export async function readEach<R>(
   names: Iterable<string>,
   read: (name: string) => Promise<R>,
@@ -48,20 +37,12 @@ export async function readEach<R>(
 }
 
 export type CopyReadingPort = {
-  /**
-   * One session per read: each (tag, skill) release tree is read at most once
-   * in it. `tags`: the release tags, newest first; empty where unknown.
-   */
   openReading(input: {
     target: DeployTarget;
     release: string | undefined;
     tags: readonly string[];
     lockfile: LockfileReading;
   }): CopyReadingSession;
-  /**
-   * Whether every tool copy that differs from its record equals the skill in
-   * the Working harness; false where none differs or nothing could be read.
-   */
   harnessHolds(input: {
     target: DeployTarget;
     name: string;
@@ -69,14 +50,9 @@ export type CopyReadingPort = {
   }): Promise<boolean>;
 };
 
-// Numeric collation: v0.10.0 is newer than v0.9.0.
 const newer = (tag: string, than: string) =>
   tag.localeCompare(than, "en", { numeric: true }) > 0;
 
-/**
- * The releases older than `release`, newest first, and the latest release
- * where it differs from `release`.
- */
 export function releasesAround(
   release: string | undefined,
   tags: readonly string[],

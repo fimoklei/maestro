@@ -11,8 +11,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { removeGitTempTree } from "../helpers/git-fixture";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { removeGitTempTree, stubGitConfig } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
 
 const run = promisify(execFile);
@@ -60,12 +60,11 @@ describe("joining a Harness by its GitHub url", () => {
 
     // Reaches every git this process starts and survives apm's
     // `GIT_CONFIG_GLOBAL` isolation.
-    vi.stubEnv("GIT_CONFIG_COUNT", "2");
-    vi.stubEnv("GIT_CONFIG_KEY_0", `url.${remote}.insteadOf`);
-    vi.stubEnv("GIT_CONFIG_VALUE_0", GITHUB_URL);
-    // A redirect at a missing repository, so the failing clone stays local.
-    vi.stubEnv("GIT_CONFIG_KEY_1", `url.${join(base, "gone.git")}.insteadOf`);
-    vi.stubEnv("GIT_CONFIG_VALUE_1", MISSING_URL);
+    stubGitConfig([
+      [`url.${remote}.insteadOf`, GITHUB_URL],
+      // A redirect at a missing repository, so the failing clone stays local.
+      [`url.${join(base, "gone.git")}.insteadOf`, MISSING_URL],
+    ]);
   });
 
   afterEach(async () => {

@@ -78,7 +78,6 @@ describe("classifyConnectInput", () => {
     });
   });
 
-  // git stores the clone url on disk, so a pasted token would be stored too.
   it("refuses a url carrying credentials rather than cloning with them", () => {
     expect(
       classifyConnectInput("https://user:token@github.com/fimoklei/harness"),

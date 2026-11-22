@@ -29,7 +29,6 @@ describe("canonicalHarnessFiles", () => {
       "Thumbs.db",
       "desktop.ini",
     ]);
-    // An occupied `.gitignore` refuses the scaffold, never gets merged (#921).
     expect(gitignore?.skipIfExists).toBeUndefined();
   });
 
@@ -58,7 +57,6 @@ describe("canonicalHarnessFiles", () => {
   );
 
   it("keeps .apm/skills/ reachable by git with a placeholder file", () => {
-    // Git tracks no empty directory, so it would never reach the remote.
     expect(byPath().get(".apm/skills/.gitkeep")?.contents).toBe("");
   });
 
@@ -96,8 +94,8 @@ describe("CONTRIBUTING.md", () => {
   const contributing = (ownerRepo?: string) =>
     byPath(ownerRepo).get("CONTRIBUTING.md");
   const text = (ownerRepo?: string) => contributing(ownerRepo)?.contents ?? "";
-  // Markdown wraps at the margin, so assert sentences against one flat line.
-  const flat = (ownerRepo?: string) => text(ownerRepo).replace(/\s+/g, " ");
+  const unwrapped = (ownerRepo?: string) =>
+    text(ownerRepo).replace(/\s+/g, " ");
   const sections = () => text().split(/^## /m).slice(1);
   const situations = () => sections().slice(0, 3);
 
@@ -121,8 +119,8 @@ describe("CONTRIBUTING.md", () => {
   });
 
   it("tells the reader who reviews", () => {
-    expect(flat()).toMatch(/curator/i);
-    expect(flat()).toMatch(/You never merge your own change/i);
+    expect(unwrapped()).toMatch(/curator/i);
+    expect(unwrapped()).toMatch(/You never merge your own change/i);
   });
 
   it("names every cockpit control the reader has to press, verbatim", () => {
@@ -145,20 +143,23 @@ describe("CONTRIBUTING.md", () => {
     );
   });
 
-  it("sends the reader to the Harness itself to edit an existing skill", () => {
-    expect(flat()).toMatch(/edit the skill in place under `\.apm\/skills\//i);
-    // The scaffold makes no Claude Code skills symlink; the text may not promise one.
-    expect(flat()).not.toMatch(/symlink/i);
+  it("sends the reader to the Harness itself to edit an existing skill, promising no symlink", () => {
+    expect(unwrapped()).toMatch(
+      /edit the skill in place under `\.apm\/skills\//i,
+    );
+    expect(unwrapped()).not.toMatch(/symlink/i);
   });
 
   it("warns that Maestro deletes local edits to a deployed skill copy", () => {
-    expect(flat()).toMatch(/Never edit a skill copy that Maestro deployed/i);
-    expect(flat()).toMatch(/deletes local edits there without warning/i);
+    expect(unwrapped()).toMatch(
+      /Never edit a skill copy that Maestro deployed/i,
+    );
+    expect(unwrapped()).toMatch(/deletes local edits there without warning/i);
   });
 
   it("states the admission bar", () => {
-    expect(flat()).toMatch(/structurally valid/i);
-    expect(flat()).toMatch(/not repo-specific/i);
+    expect(unwrapped()).toMatch(/structurally valid/i);
+    expect(unwrapped()).toMatch(/not repo-specific/i);
   });
 
   it("names the two steps only the Harness owner can take", () => {
@@ -173,12 +174,12 @@ describe("CONTRIBUTING.md", () => {
 
   it("closes on why independent review holds without branch protection", () => {
     expect(sections().at(-1)).toMatch(/^Why this is a human agreement\n/);
-    expect(flat()).toMatch(/branch protection/i);
+    expect(unwrapped()).toMatch(/branch protection/i);
   });
 
   it("names the repository it is scaffolded into and no other", () => {
-    expect(flat("acme/toolbelt")).toContain("acme/toolbelt");
-    expect(flat("acme/toolbelt")).not.toMatch(/fimoklei/i);
+    expect(unwrapped("acme/toolbelt")).toContain("acme/toolbelt");
+    expect(unwrapped("acme/toolbelt")).not.toMatch(/fimoklei/i);
   });
 });
 

@@ -22,11 +22,9 @@ export type CopyEntryFacts = {
   size: number;
   hardLinks: number;
   executable: boolean;
-  // Opaque token over device, inode and mtime; compare only, never parse.
   identity: string;
 };
 
-// Closing is the reader's job.
 export interface OpenFile {
   facts(): Promise<CopyEntryFacts | null>;
   read(): Promise<Buffer>;
@@ -34,33 +32,24 @@ export interface OpenFile {
 }
 
 export interface CopyTreeFsPort {
-  // Never follows a trailing symlink. Null when the path is gone.
   describe(path: string): Promise<CopyEntryFacts | null>;
 
-  // Sorted. Null when the directory cannot be read.
   listNames(path: string): Promise<string[] | null>;
 
-  // Null when the path dangles or loops; the caller never learns which.
   realpath(path: string): Promise<string | null>;
 
-  // Inside `parent`, so the closing move is a rename within one filesystem.
   createStagingDir(parent: string): Promise<string>;
 
   makeDir(path: string): Promise<void>;
 
-  // Never follows a symlink in the final component.
   openFile(path: string): Promise<OpenFile | null>;
 
-  // Follows every link. "missing" when nothing is there, a dangling link
-  // included; null when unreadable or looping.
   openFollowingLinks(path: string): Promise<OpenFile | "missing" | null>;
 
-  // Keeps the executable bit and nothing else of the source's mode.
   writeFile(to: string, bytes: Buffer, executable: boolean): Promise<void>;
 
   movePath(from: string, to: string): Promise<void>;
 
-  // Recursive; a missing path is not an error.
   removePath(path: string): Promise<void>;
 }
 
@@ -69,7 +58,6 @@ const STAGING_PREFIX = ".maestro-copy-";
 export class NodeCopyTreeFs implements CopyTreeFsPort {
   async describe(path: string): Promise<CopyEntryFacts | null> {
     try {
-      // bigint for mtimeNs: a millisecond mtime misses two writes in one tick.
       return factsOf(await lstat(path, { bigint: true }));
     } catch {
       return null;
@@ -100,7 +88,6 @@ export class NodeCopyTreeFs implements CopyTreeFsPort {
     await mkdir(path, { recursive: true });
   }
 
-  // O_NOFOLLOW guards the final component only; Node has no openat.
   async openFile(path: string): Promise<OpenFile | null> {
     try {
       return openFileOf(
@@ -115,7 +102,6 @@ export class NodeCopyTreeFs implements CopyTreeFsPort {
     try {
       return openFileOf(await open(path, constants.O_RDONLY));
     } catch (error) {
-      // fs/promises rejects with an ErrnoException.
       return (error as NodeJS.ErrnoException).code === "ENOENT"
         ? "missing"
         : null;
@@ -128,7 +114,6 @@ export class NodeCopyTreeFs implements CopyTreeFsPort {
     executable: boolean,
   ): Promise<void> {
     await writeFile(to, bytes, { mode: executable ? 0o755 : 0o644 });
-    // The mode above is subject to umask and applies only on create.
     await chmod(to, executable ? 0o755 : 0o644);
   }
 

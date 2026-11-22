@@ -86,7 +86,6 @@ describe("RemoveDeployedSkill on a target following one release", () => {
   });
 
   it("removes the last skill with the named uninstall of the Harness dependency", async () => {
-    // `skills: []` is refused, so the last removal names the package instead (#957).
     const { world, remove } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["prototype"] });
 
@@ -100,8 +99,6 @@ describe("RemoveDeployedSkill on a target following one release", () => {
   });
 
   it("reports the removal incomplete when the copy is still on disk", async () => {
-    // A blocked uninstall exits after deleting the rest, while the manifest and
-    // lockfile still list every name.
     const { world, remove } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
     world.landsOnly(["caveman", "prototype"]);
@@ -255,8 +252,6 @@ describe("RemoveDeployedSkill refusing a copy with local edits", () => {
   });
 });
 
-// Only Claude Code is detected, so Global writes its folder and leaves the
-// Codex folder alone, except when apm's named uninstall reaches it.
 describe("RemoveDeployedSkill on Global with an undetected tool's folder", () => {
   const global: DeployTarget = { kind: "global" };
   const removeFromGlobal = (name: string) => ({
@@ -289,7 +284,6 @@ describe("RemoveDeployedSkill on Global with an undetected tool's folder", () =>
     const { world, remove } = buildUseCase({ codex: "diverged" });
     world.seed({ release: "v0.6.0", skills: ["prototype"] });
 
-    // No deploy writes the undetected folder, so none can restore its copy.
     const refusal = {
       ok: false,
       error: "deployed-diverged-from-lock",

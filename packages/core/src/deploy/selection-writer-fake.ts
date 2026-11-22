@@ -1,5 +1,3 @@
-// Test support: an in-memory manifest, lockfile and tree behind
-// `SelectionWriter`, with an apm that moves all three like the real one.
 import { ConfigStore } from "../registry/config-store";
 import { SelectionWriter } from "./apply-selection";
 import type {
@@ -29,24 +27,16 @@ export type SelectionWorld = {
   operations: TargetOperationStore;
   calls: SelectionCall[];
   files: Map<string, string>;
-  // Deletes a skill's folder per tool, as `DeployedCleanupAdapter` does.
   cleanup: DeployedCleanupPort;
-  // The operator edited this copy: apm keeps it and its lockfile row when an
-  // install drops the skill (#1340).
   edits(tool: SupportedTool, skill: string): void;
-  // What the next install actually places, whatever it was asked for.
   landsOnly(skills: string[] | null): void;
-  // The next install leaves this one tool's copy of a skill off disk, keeping
-  // its lockfile row as apm does.
   skipsCopy(tool: SupportedTool, skill: string): void;
-  // "throw" is the run that never returned at all.
   refuseWith(result: DeploySkillDriverResult | "throw" | null): void;
   seed(input: { release: string; skills: string[] }): void;
 };
 
 const HARNESS = "fimoklei/agent-harness";
 
-// Relative to the tree root: one copy per skill per tool, as apm places them.
 export const copyPaths = (
   skills: readonly string[],
   tools: readonly SupportedTool[],
@@ -115,7 +105,6 @@ ${
         path.startsWith(`${treeRoot}/${tool.skillsDirPrefix}/skills/`),
     );
 
-  // apm touches only the folders of the tools it targets.
   const clearCopies = (tools: readonly SupportedTool[]) => {
     for (const path of [...files.keys()]) {
       if (!edited.has(path) && inFolderOf(path, tools)) {
@@ -138,7 +127,6 @@ ${
     writeFile: async (path: string, contents: string) => {
       files.set(path, contents);
     },
-    // No stamp: nothing is remembered, every read goes to the file.
     stamp: async () => null,
     isFileEntry: async (path: string) => files.has(path),
   };
@@ -183,8 +171,6 @@ ${
         lockfilePath,
         lockfile(input.ref.split("#")[1] ?? "", landed, tools, kept),
       );
-      // apm persists the Selection it was asked for, creating the dependency
-      // when it is absent.
       files.set(manifestPath, manifest(input.skills ?? []));
       return { ok: true };
     },

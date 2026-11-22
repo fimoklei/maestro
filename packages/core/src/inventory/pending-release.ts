@@ -1,5 +1,3 @@
-// A released primitive that a merged change waits to replace. It reads the one
-// release diff the Pending release stage reads, so the two never disagree.
 import type { SubjectMovement } from "../harness/harness-movements";
 import type { PrimitiveRef } from "../harness/harness-primitive";
 import type { HarnessChange } from "../harness/harness-stages";
@@ -7,7 +5,6 @@ import type { HarnessGitPort } from "../harness/read-harness-state";
 import { readReleaseDelta } from "../harness/release-delta";
 import { highestReleaseTag } from "../harness/release-tag";
 
-// `renamedTo` is the new name on the default branch, only for a rename.
 export type PendingRelease = {
   change: Exclude<HarnessChange, "addition">;
   renamedTo: string | null;
@@ -19,7 +16,6 @@ export type PendingReleaseDelta = {
   defaultBranch: string;
 };
 
-// Null where no diff could be read: no row then claims a pending change.
 export type ReadPendingRelease = (
   root: string,
 ) => Promise<PendingReleaseDelta | null>;
@@ -48,7 +44,6 @@ export const pendingReleaseFromGit =
       : { movements: delta.movements, defaultBranch: facts.defaultBranch };
   };
 
-// An addition never matches: the release holds no row under its name.
 export const pendingReleaseOf = (
   ref: PrimitiveRef,
   delta: PendingReleaseDelta | null,

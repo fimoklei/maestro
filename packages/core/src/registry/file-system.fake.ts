@@ -1,22 +1,15 @@
 import type { FileStamp, FileSystemPort, RawDirEntry } from "./file-system";
 
 type FakeSeed = {
-  // Input path → canonical path. Self-mapped is a genuine directory, a
-  // differing value a symlink.
   directories?: Record<string, string>;
   files?: Record<string, string>;
-  // Link path → the file it points at.
   fileSymlinks?: Record<string, string>;
   listings?: Record<string, string[]>;
-  // Reject when listed.
   unreadable?: string[];
-  // A directory when listed, no longer one on the isDirectoryEntry recheck.
   racedAwayAsDirectory?: string[];
   danglingSymlinks?: string[];
-  // Absent to exists(), yet taken for an exclusive create.
   racedIntoExistence?: string[];
   unwritable?: string[];
-  // Reject a remove when listed.
   unremovable?: string[];
 };
 
@@ -31,7 +24,6 @@ export class InMemoryFileSystem implements FileSystemPort {
   private readonly racedIntoExistence: Set<string>;
   private readonly unwritable: Set<string>;
   private readonly unremovable: Set<string>;
-  // A write counter stands in for the modification time.
   private readonly writes = new Map<string, number>();
 
   constructor(seed: FakeSeed = {}) {
@@ -80,7 +72,6 @@ export class InMemoryFileSystem implements FileSystemPort {
     return this.isKnownDirectory(path);
   }
 
-  // Like lstat: a link counts, whatever it points at.
   async exists(path: string): Promise<boolean> {
     return (
       this.directories.has(path) ||

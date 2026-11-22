@@ -1,4 +1,3 @@
-// Carries a target's Local edits skills back through ImportSkill's update judgement (#1249).
 import { relative, resolve } from "node:path";
 import type { DeployedContentPort, DeployTarget } from "../deploy/deploy-skill";
 import {
@@ -26,24 +25,17 @@ import type { HarnessSkillTree } from "./released-content";
 
 export type LocalEditsRefusal =
   | ImportSkillError
-  // ImportSkill would add a new skill: this route only replaces the Harness's own.
   | "not-an-update"
   | "unverified"
-  // Execute only: the copies differ and no offered folder was selected, or a
-  // folder was selected that the check did not offer.
   | "copy-not-selected"
   | "copy-not-offered"
   | "no-local-edits"
-  // Execute only: flagged, and not among the skills the author chose to undo.
   | "undoes-newer-changes";
 
 export type ImportLocalEditsInput = {
   target: DeployTarget;
   names: readonly string[];
-  // The flagged names the author checked knowing the import undoes newer
-  // Harness changes; any other flagged skill is refused.
   undo: readonly string[];
-  // Per skill whose copies differ, the offered folder to import from.
   selected: readonly { name: string; folder: string }[];
 };
 
@@ -57,11 +49,7 @@ export type LocalEditsError =
 export type LocalEditsSkill = {
   name: string;
   refusal: LocalEditsRefusal | null;
-  // Only on an eligible skill whose edited copies differ: each copy's folder,
-  // home-relative, one of which execute must be given.
   folders?: string[];
-  // Only on an eligible skill whose Harness copy changed since the release its
-  // deployed copy came from: importing undoes those changes. Names that release.
   undoesNewerSince?: string;
 };
 
@@ -75,49 +63,38 @@ export type ImportLocalEditsResult =
 
 type Copy = {
   copy: OfferedCopy;
-  // The release the deployed copy came from.
   version: string;
-  // Each tool holding a copy, with the latest release its row measures against.
   tools: { tool: SupportedTool; release: string | undefined }[];
 };
 
 type Reading = {
   target: DeployTarget;
-  // What the deployed folders are relative to.
   tree: string;
   roots: ToolRoots;
-  // Skills reading Local edits or Unverified, in Deploy-state's order.
   copies: Map<string, Copy>;
 };
 
-// Whether a skill's Harness copy changed since the release its copy came from.
 type MovedSince = (name: string, copy: Copy) => Promise<boolean>;
 
 type Judged =
   | { folder: string; folders?: string[]; undoesNewerSince?: string }
   | { refusal: LocalEditsRefusal };
 
-// The check offers every differing copy; a run imports the one selected.
 type Choice = { run: false } | { run: true; folder: string | undefined };
 
 export class ImportLocalEdits {
   private readonly deps: {
     registry: Pick<Registry, "resolveRegistered">;
-    // The reader Deploy-state uses, so the dialog agrees with the row.
     deployState: Pick<GlobalDeployStateReader, "read" | "readGlobal">;
     content: Pick<DeployedContentPort, "readLockfile" | "classify">;
-    // Compares one skill's tool copies with each other.
     tree: SameTreeFs;
-    // The global lockfile's folder; the global tree is `home`.
     globalRoot: () => string;
     home: () => string;
-    // Where Global writes; Claude Code's folder follows CLAUDE_CONFIG_DIR.
     globalLayout: () => GlobalLayout;
     importSkill: Pick<ImportSkill, "check" | "execute">;
     git: Pick<ReleaseHeadGitPort, "readSkillTreesAtTag"> &
       Pick<HarnessGitPort, "readMovementTrees">;
     resolveRoot: () => Promise<string | undefined>;
-    // The Harness lock Delete and Restore take.
     locks: InFlightLocks;
   };
 
@@ -143,7 +120,6 @@ export class ImportLocalEdits {
     return { ok: true, skills };
   }
 
-  // Judged again from scratch: the check the browser saw proves nothing.
   async execute(input: ImportLocalEditsInput): Promise<ImportLocalEditsResult> {
     const root = await this.deps.resolveRoot();
     if (root === undefined) {
@@ -193,7 +169,6 @@ export class ImportLocalEdits {
     if (target.kind === "global") {
       return await this.readGlobal();
     }
-    // Before any filesystem access.
     const registered = await this.deps.registry.resolveRegistered(
       target.repoPath,
     );
@@ -206,7 +181,6 @@ export class ImportLocalEdits {
     if (state === null || !state.ok) {
       return { error: "target-unreadable" };
     }
-    // Its files may be half written.
     if (state.pendingOperation !== undefined) {
       return { error: "unfinished-operation" };
     }
@@ -289,8 +263,6 @@ export class ImportLocalEdits {
     if (first === undefined) {
       return { refusal: "no-local-edits" };
     }
-    // Identical copies are carried back as one; differing ones by selection,
-    // matched against the folders computed here, never a path from the input.
     let differ = false;
     for (const other of others) {
       if (!(await sameTree(this.deps.tree, first, other))) {
@@ -318,7 +290,6 @@ export class ImportLocalEdits {
         candidates = [picked];
       }
     }
-    // The check offers a skill where any copy could be imported.
     let refusal: LocalEditsRefusal | undefined;
     for (const source of candidates) {
       const judged = await this.judgeSource(source);
@@ -335,7 +306,6 @@ export class ImportLocalEdits {
     return { refusal: refusal ?? "no-local-edits" };
   }
 
-  // Null where Import skill would update the Harness's skill from this folder.
   private async judgeSource(source: string): Promise<LocalEditsRefusal | null> {
     const checked = await this.deps.importSkill.check({ source });
     if (!checked.ok) {
@@ -348,10 +318,9 @@ export class ImportLocalEdits {
     return mode === "update" ? null : "not-an-update";
   }
 
-  // The folder is replaced whole, so any Harness change since the deployed
-  // release would be undone. Where the trees cannot be compared, only a copy
-  // from the latest release counts as unmoved. The Harness is read once per
-  // reading; each release's trees once per release.
+  // Where the trees cannot be compared, only a copy from the latest release
+  // counts as unmoved. The Harness is read once per reading; each release's
+  // trees once per release.
   private async harnessMovement(): Promise<MovedSince> {
     const root = await this.deps.resolveRoot();
     const working =
@@ -381,9 +350,6 @@ export class ImportLocalEdits {
     };
   }
 
-  // Deploy-state's reading decides the skill is edited; this only locates the
-  // copies. Where no single tool's copy reads edited (one folder deleted,
-  // say), every copy still present is carried to ImportSkill's judgement.
   private async editedFolders(
     reading: Reading,
     name: string,
@@ -415,8 +381,6 @@ export class ImportLocalEdits {
     return edited.length > 0 ? edited : present;
   }
 
-  // `~/…` under home, else relative to a repo; a Global folder outside home
-  // stays absolute.
   private shown(reading: Reading, folder: string): string {
     const fromHome = relative(this.deps.home(), folder);
     if (!fromHome.startsWith("..")) return `~/${fromHome}`;

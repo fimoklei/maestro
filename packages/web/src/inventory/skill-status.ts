@@ -34,12 +34,10 @@ const INVENTORY_READINGS = {
   "not-deployed": NOT_DEPLOYED,
 } satisfies Record<InventoryKind, StatusReading>;
 
-/** Every word the Skills Status column reads, worst first, as Filter offers them. */
 export const INVENTORY_STATUS_WORDS = INVENTORY_ORDER.map(
   (kind) => INVENTORY_READINGS[kind].word,
 );
 
-/** Band 2's count chips: Unknown, then each reading above it, worst first. */
 export const SKILL_CHIPS: readonly StatusChip[] = [
   { word: UNKNOWN.word, family: "failed", covers: [UNKNOWN.word] },
   ...INVENTORY_ORDER.slice(0, INVENTORY_ORDER.indexOf("unknown")).map((kind) =>
@@ -77,7 +75,6 @@ export function skillStatus(rollup: DeployedRollup): StatusReading | null {
   return kind === null ? null : INVENTORY_READINGS[kind];
 }
 
-/** A Status column's sort key. */
 export const inventoryRank = rankBy(INVENTORY_STATUS_WORDS);
 
 export const UNVERIFIED = reading("Unverified", "unknown");
@@ -100,7 +97,6 @@ const DRIFT_READINGS = {
   unverified: UNVERIFIED,
 } satisfies Record<DriftKind, StatusReading>;
 
-/** One target's own reading kind. Null while its check runs. */
 export function driftKind(status: DriftStatus): DriftKind | null {
   switch (status) {
     case "up-to-date":
@@ -120,7 +116,6 @@ export function driftKind(status: DriftStatus): DriftKind | null {
   }
 }
 
-// One target's own reading. Null while its check runs.
 export function targetReading(status: DriftStatus): StatusReading | null {
   const kind = driftKind(status);
   return kind === null ? null : DRIFT_READINGS[kind];
@@ -158,7 +153,6 @@ export function skillState(
     case "edits-in-harness":
       return { kind, count: rollup.editsInHarnessCount, total };
     case "behind": {
-      // The roll-up counts an edited copy as Local edits, never as behind.
       const behind = deployments.filter(
         (deployment) => deployment.status === "behind" && !deployment.edited,
       );
@@ -172,7 +166,6 @@ export function skillState(
         updatable: behind.some((deployment) => deployment.updatable),
       };
     }
-    // The list's own line says a target was not read.
     case "unknown":
       return rollup.unknownCount > 0 ? { kind } : null;
     case "up-to-date":

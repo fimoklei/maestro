@@ -1,6 +1,3 @@
-// Proposes one item on its own branch, built on the fetched default-branch tip.
-// The caller holds the per-Harness lock; the author's repository state is
-// never touched.
 import type { GitOrigin } from "../deploy/git-origin";
 import type { HarnessFetchGate } from "./harness-fetch-gate";
 import {
@@ -37,9 +34,7 @@ export type ProposeChangeError =
   | "no-usable-origin"
   | "no-answer"
   | "skill-missing"
-  // A link, or a type folder outside the Harness: pushing it would publish something else.
   | "destination-unsafe"
-  // Recomputed after a fresh fetch, never from what the cockpit showed (#579).
   | "concurrent-change"
   | PushRefusal
   | RequestRefusal
@@ -55,7 +50,6 @@ export type ProposeDeletionError =
   | RequestRefusal
   | "promote-failed";
 
-// `pullRequestUrl` is the compare page, known whether or not a request opened.
 export type ProposedItem = {
   ok: true;
   branch: string;
@@ -91,8 +85,6 @@ export const proposeChange = async (
     return first;
   }
 
-  // Re-fetched and rechecked right before the push, so a teammate's change
-  // cannot slip through the gap (#579).
   const refetched = await deps.fetchGate.fetchFresh(root);
   if (refetched !== "fetched") {
     return { ok: false, error: "no-answer" };
@@ -128,8 +120,6 @@ export const proposeChange = async (
   }
 };
 
-// A deletion is never inferred from absence: `seenRemoteTree` is the
-// confirmed default-branch content (#580).
 export const proposeDeletion = async (
   deps: ItemDeps,
   root: string,
@@ -150,13 +140,11 @@ export const proposeDeletion = async (
     return { ok: false, error: "no-answer" };
   }
 
-  // First: an ambiguous working tree makes every fact below unreadable.
   const ambiguity = await deps.git.readWorktreeAmbiguity(root);
   if (ambiguity !== null) {
     return { ok: false, error: ambiguity };
   }
 
-  // Re-read at the press, never taken from the row (#575).
   const local = await deps.git.readPrimitives(root, "HEAD");
   const trees = await deps.git.readMovementTrees(root);
   if (local === null || trees === null) {
@@ -169,7 +157,6 @@ export const proposeDeletion = async (
     return { ok: false, error: "not-deleted" };
   }
 
-  // From the refs just fetched: the confirmed hash may be stale.
   const remote = await deps.git.readPrimitives(root, head);
   if (remote === null) {
     return { ok: false, error: "no-answer" };
@@ -204,7 +191,6 @@ const afterPushed = async (
   target: { origin: GitOrigin; base: string; ref: PrimitiveRef },
   afterPush: () => Promise<PullRequestOutcome>,
 ): Promise<ProposedItem> => {
-  // The new branch reaches the clone only through a fetch.
   deps.fetchGate.invalidate(root);
   const pullRequest = await afterPush();
   return {
@@ -215,7 +201,6 @@ const afterPushed = async (
   };
 };
 
-// Scoped to this primitive via the merge base: unrelated commits never block (#579).
 const checkNotConcurrent = async (
   git: HarnessGitPort,
   root: string,

@@ -4,7 +4,6 @@ import { gitOptions } from "./non-interactive";
 
 const run = promisify(execFile);
 
-// exitCode is null where git never exited (missing binary, timeout).
 export type GitRun =
   | { ok: true; stdout: string }
   | { ok: false; exitCode: number | null };
@@ -14,13 +13,11 @@ export async function runGit(root: string, args: string[]): Promise<GitRun> {
     const { stdout } = await run("git", ["-C", root, ...args], gitOptions());
     return { ok: true, stdout: stdout.trim() };
   } catch (error) {
-    // execFile rejects with an Error that carries the exit code; checked below.
     const code = (error as { code?: unknown }).code;
     return { ok: false, exitCode: typeof code === "number" ? code : null };
   }
 }
 
-// Empty output or any failure means unknown (null).
 export async function runGitText(
   root: string,
   args: string[],

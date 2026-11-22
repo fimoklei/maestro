@@ -1,4 +1,3 @@
-// A failed fetch never overwrites the last success time (#516).
 import type {
   HarnessFetchOutcome,
   HarnessFreshnessPort,

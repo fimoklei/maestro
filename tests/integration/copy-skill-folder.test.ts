@@ -216,6 +216,16 @@ describe("CopySkillFolder", () => {
       expect(await copy()).toEqual({ ok: false, error: "unsafe-link" });
       await expectNothingWritten();
     });
+
+    it("refuses a link that escapes to a special file without naming its type", async () => {
+      await write("SKILL.md", "# skill\n");
+      const outsidePipe = join(root, "outside-pipe");
+      await run("mkfifo", [outsidePipe]);
+      await symlink(outsidePipe, join(source, "pipe-link"));
+
+      expect(await copy()).toEqual({ ok: false, error: "unsafe-link" });
+      await expectNothingWritten();
+    });
   });
 
   describe("entries it refuses", () => {
@@ -342,6 +352,30 @@ describe("CopySkillFolder", () => {
       expect(result).toEqual({ ok: false, error: "unsafe-link" });
       await expectNothingWritten();
     });
+
+    it("fails the whole operation when a folder is replaced before it is copied", async () => {
+      await mkdir(join(source, "empty"));
+      const fs = new NodeCopyTreeFs();
+      const original = fs.makeDir.bind(fs);
+      let replaced = false;
+      fs.makeDir = async (path) => {
+        if (!replaced) {
+          replaced = true;
+          await rm(join(source, "empty"), { recursive: true });
+          await mkdir(join(source, "empty"));
+        }
+        return original(path);
+      };
+
+      const result = await new CopySkillFolder({ fs }).copy({
+        source,
+        destinationParent,
+        name: "imported",
+      });
+
+      expect(result).toEqual({ ok: false, error: "source-changed" });
+      await expectNothingWritten();
+    });
   });
 
   describe("the destination it is given", () => {
@@ -384,6 +418,25 @@ describe("CopySkillFolder", () => {
         ok: false,
         error: "destination-exists",
       });
+      expect(await readdir(destination())).toEqual([]);
+    });
+
+    it("refuses a destination that appears while the copy is staged", async () => {
+      await write("SKILL.md", "# skill\n");
+
+      const result = await new CopySkillFolder({
+        fs: new NodeCopyTreeFs(),
+      }).copy({
+        source,
+        destinationParent,
+        name: "imported",
+        finalize: async () => {
+          await mkdir(destination());
+          return true;
+        },
+      });
+
+      expect(result).toEqual({ ok: false, error: "destination-exists" });
       expect(await readdir(destination())).toEqual([]);
     });
   });

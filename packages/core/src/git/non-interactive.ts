@@ -14,7 +14,6 @@ export const gitOptions = () => ({
   timeout: 60_000,
 });
 
-// A throwaway index, so nothing stages in the author's own (#574).
 export const indexOptions = (indexFile: string) => {
   const options = gitOptions();
   return { ...options, env: { ...options.env, GIT_INDEX_FILE: indexFile } };

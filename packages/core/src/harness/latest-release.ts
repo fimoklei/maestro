@@ -1,6 +1,3 @@
-// The one read of the latest release. The Harness read, the release plan and
-// the withdrawal all take it from here, so they never disagree on which
-// release is the latest.
 import type {
   HarnessFacts,
   HarnessFreshness,
@@ -10,13 +7,10 @@ import type {
 } from "./read-harness-state";
 import { highestReleaseTag } from "./release-tag";
 
-// `known: false` is a tag list nobody can trust yet, never "no release
-// exists"; `tag: null` is a harness that was never released.
 export type LatestRelease =
   | { known: false }
   | { known: true; tags: HarnessTag[]; tag: HarnessTag | null };
 
-// `refsConfirmed`: the tags come from a fetch that reached the remote (#519).
 export const latestReleaseOf = (
   tags: HarnessTag[] | null,
   refsConfirmed: boolean,

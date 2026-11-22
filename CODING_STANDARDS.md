@@ -15,7 +15,7 @@ not the shell, before starting the task.
 - Designing a module, port or interface → the `codebase-design` skill and
   Architecture below
 - Writing or running tests, or `pnpm verify` → `testing.md`
-- Writing or trimming a code comment → `comments.md`
+- Writing code, or deleting old comments → `comments.md`; a sweep → `/delete-comment`
 - Starting a process, using a path from input, parsing an external file or adding an HTTP endpoint → `security.md`
 - React component or client-side data access → `frontend.md`
 - Writing or changing a string the cockpit shows → `copy.md`
@@ -63,9 +63,7 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
   `z.output` when a transform changes the shape). Never keep a hand-written
   twin type.
 - Untrusted-input specifics → `security.md`.
-- Give every `as` cast in product code a reason a reviewer can check, in a
-  comment on its line or above it. Test code is exempt. A cast on a copy table
-  or a notice needs a test that renders its result.
+- A cast on a copy table or a notice needs a test that renders its result.
 
 ### Function signatures
 
@@ -78,7 +76,7 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
 | Typecheck, lint and affected tests pass before a commit | commit gate (`~/.claude/hooks/commit-gate.py`); `verify` in CI |
 | A commit that removes a test case says why (`Tests-removed:`) | commit gate |
 | Code comments cite no ADR, story ID, home path or workshop document | `comment-guard` in `pnpm lint` |
-| Every `as` cast in product code has a reason | `cast-guard` in `pnpm lint` |
+| No file gains a comment line; a drop is locked into the baseline | `comment-ratchet` in `pnpm lint` |
 | Shipped strings use no retired screen word | `copy-guard` in `pnpm lint` |
 | Feature code takes status, colour, icon, toast and checkbox from `ui/` | `design-guard` in `pnpm lint` |
 | Every rule file has a `paths:` that matches a file | `rules-guard` in `pnpm lint` |

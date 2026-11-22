@@ -168,7 +168,6 @@ describe("beforeProposalPush", () => {
     ]);
   });
 
-  // Promote skill: is the prefix Maestro used before the kinds (#1399).
   it.each<[string, ProposalKind, string]>([
     ["Promote skill: tdd (v2)", "deletion", "Delete skill: tdd"],
     ["Promote skill: tdd", "edit", "Edit skill: tdd"],

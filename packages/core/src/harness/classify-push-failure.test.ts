@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { classifyPushFailure } from "./classify-push-failure";
 
-// Real output from git 2.50, never retyped.
-describe("classifyPushFailure", () => {
+describe("classifyPushFailure on stderr captured verbatim from git 2.50 and GitHub", () => {
   it("reads a tag the remote already has as already-exists, not a generic failure", () => {
     expect(
       classifyPushFailure(
@@ -27,8 +26,7 @@ describe("classifyPushFailure", () => {
     ).toBe("offline");
   });
 
-  // Captured from GitHub (#1728); `remote:` lines padded as GitHub sends them.
-  it("reads a classic branch protection refusal as refused", () => {
+  it("reads a classic branch protection refusal, its remote lines padded as GitHub sends them, as refused", () => {
     expect(
       classifyPushFailure(
         "remote: error: GH006: Protected branch update failed for refs/heads/main.        \nremote:        \nremote: - Changes must be made through a pull request.        \nTo https://github.com/fimoklei/maestro-push-refusal-probe.git\n ! [remote rejected] HEAD -> main (protected branch hook declined)\nerror: failed to push some refs to 'https://github.com/fimoklei/maestro-push-refusal-probe.git'\n",

@@ -1,5 +1,3 @@
-// How much of a target's Selection the newest release touches. Compares
-// content, never ancestry; every unknown stays null.
 import type { HarnessTag } from "../harness/read-harness-state";
 import {
   highestReleaseTag,
@@ -26,7 +24,6 @@ export class ReleaseHeadReader {
     now: () => Date;
   };
 
-  // Per target, in memory only: a restart forgets.
   private readonly last = new Map<string, LastRead>();
 
   constructor(deps: ReleaseHeadReader["deps"]) {
@@ -87,7 +84,6 @@ export class ReleaseHeadReader {
     if (current === null || next === null) {
       return unread(latestRelease);
     }
-    // A name the newer release dropped has no hash there: that is a change too.
     const changedSkills = input.selection.filter(
       (name) => current.get(name) !== next.get(name),
     );
@@ -100,7 +96,6 @@ export class ReleaseHeadReader {
     });
   }
 
-  /** The Harness's release tags, newest first; null where none could be read. */
   async releaseTags(): Promise<string[] | null> {
     const root = await this.deps.resolveRoot().catch(() => undefined);
     if (root === undefined) {

@@ -57,6 +57,8 @@ treat them as hypotheses, not facts.
      necessary, not less — see the "both halves" clause before touching
      anything.
    - ADR-0014: has the ref grammar or host gate changed?
+   - `CLAUDE_CONFIG_DIR`: re-run the folder switch and the uninstall of
+     #1872 and #1947; 0.35.1 keeps the old copies and removes per folder.
    - `LEARNINGS.md`: reconfirm or archive entries naming an apm version.
    - `.claude/rules/apm-driver.md`: do the imperatives still match the
      measured behavior?

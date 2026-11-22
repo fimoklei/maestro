@@ -25,7 +25,6 @@ function build(overrides?: {
       isFileEntry: (path) => fs.isFileEntry(path),
       isDirectoryEntry: (path) => fs.isDirectoryEntry(path),
       readFile: (path) => fs.readFile(path),
-      // Like `mkdir -p`: an existing folder, or a link to one, stays as it is.
       ensureDir: async (path) => {
         const known = await fs.realpath(path).then(
           () => true,
@@ -47,8 +46,6 @@ function build(overrides?: {
   return { importPrompt, fs };
 }
 
-// One prompt through the batch import, answered as that prompt's outcome; a
-// refusal of the whole batch stays as it is. It asks to replace a taken name.
 async function importOne(
   importPrompt: ImportPrompt,
   draft: PromptDraft,
@@ -73,8 +70,7 @@ const VALID = {
   example: "",
 };
 
-// Shaped after prompts found in real tool folders.
-const FIXTURES: { fileName: string; raw: string }[] = [
+const SHAPES_FROM_REAL_TOOL_FOLDERS: { fileName: string; raw: string }[] = [
   {
     fileName: "review-pr.prompt.md",
     raw: "---\r\ndescription: Review the open pull request\r\n---\r\nRead the diff.\r\nList the risks.\r\n",
@@ -94,7 +90,7 @@ const FIXTURES: { fileName: string; raw: string }[] = [
 ];
 
 describe("ImportPrompt.importMany, one prompt", () => {
-  it.each(FIXTURES)(
+  it.each(SHAPES_FROM_REAL_TOOL_FOLDERS)(
     "writes $fileName so it reads back unchanged",
     async ({ fileName, raw }) => {
       const { importPrompt, fs } = build();
@@ -371,6 +367,28 @@ describe("ImportPrompt.importMany, one prompt", () => {
       error: "import-in-progress",
     });
     expect(await fs.exists(PROMPTS)).toBe(false);
+  });
+});
+
+describe("ImportPrompt.importMany, several prompts", () => {
+  it("refuses a later file whose name an earlier one took, even when it asks to replace", async () => {
+    const { importPrompt, fs } = build();
+
+    await expect(
+      importPrompt.importMany([
+        { ...VALID, replace: true },
+        { ...VALID, text: "Another text.\n", replace: true },
+      ]),
+    ).resolves.toEqual({
+      ok: true,
+      outcomes: [
+        { name: "review-pr", imported: true, mode: "add" },
+        { name: "review-pr", imported: false, refusal: "prompt-taken" },
+      ],
+    });
+    expect(
+      readPromptFile((await fs.readFile(`${PROMPTS}/review-pr.md`)) ?? "").text,
+    ).toBe(VALID.text);
   });
 });
 

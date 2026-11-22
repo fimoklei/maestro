@@ -10,8 +10,6 @@ import { runHelper } from "./run-helper";
 
 const CANCELLED_EXIT = 2;
 
-// A constant: the start folder arrives as $env:MAESTRO_CHOOSER_START, never as
-// script text. The TopMost owner keeps the dialog in front of the browser.
 const SCRIPT = [
   "$ErrorActionPreference = 'Stop'",
   "Add-Type -AssemblyName System.Windows.Forms",

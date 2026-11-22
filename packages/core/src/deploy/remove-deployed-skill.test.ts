@@ -20,8 +20,6 @@ import {
 const VERSION = "v0.5.1";
 const REF = `github.com/fimoklei/agent-harness/.apm/skills/tdd#${VERSION}`;
 
-// A successful removal reports the tools it ran against, never the set the
-// caller had in view.
 const REPO_SCOPE = { kind: "repo" } as const;
 const GLOBAL_SCOPE = { kind: "global", tools: ["claude", "codex"] } as const;
 const CODEX_SCOPE = { kind: "global", tools: ["codex"] } as const;
@@ -38,7 +36,6 @@ const removeTddGlobally = {
   target: { kind: "global" } as DeployTarget,
 };
 
-// Built in one place so widening the result does not re-edit every assertion.
 const preflightOk = (warning: RemoveWarning | null) => ({
   ok: true,
   check: { scope: "repo", warning },
@@ -53,12 +50,10 @@ const globalPreflightOk = (tools: RemoveToolCheck[]) => ({
 
 type Overrides = {
   registered?: boolean;
-  // Per repo path, for a batch whose targets answer differently.
   isRegistered?: (path: string) => Promise<boolean>;
   lookup?: DeployedRefLookup;
   lookupFor?: (target: DeployTarget) => DeployedRefLookup | undefined;
   removed?: boolean | "timed-out";
-  // The disk after apm's removal, for the post-apm probe to read.
   afterApmRemove?: (copies: ReturnType<typeof inMemoryDeployedContent>) => void;
   locks?: InFlightLocks;
   canonicalPath?: (path: string) => Promise<string>;
@@ -68,6 +63,7 @@ type Overrides = {
   ) => DeployedContentState;
   detectedTools?: SupportedTool[];
   detectTools?: () => Promise<SupportedTool[]>;
+  probeThrows?: boolean;
 };
 
 function buildUseCase(overrides: Overrides = {}) {
@@ -76,8 +72,6 @@ function buildUseCase(overrides: Overrides = {}) {
     removes: { target: DeployTarget; ref: string }[];
     classifies: { target: DeployTarget; tools?: readonly SupportedTool[] }[];
   } = { lookups: [], removes: [], classifies: [] };
-  // Real copies on an in-memory tree, placed in the state the test asks for
-  // on first read; a test edits or drops a record to move it.
   const copies = inMemoryDeployedContent();
   const placed = new Set<string>();
   const placeCopy = (target: DeployTarget, name: string) => {
@@ -90,10 +84,14 @@ function buildUseCase(overrides: Overrides = {}) {
     return true;
   };
   const onRead = placedOnRead(copies.content, placeCopy);
+  let apmRan = false;
   const deployedContent = {
     readLockfile: onRead.readLockfile,
     classify: async (input: Parameters<typeof copies.content.classify>[0]) => {
       calls.classifies.push({ target: input.target, tools: input.tools });
+      if (overrides.probeThrows && apmRan) {
+        throw new Error("probe failed");
+      }
       return onRead.classify(input);
     },
     contentDigest: async (input: {
@@ -125,6 +123,7 @@ function buildUseCase(overrides: Overrides = {}) {
     apm: {
       removeSkill: async ({ target, ref }) => {
         calls.removes.push({ target, ref });
+        apmRan = true;
         overrides.afterApmRemove?.(copies);
         if (overrides.removed === "timed-out") {
           return { ok: false, reason: "timed-out" };
@@ -144,7 +143,6 @@ function buildUseCase(overrides: Overrides = {}) {
   return { useCase, calls, copies };
 }
 
-// The drift a test asks for: one state for the whole copy, or one per tool.
 function copyStatesOf(overrides: Overrides): CopyStates {
   if (overrides.deployedStateForScope === undefined) {
     return overrides.deployedState ?? "clean";
@@ -159,8 +157,6 @@ function copyStatesOf(overrides: Overrides): CopyStates {
   };
 }
 
-// Taken from the use-case, never hand-built, so no test mints a receipt the
-// implementation would never issue.
 async function receiptFor(
   useCase: RemoveDeployedSkill,
   request: { type: string; name: string; target: DeployTarget },
@@ -169,7 +165,6 @@ async function receiptFor(
   return preflight.ok ? preflight.receipt : undefined;
 }
 
-// Every removal needs its own preflight's receipt (#364).
 async function confirmedExecute(
   useCase: RemoveDeployedSkill,
   request: { type: string; name: string; target: DeployTarget },
@@ -196,7 +191,6 @@ describe("RemoveDeployedSkill", () => {
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
 
-  // The row's version can be stale by the time the user confirms (#383).
   it("reports the version it removed, not the one the caller had in view", async () => {
     const { useCase } = buildUseCase({
       lookup: {
@@ -217,7 +211,6 @@ describe("RemoveDeployedSkill", () => {
     });
   });
 
-  // The tool set is probed live at execution time (#383).
   it("reports the detected tools a global removal ran against", async () => {
     const { useCase } = buildUseCase({ detectedTools: ["claude"] });
 
@@ -299,8 +292,6 @@ describe("RemoveDeployedSkill", () => {
     expect(calls.removes).toEqual([]);
   });
 
-  // apm 0.29.0 keeps an edited file and aborts after deleting the rest of the
-  // copy, so the guard refuses in front of apm (#775).
   it("refuses a copy with local edits before apm runs", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
 
@@ -329,7 +320,6 @@ describe("RemoveDeployedSkill", () => {
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
 
-  // A copy with no baseline is not a clean one: nothing rules out local work (#458).
   it("refuses a copy whose edits cannot be ruled out when nothing proves the cost was stated", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "unverifiable" });
 
@@ -473,8 +463,6 @@ describe("RemoveDeployedSkill", () => {
     const locks = new InFlightLocks();
     const { useCase } = buildUseCase({ locks });
 
-    // Deploy and remove share one lock, so a remove cannot rewrite the lockfile
-    // underneath a deploy.
     const held = locks.run("/repo", () => new Promise<void>(() => undefined));
     void held;
 
@@ -500,16 +488,24 @@ describe("RemoveDeployedSkill", () => {
       }),
     ).resolves.toEqual({ ok: false, error: "remove-in-progress" });
   });
+
+  it("prices a removal while another apm write holds the repo's lock", async () => {
+    const locks = new InFlightLocks();
+    const { useCase } = buildUseCase({ locks });
+
+    void locks.run("/repo", () => new Promise<void>(() => undefined));
+
+    await expect(useCase.preflight(removeTdd)).resolves.toEqual(
+      preflightOk(null),
+    );
+  });
 });
 
-// An editor autosave between the check and the click can turn a clean copy into
-// an edited one; a difference from the priced state stops the removal (#364).
 describe("RemoveDeployedSkill when the copy changed since it was priced", () => {
   function racingUseCase(overrides: Overrides = {}) {
     const built = buildUseCase(overrides);
     return {
       ...built,
-      // The lockfile loses its record of the copy, as apm would after a rewrite.
       loseBaseline: () =>
         built.copies.setCopy(removeTdd.target, "tdd", "unverifiable"),
       edit: () =>
@@ -533,7 +529,6 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
     expect(calls.removes).toEqual([]);
   });
 
-  // No consent lets apm at an edited copy (#775).
   it("refuses outright when the copy gained local edits since it was priced", async () => {
     const { useCase, calls, edit } = racingUseCase();
     const confirmedRemovalReceipt = await receiptFor(useCase, removeTdd);
@@ -571,10 +566,7 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
     expect(calls.removes).toEqual([{ target: removeTdd.target, ref: REF }]);
   });
 
-  // The confirmation states a cost per row (#414).
   it("refuses when one tool's global copy changed and the others did not", async () => {
-    // Only Codex holds a copy, so losing its record leaves no tool's copy
-    // diverged: Claude's absent copy has nothing to change.
     const { useCase, calls, copies } = buildUseCase({
       detectedTools: ["claude", "codex"],
       deployedStateForScope: (tools) =>
@@ -638,8 +630,6 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
   });
 });
 
-// One action removes the skill from every detected tool: apm's uninstall has no
-// -t, and narrowing its targets orphans the other tools' files.
 describe("RemoveDeployedSkill on the global target", () => {
   it("removes the skill in one action, naming the global scope to apm", async () => {
     const { useCase, calls } = buildUseCase();
@@ -676,8 +666,6 @@ describe("RemoveDeployedSkill on the global target", () => {
   });
 
   it("lists an undetected tool's copy its named uninstall deletes", async () => {
-    // apm's uninstall deletes by its own recorded targets, which can still name a
-    // tool that has since dropped out (#414).
     const { useCase } = buildUseCase({
       detectedTools: ["claude"],
       deployedState: "unverifiable",
@@ -747,8 +735,6 @@ describe("RemoveDeployedSkill on the global target", () => {
     });
   });
 
-  // apm's uninstall has no -t, so it would abort on that copy after deleting the
-  // others (#775).
   it("refuses the check when only one tool's copy carries local edits", async () => {
     const { useCase } = buildUseCase({
       detectedTools: ["claude", "codex"],
@@ -781,8 +767,6 @@ describe("RemoveDeployedSkill on the global target", () => {
   it("names the cost against the tool whose copy carries it, and no other", async () => {
     const { useCase } = buildUseCase({
       detectedTools: ["claude", "codex"],
-      // Not deployed: beside a recorded claude copy, the whole-copy check would
-      // read the unrecorded codex files as added and refuse (#1680).
       deployedStateForScope: (tools) =>
         tools?.[0] === "codex" ? "unverifiable" : "not-deployed",
     });
@@ -856,8 +840,6 @@ describe("RemoveDeployedSkill on the global target", () => {
 });
 
 describe("RemoveDeployedSkill on a machine without Claude Code", () => {
-  // apm's uninstall still reaches the dropped tool's copy, so the check names
-  // what the removal will refuse (#1680).
   it("refuses the check over local edits in an undetected tool's copy", async () => {
     const { useCase } = buildUseCase({
       detectedTools: ["codex"],
@@ -893,8 +875,6 @@ describe("RemoveDeployedSkill on a machine without Claude Code", () => {
   });
 });
 
-// An unverifiable copy is not a diverged one, so it is never called "edited"
-// (#337); a diverged copy is refused, never priced (#775).
 describe("RemoveDeployedSkill.preflight", () => {
   it("refuses a copy with local edits, offering nothing to confirm", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "diverged" });
@@ -1040,8 +1020,6 @@ describe("RemoveDeployedSkill.preflight", () => {
   });
 });
 
-// apm's uninstall reports one outcome for every tool, so after a failure the
-// server probes the disk per target.
 describe("RemoveDeployedSkill reporting a failed removal per target", () => {
   it("reports the repo's own copy as gone when the probe finds nothing left", async () => {
     const { useCase } = buildUseCase({
@@ -1108,11 +1086,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
   });
 
   it("calls a probe that threw unknown, never removed", async () => {
-    const { useCase } = buildUseCase({
-      removed: false,
-      afterApmRemove: (copies) =>
-        copies.setCopy(removeTdd.target, "tdd", "unreadable"),
-    });
+    const { useCase } = buildUseCase({ removed: false, probeThrows: true });
 
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
@@ -1160,8 +1134,6 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
   });
 });
 
-// Bulk runs through the same removal, so a change to what one target accepts
-// turns these red too (#364).
 describe("RemoveDeployedSkill removing one skill from many targets", () => {
   const global: DeployTarget = { kind: "global" };
   const repo = (path: string): DeployTarget => ({
@@ -1169,7 +1141,6 @@ describe("RemoveDeployedSkill removing one skill from many targets", () => {
     repoPath: path,
   });
 
-  // Each target carries its own preflight's receipt, as the dialog sends it.
   async function confirmed(
     useCase: RemoveDeployedSkill,
     targets: DeployTarget[],
@@ -1249,7 +1220,6 @@ describe("RemoveDeployedSkill removing one skill from many targets", () => {
   it("keeps going after a removal that throws mid-batch", async () => {
     let broken = false;
     const { useCase } = buildUseCase({
-      // Rejects outside the removal's typed-error handling (#421).
       isRegistered: async (path) => {
         if (broken && path === "/repo-b") {
           throw new Error("ENOENT: filesystem read failed");
@@ -1324,7 +1294,6 @@ describe("RemoveDeployedSkill removing one skill from many targets", () => {
   });
 
   it("carries what a failed target's disk probe found onto its own row", async () => {
-    // Only the probe says whether a copy is still on that target (#416).
     const { useCase } = buildUseCase({
       removed: false,
       isRegistered: async (path) => path !== "/repo-b",
@@ -1335,13 +1304,12 @@ describe("RemoveDeployedSkill removing one skill from many targets", () => {
       targets: await confirmed(useCase, [repo("/repo-a"), repo("/repo-b")]),
     });
 
-    expect(report.failed).toEqual([
+    expect(report.failed).toStrictEqual([
       {
         target: repo("/repo-a"),
         reason: "remove-failed",
         outcome: { scope: "repo", state: "not-removed" },
       },
-      // Omitted, never null: a failure that never reached apm has no outcome.
       { target: repo("/repo-b"), reason: "repo-not-registered" },
     ]);
   });

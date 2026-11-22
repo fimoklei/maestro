@@ -27,11 +27,8 @@ import {
 } from "./deployed-content-drift";
 import type { DeployedLocation } from "./deployed-location";
 
-// Keeps an existing-but-unreadable subtree from swallowing to empty, which
-// would read as "nothing deployed" and let a deploy overwrite blindly (#59).
 class DeployedSubtreeUnreadableError extends Error {}
 
-// `hashes` is empty unless hashing was requested; `fileCount` is always set.
 type SubtreeScan = { hashes: DeployedFileHashes; fileCount: number };
 
 export class DeployedContentAdapter
@@ -39,12 +36,8 @@ export class DeployedContentAdapter
 {
   private readonly deps: {
     location: Pick<DeployedLocation, "treeRoot" | "lockfilePath" | "toolRoots">;
-    // Absent, a copy is only measured against its recorded baseline.
     inventoryGit?: Pick<InventoryGitPort, "readSkillFilesAtTag">;
-    // The Working harness's folder; absent or unresolved, no Local edits copy
-    // reads Edits in the Harness.
     workingHarness?: () => Promise<string | undefined>;
-    // Walks, reads and hashes the copy; an in-memory tree in tests.
     fs: CopyTreeFsPort;
   };
 
@@ -60,7 +53,6 @@ export class DeployedContentAdapter
     lockfile: LockfileReading;
   }): Promise<DeployedContentState> {
     const subtrees = this.subtrees(input.target, input.name, input.tools);
-    // Baseline first: with no recorded hashes the scan skips hashing (#63).
     const baseline = this.baseline(input.lockfile, input.name, subtrees);
     const root = this.deps.location.treeRoot(input.target);
     let scan: SubtreeScan;
@@ -69,8 +61,6 @@ export class DeployedContentAdapter
         hash: baseline.kind === "hashes",
       });
     } catch (error) {
-      // Checked before the baseline branches, so an unreadable destination
-      // outranks a malformed lockfile (#59).
       if (error instanceof DeployedSubtreeUnreadableError) {
         return "unreadable";
       }
@@ -80,7 +70,6 @@ export class DeployedContentAdapter
     if (baseline.kind === "malformed") {
       return "lockfile-malformed";
     }
-    // A fully-deleted copy is restored, never refused as "local edits" (#65).
     if (scan.fileCount === 0) {
       return "not-deployed";
     }
@@ -90,8 +79,6 @@ export class DeployedContentAdapter
     if (classifyDeployedDrift(baseline.hashes, scan.hashes) === "clean") {
       return "clean";
     }
-    // Second chance: a copy equal to the release about to be installed is not
-    // the reader's edit (#952).
     return (await this.equalsRelease(
       input.release,
       input.name,
@@ -137,7 +124,6 @@ export class DeployedContentAdapter
     };
     const { older, latest } = releasesAround(input.release, input.tags);
     const root = this.deps.location.treeRoot(input.target);
-    // Null where the copy cannot be read.
     const scanCopy = async (name: string, tool: SupportedTool) => {
       const subtree = this.subtrees(input.target, name, [tool])[0] ?? "";
       try {
@@ -204,8 +190,6 @@ export class DeployedContentAdapter
             ? { kind: "edits-in-harness" }
             : { kind: "local-edits" };
         }
-        // Equal to its record, but the Target release could not be read:
-        // the record is the only proof, as before.
         if (
           input.release === undefined ||
           (await releasedTree(input.release, name)) === null
@@ -252,14 +236,12 @@ export class DeployedContentAdapter
     return held;
   }
 
-  // Null where no Harness is connected or its skill folder is empty or unreadable.
   private async readWorkingSkill(
     name: string,
   ): Promise<DeployedFileHashes | null> {
     const root = await this.deps.workingHarness?.().catch(() => undefined);
     if (root === undefined) return null;
     const subtree = harnessSkillSubpath(name);
-    // Any failure leaves the copy Local edits, never unread.
     const scan = await this.scanSubtrees(root, [subtree], {
       hash: true,
     }).catch(() => null);
@@ -286,8 +268,6 @@ export class DeployedContentAdapter
           .join("\n");
   }
 
-  // Whole-tree equality per subtree; a subtree still equal to its record holds
-  // no work either (#1213). An unreadable release answers false.
   private async equalsRelease(
     release: string | undefined,
     name: string,
@@ -306,7 +286,6 @@ export class DeployedContentAdapter
     }
     for (const subtree of subtrees) {
       const deployed = stripSubtree(scan.hashes, subtree);
-      // A subtree the write never landed in is not a missing copy.
       if (Object.keys(deployed).length === 0) {
         continue;
       }
@@ -323,8 +302,6 @@ export class DeployedContentAdapter
     return true;
   }
 
-  // apm refuses when the leaf skill dir is a symlink. Never follows a link: a
-  // link resolves to a dir (#748).
   async linkedSkillPath(input: {
     target: DeployTarget;
     name: string;
@@ -345,7 +322,6 @@ export class DeployedContentAdapter
     return null;
   }
 
-  // A Global folder outside HOME is absolute; resolve keeps it whole.
   private subtrees(
     target: DeployTarget,
     name: string,
@@ -361,7 +337,6 @@ export class DeployedContentAdapter
   async readLockfile(target: DeployTarget): Promise<LockfileReading> {
     const lockfilePath = this.deps.location.lockfilePath(target);
     const file = await this.deps.fs.openFollowingLinks(lockfilePath);
-    // Present but unreadable is an error, not an absent baseline (#58).
     if (file === "missing") {
       return "missing";
     }
@@ -396,8 +371,6 @@ export class DeployedContentAdapter
       return { kind: "malformed" };
     }
 
-    // By name, never by package_type (#358). A root package's one row holds
-    // every skill's hashes, scoped to the subtrees below.
     const entry =
       parsed.entries.find(
         (e) =>
@@ -410,7 +383,6 @@ export class DeployedContentAdapter
     if (recorded === undefined || Object.keys(recorded).length === 0) {
       return { kind: "none" };
     }
-    // Drops untargeted tools, so their absence on disk is not drift (#136).
     const hashes = scopeHashesToSubtrees(recorded, subtrees);
     if (Object.keys(hashes).length === 0) {
       return { kind: "none" };
@@ -418,7 +390,6 @@ export class DeployedContentAdapter
     return { kind: "hashes", hashes };
   }
 
-  // Keys use forward slashes, matching the lockfile's own keys.
   private async scanSubtrees(
     root: string,
     subtrees: string[],
@@ -431,7 +402,6 @@ export class DeployedContentAdapter
       const abs = resolve(root, rel);
       const names = await fs.listNames(abs);
       if (names === null) {
-        // Missing reads as empty; present but unlistable is unreadable (#59).
         if ((await fs.describe(abs)) === null) {
           return;
         }
@@ -440,7 +410,6 @@ export class DeployedContentAdapter
       for (const name of names) {
         const childRel = `${rel}/${name}`;
         const childAbs = resolve(root, childRel);
-        // describe never follows a link, so a linked dir counts as one file.
         if ((await fs.describe(childAbs))?.kind === "directory") {
           await walk(childRel);
           continue;
@@ -452,7 +421,6 @@ export class DeployedContentAdapter
         }
         try {
           if (opts.hash) {
-            // Raw bytes, never utf8: decoding would flag a binary asset as drift.
             const bytes = await file.read();
             hashes[childRel] =
               `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
@@ -471,7 +439,6 @@ export class DeployedContentAdapter
   }
 }
 
-// Re-keys hashes relative to the skill directory, as the release names them.
 function stripSubtree(
   hashes: DeployedFileHashes,
   subtree: string,
@@ -485,7 +452,6 @@ function stripSubtree(
   return stripped;
 }
 
-// The trailing "/" matters: without it "skills/tddx" matches "skills/tdd".
 function scopeHashesToSubtrees(
   hashes: DeployedFileHashes,
   subtrees: string[],

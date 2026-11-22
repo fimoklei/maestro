@@ -124,12 +124,52 @@ describe("inventory connect HTTP route", () => {
     expect(await readRemoteHead(clone)).toBe("refs/remotes/origin/trunk");
   });
 
+  it("repairs a missing origin/HEAD from a single remote branch whose name holds a slash", async () => {
+    const clone = await makeClone({
+      defaultBranch: false,
+      remoteBranches: ["release/v1"],
+    });
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(200);
+    expect(await readRemoteHead(clone)).toBe("refs/remotes/origin/release/v1");
+  });
+
   // A pruned default branch leaves `origin/HEAD` naming nothing.
   it("rejects a dangling origin/HEAD rather than reading it as the default branch", async () => {
     const clone = await makeClone({
       defaultBranch: "main",
       defaultBranchExists: false,
     });
+
+    const res = await postConnect(makeApp(), { path: clone });
+
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "no-default-branch",
+    );
+  });
+
+  it("rejects an origin/HEAD that names a ref outside origin's branches", async () => {
+    const clone = await makeClone({
+      defaultBranch: false,
+      remoteBranches: ["main", "trunk"],
+    });
+    await run("git", [
+      "-C",
+      clone,
+      "update-ref",
+      "refs/remotes/mirror/main",
+      "refs/remotes/origin/main",
+    ]);
+    await run("git", [
+      "-C",
+      clone,
+      "symbolic-ref",
+      REMOTE_HEAD,
+      "refs/remotes/mirror/main",
+    ]);
 
     const res = await postConnect(makeApp(), { path: clone });
 

@@ -34,7 +34,6 @@ export function reading(
 export const readingRank = (value: StatusReading): number =>
   RANK.indexOf(value.family);
 
-/** A sort key by a surface's word order: a lower number is a worse reading; no reading, or a word off the list, sorts last. */
 export const rankBy =
   (words: readonly string[]) =>
   (status: StatusReading | null): number => {

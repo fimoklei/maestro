@@ -9,7 +9,6 @@ describe("pushesWhereItFetched", () => {
   });
 
   it("accepts a transport rewrite, where both sides land on the same mirror", () => {
-    // `insteadOf` rewrites the fetch and the push alike.
     const mirror = "/srv/mirror.git";
     expect(pushesWhereItFetched(mirror, [mirror])).toBe(true);
   });

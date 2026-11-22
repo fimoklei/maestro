@@ -1,5 +1,3 @@
-// apm writes ONE entry per skill even for a two-tool install, listing both
-// copies in deployed_files, so an entry is attributed per prefix found there.
 import {
   type GlobalFolder,
   type GlobalLayout,
@@ -24,40 +22,29 @@ import {
   deployedRootPackageSkills,
 } from "./root-package-skills";
 
-/** An unedited copy Global did not move to its Target release; `stillAt` null where no older release matches. */
 export type NotUpdatedCopy = { name: string; stillAt: string | null };
 
-/** A folder's Not updated copies and the one Target release the read compared them with. */
 export type NotUpdatedCopies = {
   targetRelease: string;
   copies: NotUpdatedCopy[];
 };
 
-/** A copy Global no longer updates, in a folder whose tool is not detected. */
 export type StrayCopy = { name: string; atRelease: boolean };
 
-/** A Global folder with the copies Global wrote there; none where its tool is not detected. */
 export type GlobalFolderState = GlobalFolder & {
   primitives: DeployedPrimitive[];
-  // Absent where every copy is at the Target release.
   notUpdated?: NotUpdatedCopies;
-  // Skills of Global's list with no files here; absent where none lack them.
   missing?: string[];
-  // Undetected folder only: Selection skills with a copy here and in a written
-  // folder. Absent where there are none.
   strayCopies?: StrayCopy[];
 };
 
-/** Global as one target: one release, one skill list, and the folders it writes. */
 export type GlobalTargetState = {
   primitives: DeployedPrimitive[];
   folders: GlobalFolderState[];
   releaseHead?: ReleaseHead;
   pinnedPerSkill?: PinnedPerSkill;
   extraFiles?: number;
-  // The release's page in the connected Harness; absent where nothing links.
   releaseGitHub?: GitHubPage;
-  // The latest release's page, where Global is behind it.
   latestReleaseGitHub?: GitHubPage;
 };
 
@@ -68,7 +55,6 @@ export async function readGlobalTarget(
     layout: GlobalLayout;
     fileExists: (path: string) => Promise<boolean>;
     origin?: GitOrigin | null;
-    // The connected Harness's page, read only once an entry could link to it.
     harnessPage?: () => Promise<GitHubPage | null>;
   },
 ): Promise<
@@ -85,10 +71,8 @@ export async function readGlobalTarget(
   ).map((folder) => ({ ...folder, primitives: [] }));
   const written = folders.filter((folder) => folder.detected);
   const skipped: SkippedEntry[] = [];
-  // Entries no detected tool claims are named by origin, never dropped (#655).
   const otherOrigins = new Set<string>();
   const pins: SkillPin[] = [];
-  // Read at most once, and only once an entry could link to it.
   let page: Promise<GitHubPage | null> | undefined;
   const harnessPage = () => {
     page = page ?? deps.harnessPage?.() ?? Promise.resolve(null);
@@ -113,7 +97,6 @@ export async function readGlobalTarget(
   for (const entry of entries) {
     const reading = readPackage(entry);
     if (reading.kind === "package") {
-      // Only the first root package is the Harness dependency.
       if (release !== undefined) {
         continue;
       }
@@ -176,14 +159,9 @@ export async function readGlobalTarget(
   };
 }
 
-// A clean copy ranks below every copy reading.
 const copyRank = (copy: DeployedPrimitive["copy"]) =>
   copy === undefined ? COPY_READINGS.length : COPY_READINGS.indexOf(copy);
 
-/**
- * Global's one skill list: each skill once, in folder order, carrying the
- * worst copy reading of any folder.
- */
 export function oneSkillList(
   folders: readonly GlobalFolderState[],
 ): DeployedPrimitive[] {
@@ -202,7 +180,6 @@ export function oneSkillList(
   return [...byName.values()];
 }
 
-// The trailing slash keeps `.claude` from matching a `.claudex` sibling.
 function entryTargetsPrefix(entry: LockfileEntry, prefix: string): boolean {
   return (entry.deployed_files ?? []).some((file) =>
     file.startsWith(`${prefix}/`),

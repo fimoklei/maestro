@@ -11,8 +11,6 @@ export function registerInventoryRoutes(app: Hono, deps: Deps) {
   app.get("/api/inventory/primitives", async (c) => {
     const result = await deps.inventory.read();
     if (!result.ok) {
-      // 409 and 503 must stay distinct, or the cockpit would send the author to
-      // re-connect a live harness (#841). Never echoes the path.
       return c.json(
         { error: result.error },
         result.error === "unreadable" ? 503 : 409,
@@ -24,7 +22,6 @@ export function registerInventoryRoutes(app: Hono, deps: Deps) {
     });
   });
 
-  // A GET: returning the user's own configured path is intentional.
   app.get("/api/inventory/config", async (c) => {
     const { github, ...location } = await deps.inventory.configuredLocation();
     return c.json({ ...location, ...githubPageField("github", github) });

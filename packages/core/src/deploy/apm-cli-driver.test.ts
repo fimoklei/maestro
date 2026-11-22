@@ -3,11 +3,9 @@ import { ApmCliDriver } from "./apm-cli-driver";
 
 type RunCall = { file: string; args: string[]; cwd?: string };
 
-// Named so a test that mutates it fails loudly when a refreshed capture changes.
 const INSTALL_OK_SUMMARY = "[*] Installed 1 APM dependency in 3.8s.";
 
-// Captured `apm install ... -t claude`, apm 0.26.0.
-const installOkOutput = [
+const installOkOutputApm026 = [
   "[*] Created apm.yml",
   "[i] Targets set: claude (persisted to apm.yml)",
   "[*] Validating 1 package...",
@@ -22,8 +20,7 @@ const installOkOutput = [
   INSTALL_OK_SUMMARY,
 ].join("\n");
 
-// Same-ref re-install, apm 0.26.0: the no-op summary, never the `Installed` marker.
-const installNoChangesOutput = [
+const sameRefReinstallOutputApm026 = [
   "[*] Validating 1 package...",
   "[+] fimoklei/agent-harness/.apm/skills/47#v0.6.0 (already in apm.yml)",
   "[>] Installing 1 new package...",
@@ -34,8 +31,7 @@ const installNoChangesOutput = [
   "[i] No changes -- install state already up to date in 1.5s.",
 ].join("\n");
 
-// Batch install with one unknown `--skill` name, apm 0.29.0: exit 1 fails every name (#1039).
-const batchUnknownSkillOutput = [
+const batchUnknownSkillOutputApm029 = [
   "[>] Resolving fimoklei/agent-harness...",
   "[i] Targets: claude, codex  (source: --target flag)",
   "  [+] fimoklei/agent-harness #v0.6.0 @f8208f12",
@@ -47,9 +43,7 @@ const batchUnknownSkillOutput = [
   "were committed.",
 ].join("\n");
 
-// Batch install over a symlinked skill folder, apm 0.29.0: exit 0 with the
-// marker, and the output never names the skipped link (#1039).
-const batchSymlinkSkippedOutput = [
+const batchSymlinkSkippedOutputApm029 = [
   "  [+] fimoklei/agent-harness #v0.6.0 @f8208f12",
   "  |-- 2 skill(s) integrated -> .agents/skills/, .claude/skills/",
   "[i] Added apm_modules/ to .gitignore",
@@ -58,9 +52,7 @@ const batchSymlinkSkippedOutput = [
   "[*] Installed 1 APM dependency in 2.9s.",
 ].join("\n");
 
-// Failed install, apm 0.26.0: exit 1 with no marker and no failure signal, so
-// only the absent marker makes it a failure.
-const installProbesFailedOutput = [
+const installProbesFailedOutputApm026 = [
   "[*] Created apm.yml",
   "[i] Targets set: claude (persisted to apm.yml)",
   "[*] Validating 1 package...",
@@ -72,8 +64,6 @@ const installProbesFailedOutput = [
   "[i] Removed apm.yml created by the failed install.",
 ].join("\n");
 
-// `apm view ... versions` under missing auth: both fixed auth phrases plus the
-// env-hint and `could not read Username` noise the allowlist must ignore.
 const viewAuthFailedOutput = [
   "[x] Failed to list versions for 'fimoklei/agent-harness': Failed to list",
   "remote refs for fimoklei/agent-harness. Authentication failed for list refs",
@@ -88,17 +78,13 @@ const viewAuthFailedOutput = [
   "prompts disabled'",
 ].join("\n");
 
-// The same error minus the two fixed phrases; must never classify as auth (#119).
-const viewNonAuthNoise = [
+const viewAuthFailedOutputWithoutAuthPhrases = [
   "Set GITHUB_APM_PAT or GITHUB_TOKEN, or run 'gh auth login'.",
   "  stderr: 'fatal: could not read Username for 'https://github.com': terminal",
   "prompts disabled'",
 ].join("\n");
 
-// apm 0.20.0 symlink refusal. No fixture file survives, and it cannot be
-// re-captured without downgrading apm. It prints the success marker on a failed
-// install: the reason the classifier ignores the exit code.
-const installSymlinkRefusedOutput = [
+const symlinkRefusalWithMarkerOutputApm020 = [
   "[>] Installing 1 new package...",
   "  [+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 #v0.5.1 @471c4b26",
   "  [x] 1 package failed:",
@@ -109,9 +95,7 @@ const installSymlinkRefusedOutput = [
   "[!] Install interrupted after 3.2s.",
 ].join("\n");
 
-// apm 0.26.0 symlink refusal: exit 1, no marker. Rich splits the phrase as
-// `is a` / `symlink`, so whitespace normalization is still needed.
-const installRefusedWithoutMarkerOutput = [
+const symlinkRefusalWithoutMarkerOutputApm026 = [
   "  [x] 1 package failed:",
   "    +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from ",
   "cached package: Skill destination /tmp/apm-fx-symlink/.claude/skills/tdd is a ",
@@ -120,13 +104,10 @@ const installRefusedWithoutMarkerOutput = [
   "were committed.",
 ].join("\n");
 
-// Named so the wrapping test fails loudly if a refreshed capture changes.
 const UNINSTALL_OK_SUMMARY =
   "[*] Uninstall complete: Removed 1 package(s) from apm.yml, Removed 1 package(s) from apm_modules/";
 
-// Captured `apm uninstall -v <ref>`, apm 0.29.0 (#772). Nothing may key on the
-// `Cleaned N stale files` count: it counts only what that run deleted.
-const uninstallOkOutput = [
+const uninstallOkOutputApm029 = [
   "[>] Uninstalling 1 package(s)...",
   "[+] fimoklei/agent-harness/skills/tdd - found in apm.yml",
   "[i] Cleaned 14 stale files from fimoklei/agent-harness/skills/tdd",
@@ -137,16 +118,13 @@ const uninstallOkOutput = [
   UNINSTALL_OK_SUMMARY,
 ].join("\n");
 
-// Uninstall of a package the repo lacks, apm 0.29.0: exit 1, no success marker.
-const uninstallNotFoundOutput = [
+const uninstallNotFoundOutputApm029 = [
   "[>] Uninstalling 1 package(s)...",
   "[x] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 was not found in apm.yml. Run 'apm deps list' and retry with an installed package identifier.",
   "[x] Uninstall aborted: 1 requested package(s) could not be selected. Resolve the errors above and retry; no changes were made.",
 ].join("\n");
 
-// Uninstall over one edited deployed file, apm 0.29.0: exit 1, no marker; apm
-// kept the edited file, deleted the rest and left the package recorded.
-const uninstallRetainedOutput = [
+const uninstallRetainedEditOutputApm029 = [
   "[>] Uninstalling 1 package(s)...",
   "[+] fimoklei/agent-harness/skills/tdd - found in apm.yml",
   "Retained user-edited file .claude/skills/tdd/SKILL.md from fimoklei/agent-harness/skills/tdd; resolve it and retry.",
@@ -157,8 +135,7 @@ const uninstallRetainedOutput = [
   "[x] Resolve or remove the listed files, then retry uninstall.",
 ].join("\n");
 
-// Rows from a captured `apm view ... versions` table, apm 0.26.0.
-const versionsTableOutput = [
+const versionsTableRowsApm026 = [
   "┃ Name   ┃ Type   ┃ Commit   ┃",
   "│ v0.5.1 │ tag    │ 471c4b26 │",
   "│ v0.5.0 │ tag    │ ec491f15 │",
@@ -178,7 +155,6 @@ function fakeRun(stdout = "") {
   return { run, calls };
 }
 
-// Rejects as promisify(execFile) does on a non-zero exit, output on the error.
 function rejectingRun(output: { stdout?: string; stderr?: string }) {
   const run = async () => {
     const error = Object.assign(new Error("Command failed: apm view"), {
@@ -195,7 +171,7 @@ describe("ApmCliDriver.deploySkill", () => {
   const ref = "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1";
 
   it("installs the ref targeting both claude and codex in the repo", async () => {
-    const { run, calls } = fakeRun(installOkOutput);
+    const { run, calls } = fakeRun(installOkOutputApm026);
     const driver = new ApmCliDriver({ run });
 
     await driver.deploySkill({
@@ -213,9 +189,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("passes the whole selection as one --skill flag per name", async () => {
-    // One flag per name: a comma list is not apm's grammar, and a name left out
-    // stays installed.
-    const { run, calls } = fakeRun(installOkOutput);
+    const { run, calls } = fakeRun(installOkOutputApm026);
     const driver = new ApmCliDriver({ run });
     const root = "github.com/fimoklei/agent-harness#v0.6.0";
 
@@ -244,7 +218,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("passes the selection on a global install too", async () => {
-    const { run, calls } = fakeRun(installOkOutput);
+    const { run, calls } = fakeRun(installOkOutputApm026);
     const driver = new ApmCliDriver({
       run,
       prepareGlobalCwd: async () => "/scratch/.apm-scratch",
@@ -268,8 +242,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("installs globally with -g from the prepared scratch cwd", async () => {
-    // apm appends apm_modules/ to the cwd's .gitignore even for -g.
-    const { run, calls } = fakeRun(installOkOutput);
+    const { run, calls } = fakeRun(installOkOutputApm026);
     const driver = new ApmCliDriver({
       run,
       prepareGlobalCwd: async () => "/scratch/.apm-scratch",
@@ -291,7 +264,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("fails closed on a global install with no detected tools", async () => {
-    const { run, calls } = fakeRun(installOkOutput);
+    const { run, calls } = fakeRun(installOkOutputApm026);
     const driver = new ApmCliDriver({
       run,
       prepareGlobalCwd: async () => "/scratch/.apm-scratch",
@@ -304,7 +277,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("scopes the global -t flag to the tools passed in", async () => {
-    const { run, calls } = fakeRun(installOkOutput);
+    const { run, calls } = fakeRun(installOkOutputApm026);
     const driver = new ApmCliDriver({
       run,
       prepareGlobalCwd: async () => "/scratch/.apm-scratch",
@@ -326,7 +299,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("targets both tools globally when both are passed in", async () => {
-    const { run, calls } = fakeRun(installOkOutput);
+    const { run, calls } = fakeRun(installOkOutputApm026);
     const driver = new ApmCliDriver({
       run,
       prepareGlobalCwd: async () => "/scratch/.apm-scratch",
@@ -348,7 +321,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("ignores tools on a repo install — the repo path targets every tool", async () => {
-    const { run, calls } = fakeRun(installOkOutput);
+    const { run, calls } = fakeRun(installOkOutputApm026);
     const driver = new ApmCliDriver({ run });
 
     await driver.deploySkill({
@@ -367,8 +340,6 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("fails closed on a resolved run that prints no success marker", async () => {
-    // Synthetic, not an apm shape: it pins the marker check itself, which no other
-    // test covers because they all supply the marker (#119).
     const { run } = fakeRun("[*] Created apm.yml\nNothing to install.");
     const driver = new ApmCliDriver({ run });
 
@@ -378,7 +349,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("reports a generic failure when every probe failed", async () => {
-    const { run } = rejectingRun({ stdout: installProbesFailedOutput });
+    const { run } = rejectingRun({ stdout: installProbesFailedOutputApm026 });
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -387,7 +358,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("fails the whole batch when one staged name fails", async () => {
-    const { run } = rejectingRun({ stdout: batchUnknownSkillOutput });
+    const { run } = rejectingRun({ stdout: batchUnknownSkillOutputApm029 });
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -399,10 +370,8 @@ describe("ApmCliDriver.deploySkill", () => {
     ).resolves.toEqual({ ok: false, reason: "failed" });
   });
 
-  it("reads a batch that skipped a symlinked destination as a success", async () => {
-    // Why DeploySkill refuses a linked destination first: this output looks like a
-    // full deploy.
-    const { run } = fakeRun(batchSymlinkSkippedOutput);
+  it("reads a batch that skipped a symlinked destination as a full success", async () => {
+    const { run } = fakeRun(batchSymlinkSkippedOutputApm029);
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -415,7 +384,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("reports success when the positive success marker is present", async () => {
-    const { run } = fakeRun(installOkOutput);
+    const { run } = fakeRun(installOkOutputApm026);
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -424,7 +393,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("reports success when apm had nothing to change", async () => {
-    const { run } = fakeRun(installNoChangesOutput);
+    const { run } = fakeRun(sameRefReinstallOutputApm026);
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -433,8 +402,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("reports a failure when the success marker comes with an error count", async () => {
-    // apm 0.20.0 printed the marker with `1 error(s)` on a refused install (#180).
-    const withErrors = installOkOutput.replace(
+    const withErrors = installOkOutputApm026.replace(
       INSTALL_OK_SUMMARY,
       "[*] Installed 1 APM dependency in 3.8s with 1 error(s).",
     );
@@ -446,9 +414,37 @@ describe("ApmCliDriver.deploySkill", () => {
     ).resolves.toEqual({ ok: false, reason: "failed" });
   });
 
+  it("reports success when the marker counts zero errors", async () => {
+    const zeroErrors = installOkOutputApm026.replace(
+      INSTALL_OK_SUMMARY,
+      "[*] Installed 1 APM dependency in 3.8s with 0 error(s).",
+    );
+    const { run } = fakeRun(zeroErrors);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it("logs the repo's folder name, never its full path", async () => {
+    const { run } = fakeRun(installOkOutputApm026);
+    const logged: { target: string }[] = [];
+    const driver = new ApmCliDriver({
+      run,
+      log: (entry) => logged.push(entry),
+    });
+
+    await driver.deploySkill({
+      target: { kind: "repo", repoPath: "/home/me/work/repo" },
+      ref,
+    });
+
+    expect(logged.map((entry) => entry.target)).toEqual(["repo"]);
+  });
+
   it("reports a failure when the error count is wrapped across a line break", async () => {
-    // Rich wraps at the terminal width and install pins no COLUMNS (#180).
-    const wrapped = installOkOutput.replace(
+    const wrapped = installOkOutputApm026.replace(
       INSTALL_OK_SUMMARY,
       "[*] Installed 1 APM dependency in 3.8s with 1\nerror(s).",
     );
@@ -461,7 +457,9 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("classifies apm's symlinked-destination refusal (0.20.0 shape)", async () => {
-    const { run } = rejectingRun({ stdout: installSymlinkRefusedOutput });
+    const { run } = rejectingRun({
+      stdout: symlinkRefusalWithMarkerOutputApm020,
+    });
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -470,7 +468,9 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("classifies apm's symlinked-destination refusal when no marker is printed", async () => {
-    const { run } = rejectingRun({ stdout: installRefusedWithoutMarkerOutput });
+    const { run } = rejectingRun({
+      stdout: symlinkRefusalWithoutMarkerOutputApm026,
+    });
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -479,8 +479,7 @@ describe("ApmCliDriver.deploySkill", () => {
   });
 
   it("does not leak raw apm output in the failure it reports", async () => {
-    // The 0.26.0 refusal shape: the one production meets today.
-    const tokenBearing = `${installRefusedWithoutMarkerOutput}\nhttps://x-access-token:ghp_secret@github.com`;
+    const tokenBearing = `${symlinkRefusalWithoutMarkerOutputApm026}\nhttps://x-access-token:ghp_secret@github.com`;
     const { run } = rejectingRun({ stdout: tokenBearing });
     const driver = new ApmCliDriver({ run });
 
@@ -497,9 +496,7 @@ describe("ApmCliDriver.removeSkill", () => {
   const ref = "github.com/fimoklei/agent-harness/skills/tdd#v0.5.1";
 
   it("uninstalls the ref in the repo, with no -t flag", async () => {
-    // `apm uninstall` has no -t, and narrowing `targets:` to scope a removal
-    // orphans the other tools.
-    const { run, calls } = fakeRun(uninstallOkOutput);
+    const { run, calls } = fakeRun(uninstallOkOutputApm029);
     const driver = new ApmCliDriver({ run });
 
     await driver.removeSkill({
@@ -513,7 +510,7 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("uninstalls globally with -g from the prepared scratch cwd", async () => {
-    const { run, calls } = fakeRun(uninstallOkOutput);
+    const { run, calls } = fakeRun(uninstallOkOutputApm029);
     const driver = new ApmCliDriver({
       run,
       prepareGlobalCwd: async () => "/scratch/.apm-scratch",
@@ -531,7 +528,7 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("reports success only on apm's positive uninstall marker", async () => {
-    const { run } = fakeRun(uninstallOkOutput);
+    const { run } = fakeRun(uninstallOkOutputApm029);
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -540,7 +537,7 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("fails closed when nothing was removed, though apm exits 0", async () => {
-    const { run } = fakeRun(uninstallNotFoundOutput);
+    const { run } = fakeRun(uninstallNotFoundOutputApm029);
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -549,7 +546,7 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("fails closed when apm kept an edited file and aborted part-way", async () => {
-    const { run } = fakeRun(uninstallRetainedOutput);
+    const { run } = fakeRun(uninstallRetainedEditOutputApm029);
     const driver = new ApmCliDriver({ run });
 
     await expect(
@@ -558,10 +555,8 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("fails closed when the marker rides along with a not-found note", async () => {
-    // apm 0.26.0 printed the marker plus a not-found note. Both must be read, or a
-    // package that was never there reads as removed.
     const partial = [
-      uninstallOkOutput,
+      uninstallOkOutputApm029,
       "[!] Note: 1 package(s) were not found in apm.yml",
     ].join("\n");
     const { run } = fakeRun(partial);
@@ -573,16 +568,47 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("reads the marker even when Rich wraps it across a line break", async () => {
-    const wrapped = uninstallOkOutput.replace(
+    const wrapped = uninstallOkOutputApm029.replace(
       UNINSTALL_OK_SUMMARY,
       "[*] Uninstall complete: Removed 1\npackage(s) from apm.yml, Removed 1 package(s) from apm_modules/",
     );
+    expect(wrapped).not.toBe(uninstallOkOutputApm029);
     const { run } = fakeRun(wrapped);
     const driver = new ApmCliDriver({ run });
 
     await expect(
       driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
     ).resolves.toEqual({ ok: true });
+  });
+
+  it("reads success whatever count the cleaned-stale-files line gives", async () => {
+    const cleanedNothing = uninstallOkOutputApm029.replace(
+      "Cleaned 14 stale files",
+      "Cleaned 0 stale files",
+    );
+    expect(cleanedNothing).not.toBe(uninstallOkOutputApm029);
+    const { run } = fakeRun(cleanedNothing);
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: true });
+  });
+
+  it("logs the repo's folder name, never its full path", async () => {
+    const { run } = fakeRun(uninstallOkOutputApm029);
+    const logged: { target: string }[] = [];
+    const driver = new ApmCliDriver({
+      run,
+      log: (entry) => logged.push(entry),
+    });
+
+    await driver.removeSkill({
+      target: { kind: "repo", repoPath: "/home/me/work/repo" },
+      ref,
+    });
+
+    expect(logged.map((entry) => entry.target)).toEqual(["repo"]);
   });
 
   it("fails closed when apm exits non-zero", async () => {
@@ -595,7 +621,7 @@ describe("ApmCliDriver.removeSkill", () => {
   });
 
   it("does not leak raw apm output in the failure it reports", async () => {
-    const tokenBearing = `${uninstallNotFoundOutput}\nhttps://x-access-token:ghp_secret@github.com`;
+    const tokenBearing = `${uninstallNotFoundOutputApm029}\nhttps://x-access-token:ghp_secret@github.com`;
     const { run } = fakeRun(tokenBearing);
     const driver = new ApmCliDriver({ run });
 
@@ -610,7 +636,7 @@ describe("ApmCliDriver.removeSkill", () => {
 
 describe("ApmCliDriver.resolveLatestTag", () => {
   it("returns ok with the latest tag from the versions table", async () => {
-    const { run } = fakeRun(versionsTableOutput);
+    const { run } = fakeRun(versionsTableRowsApm026);
     const driver = new ApmCliDriver({ run });
 
     expect(await driver.resolveLatestTag("fimoklei/agent-harness")).toEqual({
@@ -650,7 +676,6 @@ describe("ApmCliDriver.resolveLatestTag", () => {
   });
 
   it("classifies auth-required from either auth phrase on its own", async () => {
-    // Each phrase alone is the whole condition (#119).
     const alone = [
       "[x] Authentication failed for list refs on github.com.",
       "[x] No token available.",
@@ -680,8 +705,9 @@ describe("ApmCliDriver.resolveLatestTag", () => {
   });
 
   it("does not classify the git passthrough or env-hint lines as auth", async () => {
-    // Matching these lines would read every ambiguous git error as auth (#119).
-    const { run } = rejectingRun({ stderr: viewNonAuthNoise });
+    const { run } = rejectingRun({
+      stderr: viewAuthFailedOutputWithoutAuthPhrases,
+    });
     const driver = new ApmCliDriver({ run });
 
     expect(await driver.resolveLatestTag("fimoklei/agent-harness")).toEqual({
@@ -689,9 +715,37 @@ describe("ApmCliDriver.resolveLatestTag", () => {
       reason: "failed",
     });
   });
+
+  it("does not leak raw apm output in the failure it reports", async () => {
+    const { run } = rejectingRun({
+      stderr: `${viewAuthFailedOutputWithoutAuthPhrases}\nhttps://x-access-token:ghp_secret@github.com`,
+    });
+    const driver = new ApmCliDriver({ run });
+
+    const result = await driver.resolveLatestTag("fimoklei/agent-harness");
+
+    expect(JSON.stringify(result)).not.toContain("ghp_secret");
+  });
 });
 
 describe("ApmCliDriver.checkOutdated", () => {
+  it("widens the terminal so apm keeps the Package column whole", async () => {
+    const columns: (string | undefined)[] = [];
+    const run = async (
+      _file: string,
+      _args: string[],
+      options?: { env?: NodeJS.ProcessEnv },
+    ) => {
+      columns.push(options?.env?.COLUMNS);
+      return { stdout: "[*] All dependencies are up-to-date", stderr: "" };
+    };
+    const driver = new ApmCliDriver({ run });
+
+    await driver.checkOutdated({ kind: "repo", repoPath: "/repo" });
+
+    expect(columns).toEqual(["200"]);
+  });
+
   it("checks global drift with -g from the prepared scratch cwd", async () => {
     const { run, calls } = fakeRun("[*] All dependencies are up-to-date");
     const driver = new ApmCliDriver({
@@ -711,7 +765,6 @@ describe("ApmCliDriver.checkOutdated", () => {
   });
 });
 
-// A hung apm never settles; the driver must end the call itself.
 function hangingRun() {
   const signals: (AbortSignal | undefined)[] = [];
   const run = (
@@ -752,12 +805,30 @@ describe("ApmCliDriver timeouts", () => {
       { ok: false, reason: "timed-out" },
       { ok: false, reason: "timed-out" },
     ]);
-    // The real runner kills the apm process on this signal.
     expect(signals.map((signal) => signal?.aborted)).toEqual([
       true,
       true,
       true,
       true,
     ]);
+  });
+
+  it("waits longer for a hung install than for a hung read", async () => {
+    vi.useFakeTimers();
+    const { run } = hangingRun();
+    const driver = new ApmCliDriver({ run });
+    const settled: string[] = [];
+
+    void driver
+      .resolveLatestTag("fimoklei/agent-harness")
+      .then(() => settled.push("read"));
+    void driver
+      .deploySkill({ target: repo, ref })
+      .then(() => settled.push("install"));
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(settled).toEqual(["read"]);
+    await vi.runAllTimersAsync();
+    expect(settled).toEqual(["read", "install"]);
   });
 });

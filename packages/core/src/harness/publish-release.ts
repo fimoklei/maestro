@@ -22,7 +22,6 @@ export type PublishReleaseError =
   | "publish-failed"
   | "publish-in-progress";
 
-// Compared against the freshly read remote, never used as the thing to tag (#520).
 export type ReleaseConfirmation = {
   step: SemverStep;
   previousTag: string | null;
@@ -30,7 +29,6 @@ export type ReleaseConfirmation = {
   revision: string;
 };
 
-// `recomputed` is absent unless the refs behind it are current (#521).
 export type PublishReleaseResult =
   | { ok: true; tag: string; revision: string }
   | { ok: false; error: PublishReleaseError; recomputed?: ReleasePlan };
@@ -49,7 +47,6 @@ export class PublishRelease {
     this.deps = deps;
   }
 
-  // One lock per harness: two confirmations never race for one version (#520).
   async execute(
     confirmation: ReleaseConfirmation,
   ): Promise<PublishReleaseResult> {
@@ -71,7 +68,6 @@ export class PublishRelease {
     const outcome = await this.deps.fetchGate.fetchFresh(root);
 
     const facts = await this.deps.git.readFacts(root);
-    // Only this fetch confirms the tags: an older one may predate a teammate's release.
     const read = await readReleaseReadiness(
       this.deps.git,
       root,
@@ -82,11 +78,9 @@ export class PublishRelease {
       return read;
     }
     const { released, tags, head, defaultBranch, content } = read.readiness;
-    // Versions depend on the previous tag alone (#520).
     const { versions } = proposeReleaseVersion(released?.name ?? null, []);
     const tag = versions[confirmation.step];
 
-    // Every way the remote can have moved out from under the plan.
     const stale =
       (released?.name ?? null) !== confirmation.previousTag ||
       (released?.commit ?? null) !== confirmation.previousTagCommit ||
@@ -96,7 +90,6 @@ export class PublishRelease {
       return await this.refuse(root, "plan-changed", true);
     }
 
-    // Decided after the staleness check, so a stale plan reports `plan-changed` (#970).
     if (content === null) {
       return { ok: false, error: "no-answer" };
     }
@@ -107,7 +100,6 @@ export class PublishRelease {
     const push = await this.deps.git.publishTag(root, tag, head, defaultBranch);
     switch (push) {
       case "pushed":
-        // The new tag reaches the clone only through a fetch.
         this.deps.fetchGate.invalidate(root);
         return { ok: true, tag, revision: head };
       case "already-exists":
@@ -116,7 +108,6 @@ export class PublishRelease {
           "already-released",
           await this.madeCurrent(root),
         );
-      // The lease refused, so `--atomic` created nothing.
       case "stale-tip":
         return await this.refuse(
           root,
@@ -130,7 +121,6 @@ export class PublishRelease {
     }
   }
 
-  // Replans only from refs known current: `planRelease` cannot see a stale mirror.
   private async refuse(
     root: string,
     error: PublishReleaseError,

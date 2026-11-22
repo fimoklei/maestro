@@ -1,4 +1,3 @@
-// Never 0.0.0.0: the cockpit must be unreachable from the network.
 export function bindConfig(env: NodeJS.ProcessEnv): {
   port: number;
   hostname: string;

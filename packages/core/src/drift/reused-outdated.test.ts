@@ -7,7 +7,6 @@ const MAX_AGE = 30_000;
 const APP: DeployTarget = { kind: "repo", repoPath: "/repos/app" };
 const SITE: DeployTarget = { kind: "repo", repoPath: "/repos/site" };
 const GLOBAL: DeployTarget = { kind: "global" };
-// A symlinked spelling of APP, as a write receives it from the request.
 const APP_LINK: DeployTarget = { kind: "repo", repoPath: "/links/app" };
 
 const BEHIND: OutdatedResult = {
@@ -44,7 +43,6 @@ function build(
     advance: (ms: number) => {
       now += ms;
     },
-    // The next runs wait until the returned release is called.
     holdRuns: () => {
       let release = () => {};
       hold = new Promise<void>((resolve) => {

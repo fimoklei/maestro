@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { InFlightLocks } from "./in-flight-locks";
 
-// A deferred promise, so a test can hold one critical section open while it
-// tries to enter another.
 function deferred() {
   let resolve!: () => void;
   const promise = new Promise<void>((r) => {

@@ -1,6 +1,3 @@
-// Stage membership is independent: one primitive may hold a row in every
-// stage. A primitive is a type plus a name, so a skill and a prompt with one
-// name never share a row, a request or an "Also in".
 import type { GitOrigin } from "../deploy/git-origin";
 import type { SubjectMovement } from "./harness-movements";
 import {
@@ -58,34 +55,22 @@ type ReviewStatus =
 
 type ReleaseStatus = "not-yet-released";
 
-// What merging the row's change does to the Harness, judged against its
-// default branch. A rename is one change only once merged; before that its
-// folders read as an addition and a deletion.
 export type HarnessChange = "addition" | "edit" | "deletion" | "rename";
 
 type ReleaseMovement = SubjectMovement & { change: HarnessChange };
 
-// `null` is a skill absent at that ref; it compares like any other value.
 type SkillTreeHashes = {
-  /** The skill's tree at `origin/HEAD` — the merged truth. */
   remote: string | null;
-  /** Its tree at local `HEAD`. */
   local: string | null;
-  /** Its tree on disk, untracked files included. */
   working: string | null;
 };
 
-// Renames are not inferred: a moved directory is a deletion plus an addition (#575).
 const isLocalDeletion = ({
   local,
   working,
 }: Pick<SkillTreeHashes, "local" | "working">): boolean =>
   local !== null && working === null;
 
-// Never compares the promote branch: that is the author's own proposal.
-// Remote matching `atMergeBase` means only the author changed this skill (#579).
-// `undefined` (merge base unreadable) falls back to the plain, safer comparison.
-// Promote re-checks with it after its own fetch.
 export const isConcurrentlyChanged = (
   { remote, local }: Pick<SkillTreeHashes, "remote" | "local">,
   atMergeBase: string | null | undefined,
@@ -99,64 +84,38 @@ export type ReviewRequestLink = {
   headBranch: string;
   baseBranch: string;
   author: string;
-  // Opened by someone other than the signed-in user; false while unknown.
   byOther: boolean;
 };
 
-// `number` is null for a prepared branch nobody opened a request for.
 type ProposalComparison =
   | { kind: "proposal"; number: number | null }
   | { kind: "default-branch" };
 
 export type HarnessStageRow = {
   stage: HarnessStage;
-  // A primitive, or the categories list, which Pending proposal never holds.
   type: ProposalSubject["type"];
-  // The list's is its type: the cockpit names it.
   name: string;
-  // The primitive's folder or file in the Harness.
   path: string;
-  // Its proposal branch.
   branch: string;
   status: StageStatus;
-  // This stage's own change. Never read across stages.
   change: HarnessChange;
   requests: ReviewRequestLink[];
   reviewers: RequestedReviewer[];
   comparison: ProposalComparison | null;
-  // Null where any membership is unknown: an unknown must never read as "only here".
   alsoIn: HarnessStage[] | null;
   concurrentChange: boolean;
-  // The other contributor whose open request every write to this skill's
-  // branch waits for; null where nothing waits.
   waitingOn: string | null;
-  // Only in the working tree, so a deletion is made on disk (#798).
   localOnly: boolean;
-  // The token a deletion confirmation is given against (#580).
   remoteTree: string | null;
-  // From the local trees alone, never from `deletion`, which a review row
-  // takes from the promote branch.
   restorable: boolean;
-  // The skill's folder is in the working tree, so Delete skill has something
-  // to remove. False where the refs could not be read.
   onDisk: boolean;
-  // The branch is the author's to withdraw with no open request: every commit
-  // on it is theirs, and so is its newest ended request (#1639). False where
-  // unread, and outside Pending review.
   ownsBranch: boolean;
   previousName: string | null;
-  // Pending release only, empty elsewhere: the open pull requests for the
-  // name and a rename's previous name. Null where the review read cannot
-  // prove there are none.
   openRequests: number[] | null;
-  // Pending release only: one of `openRequests` is another contributor's.
   openByOther: boolean;
-  // Pending release only: the newest merged pull request for the item's
-  // name; null where no read found one.
   mergedRequest: number | null;
 };
 
-// `bound` is the limit a read filled; null when the answer was complete.
 export type HarnessStageRead =
   | { outcome: "read"; rows: HarnessStageRow[]; bound: number | null }
   | { outcome: "unknown" }
@@ -178,18 +137,14 @@ const changeOf = (deletion: boolean, remote: string | null): HarnessChange => {
 export type StageInput = {
   origin: GitOrigin;
   defaultBranch: string | null;
-  // Null makes the two local stages unknown, never empty.
   trees: HarnessMovementTrees | null;
-  // Null makes Pending review unknown, never empty.
   list: ListProposalRefs | null;
-  // Keyed by `primitiveKey`.
   atMergeBase: Record<string, string> | null;
   review: HarnessReviewRead;
   viewer: ViewerRead;
   release: ReleaseMovement[] | null;
 };
 
-/** What a Pending review reading needs beyond the subject's own refs. */
 export type ReviewInput = Pick<
   StageInput,
   "origin" | "defaultBranch" | "review" | "viewer"
@@ -203,10 +158,8 @@ export const buildStages = (input: StageInput): HarnessStages => {
   return withCrossStage({ proposal, review, release }, input, matches);
 };
 
-// Keyed by `subjectKey`.
 type Matches = Map<string, ReviewRequest[]>;
 
-// Whether a request is the proposal of `subject` into the default branch.
 const proposes =
   (origin: GitOrigin, defaultBranch: string, subject: ProposalSubject) =>
   (request: ReviewRequest): boolean =>
@@ -287,7 +240,6 @@ const openOf = (matches: Matches, subject: ProposalSubject): ReviewRequest[] =>
     (request) => request.state === "open",
   );
 
-// A bounded read may hide a second open request, so it holds nothing.
 const waitFor = (
   { review, viewer }: ReviewInput,
   matches: Matches,
@@ -325,7 +277,6 @@ const blankRow = (
   mergedRequest: null,
 });
 
-// Local places only, so every stage gives the same answer.
 const isRestorable = (
   trees: HarnessMovementTrees,
   { type, name }: PrimitiveRef,
@@ -335,7 +286,6 @@ const isRestorable = (
     working: trees[type].working[name] ?? null,
   });
 
-// The list is built from the config, never from a file in the clone.
 const isOnDisk = (
   trees: HarnessMovementTrees | null,
   subject: ProposalSubject,
@@ -344,7 +294,6 @@ const isOnDisk = (
   subject.type !== "categories" &&
   Object.hasOwn(trees[subject.type].working, subject.name);
 
-// Without gh no proposal can be open; any other unread answer is unknown.
 const openRequestsFor = (
   { origin, defaultBranch, review, viewer }: StageInput,
   subjects: ProposalSubject[],
@@ -375,7 +324,6 @@ const openRequestsFor = (
       };
 };
 
-/** The highest-numbered merged request; a Pending release row names it. */
 export const newestMerged = (
   matching: readonly ReviewRequest[],
 ): ReviewRequest | undefined =>
@@ -428,11 +376,6 @@ const releaseStage = (input: StageInput): HarnessStageRead => {
   };
 };
 
-// A branch whose tip is a merged request's head commit is spent. Without a
-// review read proving that, content that landed on or equals origin/HEAD is
-// the fallback: a merged branch left behind after a withdrawal from release
-// differs from origin/HEAD. A bounded (incomplete) read proves nothing spent.
-// `remote` is the subject's object on origin/HEAD; null where absent.
 const currentProposal = (
   branch: HarnessPromoteRef | undefined,
   remote: string | null,
@@ -443,11 +386,9 @@ const currentProposal = (
     return null;
   }
   const { tree } = branch;
-  // An open request outranks everything.
   if (matching.some((request) => request.state === "open")) {
     return { tree };
   }
-  // A tip nobody could read proves nothing spent either.
   const spent =
     completeRead &&
     branch.commit !== null &&
@@ -461,7 +402,6 @@ const currentProposal = (
   return tree !== remote ? { tree } : null;
 };
 
-// The primitive's own branch and requests, for `currentProposal`.
 const primitiveProposal = (
   hashes: HarnessHashes,
   ref: PrimitiveRef,
@@ -498,8 +438,6 @@ const proposalStage = (
       working: typed.working[ref.name] ?? null,
     };
     const proposal = primitiveProposal(typed, ref, matches, complete);
-    // Against the default branch, also differing from local HEAD separates an
-    // own edit from a clone merely behind.
     const waiting =
       proposal === null
         ? hashes.working !== hashes.remote && hashes.working !== hashes.local
@@ -508,7 +446,6 @@ const proposalStage = (
       continue;
     }
     const open = openOf(matches, ref);
-    // With several open requests, linking one would be arbitrary.
     const sole = open.length === 1 ? open[0] : undefined;
     rows.push({
       ...blankRow(
@@ -540,7 +477,6 @@ const proposalStage = (
 };
 
 const openStatus = (request: ReviewRequest): ReviewStatus => {
-  // Draft wins over any earlier verdict.
   if (request.draft) {
     return "draft";
   }
@@ -561,7 +497,6 @@ const ENDED_STATUS = {
   closed: "proposal-closed",
 } as const satisfies Record<EndedRequest["state"], ReviewStatus>;
 
-// The highest number is the newest request, whatever it ended as.
 export const newestEnded = (
   matching: ReviewRequest[],
 ): EndedRequest | undefined =>
@@ -575,14 +510,11 @@ export const newestEnded = (
       undefined,
     );
 
-// What Pending review shows for one subject; null where it holds no row.
-// `proposed` is whether the subject's branch still carries a live proposal.
 type ReviewReading = {
   status: ReviewStatus;
   requests: ReviewRequestLink[];
   reviewers: RequestedReviewer[];
   waitingOn: string | null;
-  // The newest ended request is another contributor's.
   endedByOther: boolean;
 };
 
@@ -617,8 +549,6 @@ const reviewReading = (
   if (!proposed) {
     return null;
   }
-  // Any ended request holds the row: origin/HEAD lagging one read behind a
-  // merge must not read as a missing request.
   const ended = newestEnded(matching);
   if (ended !== undefined) {
     return {
@@ -628,7 +558,6 @@ const reviewReading = (
       endedByOther: isOthers(ended, input.viewer),
     };
   }
-  // A bounded read cannot prove a request absent.
   return isCompleteRead(input.review)
     ? { ...none, status: "pull-request-missing", requests: [] }
     : null;
@@ -657,7 +586,6 @@ const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
         "pending-review",
         ref,
         status,
-        // The branch's deletion fact and the disk's can disagree, so both travel.
         changeOf(
           proposal !== null && proposal.tree === null,
           typed.remote[ref.name] ?? null,
@@ -678,12 +606,6 @@ const reviewStage = (input: StageInput, matches: Matches): HarnessStageRead => {
   };
 };
 
-/**
- * The Categories row under Pending review; null where it holds none. The row
- * on Categories in Settings reads the same rule, so the two never disagree.
- * The list is built from the config, never the clone, so it has no local
- * trees and never waits under Pending proposal.
- */
 export const listReviewRow = (
   input: ReviewInput,
   { remote, promote }: ListProposalRefs,
@@ -750,7 +672,6 @@ const withCrossStage = (
     return {
       ...stage,
       rows: stage.rows.map((row) => {
-        // A bounded read proves membership only where it found a request.
         const key = subjectKey(row);
         const known =
           allRead && (!bounded || (matches.get(key)?.length ?? 0) > 0);

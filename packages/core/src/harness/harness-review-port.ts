@@ -1,4 +1,3 @@
-// Git says what a skill's content is; this says what the team did with it.
 import type { GitOrigin } from "../deploy/git-origin";
 
 type ReviewRequestState = "open" | "closed" | "merged";
@@ -8,12 +7,10 @@ export type ReviewDecision =
   | "changes-requested"
   | "review-required";
 
-// A team's slug carries its organisation (`org/team`).
 export type RequestedReviewer =
   | { kind: "user"; login: string }
   | { kind: "team"; slug: string };
 
-// Head owner and repo are null when the head repository is gone.
 export type ReviewRequest = {
   number: number;
   url: string;
@@ -26,15 +23,10 @@ export type ReviewRequest = {
   headBranch: string;
   headCommit: string;
   baseBranch: string;
-  // A login, or `app/<slug>` for an app.
   author: string;
-  // Stays in core: it decides a retitle and never crosses to the browser.
   title: string;
 };
 
-// Three outcomes that must never collapse. `complete: false` filled its bound
-// and so proves nothing absent. `no-gh`: no request can exist to read;
-// `no-answer` (signed out, offline, timed out): requests may exist unseen.
 export type HarnessReviewRead =
   | {
       outcome: "read";
@@ -45,16 +37,13 @@ export type HarnessReviewRead =
   | { outcome: "failed" }
   | { outcome: "unavailable"; reason: "no-gh" | "no-answer" };
 
-// Who `gh` is signed in as, with the same three outcomes as a review read.
 export type ViewerRead =
   | { outcome: "read"; login: string }
   | { outcome: "failed" }
   | { outcome: "unavailable" };
 
-/** A pull request as a link names it. */
 export type PullRequestRef = { number: number; url: string };
 
-// `failed` is GitHub refusing. Nothing GitHub said crosses.
 export type ReviewFailure = { ok: false; error: "unavailable" | "failed" };
 
 export type ReviewWriteOutcome = { ok: true } | ReviewFailure;
@@ -63,7 +52,6 @@ export type ReviewCreateOutcome =
   | ({ ok: true } & PullRequestRef)
   | ReviewFailure;
 
-// `head` is already on the remote: no push happens here.
 export type NewReviewRequest = {
   head: string;
   base: string;
@@ -72,7 +60,6 @@ export type NewReviewRequest = {
 };
 
 export interface HarnessReviewPort {
-  // One call for the whole Harness, never one per skill.
   readReviews(origin: GitOrigin): Promise<HarnessReviewRead>;
   readViewer(origin: GitOrigin): Promise<ViewerRead>;
   createRequest(
@@ -81,7 +68,6 @@ export interface HarnessReviewPort {
   ): Promise<ReviewCreateOutcome>;
   reopenRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
   closeRequest(origin: GitOrigin, number: number): Promise<ReviewWriteOutcome>;
-  // Sets the title only: a body may hold a teammate's or the Curator's words.
   editRequest(
     origin: GitOrigin,
     number: number,
@@ -89,7 +75,6 @@ export interface HarnessReviewPort {
   ): Promise<ReviewWriteOutcome>;
 }
 
-// Shared by the stage read and every mutation's recheck.
 export const matchesProposal = (
   request: ReviewRequest,
   target: { ownerRepo: string; branch: string; base: string },
@@ -103,13 +88,10 @@ export const matchesProposal = (
   );
 };
 
-// GitHub logins ignore case. An unknown sign-in makes no request another's.
 export const isOthers = (request: ReviewRequest, viewer: ViewerRead): boolean =>
   viewer.outcome === "read" &&
   request.author.toLowerCase() !== viewer.login.toLowerCase();
 
-// Another contributor's sole open request holds the branch: everyone else
-// waits for it (#1373). Takes only open requests from a complete read.
 export const waitingOn = (
   open: ReviewRequest[],
   viewer: ViewerRead,

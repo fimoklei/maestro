@@ -13,7 +13,6 @@ const record = (
   assignments: CategoryRecord["assignments"] = [],
 ): CategoryRecord => ({ names, assignments });
 
-// The facts of a copy that moves, respells and clears nothing.
 const nothingTaken = {
   added: [],
   deleted: [],
@@ -23,7 +22,6 @@ const nothingTaken = {
   uncategorised: { skills: 0, prompts: 0 },
 };
 
-// Holds every item but the named ones.
 const heldBut = (...lacking: string[]): HeldItems => ({
   holds: (ref) => !lacking.includes(ref.name),
 });
@@ -127,7 +125,6 @@ describe("copyHarnessCategories with Add", () => {
 });
 
 describe("copyHarnessCategories with Replace", () => {
-  // The worked example of #1892.
   it("makes the list the Harness list and states what it deletes", () => {
     const own = record(
       ["Review", "Drafts"],

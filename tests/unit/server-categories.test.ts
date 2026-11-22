@@ -161,6 +161,8 @@ describe("categories over HTTP", () => {
     ["a name over 64 characters", "x".repeat(65)],
     ["a name with a line break", "Code\nreview"],
     ["a name with a tab", "Code\treview"],
+    ["a name with a line separator", "Code review"],
+    ["a name with a paragraph separator", "Code review"],
     ["the name of the No category group, in any case", " no CATEGORY "],
   ])("refuses %s", async (_, name) => {
     const { app } = world();
@@ -615,6 +617,18 @@ describe("categories over HTTP", () => {
       pointAt("/second-clone", ORIGIN);
 
       await expect(namesOf(app)).resolves.toEqual(["Planning"]);
+    });
+
+    it("finds a repository's list by its origin ahead of another list at the same root", async () => {
+      const { app, pointAt } = world();
+      await add(app, "Planning");
+      const other = "git@github.com:fimoklei/other-harness.git";
+      pointAt("/other-harness", other);
+      await add(app, "Writing");
+
+      pointAt(HARNESS, other);
+
+      await expect(namesOf(app)).resolves.toEqual(["Writing"]);
     });
 
     it("keeps a Harness with no GitHub origin apart by its root", async () => {

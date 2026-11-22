@@ -1,6 +1,3 @@
-// A real DeployedContentAdapter over an in-memory copy tree. A test puts a
-// skill's copy into a state with `setCopy`; the drift verdict and digest the
-// use case reads are then computed from the files, never scripted.
 import { createHash } from "node:crypto";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
@@ -12,9 +9,6 @@ const FAKE_HOME = "/home/fake";
 
 type ClassifyInput = Parameters<DeployedContentAdapter["classify"]>[0];
 
-// Copies a test places on the use case's first read of them stand for copies
-// that were there all along: a lockfile reading taken before a placement is
-// taken again, and every other classify uses the caller's reading.
 export function placedOnRead(
   content: DeployedContentAdapter,
   place: (target: DeployTarget, name: string) => boolean,
@@ -46,9 +40,6 @@ export function placedOnRead(
 const sha = (bytes: Buffer) =>
   `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 
-// One tool's copy: clean and diverged keep a recorded baseline, unverifiable
-// keeps files but loses that tool's record, not-deployed has no folder, and
-// deleted had its recorded folder removed afterwards.
 export type ToolCopyState =
   | "clean"
   | "diverged"
@@ -56,16 +47,12 @@ export type ToolCopyState =
   | "not-deployed"
   | "deleted";
 
-// A whole-copy state, or one per tool (missing tools are clean).
 export type CopyStates =
   | DeployedContentState
   | Partial<Record<SupportedTool, ToolCopyState>>;
 
 const TOOLS: SupportedTool[] = ["claude", "codex"];
 
-// `release` answers the chosen release's file hashes per skill, as the git
-// reader does; null stands for an unreadable release. `workingHarness` is the
-// Working harness's folder in the same tree.
 export function inMemoryDeployedContent(
   options: {
     release?: (tag: string, name: string) => Record<string, string> | null;
@@ -73,7 +60,6 @@ export function inMemoryDeployedContent(
   } = {},
 ) {
   const tree = new InMemoryCopyTree();
-  // Per lockfile path: the entries apm would have written there.
   const lockfiles = new Map<string, Map<string, Record<string, string>>>();
   const malformed = new Set<string>();
 
@@ -132,8 +118,6 @@ export function inMemoryDeployedContent(
     );
   };
 
-  // Puts `name`'s copy at `target` into `states`. Each tool folder holds the
-  // same skill file; the record is taken before any edit, so an edit diverges.
   const setCopy = (target: DeployTarget, name: string, states: CopyStates) => {
     const root = treeRoot(target);
     const lockPath = lockfilePath(target);
@@ -156,7 +140,6 @@ export function inMemoryDeployedContent(
       }
       malformed.add(lockPath);
     } else if (states === "unreadable") {
-      // A file where the skill directory belongs.
       tree.write(folder("claude"), "not a directory\n");
       entries.set(name, {});
     } else {
@@ -201,12 +184,9 @@ export function inMemoryDeployedContent(
     writeLockfile(lockPath);
   };
 
-  // A local edit, as the user would make it, after the copy was recorded.
   const editFile = (path: string, contents: string) =>
     tree.write(path, contents);
 
-  // The file hashes the fake's lockfile records for `name`'s copy, for a test
-  // whose own lockfile must agree with it.
   const recordedHashes = (target: DeployTarget, name: string) => ({
     ...lockfiles.get(lockfilePath(target))?.get(name),
   });
@@ -222,7 +202,6 @@ export function inMemoryDeployedContent(
   };
 }
 
-// What one whole-copy state means for each tool folder.
 function toolState(state: DeployedContentState): ToolCopyState {
   switch (state) {
     case "diverged":
@@ -236,7 +215,6 @@ function toolState(state: DeployedContentState): ToolCopyState {
   }
 }
 
-// The fake with each listed copy already in its state.
 export function deployedCopies(
   copies: { target: DeployTarget; name: string; state: CopyStates }[],
 ) {
@@ -247,8 +225,6 @@ export function deployedCopies(
   return fake;
 }
 
-// Every copy the use case reads is placed in `states` on first read, for tests
-// that care about the verdict's effect, not about which skill it lands on.
 export function copiesIn(states: CopyStates | ((name: string) => CopyStates)) {
   const fake = inMemoryDeployedContent();
   const placed = new Set<string>();

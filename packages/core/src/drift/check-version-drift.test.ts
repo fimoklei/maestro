@@ -15,7 +15,6 @@ const tddBehind: VersionDrift = {
   latest: "v0.5.1",
 };
 
-// `calls` records the targets apm was asked about.
 const makeDeps = (overrides?: {
   isRegistered?: (path: string) => Promise<boolean>;
   outcome?: OutdatedResult;

@@ -24,15 +24,12 @@ import {
 import { copyChipText } from "./release-head-copy";
 import { EDITS_IN_HARNESS, LOCAL_EDITS, NOT_UPDATED } from "./target-status";
 
-// The one mark a skill row in a target's pane carries (#993): the worse of
-// its copy reading and its drift reading.
 export type SkillMark = StatusReading & { hint?: string };
 
 type SkillKind = KindOn<"skill"> | "unknown";
 
 const SKILL_ORDER = withUnknown(readingsOn("skill"), "unverified");
 
-/** Each mark a skill row can carry; Missing is a Global skill row without a copy in a written folder. */
 export const SKILL_MARKS = {
   "local-edits": LOCAL_EDITS,
   missing: reading("Missing", "attention", WARNING_GLYPH),
@@ -49,7 +46,6 @@ export const SKILL_MARK_WORDS = SKILL_ORDER.map(
   (kind) => SKILL_MARKS[kind].word,
 );
 
-// No reading yet ranks below every mark.
 const rankOf = (kind: SkillKind | null) =>
   kind === null ? SKILL_ORDER.length : SKILL_ORDER.indexOf(kind);
 

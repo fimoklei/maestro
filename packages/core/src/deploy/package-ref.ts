@@ -1,8 +1,5 @@
-// The slug check keeps a hostile name out of command text or a path.
-
 const skillSlugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-// Also a directory name and a git refname component: keep it short for all.
 const MAX_SLUG_LENGTH = 64;
 
 export const isValidSkillSlug = (name: string): boolean =>

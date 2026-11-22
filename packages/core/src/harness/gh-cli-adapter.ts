@@ -1,5 +1,3 @@
-// Raw gh stdout and stderr never leave this module and are never logged: only
-// shape-checked fields and the outcome class cross.
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { z } from "zod";
@@ -20,13 +18,10 @@ import type {
 
 const defaultRun = promisify(execFile);
 
-// gh's default of 30 would silently drop older requests. An answer that fills
-// this bound is reported incomplete, never as an absence.
 const REVIEW_READ_LIMIT = 100;
 
 const GH_TIMEOUT_MS = 30_000;
 
-// Exactly the fields consumed below; an unknown one makes gh exit 1.
 const JSON_FIELDS = [
   "number",
   "url",
@@ -44,15 +39,12 @@ const JSON_FIELDS = [
   "title",
 ].join(",");
 
-// Nothing else is set: gh finds the author's own credentials; Maestro adds none.
 const NON_INTERACTIVE = { GH_PROMPT_DISABLED: "1", NO_COLOR: "1" };
 
-// Anything else gh says is a reply, and stays a failed read.
 const OFFLINE_PHRASES = ["error connecting to"];
 
 const NOT_SIGNED_IN = 4;
 
-// gh prints `""` for a request nobody has reviewed, not null and not absent.
 const DECISIONS: Record<string, ReviewDecision | null> = {
   "": null,
   APPROVED: "approved",
@@ -66,10 +58,8 @@ const STATES = {
   MERGED: "merged",
 } as const;
 
-// Becomes a pressable link, so it is bounded to the only host queried.
 const urlSchema = z.string().regex(/^https:\/\/github\.com\/[^\s"'<>]+$/);
 
-// A new request's page; the number crosses, read from the URL itself.
 const createdUrlSchema = z
   .string()
   .regex(
@@ -80,28 +70,22 @@ const createdUrlSchema = z
     return { url, ownerRepo: `${owner}/${repo}`, number: Number(number) };
   });
 
-// GitHub answers with its own spelling of the owner and repository.
 const sameRepository = (ownerRepo: string, origin: GitOrigin): boolean =>
   ownerRepo.toLowerCase() === origin.ownerRepo.toLowerCase();
 
 const commitSchema = z.string().regex(/^[0-9a-f]{40}$/);
 
-// git-check-ref-format(1) names minus whitespace: a branch crosses to the browser.
 const branchSchema = z
   .string()
   .regex(
     /^(?!@$)(?!\/)(?!.*\/$)(?!.*\/\/)(?!.*\.$)(?!(?:.*\/)?\.)(?!.*\.lock(?:\/|$))(?!.*\.\.)(?!.*@\{)[^\p{Cc}\s~^:?*[\\]+$/u,
   );
 
-// A GitHub login, or an app's `app/<slug>`: the login crosses to the browser.
-// gh prints a request with no author as a slugless `app/`; GitHub's own name
-// for a deleted account is `ghost`.
 const loginSchema = z
   .string()
   .regex(/^(?:(?:app\/)?[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})|app\/)$/)
   .transform((login) => (login === "app/" ? "ghost" : login));
 
-// A signed-in user is never an app, so no `app/` form is accepted here.
 const viewerSchema = z.object({
   login: z.string().regex(/^[A-Za-z0-9][A-Za-z0-9-]{0,38}$/),
 });
@@ -111,7 +95,6 @@ const reviewerSchema = z.discriminatedUnion("__typename", [
   z.object({ __typename: z.literal("Team"), slug: z.string() }),
 ]);
 
-// A row that fails this fails the whole read, never a shorter answer.
 const requestSchema = z.object({
   number: z.number().int().positive(),
   url: urlSchema,
@@ -128,11 +111,9 @@ const requestSchema = z.object({
   headRefName: branchSchema,
   headRefOid: commitSchema,
   baseRefName: branchSchema,
-  // Null once the head repository is deleted; `nameWithOwner` is empty in a list read.
   headRepository: z.object({ name: z.string() }).nullable(),
   headRepositoryOwner: z.object({ login: z.string() }).nullable(),
   author: z.object({ login: loginSchema }),
-  // Stays in core: only its prefix is compared, and it never crosses to the browser.
   title: z.string(),
 });
 
@@ -152,7 +133,6 @@ export class GhCliAdapter implements HarnessReviewPort {
   }
 
   async readReviews(origin: GitOrigin): Promise<HarnessReviewRead> {
-    // gh sends any other host's query onward as GitHub Enterprise: gate before the call.
     if (origin.host !== "github.com") {
       return { outcome: "unavailable", reason: "no-gh" };
     }
@@ -223,7 +203,6 @@ export class GhCliAdapter implements HarnessReviewPort {
       : { outcome: "failed" };
   }
 
-  // `--head` stops gh pushing or offering a fork (gh 2.86.0).
   async createRequest(
     origin: GitOrigin,
     request: NewReviewRequest,
@@ -245,7 +224,6 @@ export class GhCliAdapter implements HarnessReviewPort {
     if (!written.ok) {
       return written;
     }
-    // gh prints the new request's URL and nothing else on stdout.
     const created = createdUrlSchema.safeParse(written.stdout.trim());
     if (!created.success || !sameRepository(created.data.ownerRepo, origin)) {
       return { ok: false, error: "failed" };
@@ -266,7 +244,6 @@ export class GhCliAdapter implements HarnessReviewPort {
     ]);
   }
 
-  // No `--delete-branch`: a withdrawal deletes the branch through git (#1638).
   async closeRequest(
     origin: GitOrigin,
     number: number,
@@ -280,7 +257,6 @@ export class GhCliAdapter implements HarnessReviewPort {
     ]);
   }
 
-  // No body flag: gh keeps the body, which may hold someone else's words.
   async editRequest(
     origin: GitOrigin,
     number: number,
@@ -297,7 +273,6 @@ export class GhCliAdapter implements HarnessReviewPort {
     ]);
   }
 
-  // Its stdout is never read.
   private async write(
     origin: GitOrigin,
     args: string[],
@@ -332,7 +307,6 @@ function toReviewRequest(row: z.infer<typeof requestSchema>): ReviewRequest {
   return {
     number: row.number,
     url: row.url,
-    // A merge time proves the merge, whatever `state` says.
     state: row.mergedAt !== null ? "merged" : STATES[row.state],
     draft: row.isDraft,
     decision: DECISIONS[row.reviewDecision] ?? null,
@@ -359,19 +333,15 @@ function parseJson(stdout: string): unknown {
   try {
     return JSON.parse(stdout);
   } catch {
-    // Fails the document shape, so unreadable output never becomes an empty answer.
     return undefined;
   }
 }
 
 function isMissing(error: unknown): boolean {
-  // execFile rejects with an Error whose code is ENOENT when gh is missing.
   return (error as { code?: unknown }).code === "ENOENT";
 }
 
-// Only the class crosses; the failure text is thrown away.
 function noAnswerPossible(error: unknown): boolean {
-  // execFile rejects with an Error that carries these fields; each stays unknown.
   const { code, killed, stderr } = error as {
     code?: unknown;
     killed?: unknown;

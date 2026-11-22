@@ -34,7 +34,6 @@ type TargetKind = KindOn<"target"> | "unknown";
 
 const TARGET_ORDER = withUnknown(readingsOn("target"), "behind");
 
-// An unfinished operation reads its own notice's heading.
 const TARGET_READINGS = {
   attention: ATTENTION,
   "local-edits": LOCAL_EDITS,
@@ -56,7 +55,6 @@ export const TARGET_STATUS_WORDS = TARGET_ORDER.flatMap((kind) =>
     : [TARGET_READINGS[kind].word],
 );
 
-/** A Status column's sort key. */
 export const targetRank = rankBy(TARGET_STATUS_WORDS);
 
 /**
@@ -80,7 +78,6 @@ export function worstFolderReading(
   return worst;
 }
 
-/** A count chip for a reading ranked above Unknown: a neutral one stays neutral. */
 export const chipOf = (
   { word, family }: StatusReading,
   covers: readonly string[],
@@ -90,7 +87,6 @@ export const chipOf = (
   covers,
 });
 
-/** Band 2's count chips: Unknown, then each reading above it, worst first; the unfinished operations roll into Attention. */
 export const TARGET_CHIPS: readonly StatusChip[] = [
   { word: UNKNOWN.word, family: "failed", covers: [UNKNOWN.word] },
   ...TARGET_ORDER.slice(0, TARGET_ORDER.indexOf("unknown")).flatMap(

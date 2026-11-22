@@ -48,7 +48,6 @@ function makeConnect(
   });
 }
 
-// A Harness is recognised by its apm.yml manifest — never by a skills/ dir.
 function harnessSeed() {
   return {
     directories: { "/Users/me/agent-harness": "/Users/me/agent-harness" },
@@ -73,7 +72,6 @@ function existingCloneSeed(): InMemoryFileSystemSeed {
   };
 }
 
-// What an interrupted clone leaves behind.
 function partialCloneSeed(): InMemoryFileSystemSeed {
   return {
     directories: {
@@ -107,7 +105,6 @@ describe("ConnectInventory", () => {
     const fs = new InMemoryFileSystem({
       directories: { "/Users/me/not-harness": "/Users/me/not-harness" },
     });
-    // No origin, so no scaffold offer (#556).
     const connect = makeConnect(fs, null);
 
     const result = await connect.connect("/Users/me/not-harness");
@@ -128,7 +125,6 @@ describe("ConnectInventory", () => {
       },
     });
 
-    // The scaffold's own guard refuses the occupied name (#556).
     await expect(makeConnect(fs).connect("/Users/me/odd")).resolves.toEqual({
       ok: false,
       error: "scaffoldable",
@@ -203,7 +199,6 @@ describe("ConnectInventory", () => {
     expect(stored.inventoryPath).toBeUndefined();
   });
 
-  // A subdirectory reads as a GitHub clone: the enclosing repo answers origin.
   it("never offers the scaffold for a subdirectory of a repository", async () => {
     const fs = new InMemoryFileSystem({
       directories: { "/Users/me/repo/docs": "/Users/me/repo/docs" },
@@ -319,7 +314,6 @@ describe("ConnectInventory", () => {
   });
 
   it("refuses every remote address when asked for a local clone only, cloning nothing", async () => {
-    // Setting the Harness location never clones (#995).
     const fs = new InMemoryFileSystem();
     const clone = new FakeClone(fs);
     const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
@@ -406,7 +400,6 @@ describe("ConnectInventory", () => {
       expect(clone.calls).toEqual([]);
     });
 
-    // A hand-made request may not reach past the home ceiling.
     it("refuses a parent outside the home ceiling", async () => {
       const fs = new InMemoryFileSystem({
         directories: { "/etc": "/etc" },
@@ -422,7 +415,6 @@ describe("ConnectInventory", () => {
       expect(clone.calls).toEqual([]);
     });
 
-    // A neighbour whose name merely starts with the ceiling's is outside it.
     it("refuses a sibling of the home ceiling sharing its prefix", async () => {
       const sibling = `${HOME_ROOT}-elsewhere`;
       const fs = new InMemoryFileSystem({
@@ -433,6 +425,25 @@ describe("ConnectInventory", () => {
       await expect(
         connect.connect("https://github.com/o/r.git", { parent: sibling }),
       ).resolves.toEqual({ ok: false, error: "invalid-parent" });
+    });
+
+    it("refuses a parent inside the home ceiling that links outside it", async () => {
+      const fs = new InMemoryFileSystem({
+        directories: {
+          [HOME_ROOT]: HOME_ROOT,
+          [`${HOME_ROOT}/escape`]: "/etc",
+          "/etc": "/etc",
+        },
+      });
+      const clone = new FakeClone(fs);
+      const connect = makeConnect(fs, PARSEABLE_ORIGIN, "main", clone);
+
+      const result = await connect.connect("https://github.com/o/r.git", {
+        parent: `${HOME_ROOT}/escape`,
+      });
+
+      expect(result).toEqual({ ok: false, error: "invalid-parent" });
+      expect(clone.calls).toEqual([]);
     });
 
     it("accepts the home ceiling itself as the parent", async () => {
@@ -515,7 +526,6 @@ describe("ConnectInventory", () => {
       expect(await fs.isDirectory(CLONE_DESTINATION)).toBe(true);
     });
 
-    // git clones into an existing empty directory, so this is not an obstacle.
     it("clones into an existing empty directory at the destination", async () => {
       const fs = new InMemoryFileSystem({
         directories: { [CLONE_DESTINATION]: CLONE_DESTINATION },
@@ -557,7 +567,6 @@ describe("ConnectInventory", () => {
       expect(clone.calls).toEqual([]);
     });
 
-    // Only a partial clone recovers by deleting the folder, so doubt is occupied.
     it.each<{
       name: string;
       seed: () => InMemoryFileSystemSeed;
@@ -594,7 +603,6 @@ describe("ConnectInventory", () => {
         origin: null,
         head: "no-head",
       },
-      // Git failing to answer is not git answering "empty".
       {
         name: "a repository git cannot inspect",
         seed: partialCloneSeed,
@@ -628,7 +636,6 @@ describe("ConnectInventory", () => {
       },
     );
 
-    // Compared canonical-to-canonical: on macOS /var resolves to /private/var.
     it("accepts a parent inside a home whose own path is a symlink", async () => {
       const linked = "/private/Users/me";
       const fs = new InMemoryFileSystem({
@@ -648,7 +655,6 @@ describe("ConnectInventory", () => {
       expect(clone.calls[0]?.destination).toBe(`${linked}/Projects/r`);
     });
 
-    // The lexical refusal comes first, so an outside path is never resolved.
     it("refuses a parent outside the ceiling without resolving it", async () => {
       const fs = new InMemoryFileSystem({
         directories: {
@@ -672,7 +678,6 @@ describe("ConnectInventory", () => {
       expect(resolved).not.toContain("/etc/passwd.d");
     });
 
-    // The second would misread the first one's half-written clone (#555).
     it("refuses a second connect while the first is still cloning there", async () => {
       const fs = new InMemoryFileSystem({
         directories: { [HOME_ROOT]: HOME_ROOT },
@@ -706,7 +711,6 @@ describe("ConnectInventory", () => {
     });
   });
 
-  // The clone stays on disk; only the connect is refused (#554).
   it("offers the scaffold for an empty repository it just cloned", async () => {
     const fs = new InMemoryFileSystem();
     const clone: CloneRepositoryPort = {
@@ -722,7 +726,6 @@ describe("ConnectInventory", () => {
     ).resolves.toEqual({
       ok: false,
       error: "scaffoldable",
-      // The destination, not the url the user typed.
       scaffoldPath: "/Users/me/r",
     });
     expect(await fs.isDirectory("/Users/me/r")).toBe(true);

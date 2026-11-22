@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
-import { mkdtemp } from "node:fs/promises";
+import { mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readPromptFile } from "../../packages/core/src/harness/prompt-file";
 import {
   buildFixtureHarness,
@@ -79,6 +79,25 @@ describe("the scenarios' fixture Harness", () => {
     expect(git("diff", "--name-only", "v2.0.0", "main")).toBe(
       ".apm/skills/commit-message/SKILL.md",
     );
+  });
+
+  it("starts no maintenance or gc outside the test run's git settings", async () => {
+    const workDir = join(root, "work");
+    const bare = join(root, "fixture.git");
+    const trace = join(root, "trace.log");
+    vi.stubEnv("GIT_CONFIG_COUNT", undefined);
+    vi.stubEnv("GIT_CONFIG_GLOBAL", undefined);
+    vi.stubEnv("HOME", join(root, "home-without-config"));
+    vi.stubEnv("GIT_TRACE", trace);
+
+    buildFixtureHarness({ fixtureDir, workDir });
+    publishFixtureRelease({ workDir, bareDir: bare, release: "v2.0.0" });
+    publishFixtureRelease({ workDir, bareDir: bare, release: "v1.1.0" });
+    pushUnreleasedChange({ workDir, bareDir: bare, skill: "commit-message" });
+
+    const log = await readFile(trace, "utf8");
+    expect(log).toMatch(/receive-pack/);
+    expect(log).not.toMatch(/run_command: .*\bgit (maintenance|gc)\b/);
   });
 
   it("holds the same three prompts in every release, one with an Example", () => {

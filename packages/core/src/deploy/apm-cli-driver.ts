@@ -1,4 +1,3 @@
-// Raw apm stdout/stderr never leaves this module: it may carry tokens.
 import { execFile } from "node:child_process";
 import { basename } from "node:path";
 import { promisify } from "node:util";
@@ -20,21 +19,15 @@ import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
 const defaultRun = promisify(execFile);
 
-// A narrow terminal truncates the Package column and drops the skill name.
 const WIDE_COLUMNS = "200";
 
-// These two phrases only, never the git passthrough line, and never echoed (#119).
 const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
 
-// Match phrases against normalized output: apm wraps lines mid-sentence.
-// The second marker is a no-op re-deploy, not a failure.
 const INSTALL_SUCCESS_MARKERS = [
   /installed \d+ apm dependenc/,
   /no changes -- install state already up to date/,
 ];
 
-// Guards older apm output that printed the marker beside errors (#180).
-// `[1-9]\d*` so `with 0 error(s)` stays a success.
 const INSTALL_FAILURE_SIGNALS = [
   /with [1-9]\d* error\(s\)/,
   /installation failed/,
@@ -44,8 +37,6 @@ const INSTALL_SYMLINK_PHRASE = "is a symlink";
 
 const UNINSTALL_SUCCESS_MARKER = /uninstall complete: removed \d+ package\(s\)/;
 
-// Read alongside the success marker, never instead of it: a run printing both
-// removed something and missed something.
 const UNINSTALL_NOT_FOUND_SIGNALS = [
   /- not found in apm\.yml/,
   /were not found in apm\.yml/,
@@ -68,8 +59,6 @@ type RunFn = (
   options: { cwd?: string; env?: NodeJS.ProcessEnv; signal: AbortSignal },
 ) => Promise<{ stdout: string; stderr: string }>;
 
-// A hung apm ends as a plain failure: callers already map that to their own
-// message, never apm's output. Installs clone, so they get the longer bound.
 const READ_TIMEOUT_MS = 60_000;
 const WRITE_TIMEOUT_MS = 300_000;
 
@@ -78,7 +67,6 @@ class ApmTimedOut extends Error {}
 export class ApmCliDriver implements ApmDriverPort {
   private readonly log: (entry: SanitizedLogEntry) => void;
   private readonly run: RunFn;
-  // apm edits the cwd's .gitignore even for -g: resolve a scratch dir, never a repo.
   private readonly prepareGlobalCwd: () => Promise<string>;
 
   constructor(deps?: {
@@ -105,7 +93,6 @@ export class ApmCliDriver implements ApmDriverPort {
         READ_TIMEOUT_MS,
       ));
     } catch (error) {
-      // The raw error may carry a token in a git URL: only the reason leaves.
       return {
         ok: false,
         reason:
@@ -151,16 +138,13 @@ export class ApmCliDriver implements ApmDriverPort {
       if (error instanceof ApmTimedOut) {
         return { ok: false, reason: "timed-out" };
       }
-      // Classify from the rejected run's own output, not the exit code (#183).
       return { ok: false, reason: classifyInstallFailure(outputOf(error)) };
     }
-    // Fail-closed: an exit-0 run still has to prove itself with the marker.
     if (!installSucceeded(output)) {
       return { ok: false, reason: classifyInstallFailure(output) };
     }
     this.log({
       operation: "deploy-skill",
-      // Basename or "global", never the full path.
       target: logTarget,
       exitCode: 0,
       durationMs: Date.now() - started,
@@ -173,7 +157,6 @@ export class ApmCliDriver implements ApmDriverPort {
     ref: string;
   }): Promise<RemoveSkillDriverResult> {
     const started = Date.now();
-    // uninstall has no -t; narrowing `targets:` to fake one orphans other tools' files.
     const target = input.target;
     const cwd =
       target.kind === "repo" ? target.repoPath : await this.prepareGlobalCwd();
@@ -202,7 +185,6 @@ export class ApmCliDriver implements ApmDriverPort {
     }
     this.log({
       operation: "remove-skill",
-      // Basename or "global", never the full path.
       target: logTarget,
       exitCode: 0,
       durationMs: Date.now() - started,
@@ -229,14 +211,12 @@ export class ApmCliDriver implements ApmDriverPort {
       });
       return parseOutdated(stdout);
     } catch (error) {
-      // Not logged: the raw apm error may carry a token.
       return error instanceof ApmTimedOut
         ? { ok: false, reason: "timed-out" }
         : { ok: false };
     }
   }
 
-  // The abort kills the real process; the race also ends a runner that ignores it.
   private async runApm(
     args: string[],
     options: { cwd?: string; env?: NodeJS.ProcessEnv },
@@ -265,11 +245,8 @@ export class ApmCliDriver implements ApmDriverPort {
     tools?: readonly SupportedTool[],
     skills?: readonly string[],
   ): Promise<{ cwd: string; args: string[]; logTarget: string }> {
-    // One `--skill` per name, never a comma list. The flag adds to the
-    // persisted Selection; it never replaces it.
     const selection = (skills ?? []).flatMap((name) => ["--skill", name]);
     if (target.kind === "repo") {
-      // `tools` is ignored: a repo always targets every DEPLOY_TOOLS tool (#131).
       return {
         cwd: target.repoPath,
         args: ["install", ref, ...selection, "-t", APM_DEPLOY_TARGET_FLAG],
@@ -310,8 +287,6 @@ function removeSucceeded(output: string): boolean {
   );
 }
 
-// Only the symlink refusal is classified, so an unknown message never passes
-// as a diagnosed one (#180).
 function classifyInstallFailure(
   output: string,
 ): "destination-symlinked" | "failed" {
@@ -321,12 +296,17 @@ function classifyInstallFailure(
 }
 
 function outputOf(error: unknown): string {
-  // execFile rejects with an Error that carries stdout and stderr; both stay unknown.
-  const { stdout, stderr } = error as { stdout?: unknown; stderr?: unknown };
-  return `${String(stdout ?? "")}\n${String(stderr ?? "")}`;
+  return `${streamOf(error, "stdout")}\n${streamOf(error, "stderr")}`;
 }
 
-// The raw text is inspected here and never leaves this scope.
+function streamOf(error: unknown, stream: "stdout" | "stderr"): string {
+  if (typeof error !== "object" || error === null || !(stream in error)) {
+    return "";
+  }
+  const value: unknown = Reflect.get(error, stream);
+  return String(value ?? "");
+}
+
 function hasAuthPhrase(error: unknown): boolean {
   const haystack = normalizeCommandOutput(outputOf(error));
   return APM_AUTH_PHRASES.some((phrase) => haystack.includes(phrase));

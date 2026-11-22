@@ -8,12 +8,9 @@ const ROOT = "/harness";
 const SKILLS = "/harness/.apm/skills";
 const COMMIT = "commit-release";
 
-// A Harness disk with the skills named, each a folder holding its text.
 function build(seed: {
   disk: Record<string, string>;
-  // The commit's skills: name → text.
   atCommit: Record<string, string>;
-  // A move into this path fails once.
   failMoveInto?: string;
 }) {
   const tree = new InMemoryCopyTree();
@@ -162,5 +159,21 @@ describe("replaceFromCommit", () => {
 
     expect(moves).toEqual([]);
     expect(await read("tdd")).toBe("edited tdd");
+  });
+
+  it("recreates no type folder when a later name is a link", async () => {
+    const { replace, moves, tree } = build({
+      disk: {},
+      atCommit: { linked: "released linked", greet: "released greet" },
+    });
+    tree.remove(`${ROOT}/.maestro/prompts`);
+    tree.symlink(`${SKILLS}/linked`, "/elsewhere/linked");
+
+    await expect(
+      replace([{ type: "prompt", name: "greet" }, skillRef("linked")]),
+    ).resolves.toBe("destination-unsafe");
+
+    expect(moves).toEqual([]);
+    expect(await tree.listNames(`${ROOT}/.maestro`)).toEqual([]);
   });
 });

@@ -7,7 +7,6 @@ import {
   isRootPackage,
 } from "./root-package-skills";
 
-// Real apm 0.29.0 output: `delta` is in deployed_files but on neither tool root.
 const PHANTOM_LOCKFILE = readFileSync(
   new URL(
     "../../../../tests/fixtures/apm.lock.spike-941-step3d-phantom.yaml",
@@ -16,7 +15,6 @@ const PHANTOM_LOCKFILE = readFileSync(
   "utf8",
 );
 
-// A fixture that stops parsing must fail, not read as an empty entry.
 const firstEntry = (raw: string): LockfileEntry => {
   const parsed = parseLockfile(raw);
   const entry = parsed.ok ? parsed.entries[0] : undefined;

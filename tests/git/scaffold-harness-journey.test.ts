@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { removeGitTempTree } from "../helpers/git-fixture";
+import { removeGitTempTree, stubGitConfig } from "../helpers/git-fixture";
 import { nodeApp } from "../helpers/node-app";
 
 const run = promisify(execFile);
@@ -56,9 +56,7 @@ describe("scaffolding a Harness into an empty GitHub repository", () => {
       remote,
     ]);
 
-    vi.stubEnv("GIT_CONFIG_COUNT", "1");
-    vi.stubEnv("GIT_CONFIG_KEY_0", `url.${remote}.insteadOf`);
-    vi.stubEnv("GIT_CONFIG_VALUE_0", GITHUB_URL);
+    stubGitConfig([[`url.${remote}.insteadOf`, GITHUB_URL]]);
     // The commit needs an identity the machine may lack; `.invalid` never
     // resolves (RFC 2606).
     vi.stubEnv("GIT_AUTHOR_NAME", "Fixture");
