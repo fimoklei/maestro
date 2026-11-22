@@ -15,6 +15,7 @@
     "smoke:release": "node scripts/smoke-ready.mjs --release",
     "smoke:stop": "node scripts/dev.mjs --stop",
     "cockpit:url": "node scripts/cockpit-ports.mjs",
+    "cockpit:hover": "node scripts/cockpit-hover.mjs",
     "cockpit:snapshot": "node scripts/cockpit-snapshot.mjs",
     "build": "pnpm -r build",
     "test": "node scripts/run-tests.mjs",
