@@ -88,7 +88,6 @@ export function publishFixtureRelease({ workDir, bareDir, release }) {
   execFileSync("git", ["init", "-q", "--bare", "-b", "main", bareDir], {
     env: { ...process.env, ...FIXED_GIT_ENV },
   });
-  // A push into a local path drops `GIT_CONFIG_COUNT` for the receiving side.
   for (const [key, value] of NO_BACKGROUND_GIT)
     git(bareDir, ["config", key, value]);
   git(workDir, [

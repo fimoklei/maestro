@@ -97,7 +97,6 @@ export async function initGitClone(
 export const removeGitTempTree = (path: string) =>
   rm(path, { recursive: true, force: true });
 
-/** Adds git config entries for this test after the ones the run already sets. */
 export function stubGitConfig(pairs: [key: string, value: string][]): void {
   for (const [name, value] of Object.entries(
     appendGitConfig(process.env, pairs),
