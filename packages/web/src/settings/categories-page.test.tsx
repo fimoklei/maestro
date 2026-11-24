@@ -295,6 +295,54 @@ describe("Settings › Categories", () => {
     expect(posts()).toEqual([]);
   });
 
+  it("opens again on an empty name, with no field error until its own submit", async () => {
+    stubServer({ categories: [category("Code review")] });
+    renderPage();
+
+    const first = await openAdd();
+    await userEvent.type(within(first).getByRole("textbox"), "code review");
+    await submit(first);
+    expect(
+      within(first).getByText("Code review already exists."),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      within(first).getByRole("button", { name: "Cancel" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    const again = await openAdd();
+    const name = within(again).getByRole("textbox");
+    expect(name).toHaveValue("");
+    expect(within(again).queryByText("Code review already exists.")).toBeNull();
+    await userEvent.type(name, "code review");
+    expect(name).toBeValid();
+  });
+
+  it("opens again with no failure from the earlier add", async () => {
+    stubServer({
+      add: () => jsonResponse({ error: "write-failed" }, 500),
+    });
+    renderPage();
+
+    const first = await openAdd();
+    await userEvent.type(within(first).getByRole("textbox"), "planning");
+    await submit(first);
+    expect(await within(first).findByText("Category not added")).toBeVisible();
+    await userEvent.click(
+      within(first)
+        .getAllByRole("button", { name: "Close" })
+        .at(-1) as HTMLElement,
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    const again = await openAdd();
+    expect(within(again).queryByText("Category not added")).toBeNull();
+  });
+
   it("states the server's refusal of an existing name by the name it holds", async () => {
     stubServer({
       add: () =>

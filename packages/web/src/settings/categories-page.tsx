@@ -4,36 +4,28 @@ import {
   ADD_CATEGORY,
   CATEGORIES_READ_FAILED,
   CATEGORIES_SENTENCE,
-  CATEGORY_NOT_ADDED,
   NO_CATEGORIES,
   NO_CATEGORIES_OR_COPY,
   NO_CATEGORIES_SENTENCE,
   REREAD_CATEGORIES,
 } from "../categories/categories-copy";
 import { CategoryCountLinks } from "../categories/category-count-links";
+import { categoryNotice } from "../categories/category-refusals";
 import {
-  categoryNameError,
-  categoryNotice,
-  refusedForName,
-} from "../categories/category-refusals";
-import {
-  useAddCategory,
   useCategories,
   useCategoriesProposal,
   useHarnessCategories,
 } from "../categories/use-categories";
-import { ACTIONS, doneSentence } from "../ui/busy-copy";
 import { EmptyState } from "../ui/empty-state";
 import { GatedButton } from "../ui/gated-button";
 import { Icon } from "../ui/icon";
 import { IconButton } from "../ui/icon-button";
 import { Notice } from "../ui/notice";
-import { plainText } from "../ui/phrase";
 import { RowMenu } from "../ui/row-menu";
 import { rowActionsLabel } from "../ui/row-menu-copy";
 import { ScreenFocusContext } from "../ui/screen-focus";
 import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
-import { AddCategoryDialog } from "./add-category-dialog";
+import { AddCategoryAction } from "./add-category-action";
 import { CopyHarnessCategoriesAction } from "./copy-harness-categories-action";
 import { HarnessCategoriesSection } from "./harness-categories-section";
 import { PullRequestRow } from "./pull-request-row";
@@ -51,11 +43,8 @@ export function CategoriesPage() {
   const categories = useCategories();
   const harnessCategories = useHarnessCategories();
   const proposal = useCategoriesProposal();
-  const add = useAddCategory();
-  const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [copying, setCopying] = useState(false);
-  const [name, setName] = useState("");
-  const [submitted, setSubmitted] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const selectedRef = useRef<HTMLLIElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -71,7 +60,7 @@ export function CategoriesPage() {
     name: SCREEN,
     reading: categories.isFetching,
     notice: readNotice,
-    busy: add.isPending ? ACTIONS.add.busy : null,
+    busy: null,
   });
 
   // After an add, focus lands on the new row: a frame later, once the closing
@@ -98,32 +87,6 @@ export function CategoriesPage() {
       ) ?? [];
     const stood = menus[deletedAt.current] ?? menus[menus.length - 1];
     (stood ?? rereadRef.current)?.focus();
-  };
-
-  const fieldError = submitted
-    ? categoryNameError(name, categories.data, add.error, null)
-    : undefined;
-  const dialogFailure =
-    add.isError && !refusedForName(add.error)
-      ? categoryNotice(add.error, () => ({
-          level: "error",
-          ...CATEGORY_NOT_ADDED,
-        }))
-      : null;
-
-  const runAdd = () => {
-    setSubmitted(true);
-    add.reset();
-    if (categoryNameError(name, categories.data, null, null) !== undefined) {
-      return;
-    }
-    add.mutate(name, {
-      onSuccess: ({ added }) => {
-        setOpen(false);
-        setSelected(added);
-        status.report(plainText(doneSentence("add", added)));
-      },
-    });
   };
 
   const list = categories.data?.categories ?? [];
@@ -160,12 +123,7 @@ export function CategoriesPage() {
                   unavailable={
                     categories.isSuccess ? null : (readNotice?.label ?? null)
                   }
-                  onClick={() => {
-                    setName("");
-                    setSubmitted(false);
-                    add.reset();
-                    setOpen(true);
-                  }}
+                  onClick={() => setAdding(true)}
                 />
               </>
             }
@@ -234,20 +192,12 @@ export function CategoriesPage() {
               onClose={() => setCopying(false)}
             />
           ) : null}
-          {open ? (
-            <AddCategoryDialog
-              name={name}
-              onNameChange={(next) => {
-                setName(next);
-                add.reset();
-              }}
-              error={fieldError}
-              failure={dialogFailure}
-              busy={add.isPending}
-              onAdd={runAdd}
-              onClose={() => {
-                if (!add.isPending) setOpen(false);
-              }}
+          {adding ? (
+            <AddCategoryAction
+              list={categories.data}
+              report={status.report}
+              onAdded={setSelected}
+              onClose={() => setAdding(false)}
             />
           ) : null}
           {edits.dialog}
