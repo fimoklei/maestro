@@ -1,27 +1,32 @@
 import { isAbsolute, join, relative, resolve } from "node:path";
 
-export type SupportedTool = "claude" | "codex";
+export const SUPPORTED_TOOLS = ["claude", "codex"] as const;
 
-type DeployTool = {
-  apmTarget: SupportedTool;
+export type SupportedTool = (typeof SUPPORTED_TOOLS)[number];
+
+type ToolFolders = {
   skillsDirPrefix: string;
   globalPresenceMarker: string;
   configDir?: { variable: string; marker: string };
 };
 
-export const DEPLOY_TOOLS: readonly DeployTool[] = [
-  {
-    apmTarget: "claude",
+type DeployTool = ToolFolders & { apmTarget: SupportedTool };
+
+const FOLDERS_BY_TOOL = {
+  claude: {
     skillsDirPrefix: ".claude",
     globalPresenceMarker: ".claude.json",
     configDir: { variable: "CLAUDE_CONFIG_DIR", marker: ".claude.json" },
   },
-  {
-    apmTarget: "codex",
+  codex: {
     skillsDirPrefix: ".agents",
     globalPresenceMarker: ".codex/config.toml",
   },
-];
+} as const satisfies Record<SupportedTool, ToolFolders>;
+
+export const DEPLOY_TOOLS: readonly DeployTool[] = SUPPORTED_TOOLS.map(
+  (apmTarget) => ({ apmTarget, ...FOLDERS_BY_TOOL[apmTarget] }),
+);
 
 export type ToolRoots = Readonly<Record<SupportedTool, string>>;
 
@@ -100,10 +105,6 @@ export function globalFolders(
     detected: detected.includes(tool.apmTarget),
   }));
 }
-
-export const SUPPORTED_TOOLS: readonly SupportedTool[] = DEPLOY_TOOLS.map(
-  (tool) => tool.apmTarget,
-);
 
 export const APM_DEPLOY_TARGET_FLAG = SUPPORTED_TOOLS.join(",");
 
