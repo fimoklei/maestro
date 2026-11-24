@@ -65,7 +65,7 @@ describe("update outcome report", () => {
       {
         name: "spec",
         detail:
-          "Maestro could not read this skill back. Check its state on the Deploy-state screen.",
+          "Maestro couldn't read this skill back. Check its state on the Deploy-state screen.",
       },
     ]);
   });
@@ -76,7 +76,7 @@ describe("update outcome report", () => {
         { name: "tdd", tool: null, state: "updated" },
         { name: "spec", tool: null, state: "unknown" },
       ]).heading,
-    ).toBe("Maestro could not confirm every skill reached v0.3.4");
+    ).toBe("Maestro couldn't confirm every skill reached v0.3.4");
   });
 
   it("sends the reader to the Deploy-state screen where no retry is offered", () => {

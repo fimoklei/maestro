@@ -89,16 +89,14 @@ describe("Not updated copy", () => {
 
   it("names no version and never says older where no release matched", () => {
     expect(line([{ name: "code-review", stillAt: null }])).toBe(
-      "code-review in ~/.agents/skills is not at the Target release v2.0.0.",
+      "code-review in ~/.agents/skills isn't at the Target release v2.0.0.",
     );
     expect(
       line([
         { name: "code-review", stillAt: "v1.0.0" },
         { name: "commit-message", stillAt: null },
       ]),
-    ).toBe(
-      "2 skills in ~/.agents/skills are not at the Target release v2.0.0.",
-    );
+    ).toBe("2 skills in ~/.agents/skills aren't at the Target release v2.0.0.");
   });
 });
 
@@ -125,28 +123,28 @@ describe("Copies in an undetected tool's folder", () => {
 
   it("tells which tool loads the one copy and how to stop it", () => {
     expect(paneLine(["code-review"])).toBe(
-      "Global does not update code-review in ~/.agents/skills. OpenCode loads this copy instead of the one in ~/.claude/skills. To load the current release, delete it from ~/.agents/skills yourself.",
+      "Global doesn't update code-review in ~/.agents/skills. OpenCode loads this copy instead of the one in ~/.claude/skills. To load the current release, delete it from ~/.agents/skills yourself.",
     );
   });
 
   it("names two copies with and", () => {
     expect(paneLine(["code-review", "tdd"])).toBe(
-      "Global does not update code-review and tdd in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
+      "Global doesn't update code-review and tdd in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
     );
   });
 
   it("names three copies as a comma list ending in and", () => {
     expect(paneLine(["code-review", "tdd", "commit-message"])).toBe(
-      "Global does not update code-review, tdd and commit-message in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
+      "Global doesn't update code-review, tdd and commit-message in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
     );
   });
 
   it("says why the copies differ from the Target release", () => {
     expect(plainText(strayDiffersLine(AGENTS, 1, "v2.0.0", "Codex"))).toBe(
-      "1 copy in ~/.agents/skills differs from v2.0.0. Global does not write there because Codex is not detected.",
+      "1 copy in ~/.agents/skills differs from v2.0.0. Global doesn't write there because Codex isn't detected.",
     );
     expect(plainText(strayDiffersLine(AGENTS, 2, "v2.0.0", "Codex"))).toBe(
-      "2 copies in ~/.agents/skills differ from v2.0.0. Global does not write there because Codex is not detected.",
+      "2 copies in ~/.agents/skills differ from v2.0.0. Global doesn't write there because Codex isn't detected.",
     );
   });
 });
@@ -210,19 +208,19 @@ describe("Deploy-state copy", () => {
     expect([one.level, one.label, plainText(one.message)]).toEqual([
       "info",
       "Package also behind",
-      "foo is not a skill.",
+      "foo isn't a skill.",
     ]);
     const two = packageBehindNotice(["foo", "bar"]);
     expect([two.label, plainText(two.message)]).toEqual([
       "Packages also behind",
-      "foo and bar are not skills.",
+      "foo and bar aren't skills.",
     ]);
   });
 
   // #1180: the GitHub column's Unknown badge's cause.
   it("keeps the GitHub column's cause", () => {
     expect(ORIGIN_NOT_READ).toBe(
-      "The origin of this repository could not be read. Select Re-read Deploy-state to read it again.",
+      "The origin of this repository couldn't be read. Select Re-read Deploy-state to read it again.",
     );
   });
 
@@ -246,21 +244,21 @@ describe("Deploy-state copy", () => {
 
   it("keeps the hints of the two drift marks", () => {
     expect(NO_LONGER_RELEASED_HINT).toBe("Not in the latest release.");
-    expect(UNREACHED_HINT).toBe("Update check did not run.");
+    expect(UNREACHED_HINT).toBe("Update check didn't run.");
     expect(TIMED_OUT_HINT).toBe("Update check timed out after 1 minute.");
   });
 
   it("names every skill with local edits and how to keep them", () => {
     const keep = "Select Import local edits to keep them.";
     expect(plainText(localEditsLine(["tdd"], false))).toBe(
-      `1 skill has changes that are not in the latest release: tdd. ${keep}`,
+      `1 skill has changes that aren't in the latest release: tdd. ${keep}`,
     );
     expect(plainText(localEditsLine(["tdd", "grill", "review"], false))).toBe(
-      `3 skills have changes that are not in the latest release: tdd, grill and review. ${keep}`,
+      `3 skills have changes that aren't in the latest release: tdd, grill and review. ${keep}`,
     );
     const long = "write-a-very-long-skill-name-that-keeps-going-on-and-on";
     expect(plainText(localEditsLine([long, "tdd"], false))).toBe(
-      `2 skills have changes that are not in the latest release: ${long} and tdd. ${keep}`,
+      `2 skills have changes that aren't in the latest release: ${long} and tdd. ${keep}`,
     );
   });
 
@@ -308,22 +306,22 @@ describe("Deploy-state copy", () => {
 
   it("advises importing local edits before a behind target updates", () => {
     expect(plainText(localEditsLine(["tdd", "review"], true))).toBe(
-      "2 skills have changes that are not in the latest release: tdd and review. To keep them, select Import local edits before you update.",
+      "2 skills have changes that aren't in the latest release: tdd and review. To keep them, select Import local edits before you update.",
     );
   });
 
   it("counts Global's skills with local edits in one paragraph, naming none", () => {
     expect(globalLocalEditsLine(1, false)).toBe(
-      "1 skill has changes that are not in the latest release. Select Import local edits to keep them.",
+      "1 skill has changes that aren't in the latest release. Select Import local edits to keep them.",
     );
     expect(globalLocalEditsLine(2, false)).toBe(
-      "2 skills have changes that are not in the latest release. Select Import local edits to keep them.",
+      "2 skills have changes that aren't in the latest release. Select Import local edits to keep them.",
     );
     expect(globalLocalEditsLine(1, true)).toBe(
-      "1 skill has changes that are not in the latest release. To keep them, select Import local edits before you update.",
+      "1 skill has changes that aren't in the latest release. To keep them, select Import local edits before you update.",
     );
     expect(globalLocalEditsLine(2, true)).toBe(
-      "2 skills have changes that are not in the latest release. To keep them, select Import local edits before you update.",
+      "2 skills have changes that aren't in the latest release. To keep them, select Import local edits before you update.",
     );
   });
 });

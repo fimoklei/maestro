@@ -5,7 +5,7 @@ import { FIX_AND_RELEASE } from "./notice-copy";
 /** What went wrong with an entry, without its fix: the Status hover card's reason. */
 export function skippedEntryReason(entry: SkippedEntry): Copy {
   if (entry.reason === "unsupported-type") {
-    return phrase`${machine(entry.virtualPath)} is deployed as ${entry.packageType}, which Maestro does not manage. Its files are still there.`;
+    return phrase`${machine(entry.virtualPath)} is deployed as ${entry.packageType}, which Maestro doesn't manage. Its files are still there.`;
   }
   if (entry.reason === "unmanageable-skill") {
     return phrase`${machine(entry.virtualPath)} is deployed as ${entry.packageType}, not as a skill.`;
@@ -15,8 +15,8 @@ export function skippedEntryReason(entry: SkippedEntry): Copy {
   }
   // About the one entry, never the file: the rest of the record was read fine (#357).
   return entry.virtualPath === null
-    ? "One entry in the deployment record could not be read."
-    : phrase`The deployment record's entry for ${machine(entry.virtualPath)} could not be read.`;
+    ? "One entry in the deployment record couldn't be read."
+    : phrase`The deployment record's entry for ${machine(entry.virtualPath)} couldn't be read.`;
 }
 
 export function skippedEntryText(entry: SkippedEntry): Copy {

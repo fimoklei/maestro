@@ -447,7 +447,7 @@ describe("Import prompts — Paste text", () => {
     );
     await show("Example");
     expect(field(dialog, "Example")).toHaveAccessibleDescription(
-      "Optional example prompt.",
+      "Add an example of the prompt, or leave empty.",
     );
     expect(field(dialog, "Example")).toHaveValue("Review #12.\n");
     await user.type(field(dialog, "Example"), "Start at sync.ts.");

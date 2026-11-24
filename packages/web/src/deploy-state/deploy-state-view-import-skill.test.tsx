@@ -175,7 +175,7 @@ describe("Deploy-state — Import local edits on a skill row", () => {
     );
     expectTooltipCause(
       within(dialog).getByRole("button", { name: "Import skills" }),
-      "You cannot import any of these skills.",
+      "You can't import any of these skills.",
     );
   });
 

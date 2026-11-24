@@ -19,7 +19,7 @@ const GROUPS: GroupedListGroup[] = [
   },
   {
     tone: "failed",
-    legend: "Cannot be imported · 1",
+    legend: "Can't be imported · 1",
     rows: [{ key: "brief", name: "brief", sentence: "Copies differ." }],
   },
 ];
@@ -136,7 +136,7 @@ describe("GroupedList as a checklist", () => {
       groups: [
         {
           tone: "failed",
-          legend: "Cannot be imported · 1",
+          legend: "Can't be imported · 1",
           rows: [
             {
               key: "brief",
@@ -160,7 +160,7 @@ describe("GroupedList as a checklist", () => {
       groups: [
         {
           tone: "failed",
-          legend: "Cannot be imported · 1",
+          legend: "Can't be imported · 1",
           rows: [{ key: "review", name: "review", sentence: reason }],
         },
       ],
@@ -258,7 +258,7 @@ describe("GroupedList read-only", () => {
     },
     {
       tone: "failed",
-      legend: "Cannot be removed · 1",
+      legend: "Can't be removed · 1",
       rows: [{ key: "etl", name: "legacy-etl", sentence: "Not registered" }],
     },
   ];
@@ -272,7 +272,7 @@ describe("GroupedList read-only", () => {
     expect(cost).toHaveTextContent("Nothing recorded — may lose work");
     expect(cost).toHaveAttribute("id", "cost");
     expect(
-      screen.getByRole("group", { name: "Cannot be removed · 1" }),
+      screen.getByRole("group", { name: "Can't be removed · 1" }),
     ).toHaveTextContent("Not registered");
     expect(screen.queryByRole("checkbox")).toBeNull();
     expect(document.querySelector("[tabindex]")).toBeNull();
@@ -284,7 +284,7 @@ describe("GroupedList read-only", () => {
         groups={[
           {
             tone: "failed",
-            legend: "Cannot be removed · 1",
+            legend: "Can't be removed · 1",
             note: "Register it.",
             rows: [{ key: "etl", name: "legacy-etl" }],
           },
@@ -295,7 +295,7 @@ describe("GroupedList read-only", () => {
     );
 
     expect(
-      screen.getByRole("group", { name: "Cannot be removed · 1" }),
+      screen.getByRole("group", { name: "Can't be removed · 1" }),
     ).toHaveTextContent("Register it.");
   });
 

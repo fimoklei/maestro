@@ -241,7 +241,7 @@ describe("Deploy-state pane — Global skill rows", () => {
     await waitFor(() => expect(row.mark()).toHaveAccessibleName("Not updated"));
     expectDescription(
       row.mark(),
-      `tdd in ${AGENTS} is not at the Target release v0.4.1.`,
+      `tdd in ${AGENTS} isn't at the Target release v0.4.1.`,
     );
   });
 

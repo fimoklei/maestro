@@ -26,7 +26,7 @@ function behindReason(head: ReleaseHead): Copy {
   if (head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
   const latest = machine(head.latestRelease);
   if (head.changed === null) {
-    return phrase`Changes in ${latest} could not be read.`;
+    return phrase`Changes in ${latest} couldn't be read.`;
   }
   return head.changed === 0
     ? phrase`None of the ${head.selected} deployed skills changed in ${latest}.`
@@ -46,7 +46,7 @@ export const globalBehindLine = (reason: Copy, head: ReleaseHead): Copy =>
   phrase`${reason} Global is behind: ${behindReason(head)}`;
 
 export const ON_LATEST_RELEASE = "On the latest release.";
-export const LATEST_RELEASE_UNKNOWN = "Latest release could not be read.";
+export const LATEST_RELEASE_UNKNOWN = "Latest release couldn't be read.";
 
 export function pinnedTagsLine(pinned: PinnedPerSkill): Phrase {
   const groups = pinned.map((group, index) => {
@@ -125,7 +125,7 @@ export const extraFilesFact = (count: number): string =>
   `${count} file${count === 1 ? "" : "s"}`;
 
 export function changedFact(head: ReleaseHead): string | null {
-  if (head.changed === null) return "Could not be read";
+  if (head.changed === null) return "Couldn't be read";
   if (head.latestRelease === null || head.latestRelease === head.release) {
     return null;
   }
@@ -165,7 +165,7 @@ const COPY_CHIPS = {
   },
   unverified: {
     label: "Unverified",
-    hint: "The deployment record cannot check this copy.",
+    hint: "The deployment record can't check this copy.",
   },
 } satisfies Record<
   NonNullable<DeployedPrimitive["copy"]>,

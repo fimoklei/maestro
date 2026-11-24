@@ -96,7 +96,7 @@ const connectHeadings: NoticeTable<ConnectInventoryError> = {
   },
   "clone-failed": {
     level: "error",
-    label: "Clone did not finish",
+    label: "Clone didn't finish",
     message:
       "Check disk space and write access to the destination folder, then connect again.",
     detail: "A dropped connection causes this too.",
@@ -106,7 +106,7 @@ const connectHeadings: NoticeTable<ConnectInventoryError> = {
     level: "error",
     label: "Not a folder path",
     message:
-      "The location did not change. Type the path to a local Harness clone.",
+      "The location didn't change. Type the path to a local Harness clone.",
     detail: "Setting the location never clones. Clone the repository first.",
   },
   "not-an-inventory": {
@@ -136,7 +136,7 @@ const connectHeadings: NoticeTable<ConnectInventoryError> = {
     level: "error",
     label: "No default branch",
     message: "Set a default branch on the origin, or choose another clone.",
-    detail: "The origin does not say which branch is the default.",
+    detail: "The origin doesn't say which branch is the default.",
   },
 };
 
@@ -170,7 +170,7 @@ const scaffoldHeadings: NoticeTable<ScaffoldHarnessError> = {
     label: "No default branch",
     message:
       "Set a default branch on the origin, or choose another repository.",
-    detail: "The origin does not say which branch is the default.",
+    detail: "The origin doesn't say which branch is the default.",
   },
   "not-on-default-branch": {
     level: "error",
@@ -229,7 +229,7 @@ export function connectNotice(
     {
       label: "Harness not connected",
       message: "Nothing was connected. Connect it again.",
-      detail: "The Maestro server did not answer.",
+      detail: "The Maestro server didn't answer.",
     },
     extras,
   );
@@ -239,7 +239,7 @@ export function scaffoldNotice(error: unknown): NoticeContent | null {
   return noticeFromTable(scaffoldHeadings, error, {
     label: "Harness not scaffolded",
     message: "No files were written. Scaffold it again.",
-    detail: "The Maestro server did not answer.",
+    detail: "The Maestro server didn't answer.",
   });
 }
 

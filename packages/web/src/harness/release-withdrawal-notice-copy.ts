@@ -31,8 +31,8 @@ const notPendingDetail = ({ type, name }: WithdrawalItem) =>
 
 const unknownOpenDetail = (item: WithdrawalItem) =>
   item.type === "categories"
-    ? "A categories pull request is open, or GitHub could not be read."
-    : `A pull request for this ${rowWords(item.type).noun} is open, or GitHub could not be read.`;
+    ? "A categories pull request is open, or GitHub couldn't be read."
+    : `A pull request for this ${rowWords(item.type).noun} is open, or GitHub couldn't be read.`;
 
 const notWithdrawn = (item: WithdrawalItem) =>
   `${item.type === "categories" ? CATEGORIES_NAME : rowWords(item.type).Noun} not withdrawn`;
@@ -54,7 +54,7 @@ const releaseWithdrawalHeadings = (item: WithdrawalItem) => {
       level: "error",
       label: "Harness not read",
       message: `Select ${rereadLabel("Harness")}, then ${again}`,
-      detail: "Maestro could not read your clone or the latest release.",
+      detail: "Maestro couldn't read your clone or the latest release.",
     },
     "not-pending-release": {
       level: "error",
@@ -81,7 +81,7 @@ const releaseWithdrawalHeadings = (item: WithdrawalItem) => {
       level: "error",
       label: "Clone not up to date",
       message: `Sync your clone with GitHub, then ${again}`,
-      detail: "Your clone's last commit is not the one on GitHub.",
+      detail: "Your clone's last commit isn't the one on GitHub.",
     },
     "push-refused": {
       level: "error",
@@ -91,7 +91,7 @@ const releaseWithdrawalHeadings = (item: WithdrawalItem) => {
     },
     offline: {
       level: "error",
-      label: "GitHub did not respond",
+      label: "GitHub didn't respond",
       message: `Select ${WITHDRAW_FROM_RELEASE} again once GitHub is reachable.`,
     },
     "push-elsewhere": {
@@ -112,22 +112,22 @@ const releaseWithdrawalHeadings = (item: WithdrawalItem) => {
     "sparse-checkout": {
       ...deletion["sparse-checkout"],
       message: "Connect a complete clone to withdraw changes from release.",
-      detail: "A partial clone does not hold every file of the Harness.",
+      detail: "A partial clone doesn't hold every file of the Harness.",
     },
     "merge-in-progress": {
       ...deletion["merge-in-progress"],
       message: `Finish or abort the merge, then ${again}`,
-      detail: "A half-merged working tree does not state what changed.",
+      detail: "A half-merged working tree doesn't state what changed.",
     },
     "rebase-in-progress": {
       ...deletion["rebase-in-progress"],
       message: `Finish or abort the rebase, then ${again}`,
-      detail: "A half-rebased working tree does not state what changed.",
+      detail: "A half-rebased working tree doesn't state what changed.",
     },
     "unresolved-conflicts": {
       ...deletion["unresolved-conflicts"],
       message: `Resolve the conflicts, then ${again}`,
-      detail: "A conflicted working tree does not state what changed.",
+      detail: "A conflicted working tree doesn't state what changed.",
     },
     unreadable: {
       ...deletion.unreadable,
@@ -163,5 +163,5 @@ export const releaseWithdrawalNotice = (
 ): NoticeContent | null =>
   noticeFromTable(releaseWithdrawalHeadings(item), error, {
     label: notWithdrawn(item),
-    message: `Nothing was withdrawn. The Maestro server did not answer. Select ${WITHDRAW_FROM_RELEASE} again.`,
+    message: `Nothing was withdrawn. The Maestro server didn't answer. Select ${WITHDRAW_FROM_RELEASE} again.`,
   });

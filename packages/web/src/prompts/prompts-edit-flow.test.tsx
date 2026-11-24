@@ -487,7 +487,7 @@ describe("Prompts — Edit prompt refusals", () => {
   });
 
   it.each([
-    ["a name that is not valid", { name: "Fix Tests", nameValid: false }],
+    ["a name that isn't valid", { name: "Fix Tests", nameValid: false }],
     [
       "a pending deletion",
       {
@@ -548,7 +548,7 @@ describe("Prompts — Edit prompt refusals", () => {
       {
         label: "Prompt out of date",
         message:
-          "Nothing was edited. Copy your text, select Close, then select Edit prompt again.",
+          "Nothing changed. Copy your text, select Close, then select Edit prompt again.",
         detail: "The pr-review file changed after this dialog opened.",
       },
     ],
@@ -557,8 +557,7 @@ describe("Prompts — Edit prompt refusals", () => {
       ["prompt-missing", 404],
       {
         label: "Prompt not in your clone",
-        message:
-          "Nothing was edited. Select Harness, then select Restore prompt.",
+        message: "Nothing changed. Select Harness, then select Restore prompt.",
         detail:
           "Something removed the pr-review file from your clone after this dialog opened.",
       },
@@ -785,10 +784,22 @@ describe("Prompts — Edit prompt's Example", () => {
 
     const example = within(dialog).getByRole("textbox", { name: "Example" });
     expect(example).toHaveValue(WITH_EXAMPLE.example);
-    expect(example).toHaveAccessibleDescription("Optional example prompt.");
+    expect(example).toHaveAccessibleDescription(
+      "Add an example of the prompt, or leave empty.",
+    );
     expect(
       within(dialog).queryByRole("textbox", { name: "Prompt text" }),
     ).toBeNull();
+  });
+
+  it("states what an edit changes as the dialog's description", async () => {
+    stubServer({ read: WITH_EXAMPLE });
+    renderPrompts();
+    const dialog = await editFromMenu();
+
+    expect(dialog).toHaveAccessibleDescription(
+      "Editing changes the prompt file in your clone. Prompts shows the released text until you propose the change and release it.",
+    );
   });
 
   it("keeps both texts while switching", async () => {

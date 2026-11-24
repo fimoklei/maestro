@@ -59,7 +59,7 @@ const RETIRED = [
   /\b(?:[Pp]ress|[Hh]it) [A-Z]\w*/,
   // A failed read is `Couldn't read {the thing}`; a deploy never installs; a running
   // operation reads Target busy or Harness busy (#1459).
-  /\bCould not read\b/,
+  /\b(?:[Dd]id|[Cc]ould|[Dd]oes|[Dd]o|[Ii]s|[Aa]re|[Ww]as|[Ww]ere|[Hh]as|[Hh]ave|[Ww]ill|[Ww]ould|[Ss]hould) not\b|\b[Cc]annot\b/,
   /\bCommitted copy unreadable\b/i,
   /\bUnreadable (?:working tree|Harness clone|folder)\b/i,
   /\bNothing was installed\b/i,

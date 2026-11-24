@@ -130,8 +130,7 @@ describe("ConnectView", () => {
         jsonResponse(
           {
             error: "not-an-inventory",
-            message:
-              "That directory has no apm.yml, so it is not an inventory.",
+            message: "That directory has no apm.yml, so it isn't an inventory.",
           },
           422,
         ),
@@ -164,7 +163,7 @@ describe("ConnectView", () => {
           {
             error: "no-usable-origin",
             message:
-              "That folder has an apm.yml, but its git origin is missing, unreadable, or in a form apm cannot resolve.",
+              "That folder has an apm.yml, but its git origin is missing, unreadable, or in a form apm can't resolve.",
           },
           422,
         ),

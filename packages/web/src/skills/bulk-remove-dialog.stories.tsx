@@ -59,7 +59,7 @@ export const LosesWork: Story = {
         {
           label: "/dev/design-tokens",
           version: "v1.2.0",
-          reason: "Check did not run",
+          reason: "Check didn't run",
         },
       ],
       refused: [],
@@ -101,7 +101,7 @@ export const OutcomeUnknown: Story = {
       label: "Outcome unknown",
       message:
         "The run's outcome is unrecorded. Check the targets before removing again.",
-      detail: "The Maestro server did not answer.",
+      detail: "The Maestro server didn't answer.",
     },
   },
 };

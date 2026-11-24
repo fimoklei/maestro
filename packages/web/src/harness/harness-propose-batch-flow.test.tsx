@@ -434,7 +434,7 @@ describe("proposing several changes from the selection bar", () => {
     ).toBeVisible();
     expect(
       within(dialog).getByText(
-        "Maestro opens pull requests through gh, and gh is not available.",
+        "Maestro opens pull requests through gh, and gh isn't available.",
       ),
     ).toBeVisible();
     const missing = within(dialog).getByRole("region", {
@@ -640,7 +640,7 @@ describe("proposing several changes from the selection bar", () => {
     expect(
       within(dialog).getByText(
         sentence(
-          "old-deploy is not in the next release, so there is nothing to delete. Select Close, then deselect it.",
+          "old-deploy isn't in the next release, so there is nothing to delete. Select Close, then deselect it.",
         ),
       ),
     ).toBeVisible();

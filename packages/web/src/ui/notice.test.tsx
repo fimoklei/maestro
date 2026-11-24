@@ -182,7 +182,7 @@ describe("Notice", () => {
           notice={{
             level: "error",
             label: "the removal failed",
-            message: "apm did not confirm the removal.",
+            message: "apm didn't confirm the removal.",
             action: { label: "retry", onClick },
           }}
         />,
@@ -201,7 +201,7 @@ describe("Notice", () => {
           notice={{
             level: "error",
             label: "the removal failed",
-            message: "apm did not confirm the removal.",
+            message: "apm didn't confirm the removal.",
             action: { label: "retry", onClick, busy: "remove" },
           }}
         />,
@@ -222,7 +222,7 @@ describe("Notice", () => {
           notice={{
             level: "error",
             label: "can't be removed",
-            message: "That repo is not registered with Maestro.",
+            message: "That repo isn't registered with Maestro.",
           }}
         />,
       );

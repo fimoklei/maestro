@@ -45,8 +45,8 @@ export const REASON: Record<ReasonCode, string> = {
   "destination-symlinked": "Linked skill folder",
   "tag-check-timed-out": "Release check timed out",
   "deploy-timed-out": "Deploy timed out",
-  "deploy-failed": "Deploy did not finish",
-  "deploy-not-started": "Deploy did not start",
+  "deploy-failed": "Deploy didn't finish",
+  "deploy-not-started": "Deploy didn't start",
   "not-deployed": "Nothing deployed here",
   "ref-unresolvable": "Deployed version unknown",
   "cost-not-acknowledged": "Removal not confirmed",
@@ -55,7 +55,7 @@ export const REASON: Record<ReasonCode, string> = {
   "remove-timed-out-unrecorded": "Removal timed out",
   "remove-failed": "Removal outcome unknown",
   "preflight-failed": "Deployed files not checked",
-  "preview-failed": "Preview did not run",
+  "preview-failed": "Preview didn't run",
   // "Status out of date" covers both a release and a copy that moved after the
   // preview read them.
   "status-out-of-date": "Status out of date",

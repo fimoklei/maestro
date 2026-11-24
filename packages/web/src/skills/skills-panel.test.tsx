@@ -343,7 +343,7 @@ describe("SkillsPanel", () => {
     const notice = (
       await screen.findByText("Inventory not read")
     ).closest<HTMLElement>('[role="status"]');
-    if (notice === null) throw new Error("the notice is not a status region");
+    if (notice === null) throw new Error("the notice isn't a status region");
     expect(notice).toHaveTextContent("Select Re-read Skills to try again.");
     expect(
       within(notice).getByRole("button", { name: "Re-read Skills" }),
@@ -415,7 +415,7 @@ describe("SkillsPanel", () => {
 
     fail = false;
     const notice = heading.closest<HTMLElement>('[role="status"]');
-    if (notice === null) throw new Error("the notice is not a status region");
+    if (notice === null) throw new Error("the notice isn't a status region");
     await userEvent.click(
       within(notice).getByRole("button", { name: "Re-read Skills" }),
     );

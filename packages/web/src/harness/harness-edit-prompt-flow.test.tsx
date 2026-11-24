@@ -345,9 +345,7 @@ describe("Harness — Edit prompt", () => {
     ).toBeInTheDocument();
     expect(
       pane.getByText(
-        sentence(
-          "Nothing was edited. Select Re-read Harness, then select Restore prompt.",
-        ),
+        sentence("Select Re-read Harness, then select Restore prompt."),
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("dialog")).toBeNull();

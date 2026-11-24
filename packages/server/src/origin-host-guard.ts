@@ -31,7 +31,7 @@ export const originHostGuard: MiddlewareHandler = async (c, next) => {
   const host = headerHostname(c.req.header("host"), { assumeScheme: true });
   if (host === null || !ALLOWED_HOSTNAMES.has(host)) {
     return c.json(
-      { error: "forbidden-host", message: "Request host is not allowed." },
+      { error: "forbidden-host", message: "Request host isn't allowed." },
       403,
     );
   }
@@ -41,7 +41,7 @@ export const originHostGuard: MiddlewareHandler = async (c, next) => {
   });
   if (origin === null || !ALLOWED_HOSTNAMES.has(origin)) {
     return c.json(
-      { error: "forbidden-origin", message: "Request origin is not allowed." },
+      { error: "forbidden-origin", message: "Request origin isn't allowed." },
       403,
     );
   }

@@ -444,8 +444,7 @@ function bulkDeployReportView(input: {
     return {
       tone: "error",
       targetLabel,
-      message:
-        "The Maestro server did not answer. Deploy to this target again.",
+      message: "The Maestro server didn't answer. Deploy to this target again.",
     };
   }
 

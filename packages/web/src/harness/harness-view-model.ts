@@ -116,7 +116,7 @@ export const stageSections = (state: HarnessState): StageSection[] =>
 export const harnessAnnouncement = (state: HarnessState, now: Date): string => {
   const stages = stageSections(state).map((section) => {
     if (section.read.outcome !== "read") {
-      return `${section.title} was not read.`;
+      return `${section.title} wasn't read.`;
     }
     const count = section.read.rows.length;
     if (count === 0) {

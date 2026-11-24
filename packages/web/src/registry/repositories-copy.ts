@@ -107,7 +107,7 @@ const unregisterHeadings: NoticeTable<"not-registered"> = {
 export function unregisterNotice(error: unknown): NoticeContent | null {
   return noticeFromTable(unregisterHeadings, error, {
     label: "Repository not unregistered",
-    message: `The list did not change. Select ${UNREGISTER_REPOSITORY} to try again.`,
+    message: `The list didn't change. Select ${UNREGISTER_REPOSITORY} to try again.`,
   });
 }
 
@@ -119,4 +119,4 @@ export const UNREGISTER_REPOSITORY = "Unregister repository";
 export const UNREGISTER_WHAT_STOPS =
   "Maestro stops tracking this folder and no longer shows it on Deploy-state.";
 export const UNREGISTER_WHAT_STAYS =
-  "Maestro does not change this folder or anything deployed in it.";
+  "Maestro doesn't change this folder or anything deployed in it.";

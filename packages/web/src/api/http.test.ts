@@ -38,7 +38,7 @@ describe("requestJson", () => {
           new Response(
             JSON.stringify({
               error: "remove-failed",
-              message: "apm did not confirm the removal.",
+              message: "apm didn't confirm the removal.",
               outcome: { scope: "repo", state: "not-removed" },
             }),
             { status: 502, headers: { "content-type": "application/json" } },
@@ -52,7 +52,7 @@ describe("requestJson", () => {
 
     expect(caught.body).toEqual({
       error: "remove-failed",
-      message: "apm did not confirm the removal.",
+      message: "apm didn't confirm the removal.",
       outcome: { scope: "repo", state: "not-removed" },
     });
   });

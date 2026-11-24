@@ -139,11 +139,9 @@ describe("PathField", () => {
       await screen.findByRole("button", { name: "Browse" }),
     );
 
-    expect(
-      await screen.findByText("Folder chooser did not work"),
-    ).toBeVisible();
+    expect(await screen.findByText("Folder chooser didn't work")).toBeVisible();
     const field = screen.getByRole("textbox");
     expect(field).toHaveValue("/Users/me");
-    expect(field).toHaveAccessibleDescription(/Folder chooser did not work/);
+    expect(field).toHaveAccessibleDescription(/Folder chooser didn't work/);
   });
 });

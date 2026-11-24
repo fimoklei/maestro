@@ -38,7 +38,7 @@ export const importPromptsConfirm = (count: number): string =>
       : `Import ${count} prompts`;
 
 export const CHOOSE_FILES_FIRST = "Choose files.";
-export const NO_PROMPT_QUALIFIES = "You cannot import any of these prompts.";
+export const NO_PROMPT_QUALIFIES = "You can't import any of these prompts.";
 export const NOTHING_CHECKED = "Check at least one prompt.";
 
 /** Why a chosen file is not offered, or why the import refused it. */
@@ -58,7 +58,7 @@ export const PROMPT_FILE_REFUSALS: Record<PromptFileRefusal, string> = {
     "Maestro reads only UTF-8 text. Save the file as UTF-8, then select it again.",
   "empty-name": `The file name has no letters or digits. ${RENAME}`,
   "invalid-name":
-    "The file name cannot become a prompt name. Use letters, digits and hyphens, up to 64 characters. Then select the file again.",
+    "The file name can't become a prompt name. Use letters, digits and hyphens, up to 64 characters. Then select the file again.",
   "same-name": `Another file has the same name. ${RENAME}`,
   "empty-description":
     "The file has no description in its front matter. Add one, then select the file again.",
@@ -112,5 +112,5 @@ const IMPORT_PROMPTS_ERRORS: NoticeTable<ImportPromptsError> = {
 export const importPromptsNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(IMPORT_PROMPTS_ERRORS, error, {
     label: NOT_CONFIRMED.label,
-    message: `The Maestro server did not respond, so some prompts may already be imported. Select ${CLOSE}, then check the Harness screen.`,
+    message: `The Maestro server didn't respond, so some prompts may already be imported. Select ${CLOSE}, then check the Harness screen.`,
   });

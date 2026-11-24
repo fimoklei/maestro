@@ -11,7 +11,7 @@ const cloneSyncCauses: Record<
 > = {
   behind: {
     message: `The clone is behind the default branch. Select ${rereadLabel("Harness")} to update it.`,
-    detail: "The last check could not move it forward.",
+    detail: "The last check couldn't move it forward.",
   },
   "local-changes": {
     message: `Your local changes are as they were. Commit or undo them in your Git tool, then select ${rereadLabel("Harness")}.`,
@@ -19,16 +19,16 @@ const cloneSyncCauses: Record<
       "They differ from the default branch on GitHub, so Maestro left the clone alone.",
   },
   diverged: {
-    message: `Your local commits are as they were. Pull the default branch into the Harness clone, then select ${rereadLabel("Harness")}.`,
-    detail: "The clone and GitHub each hold commits the other does not.",
+    message: `Your local commits are as they were. Pull the default branch into your clone, then select ${rereadLabel("Harness")}.`,
+    detail: "The clone and GitHub each hold commits the other doesn't.",
   },
   "no-upstream": {
     message: `Set an upstream branch in your Git tool, then select ${rereadLabel("Harness")}.`,
-    detail: "The checked-out branch does not follow a branch on GitHub.",
+    detail: "The checked-out branch doesn't follow a branch on GitHub.",
   },
   unreadable: {
-    message: `Check the Harness clone with your Git tool, then select ${rereadLabel("Harness")}.`,
-    detail: "Maestro could not read where the clone stands.",
+    message: `Check your clone with your Git tool, then select ${rereadLabel("Harness")}.`,
+    detail: "Maestro couldn't read where the clone stands.",
   },
 };
 

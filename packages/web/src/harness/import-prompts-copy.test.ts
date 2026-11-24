@@ -16,7 +16,7 @@ describe("import prompts copy", () => {
   });
 
   it("states why the confirm is blocked", () => {
-    expect(NO_PROMPT_QUALIFIES).toBe("You cannot import any of these prompts.");
+    expect(NO_PROMPT_QUALIFIES).toBe("You can't import any of these prompts.");
     expect(NOTHING_CHECKED).toBe("Check at least one prompt.");
   });
 
@@ -27,7 +27,7 @@ describe("import prompts copy", () => {
       "empty-name":
         "The file name has no letters or digits. Rename the file, then select it again.",
       "invalid-name":
-        "The file name cannot become a prompt name. Use letters, digits and hyphens, up to 64 characters. Then select the file again.",
+        "The file name can't become a prompt name. Use letters, digits and hyphens, up to 64 characters. Then select the file again.",
       "same-name":
         "Another file has the same name. Rename the file, then select it again.",
       "empty-description":
@@ -60,7 +60,7 @@ describe("import prompts copy", () => {
       level: "error",
       label: "Import not confirmed",
       message:
-        "The Maestro server did not respond, so some prompts may already be imported. Select Close, then check the Harness screen.",
+        "The Maestro server didn't respond, so some prompts may already be imported. Select Close, then check the Harness screen.",
     });
   });
 });

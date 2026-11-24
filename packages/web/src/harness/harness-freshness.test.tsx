@@ -183,7 +183,7 @@ describe("Harness freshness and failed reads", () => {
     expect(await screen.findByText("Status out of date")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Maestro could not reach GitHub, so these rows are from the last read.",
+        "Maestro couldn't reach GitHub, so these rows are from the last read.",
       ),
     ).toBeInTheDocument();
   });

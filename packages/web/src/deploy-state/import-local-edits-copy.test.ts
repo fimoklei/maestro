@@ -40,7 +40,7 @@ describe("Import local edits copy", () => {
       "To keep all edits, merge them into one folder yourself. Then select Close, select Re-read Deploy-state, then select Import local edits again.",
     );
     expect(UNSELECTED_COPIES_LINE).toBe(
-      "Copies you do not select stay as they are. Update target replaces them only if you check Discard local edits.",
+      "Copies you don't select stay as they are. Update target replaces them only if you check Discard local edits.",
     );
     expect(SELECT_A_COPY).toBe("Select a copy.");
   });
@@ -74,8 +74,8 @@ describe("Import local edits copy", () => {
   });
 
   it("names the refused group, an empty target and the landed skills' next step", () => {
-    expect(cannotBeImportedLegend(2)).toBe("✕ Cannot be imported · 2");
-    expect(NO_SKILL_QUALIFIES).toBe("You cannot import any of these skills.");
+    expect(cannotBeImportedLegend(2)).toBe("✕ Can't be imported · 2");
+    expect(NO_SKILL_QUALIFIES).toBe("You can't import any of these skills.");
     expect(NOTHING_CHECKED).toBe("Check at least one skill.");
     expect(NO_LOCAL_EDITS).toBe("No local edits");
     expect(plainText(noLocalEditsLine("…/me/project"))).toBe(
@@ -108,7 +108,7 @@ describe("Import local edits copy", () => {
     [
       "unfinished-operation",
       "Unfinished operation",
-      "An earlier change on this target did not finish. Finish it on the Deploy-state screen, then select Import local edits again.",
+      "An earlier change on this target didn't finish. Finish it on the Deploy-state screen, then select Import local edits again.",
     ],
     [
       "target-unreadable",
@@ -137,7 +137,7 @@ describe("Import local edits copy", () => {
       {
         label: "Import not confirmed",
         message:
-          "The Maestro server did not respond, so some skills may have landed. Select Close, then check the Harness screen.",
+          "The Maestro server didn't respond, so some skills may have landed. Select Close, then check the Harness screen.",
       },
     );
   });

@@ -5,25 +5,25 @@ import { type NoticeTable, noticeFromTable } from "./notice-table";
 const chooserHeadings: NoticeTable<ChooseFolderError> = {
   "chooser-failed": {
     level: "error",
-    label: "Folder chooser did not work",
-    message: "The field did not change. Type or paste the folder path.",
+    label: "Folder chooser didn't work",
+    message: "The field didn't change. Type or paste the folder path.",
   },
   "chooser-busy": {
     level: "error",
     label: "Folder chooser already open",
-    message: "The field did not change. Choose the folder in the open chooser.",
+    message: "The field didn't change. Choose the folder in the open chooser.",
   },
   "chooser-unavailable": {
     level: "error",
     label: "No folder chooser on this computer",
-    message: "The field did not change. Type or paste the folder path.",
+    message: "The field didn't change. Type or paste the folder path.",
   },
 };
 
 export function chooserNotice(error: unknown): NoticeContent | null {
   return noticeFromTable(chooserHeadings, error, {
-    label: "Folder chooser did not open",
+    label: "Folder chooser didn't open",
     message:
-      "The field did not change. Select Browse to try again, or type the folder path.",
+      "The field didn't change. Select Browse to try again, or type the folder path.",
   });
 }

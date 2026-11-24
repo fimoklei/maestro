@@ -83,7 +83,7 @@ const FILES_MAY_REMAIN =
   "Some of the skill's files may still be in the target.";
 
 const LINK_TARGET_SURVIVES =
-  "Deleting the link does not delete the folder it points to.";
+  "Deleting the link doesn't delete the folder it points to.";
 
 type Body = { message: string; detail?: string };
 
@@ -122,7 +122,7 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
   },
   "inventory-origin-unavailable": {
     message:
-      "Nothing was deployed. Point the Harness clone's origin at its GitHub repository, then deploy again.",
+      "Nothing was deployed. Point your clone's origin at its GitHub repository, then deploy again.",
     detail: "A deploy takes the skill from a GitHub tag, over https or ssh.",
   },
   "no-published-tag": {
@@ -157,7 +157,7 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
     message:
       "Nothing was deployed. Repair or delete apm.lock.yaml in the target, then deploy again.",
     detail:
-      "The file is present but does not parse, so the target's state is unknown.",
+      "The file is present but doesn't parse, so the target's state is unknown.",
   },
   "deploy-in-progress": {
     message:
@@ -170,7 +170,7 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
   },
   "not-at-target-release": {
     message: `Nothing was deployed. Select ${UPDATE_TARGET} on the Deploy-state screen to move this target to a release that holds the skill.`,
-    detail: "This skill is not in the release this target follows.",
+    detail: "This skill isn't in the release this target follows.",
     recovery: UPDATE_TARGET_RECOVERY,
   },
   "target-pinned-per-skill": {
@@ -185,7 +185,7 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
   "operation-unfinished": {
     message:
       "Nothing was deployed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
-    detail: "An earlier change on this target did not finish.",
+    detail: "An earlier change on this target didn't finish.",
   },
   "deploy-incomplete": {
     message: `Some deployed skills are missing from the target. Open the target on the Deploy-state screen and select ${RETRY_DEPLOY}.`,
@@ -208,14 +208,14 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
   "tag-check-timed-out": {
     message:
       "Nothing was deployed. Check your network connection, then deploy again.",
-    detail: "The latest release did not load within 1 minute.",
+    detail: "The latest release didn't load within 1 minute.",
   },
   "deploy-timed-out": {
     message: `The deploy ${STOPPED_AFTER} On the Deploy-state screen, select ${RETRY_DEPLOY}.`,
     detail: "Some deployed skills may be missing from the target.",
   },
   "deploy-failed": {
-    message: `The deploy did not finish. On the Deploy-state screen, select ${RETRY_DEPLOY}.`,
+    message: `The deploy didn't finish. On the Deploy-state screen, select ${RETRY_DEPLOY}.`,
     detail: "Some of the skill's files may be in the target.",
   },
   "deploy-not-started": {
@@ -245,25 +245,25 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   "lockfile-malformed": {
     message: "Repair or delete apm.lock.yaml in the target, then remove again.",
     detail:
-      "The file is present but does not parse, so nothing can name what to remove.",
+      "The file is present but doesn't parse, so nothing can name what to remove.",
   },
   "ref-unresolvable": {
     message:
       "A removal could delete the wrong package. Deploy the skill again to restore a readable entry.",
     detail:
-      "Its reference does not point at this skill the way a Maestro deploy would.",
+      "Its reference doesn't point at this skill the way a Maestro deploy would.",
   },
   "deployed-unreadable": {
     message:
       "Nothing can say what a removal would delete. Make the deployed copy readable, then remove again.",
   },
   "deployed-diverged-from-lock": {
-    message: "The skill was not removed. Its files changed after deployment.",
+    message: "The skill wasn't removed. Its files changed after deployment.",
     detail: LOCAL_CHANGES_NEXT_STEP,
   },
   "deployed-diverged-pinned-per-skill": {
-    message: "The skill was not removed. Its files changed after deployment.",
-    detail: `Save the changes. Restore the files from the skill's deployed version in the Harness clone, then select ${REMOVE_SKILL} again.`,
+    message: "The skill wasn't removed. Its files changed after deployment.",
+    detail: `Save the changes. Restore the files from the skill's deployed version in your clone, then select ${REMOVE_SKILL} again.`,
   },
   "cost-not-acknowledged": {
     message: `Nothing was removed. A copy changed after the check. Read the list again, then select ${REMOVE_SKILL}.`,
@@ -279,7 +279,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   },
   "operation-unfinished": {
     message:
-      "An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then remove the skill again.",
+      "An earlier change on this target didn't finish. Open the target on the Deploy-state screen and finish that change, then remove the skill again.",
   },
   "remove-incomplete": {
     message: `The skill's files are still in the target. Select ${RETRY_REMOVAL} to run the same removal again.`,
@@ -305,7 +305,7 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
 };
 
 const UNKNOWN_DETAIL =
-  "A dropped connection, or a failure this version of Maestro does not name.";
+  "A dropped connection, or a failure this version of Maestro doesn't name.";
 
 // A failure with no code — a dropped connection, or a code this build predates.
 const UNKNOWN_DEPLOY: DeployStateNotice = {
@@ -337,7 +337,7 @@ const UNKNOWN_UPDATE_RUN: DeployStateNotice = {
 // Global: nothing read the folders back, so any of them may have changed.
 const UNKNOWN_GLOBAL_UPDATE_RUN: DeployStateNotice = {
   label: UNKNOWN_UPDATE_RUN.label,
-  message: "Maestro could not confirm that the update finished.",
+  message: "Maestro couldn't confirm that the update finished.",
   detail: `Some folders may have changed. Check them on the Deploy-state screen, ${UPDATE_AGAIN}`,
 };
 
@@ -355,7 +355,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
   "lockfile-malformed": {
     message: `Repair or delete apm.lock.yaml in the target, ${UPDATE_AGAIN}`,
     detail:
-      "The file is present but does not parse, so the target's state is unknown.",
+      "The file is present but doesn't parse, so the target's state is unknown.",
   },
   "deployed-unreadable": {
     message: `Nothing was changed. Make the deployed copy readable, ${UPDATE_AGAIN}`,
@@ -372,7 +372,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
     detail: "An update moves the target to a published tag.",
   },
   "inventory-origin-unavailable": {
-    message: `Point the Harness clone's origin at its GitHub repository, ${UPDATE_AGAIN}`,
+    message: `Point your clone's origin at its GitHub repository, ${UPDATE_AGAIN}`,
     detail: "An update takes the skill from a GitHub tag, over https or ssh.",
   },
   "ref-unresolvable": {
@@ -380,7 +380,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
     detail: "The target's record names more than one, or names no release.",
   },
   "skill-not-in-release": {
-    message: `The latest release does not hold this skill. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
+    message: `The latest release doesn't hold this skill. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`,
     detail: "Nothing was changed, and the target keeps its own release.",
   },
   "destination-symlinked": {
@@ -402,7 +402,7 @@ const UPDATE: Record<UpdateRunError, Body> = {
       "An update is still running on this target. Wait for it to finish.",
   },
   "operation-unfinished": {
-    message: `An earlier change on this target did not finish. Open the target on the Deploy-state screen and finish that change, then select ${UPDATE_TARGET} again.`,
+    message: `An earlier change on this target didn't finish. Open the target on the Deploy-state screen and finish that change, then select ${UPDATE_TARGET} again.`,
   },
   "deployed-diverged-from-lock": {
     message: `Nothing was changed. Select ${UPDATE_TARGET} again to review the local edits before updating.`,
@@ -590,7 +590,7 @@ export function removeNotice(error: unknown): DeployStateNotice {
     ? notice
     : {
         ...notice,
-        message: phrase`The skill was not removed. Its files in ${machineList(folders)} changed after deployment.`,
+        message: phrase`The skill wasn't removed. Its files in ${machineList(folders)} changed after deployment.`,
         ...(notWritten.length === 0
           ? {}
           : { detail: notWrittenEditsStep(notWritten) }),
@@ -600,8 +600,8 @@ export function removeNotice(error: unknown): DeployStateNotice {
 /** The way out for edits in a folder Global does not write: the user deletes the copy. */
 const notWrittenEditsStep = (folders: readonly string[]): Copy =>
   folders.length === 1
-    ? phrase`Global does not write to ${machineList(folders)} because its tool is not detected. Delete the copy yourself. Then select ${REMOVE_SKILL} again.`
-    : phrase`Global does not write to ${machineList(folders)} because their tools are not detected. Delete the copies yourself. Then select ${REMOVE_SKILL} again.`;
+    ? phrase`Global doesn't write to ${machineList(folders)} because its tool isn't detected. Delete the copy yourself. Then select ${REMOVE_SKILL} again.`
+    : phrase`Global doesn't write to ${machineList(folders)} because their tools aren't detected. Delete the copies yourself. Then select ${REMOVE_SKILL} again.`;
 
 const EDITED_COPY_REFUSALS: readonly string[] = [
   "deployed-diverged-from-lock",
@@ -680,7 +680,7 @@ function retryCopy(
       label: REASON["lockfile-malformed"],
       message: `Nothing was changed. Repair or delete apm.lock.yaml in the target, ${again}`,
       detail:
-        "The file is present but does not parse, so the target's state is unknown.",
+        "The file is present but doesn't parse, so the target's state is unknown.",
     },
     "manifest-not-recognised": {
       label: REASON["manifest-not-recognised"],

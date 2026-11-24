@@ -171,7 +171,7 @@ describe("the pull-request row", () => {
     ],
     [
       { state: "no-usable-origin" },
-      "The Harness clone has no GitHub origin. Point the clone's origin at the Harness repository on GitHub, then select Re-read Categories.",
+      "Your clone has no GitHub origin. Point the clone's origin at the Harness repository on GitHub, then select Re-read Categories.",
       "Point the clone's origin at GitHub first.",
     ],
   ])("states %j", (row, sentence, blocked) => {
@@ -258,7 +258,7 @@ describe("the Update pull request dialog", () => {
       pullRequestNotice(new TypeError("fetch failed"), 45, null),
     ).toMatchObject({
       message:
-        "The Maestro server did not respond, so the pull request may already be updated. Select Close, then check the Harness screen.",
+        "The Maestro server didn't respond, so the pull request may already be updated. Select Close, then check the Harness screen.",
     });
     expect(
       pullRequestNotice(new HttpError(502, "", "promote-failed"), 45, null),
@@ -323,7 +323,7 @@ describe("the Create pull request dialog", () => {
     ).toMatchObject({
       label: "Pull request not confirmed",
       message:
-        "The Maestro server did not respond, so the pull request may already be open. Select Close, then check the Harness screen.",
+        "The Maestro server didn't respond, so the pull request may already be open. Select Close, then check the Harness screen.",
     });
   });
 
@@ -350,7 +350,7 @@ describe("the Create pull request dialog", () => {
       message:
         "Your categories stay as they are. Select Close, then select Create pull request again.",
       detail:
-        "Maestro deleted the branch of pull request #45, then could not push a new branch. Pull request #45 stays closed.",
+        "Maestro deleted the branch of pull request #45, then couldn't push a new branch. Pull request #45 stays closed.",
     });
   });
 

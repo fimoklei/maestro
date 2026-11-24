@@ -36,11 +36,11 @@ describe("readRemovePreflight", () => {
   describe("fails closed on a body this build cannot read", () => {
     it.each([
       [
-        "a warning it does not know",
+        "a warning it doesn't know",
         { check: { scope: "repo", warning: "copy-on-fire" } },
       ],
       [
-        "a per-tool row with a warning it does not know",
+        "a per-tool row with a warning it doesn't know",
         {
           check: {
             scope: "global",
@@ -79,7 +79,7 @@ describe("readRemovePreflight", () => {
         },
       ],
       [
-        "a folder row that does not say whether its tool is detected",
+        "a folder row that doesn't say whether its tool is detected",
         {
           check: {
             scope: "global",
@@ -96,10 +96,10 @@ describe("readRemovePreflight", () => {
         { check: { scope: "global", tools: null } },
       ],
       [
-        "a receipt that is not a string",
+        "a receipt that isn't a string",
         { check: { scope: "repo", warning: null }, receipt: 7 },
       ],
-      ["a body that is not an object", null],
+      ["a body that isn't an object", null],
       ["a string body", "nope"],
     ])("%s", (_case, body) => {
       expect(readRemovePreflight(body)).toBeNull();

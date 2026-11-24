@@ -132,7 +132,7 @@ export function BulkRemoveDialog({
               },
               {
                 tone: "failed",
-                legend: `${LIST_TOKENS.failed.glyph} Cannot be removed · ${grouped.refused.length}`,
+                legend: `${LIST_TOKENS.failed.glyph} Can't be removed · ${grouped.refused.length}`,
                 ...(grouped.refusedNote === null
                   ? {}
                   : { note: grouped.refusedNote }),

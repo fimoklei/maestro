@@ -12,7 +12,7 @@ import { ITEM_WORDS } from "./item-words";
 import { harnessHeadings, invalidNameHeading } from "./notice-copy";
 
 /** The one hint the prompt box shows, under Example. */
-export const EXAMPLE_HINT = "Optional example prompt.";
+export const EXAMPLE_HINT = "Add an example of the prompt, or leave empty.";
 
 /** The accessible name of the Prompt text / Example switch. */
 export const PROMPT_BOX_LABEL = "Prompt text or example";
@@ -55,12 +55,15 @@ type NoticeCode = Exclude<
 >;
 
 const EDIT_OUTCOME = {
-  nothing: "Nothing was edited.",
+  nothing: "Nothing changed.",
   heading: "Prompt not edited",
 };
 
 /** The edit dialog's title, on the prompt the reader chose. */
 export const editPromptTitle = (prompt: string) => `Edit ${prompt}`;
+
+export const EDIT_CHANGES =
+  "Editing changes the prompt file in your clone. Prompts shows the released text until you propose the change and release it.";
 
 /** Why Edit prompt is blocked while both fields hold what was read. */
 export const NOTHING_CHANGED =
@@ -73,33 +76,66 @@ export const longTextNotice = (confirm: string) => ({
   message: `Shorten the text to 100 KB or less. Then select ${confirm}.`,
 });
 
+const HARNESS_BUSY_NOTICE = {
+  level: "error" as const,
+  label: HARNESS_BUSY,
+  message: `Wait for that change to finish, then select ${EDIT_PROMPT} again.`,
+  detail: "Maestro changes one Harness at a time.",
+};
+const NOT_CONFIGURED = {
+  ...harnessHeadings["not-configured"],
+  message: `${CHANGE_LOCATION_STEP}, then select ${EDIT_PROMPT} again.`,
+};
+const LINK_IN_HARNESS = {
+  level: "error" as const,
+  label: "Link in the Harness",
+  detail: "The .maestro/prompts folder or the prompt file is a link.",
+};
+const REPLACE_LINK = `Replace the link with a real file or folder, then select ${EDIT_PROMPT} again.`;
+const NOT_READ = {
+  level: "error" as const,
+  label: "Couldn't read the prompt in your clone",
+};
+const MAKE_READABLE = `Make the .maestro/prompts folder and the prompt file readable, then select ${EDIT_PROMPT} again.`;
+const NO_RESPONSE = `The Maestro server didn't respond. Select ${EDIT_PROMPT} again.`;
+
+type ReadCode = Extract<
+  NoticeCode,
+  | "not-configured"
+  | "destination-unsafe"
+  | "destination-unreadable"
+  | "import-in-progress"
+>;
+
+const READ_HEADINGS: NoticeTable<ReadCode> = {
+  "not-configured": NOT_CONFIGURED,
+  "destination-unsafe": { ...LINK_IN_HARNESS, message: REPLACE_LINK },
+  "destination-unreadable": { ...NOT_READ, message: MAKE_READABLE },
+  "import-in-progress": HARNESS_BUSY_NOTICE,
+};
+
+const promptOpenNotice = (error: unknown): NoticeContent | null =>
+  noticeFromTable(READ_HEADINGS, error, {
+    label: NOT_READ.label,
+    message: NO_RESPONSE,
+  });
+
 const EDIT_HEADINGS: NoticeTable<NoticeCode> = {
-  "not-configured": {
-    ...harnessHeadings["not-configured"],
-    message: `${CHANGE_LOCATION_STEP}, then select ${EDIT_PROMPT} again.`,
-  },
+  "not-configured": NOT_CONFIGURED,
   "long-text": longTextNotice(EDIT_PROMPT),
   "destination-unsafe": {
-    level: "error",
-    label: "Link in the Harness",
-    message: `${EDIT_OUTCOME.nothing} Replace the link with a real file or folder, then select ${EDIT_PROMPT} again.`,
-    detail: "The .maestro/prompts folder or the prompt file is a link.",
+    ...LINK_IN_HARNESS,
+    message: `${EDIT_OUTCOME.nothing} ${REPLACE_LINK}`,
   },
   "destination-unreadable": {
-    level: "error",
-    label: "Prompts folder not read",
-    message: `${EDIT_OUTCOME.nothing} Make the Harness clone readable, then select ${EDIT_PROMPT} again.`,
+    ...NOT_READ,
+    message: `${EDIT_OUTCOME.nothing} ${MAKE_READABLE}`,
   },
-  "import-in-progress": {
-    level: "error",
-    label: HARNESS_BUSY,
-    message: `Wait for that change to finish, then select ${EDIT_PROMPT} again.`,
-    detail: "Maestro changes one Harness at a time.",
-  },
+  "import-in-progress": HARNESS_BUSY_NOTICE,
   "write-failed": {
     level: "error",
     label: EDIT_OUTCOME.heading,
-    message: `The Harness is as it was. Make the prompts folder writable, then select ${EDIT_PROMPT} again.`,
+    message: `${EDIT_OUTCOME.nothing} Make the prompt file writable, then select ${EDIT_PROMPT} again.`,
   },
 };
 
@@ -107,8 +143,8 @@ const EDIT_HEADINGS: NoticeTable<NoticeCode> = {
 // checks the same rules first, so only the codes below reach this table.
 const promptWriteNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(EDIT_HEADINGS, error, {
-    label: EDIT_OUTCOME.heading,
-    message: `The Maestro server did not answer, and nothing reached the Harness. Select ${EDIT_PROMPT} again.`,
+    label: "Couldn't confirm the edit",
+    message: NO_RESPONSE,
   });
 
 /** The screen Edit prompt opened on, which names the way to Restore prompt. */
@@ -157,9 +193,9 @@ export const harnessPromptReadNotice = (
     ? {
         level: "error",
         label: NOT_IN_CLONE,
-        message: `${EDIT_OUTCOME.nothing} ${RESTORE_STEP.harness}`,
+        message: RESTORE_STEP.harness,
       }
-    : promptWriteNotice(error);
+    : promptOpenNotice(error);
 
 /** A read on the Prompts screen that opened no dialog. */
 export const promptReadNotice = (
@@ -189,4 +225,4 @@ export const promptReadNotice = (
               detail: phrase`${named(name)} is on ${machine(origin)} but not in your clone.`,
             }),
       }
-    : promptWriteNotice(error);
+    : promptOpenNotice(error);

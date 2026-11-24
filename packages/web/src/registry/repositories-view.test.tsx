@@ -159,7 +159,7 @@ describe("Repositories", () => {
       "Maestro stops tracking this folder and no longer shows it on Deploy-state.",
     );
     expect(dialog).toHaveTextContent(
-      "Maestro does not change this folder or anything deployed in it.",
+      "Maestro doesn't change this folder or anything deployed in it.",
     );
     await waitFor(() =>
       expect(

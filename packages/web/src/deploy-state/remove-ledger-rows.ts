@@ -26,7 +26,7 @@ export type RemoveLedgerRow = {
 
 const WARNING_STATUS: Record<Exclude<RemoveRowWarning, "none">, string> = {
   "cannot-verify": "Nothing recorded — may lose work",
-  "check-failed": "Check did not run — may lose work",
+  "check-failed": "Check didn't run — may lose work",
 };
 
 // Before an answer, or where it failed, no row has been checked.

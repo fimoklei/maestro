@@ -27,7 +27,7 @@ export const canBeImportedLegend = (count: number): string =>
   `Can be imported · ${count}`;
 
 export const cannotBeImportedLegend = (count: number): string =>
-  `${LIST_TOKENS.failed.glyph} Cannot be imported · ${count}`;
+  `${LIST_TOKENS.failed.glyph} Can't be imported · ${count}`;
 
 export const ALREADY_IN_HARNESS = "Already in the Harness";
 
@@ -43,10 +43,10 @@ export const copiesDifferLegend = (count: number): string =>
 export const COPIES_DIFFER_LINE = "The copies differ. Select one to import.";
 export const COPY_TO_IMPORT = "Copy to import";
 export const MERGE_COPIES_LINE = `To keep all edits, merge them into one folder yourself. Then select ${CLOSE}, select ${rereadLabel("Deploy-state")}, then select ${IMPORT_LOCAL_EDITS} again.`;
-export const UNSELECTED_COPIES_LINE = `Copies you do not select stay as they are. ${UPDATE_TARGET} replaces them only if you check ${DISCARD_LOCAL_EDITS}.`;
+export const UNSELECTED_COPIES_LINE = `Copies you don't select stay as they are. ${UPDATE_TARGET} replaces them only if you check ${DISCARD_LOCAL_EDITS}.`;
 export const SELECT_A_COPY = "Select a copy.";
 
-export const NO_SKILL_QUALIFIES = "You cannot import any of these skills.";
+export const NO_SKILL_QUALIFIES = "You can't import any of these skills.";
 export const NOTHING_CHECKED = "Check at least one skill.";
 
 export const NO_LOCAL_EDITS = "No local edits";
@@ -84,7 +84,7 @@ const NOT_CHECKED = {
 
 export const NOT_CONFIRMED = {
   label: "Import not confirmed",
-  message: `The Maestro server did not respond, so some skills may have landed. Select ${CLOSE}, then check the Harness screen.`,
+  message: `The Maestro server didn't respond, so some skills may have landed. Select ${CLOSE}, then check the Harness screen.`,
 };
 
 // Headings shared with the other surfaces that meet the same block.
@@ -102,7 +102,7 @@ const LOCAL_EDITS_ERRORS: NoticeTable<LocalEditsError> = {
   "unfinished-operation": {
     level: "error",
     label: REASON["operation-unfinished"],
-    message: `An earlier change on this target did not finish. Finish it on the Deploy-state screen, then select ${IMPORT_LOCAL_EDITS} again.`,
+    message: `An earlier change on this target didn't finish. Finish it on the Deploy-state screen, then select ${IMPORT_LOCAL_EDITS} again.`,
   },
   "target-unreadable": {
     level: "error",

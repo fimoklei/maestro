@@ -220,7 +220,7 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
 
       expect(await within(dialog).findByRole("alert")).toHaveTextContent(
-        /The skill was not removed. Its files changed after deployment/,
+        /The skill wasn't removed. Its files changed after deployment/,
       );
       expect(dialog).toHaveTextContent(
         /Select Deploy skill to restore the released files. Then remove the skill/,
@@ -236,7 +236,7 @@ describe("removing a deployed skill from a row", () => {
       const dialog = await openRemoveDialog();
 
       expect(
-        await within(dialog).findByText("Check did not run — may lose work"),
+        await within(dialog).findByText("Check didn't run — may lose work"),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: CONFIRM })).toBeEnabled();
     });

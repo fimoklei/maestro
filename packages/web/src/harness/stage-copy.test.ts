@@ -344,7 +344,7 @@ describe("Detail sentences", () => {
     [
       "not-yet-proposed",
       { change: "addition" },
-      "This prompt is not in the next release yet. Select Propose change to send it for review.",
+      "This prompt isn't in the next release yet. Select Propose change to send it for review.",
       null,
     ],
     [

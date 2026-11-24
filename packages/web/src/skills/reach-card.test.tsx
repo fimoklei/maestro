@@ -85,7 +85,7 @@ describe("ReachCard", () => {
     );
 
     expect(
-      screen.getByText("Some targets could not be read."),
+      screen.getByText("Some targets couldn't be read."),
     ).toBeInTheDocument();
   });
 
@@ -103,7 +103,7 @@ describe("ReachCard", () => {
     for (const line of [
       screen.getByText(sentence("Deployed to 5 targets.")).closest("p"),
       screen.getByText("And 2 more."),
-      screen.getByText("Some targets could not be read."),
+      screen.getByText("Some targets couldn't be read."),
     ]) {
       expect(line).toHaveClass("text-gray-12");
     }

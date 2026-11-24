@@ -117,7 +117,7 @@ describe("Harness import of several skills", () => {
     ).toBeChecked();
     expect(within(ready).getByRole("checkbox", { name: "tdd" })).toBeChecked();
     const refused = within(dialog).getByRole("group", {
-      name: "✕ Cannot be imported · 1",
+      name: "✕ Can't be imported · 1",
     });
     const broken = within(refused).getByRole("checkbox", {
       name: "notes-helper",
@@ -412,13 +412,13 @@ describe("Harness import of several skills", () => {
     const dialog = await openImportSkills(user);
 
     const refused = within(dialog).getByRole("group", {
-      name: "✕ Cannot be imported · 1",
+      name: "✕ Can't be imported · 1",
     });
     const review = within(refused).getByRole("checkbox", { name: "review" });
     expect(review).toHaveAttribute("aria-disabled", "true");
     expectDescription(
       review,
-      "The Harness clone has uncommitted changes to this skill. Commit or undo them, then select Import skills again.",
+      "Your clone has uncommitted changes to this skill. Commit or undo them, then select Import skills again.",
     );
   });
 

@@ -98,7 +98,7 @@ describe("Repositories — GitHub column", () => {
 
     expect(
       await screen.findByText(
-        "The origin of this repository could not be read. Select Re-read Repositories to read it again.",
+        "The origin of this repository couldn't be read. Select Re-read Repositories to read it again.",
       ),
     ).toBeInTheDocument();
   });

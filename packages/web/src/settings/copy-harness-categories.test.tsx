@@ -390,7 +390,7 @@ describe("Copy Harness categories", () => {
       "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
     ],
     [
-      "a release Maestro could not read",
+      "a release Maestro couldn't read",
       () => jsonResponse({ error: "harness-categories-unread" }, 503),
       "Maestro couldn't read the latest Harness release. Select Copy categories to try again.",
     ],
@@ -428,7 +428,7 @@ describe("Copy Harness categories", () => {
       "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
     ],
     [
-      "a release Maestro could not read",
+      "a release Maestro couldn't read",
       () => jsonResponse({ error: "harness-categories-unread" }, 503),
       "Maestro couldn't read the latest Harness release. Select Close, then select Copy from Harness to try again.",
     ],

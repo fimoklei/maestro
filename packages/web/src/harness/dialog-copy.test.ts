@@ -65,16 +65,16 @@ describe("Harness dialog copy", () => {
 
   it("names the pull request in a withdrawal only where one is open (#1639)", () => {
     expect(plainText(withdrawBody("skill", true))).toBe(
-      "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
+      "This replaces the skill folder in your clone with its copy in the next release. You can't recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
     );
     expect(plainText(withdrawBody("skill", false))).toBe(
-      "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
+      "This replaces the skill folder in your clone with its copy in the next release. You can't recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
     );
   });
 
   it("replaces a discarded change with its copy in the next release", () => {
     expect(plainText(discardBody("prompt"))).toBe(
-      "This replaces the prompt file in your clone with its copy in the next release. You cannot recover your changes.",
+      "This replaces the prompt file in your clone with its copy in the next release. You can't recover your changes.",
     );
   });
 
@@ -128,12 +128,12 @@ describe("Harness dialog copy", () => {
     expect(one?.level).toBe("warning");
     expect(one?.label).toBe("Release uses older versions");
     expect(plainText(one?.message ?? "")).toBe(
-      "These skills and prompts have newer changes that are not merged: research.",
+      "These skills and prompts have newer changes that aren't merged: research.",
     );
     expect(
       plainText(inFlightNotice(["research", "standup", "tdd"])?.message ?? ""),
     ).toBe(
-      "These skills and prompts have newer changes that are not merged: research, standup and tdd.",
+      "These skills and prompts have newer changes that aren't merged: research, standup and tdd.",
     );
   });
 
@@ -153,7 +153,7 @@ describe("Harness dialog copy", () => {
   it("states each release check as a fact about the skill", () => {
     expect(FINDING_TEXT).toEqual({
       "missing-manifest": "has no SKILL.md.",
-      "invalid-frontmatter": "has frontmatter Maestro cannot read.",
+      "invalid-frontmatter": "has frontmatter Maestro can't read.",
       "empty-description": "has an empty description.",
     });
   });

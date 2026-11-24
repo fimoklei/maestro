@@ -44,7 +44,7 @@ export const inFlightNotice = (
     : {
         level: "warning",
         label: "Release uses older versions",
-        message: phrase`These skills and prompts have newer changes that are not merged: ${namedList(names)}.`,
+        message: phrase`These skills and prompts have newer changes that aren't merged: ${namedList(names)}.`,
       };
 
 export const ROOT_SKILL_FILE = "SKILL.md at the Harness root";
@@ -62,7 +62,7 @@ export const rootSkillFileNotice = (defaultBranch: string): NoticeContent => ({
 // Follows the skill's name in the release's checks notice.
 export const FINDING_TEXT: Record<StructuralProblem, string> = {
   "missing-manifest": "has no SKILL.md.",
-  "invalid-frontmatter": "has frontmatter Maestro cannot read.",
+  "invalid-frontmatter": "has frontmatter Maestro can't read.",
   "empty-description": "has an empty description.",
 };
 
@@ -71,7 +71,7 @@ export const DELETION_CHECKING = "Checking for uncommitted changes…";
 export const restoreTitle = (name: string) => `Restore ${name}`;
 
 export const restoreBody = (type: HarnessPrimitiveType): Phrase =>
-  phrase`${ITEM_WORDS[type].restoreLabel} brings back the ${ITEM_WORDS[type].holder} from your last local commit. Later changes do not come back.`;
+  phrase`${ITEM_WORDS[type].restoreLabel} brings back the ${ITEM_WORDS[type].holder} from your last local commit. Later changes don't come back.`;
 
 export const RESTORE_KEEPS_PROPOSAL = "Your proposal remains unchanged.";
 
@@ -83,7 +83,7 @@ export const RESTORED_FROM_HINT =
 // An item no target holds has no deployed copies to mention.
 const replacesInClone = (type: HarnessPrimitiveType): Phrase => {
   const w = ITEM_WORDS[type];
-  return phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy in ${NEXT_RELEASE}. You cannot recover your changes.`;
+  return phrase`This replaces the ${w.noun} ${w.holder} in your clone with its copy in ${NEXT_RELEASE}. You can't recover your changes.`;
 };
 
 const withDeployedCopies = (type: HarnessPrimitiveType, body: Phrase) =>
@@ -191,7 +191,7 @@ export const UNPROPOSED_UNKNOWN_NOTICE: NoticeContent = {
   level: "warning",
   label: "Changes not checked",
   message: `${WITHDRAW_PROPOSAL} discards any change you made after proposing. ${KEEP_OUTSIDE_CLONE}`,
-  detail: "Maestro could not compare your clone with the proposal branch.",
+  detail: "Maestro couldn't compare your clone with the proposal branch.",
 };
 
 export const NO_CHANGE_SINCE_RELEASE =

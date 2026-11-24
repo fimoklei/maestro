@@ -59,7 +59,7 @@ export function bulkRemoveReportView(input: {
           kind: "outcome-unknown",
           label: "Outcome unknown",
           message: OUTCOME_UNKNOWN,
-          detail: "The Maestro server did not answer.",
+          detail: "The Maestro server didn't answer.",
         };
   }
   const report = input.report;

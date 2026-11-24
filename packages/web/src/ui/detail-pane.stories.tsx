@@ -90,7 +90,7 @@ export const BehindWithLocalEdits: Story = {
   args: {
     ...BEHIND_TARGET,
     paragraph: [
-      "1 skill has changes that are not in the latest release: tdd. To keep them, select Import local edits before you update.",
+      "1 skill has changes that aren't in the latest release: tdd. To keep them, select Import local edits before you update.",
     ],
     foot: [
       { label: "Import local edits", step: "import", onSelect: () => {} },

@@ -72,13 +72,13 @@ describe("the row Propose to Harness", () => {
       "Delete categories.",
     ],
     [
-      "a Harness or GitHub it could not read",
+      "a Harness or GitHub it couldn't read",
       { state: "unread" },
       "Maestro couldn't read the Harness or GitHub. Select Re-read Categories to try again.",
       "Re-read Categories first.",
     ],
     [
-      "a row it could not read",
+      "a row it couldn't read",
       jsonResponse({ error: "categories-unreadable" }, 500),
       "Maestro couldn't read the Harness or GitHub. Select Re-read Categories to try again.",
       "Re-read Categories first.",
@@ -86,7 +86,7 @@ describe("the row Propose to Harness", () => {
     [
       "a clone without a GitHub origin",
       { state: "no-usable-origin" },
-      "The Harness clone has no GitHub origin. Point the clone's origin at the Harness repository on GitHub, then select Re-read Categories.",
+      "Your clone has no GitHub origin. Point the clone's origin at the Harness repository on GitHub, then select Re-read Categories.",
       "Point the clone's origin at GitHub first.",
     ],
   ])(
@@ -422,10 +422,10 @@ describe("the Create pull request dialog", () => {
       "Your categories stay as they are. Select Close, then select Create pull request again.",
     ],
     [
-      "a server that did not answer",
+      "a server that didn't answer",
       () => Promise.reject(new TypeError("fetch failed")),
       "Pull request not confirmed",
-      "The Maestro server did not respond, so the pull request may already be open. Select Close, then check the Harness screen.",
+      "The Maestro server didn't respond, so the pull request may already be open. Select Close, then check the Harness screen.",
     ],
     [
       "a pushed branch without a pull request",

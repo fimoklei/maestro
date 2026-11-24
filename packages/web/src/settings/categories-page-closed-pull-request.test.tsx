@@ -207,7 +207,7 @@ describe("the Create pull request dialog after a close without merging", () => {
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Maestro deleted the branch of pull request #45, then could not push a new branch. Pull request #45 stays closed.",
+        "Maestro deleted the branch of pull request #45, then couldn't push a new branch. Pull request #45 stays closed.",
       ),
     ).toBeInTheDocument();
   });

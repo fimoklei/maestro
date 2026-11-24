@@ -50,7 +50,7 @@ const releasePlanHeadings: NoticeTable<ReleasePlanError> = {
   ...harnessHeadings,
   "no-answer": {
     level: "error",
-    label: "GitHub did not respond",
+    label: "GitHub didn't respond",
     message: `Select ${rereadLabel("Harness")}, then select ${CREATE_RELEASE} again.`,
     detail: "A release plan is measured against what GitHub holds.",
   },
@@ -67,7 +67,7 @@ const publishReleaseHeadings: NoticeTable<PublishReleaseError> = {
   ...harnessHeadings,
   "no-answer": {
     level: "error",
-    label: "GitHub did not respond",
+    label: "GitHub didn't respond",
     message: `Nothing was published. Select ${rereadLabel("Harness")}, then select ${PUBLISH_RELEASE} again.`,
   },
   "empty-delta": {
@@ -146,7 +146,7 @@ export const promoteHeadings = (w: ItemWords): NoticeTable<PromoteError> => ({
   "invalid-skill": invalidNameHeading(w),
   "no-answer": {
     level: "error",
-    label: "GitHub did not respond",
+    label: "GitHub didn't respond",
     message: `Nothing was pushed. Select ${rereadLabel("Harness")}, then select ${PROPOSE_CHANGE} again.`,
   },
   "skill-missing": {
@@ -172,7 +172,7 @@ export const promoteHeadings = (w: ItemWords): NoticeTable<PromoteError> => ({
   "concurrent-change": {
     level: "error",
     label: "Newer change from a teammate",
-    message: `Their version still stands. Pull it into the Harness clone, then select ${PROPOSE_CHANGE} again.`,
+    message: `Their version still stands. Pull it into your clone, then select ${PROPOSE_CHANGE} again.`,
   },
   "extra-requests": {
     level: "error",
@@ -245,7 +245,7 @@ export const deletionHeadings = (
     "not-deleted": {
       level: "error",
       label: `${w.Noun} still in the Harness`,
-      message: `Delete the ${w.noun} ${w.holder} in the Harness clone first.`,
+      message: `Delete the ${w.noun} ${w.holder} in your clone first.`,
       detail:
         "A deletion publishes what the Harness working tree already says.",
     },
@@ -253,25 +253,25 @@ export const deletionHeadings = (
       level: "error",
       label: "Partial clone",
       message: `Nothing was pushed. Connect a complete clone to delete ${w.noun}s.`,
-      detail: `A missing ${w.holder} in a partial clone is not proof of a deletion.`,
+      detail: `A missing ${w.holder} in a partial clone isn't proof of a deletion.`,
     },
     "merge-in-progress": {
       level: "error",
       label: "Unfinished merge",
       message: `Nothing was pushed. Finish or abort the merge, then select ${DELETE} again.`,
-      detail: "A half-merged working tree does not state what should go.",
+      detail: "A half-merged working tree doesn't state what should go.",
     },
     "rebase-in-progress": {
       level: "error",
       label: "Unfinished rebase",
       message: `Nothing was pushed. Finish or abort the rebase, then select ${DELETE} again.`,
-      detail: "A half-rebased working tree does not state what should go.",
+      detail: "A half-rebased working tree doesn't state what should go.",
     },
     "unresolved-conflicts": {
       level: "error",
       label: "Unresolved conflicts",
       message: `Nothing was pushed. Resolve the conflicts, then select ${DELETE} again.`,
-      detail: "A conflicted working tree does not state what should go.",
+      detail: "A conflicted working tree doesn't state what should go.",
     },
     unreadable: {
       level: "error",
@@ -321,7 +321,7 @@ const restorationHeadings = (w: ItemWords): NoticeTable<RestoreError> => {
     "destination-exists": {
       level: "error",
       label: `${w.Holder} already there`,
-      message: `Move the ${w.holder} in the Harness clone, then select ${RESTORE} again.`,
+      message: `Move the ${w.holder} in your clone, then select ${RESTORE} again.`,
       detail: `Something already sits where this ${w.noun} ${w.holder} belongs.`,
     },
     "destination-unsafe": linkInHarness(
@@ -348,17 +348,17 @@ const restorationHeadings = (w: ItemWords): NoticeTable<RestoreError> => {
     "merge-in-progress": {
       ...deletion["merge-in-progress"],
       message: `Finish or abort the merge, then select ${RESTORE} again.`,
-      detail: "A half-merged working tree does not state what is missing.",
+      detail: "A half-merged working tree doesn't state what is missing.",
     },
     "rebase-in-progress": {
       ...deletion["rebase-in-progress"],
       message: `Finish or abort the rebase, then select ${RESTORE} again.`,
-      detail: "A half-rebased working tree does not state what is missing.",
+      detail: "A half-rebased working tree doesn't state what is missing.",
     },
     "unresolved-conflicts": {
       ...deletion["unresolved-conflicts"],
       message: `Resolve the conflicts, then select ${RESTORE} again.`,
-      detail: "A conflicted working tree does not state what is missing.",
+      detail: "A conflicted working tree doesn't state what is missing.",
     },
     unreadable: {
       ...deletion.unreadable,
@@ -369,14 +369,14 @@ const restorationHeadings = (w: ItemWords): NoticeTable<RestoreError> => {
     "source-unreadable": {
       level: "error",
       label: "Committed copy not read",
-      message: `Check the Harness clone with your Git tool, then select ${RESTORE} again.`,
-      detail: `Maestro could not read this ${w.noun} out of your last local commit.`,
+      message: `Check your clone with your Git tool, then select ${RESTORE} again.`,
+      detail: `Maestro couldn't read this ${w.noun} out of your last local commit.`,
     },
     "destination-unreadable": {
       level: "error",
       label: `${w.Noun}s folder missing`,
-      message: `Put the ${w.home} back in the Harness clone, then select ${RESTORE} again.`,
-      detail: `Maestro could not read the Harness ${w.home}.`,
+      message: `Put the ${w.home} back in your clone, then select ${RESTORE} again.`,
+      detail: `Maestro couldn't read the Harness ${w.home}.`,
     },
   });
 };
@@ -392,7 +392,7 @@ const discardHeadings = ({ type, name }: PrimitiveRef) => {
       level: "error",
       label: "Clone not read",
       message: `Select ${CLOSE}, then select ${DISCARD_CHANGE} again.`,
-      detail: "Git could not read your clone.",
+      detail: "Git couldn't read your clone.",
     },
     "already-proposed": {
       level: "error",
@@ -434,22 +434,22 @@ const discardHeadings = ({ type, name }: PrimitiveRef) => {
     "sparse-checkout": {
       ...deletion["sparse-checkout"],
       message: "Connect a complete clone to discard changes.",
-      detail: "A partial clone does not hold every file of the Harness.",
+      detail: "A partial clone doesn't hold every file of the Harness.",
     },
     "merge-in-progress": {
       ...deletion["merge-in-progress"],
       message: `Finish or abort the merge, then select ${DISCARD_CHANGE} again.`,
-      detail: "A half-merged working tree does not state what changed.",
+      detail: "A half-merged working tree doesn't state what changed.",
     },
     "rebase-in-progress": {
       ...deletion["rebase-in-progress"],
       message: `Finish or abort the rebase, then select ${DISCARD_CHANGE} again.`,
-      detail: "A half-rebased working tree does not state what changed.",
+      detail: "A half-rebased working tree doesn't state what changed.",
     },
     "unresolved-conflicts": {
       ...deletion["unresolved-conflicts"],
       message: `Resolve the conflicts, then select ${DISCARD_CHANGE} again.`,
-      detail: "A conflicted working tree does not state what changed.",
+      detail: "A conflicted working tree doesn't state what changed.",
     },
     unreadable: {
       ...deletion.unreadable,
@@ -473,10 +473,9 @@ export const proposalHeadingsFor = (
   "invalid-skill": invalidNameHeading(w),
   "no-answer": {
     level: "error",
-    label: "GitHub did not respond",
+    label: "GitHub didn't respond",
     message: `Nothing changed on GitHub. Select ${rereadLabel("Harness")}.`,
-    detail:
-      "Maestro could not read the branch this proposal is opened against.",
+    detail: "Maestro couldn't read the branch this proposal is opened against.",
   },
   "review-unavailable": {
     level: "error",
@@ -536,13 +535,13 @@ export const CONCURRENT_CHANGE_NOTICE: NoticeContent = {
 export const harnessStateNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "Harness not read",
-    message: `The Maestro server did not answer. Select ${rereadLabel("Harness")} to read the Harness again.`,
+    message: `The Maestro server didn't answer. Select ${rereadLabel("Harness")} to read the Harness again.`,
   });
 
 export const refreshNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "GitHub not read",
-    message: `The Maestro server did not answer, so the Harness is as it was. Select ${rereadLabel("Harness")}.`,
+    message: `The Maestro server didn't answer, so the Harness is as it was. Select ${rereadLabel("Harness")}.`,
   });
 
 // Null before any read has ever succeeded: nothing is out of date yet (#848).
@@ -562,7 +561,7 @@ export const staleStatusNotice = (
     message: `Select ${rereadLabel("Harness")} to read GitHub again.`,
     detail:
       freshness.outcome === "offline"
-        ? "Maestro could not reach GitHub, so these rows are from the last read."
+        ? "Maestro couldn't reach GitHub, so these rows are from the last read."
         : "GitHub gave no answer, so these rows are from the last read.",
     action: { label: rereadLabel("Harness"), onClick: onRetry },
   };
@@ -599,8 +598,8 @@ export const releasePublishedNotice = (
 ): NoticeContent => ({
   level: "warning",
   label: "Release published",
-  message: phrase`Maestro tagged ${machine(tag)}, but Inventory was not read. Select ${rereadLabel("Skills")} to see the published skills.`,
-  detail: "A release cannot change after publication.",
+  message: phrase`Maestro tagged ${machine(tag)}, but Inventory wasn't read. Select ${rereadLabel("Skills")} to see the published skills.`,
+  detail: "A release can't change after publication.",
   action: { label: rereadLabel("Skills"), onClick: onReread },
 });
 
@@ -608,13 +607,13 @@ export const releasePlanNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(releasePlanHeadings, error, {
     label: "Release plan not read",
     message:
-      "The Maestro server did not answer, so no version was worked out. Open the release again.",
+      "The Maestro server didn't answer, so no version was worked out. Open the release again.",
   });
 
 export const publishReleaseNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(publishReleaseHeadings, error, {
     label: "Release not published",
-    message: `The Maestro server did not answer, and no tag was pushed. Select ${PUBLISH_RELEASE} again.`,
+    message: `The Maestro server didn't answer, and no tag was pushed. Select ${PUBLISH_RELEASE} again.`,
   });
 
 export const promoteNotice = (
@@ -623,7 +622,7 @@ export const promoteNotice = (
 ): NoticeContent | null =>
   noticeFromTable(promoteHeadings(ITEM_WORDS[type]), error, {
     label: "Change not proposed",
-    message: `The Maestro server did not answer, and nothing was pushed. Select ${PROPOSE_CHANGE} again.`,
+    message: `The Maestro server didn't answer, and nothing was pushed. Select ${PROPOSE_CHANGE} again.`,
   });
 
 export const deletionNotice = (
@@ -632,7 +631,7 @@ export const deletionNotice = (
 ): NoticeContent | null =>
   noticeFromTable(deletionHeadings(ITEM_WORDS[type]), error, {
     label: "Deletion not proposed",
-    message: `The Maestro server did not answer, and nothing was pushed. Select ${ITEM_WORDS[type].deleteLabel} again.`,
+    message: `The Maestro server didn't answer, and nothing was pushed. Select ${ITEM_WORDS[type].deleteLabel} again.`,
   });
 
 export const restoreNotice = (
@@ -641,7 +640,7 @@ export const restoreNotice = (
 ): NoticeContent | null =>
   noticeFromTable(restorationHeadings(ITEM_WORDS[type]), error, {
     label: `${ITEM_WORDS[type].Noun} not restored`,
-    message: `Nothing was restored. The Maestro server did not answer. Select ${ITEM_WORDS[type].restoreLabel} again.`,
+    message: `Nothing was restored. The Maestro server didn't answer. Select ${ITEM_WORDS[type].restoreLabel} again.`,
   });
 
 export const discardNotice = (
@@ -650,7 +649,7 @@ export const discardNotice = (
 ): NoticeContent | null =>
   noticeFromTable(discardHeadings(item), error, {
     label: "Change not discarded",
-    message: `Nothing was discarded. The Maestro server did not answer. Select ${DISCARD_CHANGE} again.`,
+    message: `Nothing was discarded. The Maestro server didn't answer. Select ${DISCARD_CHANGE} again.`,
   });
 
 // A full restore is a toast. The local half is final either way, so only a
@@ -665,7 +664,7 @@ export const restoredNotice = (
   message: `The ${ITEM_WORDS[type].noun} ${ITEM_WORDS[type].holder} is back, but the status is out of date. Select ${rereadLabel("Harness")} to read GitHub again.`,
   detail: hasRequest
     ? "Your proposal remains unchanged."
-    : "Maestro could not read GitHub after the restore.",
+    : "Maestro couldn't read GitHub after the restore.",
   action: { label: rereadLabel("Harness"), onClick: onRetry },
 });
 
@@ -673,5 +672,5 @@ export const proposalNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(proposalHeadings, error, {
     label: "Pull request unchanged",
     message:
-      "The Maestro server did not answer, and GitHub is as it was. Start the change again.",
+      "The Maestro server didn't answer, and GitHub is as it was. Start the change again.",
   });

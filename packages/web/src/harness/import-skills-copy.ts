@@ -36,39 +36,39 @@ const AGAIN = `then select ${IMPORT_SKILLS} again.`;
 // rows anew.
 const REFUSAL: Record<ImportSkillError, string> = {
   "source-unreadable":
-    "Maestro cannot read this folder. Make it readable, then select the folder again.",
+    "Maestro can't read this folder. Make it readable, then select the folder again.",
   "outside-root":
-    "This folder links outside your home folder, so Maestro cannot read it. Move the skill into your home folder, then select the folder again.",
+    "This folder links outside your home folder, so Maestro can't read it. Move the skill into your home folder, then select the folder again.",
   "deployed-copy":
     "Another Harness deployed this copy. Import the skill from that Harness's clone instead.",
   "origin-unproven":
-    "The deployment record does not name this copy's Harness. Copy the skill's files into the Harness clone yourself.",
-  "missing-manifest": "This folder has no SKILL.md, so it is not a skill.",
+    "The deployment record doesn't name this copy's Harness. Copy the skill's files into your clone yourself.",
+  "missing-manifest": "This folder has no SKILL.md, so it isn't a skill.",
   "invalid-frontmatter":
-    "Maestro cannot read the SKILL.md frontmatter. Fix it, then select the folder again.",
+    "Maestro can't read the SKILL.md frontmatter. Fix it, then select the folder again.",
   "empty-description":
     "SKILL.md has an empty description. Add one, then select the folder again.",
   "invalid-name":
-    "Maestro cannot make a skill name from this folder name. Give the folder a name like code-review, then select the folder again.",
+    "Maestro can't make a skill name from this folder name. Give the folder a name like code-review, then select the folder again.",
   // A held skill is listed apart, so this reaches only the Report: the name
   // was taken after the scan.
   "name-taken": `The Harness already contains a skill with this name. To replace it, select ${IMPORT_SKILLS} again. Choose the folder, then check it under ${ALREADY_IN_HARNESS}.`,
   "destination-exists":
     "The Harness already contains a folder with the same name. Rename this folder, then select the folder again.",
   "not-found": "The folder was moved or deleted before Maestro could copy it.",
-  "not-a-directory": "This is no longer a folder, so Maestro did not copy it.",
+  "not-a-directory": "This is no longer a folder, so Maestro didn't copy it.",
   "source-changed": `The folder changed during the import. Wait for the change to finish, ${AGAIN}`,
   "unsafe-link": `The folder contains a symbolic link. Replace the link with a real file, ${AGAIN}`,
   "hard-linked-file": `The folder contains a hard-linked file. Replace that file with a plain copy, ${AGAIN}`,
   "special-file": `The folder contains a special file. Take it out, ${AGAIN}`,
-  "too-many-files": `The folder contains over 1,000 files. Remove the files the skill does not need, ${AGAIN}`,
-  "too-large": `The folder is over 50 MiB. Remove the files the skill does not need, ${AGAIN}`,
+  "too-many-files": `The folder contains over 1,000 files. Remove the files the skill doesn't need, ${AGAIN}`,
+  "too-large": `The folder is over 50 MiB. Remove the files the skill doesn't need, ${AGAIN}`,
   "copy-failed": `The copy failed. Free up disk space, ${AGAIN}`,
-  "destination-unsafe": `The skills folder in the Harness clone links outside the clone. Make it a real folder, ${AGAIN}`,
+  "destination-unsafe": `The skills folder in your clone links outside the clone. Make it a real folder, ${AGAIN}`,
   // The guards a replace of a held skill passes; they show in the checklist
   // and in the Report alike.
-  "harness-copy-uncommitted": `The Harness clone has uncommitted changes to this skill. Commit or undo them, ${AGAIN}`,
-  "harness-unreadable": `Maestro cannot read the Harness clone. Make it readable, ${AGAIN}`,
+  "harness-copy-uncommitted": `Your clone has uncommitted changes to this skill. Commit or undo them, ${AGAIN}`,
+  "harness-unreadable": `Maestro can't read your clone. Make it readable, ${AGAIN}`,
   "nothing-to-carry-back":
     "This folder already matches the skill in the Harness.",
   "not-configured": `${CHANGE_LOCATION_STEP}, ${AGAIN}`,
@@ -95,14 +95,14 @@ const FOLDER_BLOCKERS: Record<SkillsFolderBlocker, NoticeContent> = {
   "deployed-copy": {
     level: "error",
     label: "Copy from another Harness",
-    message: "Choose a folder that is not a copy deployed by another Harness.",
+    message: "Choose a folder that isn't a copy deployed by another Harness.",
     detail: "Maestro can update only copies deployed by the connected Harness.",
   },
   "origin-unproven": {
     level: "error",
     label: "Origin not recorded",
-    message: "Copy the skill's files into the Harness clone yourself.",
-    detail: "The deployment record does not name this copy's Harness.",
+    message: "Copy the skill's files into your clone yourself.",
+    detail: "The deployment record doesn't name this copy's Harness.",
   },
 };
 
@@ -124,7 +124,7 @@ const ERRORS: NoticeTable<ImportSkillsError> = {
 
 const NOT_READ: NoticeCopy = {
   label: "Folder not read",
-  message: `The Maestro server did not respond. Select ${IMPORT_SKILLS} to read the folder again.`,
+  message: `The Maestro server didn't respond. Select ${IMPORT_SKILLS} to read the folder again.`,
 };
 
 export const importSkillsScanNotice = (error: unknown): NoticeContent | null =>

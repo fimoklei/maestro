@@ -15,7 +15,7 @@ describe("Import skills copy", () => {
       "empty-description",
       "SKILL.md has an empty description. Add one, then select the folder again.",
     ],
-    ["missing-manifest", "This folder has no SKILL.md, so it is not a skill."],
+    ["missing-manifest", "This folder has no SKILL.md, so it isn't a skill."],
     [
       "deployed-copy",
       "Another Harness deployed this copy. Import the skill from that Harness's clone instead.",
@@ -42,7 +42,7 @@ describe("Import skills copy", () => {
     ],
     [
       "too-many-files",
-      "The folder contains over 1,000 files. Remove the files the skill does not need, then select Import skills again.",
+      "The folder contains over 1,000 files. Remove the files the skill doesn't need, then select Import skills again.",
     ],
     [
       "source-changed",
@@ -52,7 +52,7 @@ describe("Import skills copy", () => {
       "not-found",
       "The folder was moved or deleted before Maestro could copy it.",
     ],
-  ] as const)("states why %s cannot be imported", (refusal, sentence) => {
+  ] as const)("states why %s can't be imported", (refusal, sentence) => {
     expect(skillFolderRefusal(refusal)).toBe(sentence);
   });
 
@@ -75,7 +75,7 @@ describe("Import skills copy", () => {
     expect(importSkillsScanNotice(new TypeError("offline"))).toMatchObject({
       label: "Folder not read",
       message:
-        "The Maestro server did not respond. Select Import skills to read the folder again.",
+        "The Maestro server didn't respond. Select Import skills to read the folder again.",
     });
   });
 

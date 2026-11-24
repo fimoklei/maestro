@@ -112,7 +112,7 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
       );
     case "no-usable-origin":
       return blockedRow(
-        `The Harness clone has no GitHub origin. Point the clone's origin at the Harness repository on GitHub, then select ${REREAD_CATEGORIES}.`,
+        `Your clone has no GitHub origin. Point the clone's origin at the Harness repository on GitHub, then select ${REREAD_CATEGORIES}.`,
         "Point the clone's origin at GitHub first.",
       );
     case "waiting-on-other":
@@ -277,7 +277,7 @@ export const NEXT_RELEASE_UNREADABLE = {
 /** A request the server never answered: GitHub may hold the pull request. */
 const notConfirmed = (mode: PullRequestMode): NoticeCopy => ({
   label: "Pull request not confirmed",
-  message: `The Maestro server did not respond, so the pull request may already be ${mode === "update" ? "updated" : "open"}. Select ${CLOSE}, then check the Harness screen.`,
+  message: `The Maestro server didn't respond, so the pull request may already be ${mode === "update" ? "updated" : "open"}. Select ${CLOSE}, then check the Harness screen.`,
 });
 
 /** The branch is pushed and GitHub opened no pull request for it. */
@@ -316,7 +316,7 @@ const headings = (
     },
     "no-answer": {
       level: "error",
-      label: "GitHub did not respond",
+      label: "GitHub didn't respond",
       message: `Select ${CLOSE}, then select ${REREAD_CATEGORIES} to see where the pull request stands.`,
     },
     "list-empty": {
@@ -363,7 +363,7 @@ const headings = (
         ? notCreated
         : {
             ...notCreated,
-            detail: `Maestro deleted the branch of pull request #${closed}, then could not push a new branch. Pull request #${closed} stays closed.`,
+            detail: `Maestro deleted the branch of pull request #${closed}, then couldn't push a new branch. Pull request #${closed} stays closed.`,
           },
     "promote-in-progress": {
       level: "error",

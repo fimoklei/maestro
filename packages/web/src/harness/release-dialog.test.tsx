@@ -521,14 +521,14 @@ describe("ReleaseDialog", () => {
       {
         publishError: {
           level: "error",
-          label: "the tag was not pushed",
+          label: "the tag wasn't pushed",
           message: "The Harness is as it was.",
         },
       },
     );
 
     const alert = screen.getByRole("alert");
-    expect(alert).toHaveTextContent(/the tag was not pushed/i);
+    expect(alert).toHaveTextContent(/the tag wasn't pushed/i);
     const step = screen.getByRole("button", { name: "Major" });
     const leave = screen.getAllByRole("button", { name: "Close" }).at(-1);
     expect(

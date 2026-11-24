@@ -95,7 +95,7 @@ export const CloneNotUpToDate: Story = {
       label: "Clone not up to date",
       message:
         "Nothing was withdrawn. Sync your clone with GitHub, then select Withdraw from release again.",
-      detail: "Your clone's last commit is not the one on GitHub.",
+      detail: "Your clone's last commit isn't the one on GitHub.",
     },
   },
 };

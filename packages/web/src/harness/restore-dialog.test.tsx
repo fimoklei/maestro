@@ -60,7 +60,7 @@ describe("RestoreDialog", () => {
 
     expect(
       screen.getByText(
-        "Restore skill brings back the folder from your last local commit. Later changes do not come back.",
+        "Restore skill brings back the folder from your last local commit. Later changes don't come back.",
       ),
     ).toBeInTheDocument();
   });
@@ -152,7 +152,7 @@ describe("RestoreDialog", () => {
 
       expect(
         screen.getByText(
-          "Restore prompt brings back the file from your last local commit. Later changes do not come back.",
+          "Restore prompt brings back the file from your last local commit. Later changes don't come back.",
         ),
       ).toBeInTheDocument();
     });

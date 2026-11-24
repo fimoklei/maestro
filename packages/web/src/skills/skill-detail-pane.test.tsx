@@ -445,7 +445,7 @@ describe("SkillDetailPane", () => {
     expect(targetList()).not.toHaveAttribute("aria-busy");
     expect(pane()).not.toHaveTextContent(/Loading/);
     expect(
-      screen.getByText("Some targets could not be read."),
+      screen.getByText("Some targets couldn't be read."),
     ).toBeInTheDocument();
   });
 
@@ -457,7 +457,7 @@ describe("SkillDetailPane", () => {
     ).not.toBeInTheDocument();
     expect(pane()).not.toHaveTextContent(/Loading/);
     expect(
-      screen.getByText("Some targets could not be read."),
+      screen.getByText("Some targets couldn't be read."),
     ).toBeInTheDocument();
   });
 

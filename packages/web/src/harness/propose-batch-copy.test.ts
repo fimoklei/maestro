@@ -28,20 +28,20 @@ describe("Propose changes copy", () => {
     const one = notInNextReleaseNotice(["old-deploy"]);
     expect(one.label).toBe("Not in the next release");
     expect(plainText(one.message)).toBe(
-      "old-deploy is not in the next release, so there is nothing to delete. Select Close, then deselect it.",
+      "old-deploy isn't in the next release, so there is nothing to delete. Select Close, then deselect it.",
     );
     expect(
       plainText(
         notInNextReleaseNotice(["old-deploy", "legacy-review"]).message,
       ),
     ).toBe(
-      "old-deploy and legacy-review are not in the next release, so there is nothing to delete. Select Close, then deselect them.",
+      "old-deploy and legacy-review aren't in the next release, so there is nothing to delete. Select Close, then deselect them.",
     );
   });
 
   it("states once that gh is missing, for one row and several", () => {
     const cause =
-      "Maestro opens pull requests through gh, and gh is not available.";
+      "Maestro opens pull requests through gh, and gh isn't available.";
     expect(noGhNotice(1)).toEqual({
       label: "Pull request not opened",
       message: "Select Create pull request on GitHub.",

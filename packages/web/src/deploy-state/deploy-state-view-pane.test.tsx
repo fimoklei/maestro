@@ -314,7 +314,7 @@ describe("Deploy-state pane — facts", () => {
     const pane = await openPane(LABEL);
     expect(fact(pane, "Release")).toBe("v0.3.2");
     expect(fact(pane, "Latest release")).toBe("v0.3.4");
-    expect(fact(pane, "Changed")).toBe("Could not be read");
+    expect(fact(pane, "Changed")).toBe("Couldn't be read");
     expect(fact(pane, "Compared")).toBe("Read 30 min ago");
   });
 
@@ -395,7 +395,7 @@ describe("Deploy-state pane — facts", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "1 skill has changes that are not in the latest release: tdd. To keep them, select Import local edits before you update.",
+          "1 skill has changes that aren't in the latest release: tdd. To keep them, select Import local edits before you update.",
         ),
       ),
     ).toBeInTheDocument();
@@ -629,7 +629,7 @@ describe("Deploy-state pane — Global folders", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "Global does not update code-review and tdd in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
+          "Global doesn't update code-review and tdd in ~/.agents/skills. OpenCode loads these copies instead of the ones in ~/.claude/skills. To load the current release, delete them from ~/.agents/skills yourself.",
         ),
       ),
     ).toBeInTheDocument();
@@ -704,9 +704,9 @@ describe("Deploy-state pane — Deployed skills", () => {
     const mark = await within(pane).findByRole("img", { name: "Unverified" });
     await hoverOpen(mark);
     expect(
-      within(await shownCard()).getByText("Update check did not run."),
+      within(await shownCard()).getByText("Update check didn't run."),
     ).toBeVisible();
-    expect(mark).toHaveAccessibleDescription("Update check did not run.");
+    expect(mark).toHaveAccessibleDescription("Update check didn't run.");
   });
 
   it("reads unknown with its own hint when the update check timed out", async () => {
@@ -1078,7 +1078,7 @@ describe("Deploy-state pane — where each action sits", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "1 skill has changes that are not in the latest release: tdd. To keep them, select Import local edits before you update.",
+          "1 skill has changes that aren't in the latest release: tdd. To keep them, select Import local edits before you update.",
         ),
       ),
     ).toBeInTheDocument();
@@ -1164,7 +1164,7 @@ describe("Deploy-state pane — where each action sits", () => {
     const pane = await openPane(LABEL);
     expect(within(pane).getByText("Deploy incomplete")).toBeInTheDocument();
     expect(
-      within(pane).queryByText(/changes that are not in the latest release/),
+      within(pane).queryByText(/changes that aren't in the latest release/),
     ).not.toBeInTheDocument();
   });
 });

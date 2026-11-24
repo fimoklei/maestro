@@ -10,7 +10,7 @@ describe("cloneSyncNotice", () => {
     [
       "behind",
       "The clone is behind the default branch. Select Re-read Harness to update it.",
-      "The last check could not move it forward.",
+      "The last check couldn't move it forward.",
     ],
     [
       "local-changes",
@@ -19,18 +19,18 @@ describe("cloneSyncNotice", () => {
     ],
     [
       "diverged",
-      "Your local commits are as they were. Pull the default branch into the Harness clone, then select Re-read Harness.",
-      "The clone and GitHub each hold commits the other does not.",
+      "Your local commits are as they were. Pull the default branch into your clone, then select Re-read Harness.",
+      "The clone and GitHub each hold commits the other doesn't.",
     ],
     [
       "no-upstream",
       "Set an upstream branch in your Git tool, then select Re-read Harness.",
-      "The checked-out branch does not follow a branch on GitHub.",
+      "The checked-out branch doesn't follow a branch on GitHub.",
     ],
     [
       "unreadable",
-      "Check the Harness clone with your Git tool, then select Re-read Harness.",
-      "Maestro could not read where the clone stands.",
+      "Check your clone with your Git tool, then select Re-read Harness.",
+      "Maestro couldn't read where the clone stands.",
     ],
   ])("states the whole notice for %s", (sync, message, detail) => {
     expect(cloneSyncNotice(sync, retry)).toEqual({

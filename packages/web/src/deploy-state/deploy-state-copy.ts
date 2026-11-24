@@ -53,11 +53,11 @@ export const packageBehindNotice = (
   ...(names.length === 1
     ? {
         label: "Package also behind",
-        message: phrase`${namedList(names)} is not a skill.`,
+        message: phrase`${namedList(names)} isn't a skill.`,
       }
     : {
         label: "Packages also behind",
-        message: phrase`${namedList(names)} are not skills.`,
+        message: phrase`${namedList(names)} aren't skills.`,
       }),
 });
 
@@ -171,7 +171,7 @@ export const strayDiffersLine = (
   release: string,
   tool: string,
 ): Phrase =>
-  phrase`${count} ${count === 1 ? "copy" : "copies"} in ${machine(folder)} ${count === 1 ? "differs" : "differ"} from ${machine(release)}. Global does not write there because ${tool} is not detected.`;
+  phrase`${count} ${count === 1 ? "copy" : "copies"} in ${machine(folder)} ${count === 1 ? "differs" : "differ"} from ${machine(release)}. Global doesn't write there because ${tool} isn't detected.`;
 
 /**
  * The copies an undetected tool's folder holds, which OpenCode loads instead
@@ -184,7 +184,7 @@ export function strayCopiesLine(
 ): Phrase {
   const where = machine(folder);
   const one = names.length === 1;
-  return phrase`Global does not update ${namedList(names)} in ${where}. OpenCode loads ${one ? "this copy" : "these copies"} instead of ${one ? "the one" : "the ones"} in ${machine(instead)}. To load the current release, delete ${one ? "it" : "them"} from ${where} yourself.`;
+  return phrase`Global doesn't update ${namedList(names)} in ${where}. OpenCode loads ${one ? "this copy" : "these copies"} instead of ${one ? "the one" : "the ones"} in ${machine(instead)}. To load the current release, delete ${one ? "it" : "them"} from ${where} yourself.`;
 }
 
 /**
@@ -205,7 +205,11 @@ export function notUpdatedLine(
       : phrase`${copies.length} skills in ${where} are`;
   const stillAt = new Set(copies.map((copy) => copy.stillAt));
   if (stillAt.has(null)) {
-    return phrase`${subject} not at the Target release ${target}.`;
+    const missing =
+      copies.length === 1
+        ? phrase`${named(first.name)} in ${where} isn't`
+        : phrase`${copies.length} skills in ${where} aren't`;
+    return phrase`${missing} at the Target release ${target}.`;
   }
   const at =
     stillAt.size === 1 && first.stillAt !== null
@@ -226,15 +230,15 @@ const KEEP_BEFORE_UPDATE = `To keep them, select ${IMPORT_LOCAL_EDITS} before yo
 
 const localEditsReason = (names: readonly string[]) =>
   names.length === 1
-    ? phrase`1 skill has changes that are not in the latest release: ${namedList(names)}.`
-    : phrase`${names.length} skills have changes that are not in the latest release: ${namedList(names)}.`;
+    ? phrase`1 skill has changes that aren't in the latest release: ${namedList(names)}.`
+    : phrase`${names.length} skills have changes that aren't in the latest release: ${namedList(names)}.`;
 
 export const localEditsLine = (names: readonly string[], behind: boolean) =>
   phrase`${localEditsReason(names)} ${behind ? KEEP_BEFORE_UPDATE : KEEP_LOCAL_EDITS}`;
 
 /** The Global pane's one paragraph on its local edits: a count, no folder and no skill. */
 export const globalLocalEditsLine = (count: number, behind: boolean) =>
-  `${count} ${count === 1 ? "skill has" : "skills have"} changes that are not in the latest release. ${behind ? KEEP_BEFORE_UPDATE : KEEP_LOCAL_EDITS}`;
+  `${count} ${count === 1 ? "skill has" : "skills have"} changes that aren't in the latest release. ${behind ? KEEP_BEFORE_UPDATE : KEEP_LOCAL_EDITS}`;
 
 /** The Status hover card's Local edits reason; `latest` is the newer release, null where not behind. */
 export const localEditsCardLine = (
@@ -247,6 +251,6 @@ export const localEditsCardLine = (
 
 // A skill row's mark carries its reading's hint as its tooltip: one fact, no action.
 export const NO_LONGER_RELEASED_HINT = "Not in the latest release.";
-export const UNREACHED_HINT = "Update check did not run.";
+export const UNREACHED_HINT = "Update check didn't run.";
 // Must match the server's timeout on an apm read.
 export const TIMED_OUT_HINT = "Update check timed out after 1 minute.";

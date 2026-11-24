@@ -103,7 +103,7 @@ const PLAIN: Record<string, Record<string, string>> = {
   "skills/skills-copy.ts": {
     "`Remove ${skillName} from ${targetCount(count)}`": "dialog title",
     "`Select ${name}`": "checkbox label",
-    "`Deploy to ${target} did not run`": "notice heading",
+    "`Deploy to ${target} didn't run`": "notice heading",
   },
   "prompts/prompts-copy.ts": {
     "`Select ${name}`": "checkbox label",

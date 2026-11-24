@@ -192,7 +192,7 @@ describe("Harness move announcement", () => {
 
     await waitFor(() =>
       expect(harnessRegion()).toHaveTextContent(
-        "Pending proposal has 2 changes. Pending review was not read. Pending release has no changes. Read 4 min ago.",
+        "Pending proposal has 2 changes. Pending review wasn't read. Pending release has no changes. Read 4 min ago.",
       ),
     );
   });

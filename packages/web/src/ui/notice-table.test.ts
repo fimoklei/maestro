@@ -12,7 +12,7 @@ const headings: NoticeTable<"web-owns-it"> = {
 
 const fallback = {
   label: "Request not answered",
-  message: "The Maestro server did not answer. Try again.",
+  message: "The Maestro server didn't answer. Try again.",
 };
 
 describe("noticeFromTable", () => {
@@ -36,7 +36,7 @@ describe("noticeFromTable", () => {
     expect(notice).toEqual({
       level: "error",
       label: "Request not answered",
-      message: "The Maestro server did not answer. Try again.",
+      message: "The Maestro server didn't answer. Try again.",
     });
   });
 
@@ -45,12 +45,12 @@ describe("noticeFromTable", () => {
       headings,
       new HttpError(
         400,
-        "Maestro did not receive a folder. Reload the page, then choose a folder again.",
+        "Maestro didn't receive a folder. Reload the page, then choose a folder again.",
         "invalid-body",
         {
           error: "invalid-body",
           message:
-            "Maestro did not receive a folder. Reload the page, then choose a folder again.",
+            "Maestro didn't receive a folder. Reload the page, then choose a folder again.",
           detail: "The request carries a path: { path: string }.",
         },
       ),
@@ -59,9 +59,9 @@ describe("noticeFromTable", () => {
 
     expect(notice).toEqual({
       level: "error",
-      label: "Maestro could not start the action",
+      label: "Maestro couldn't start the action",
       message:
-        "Maestro did not receive a folder. Reload the page, then choose a folder again.",
+        "Maestro didn't receive a folder. Reload the page, then choose a folder again.",
     });
   });
 

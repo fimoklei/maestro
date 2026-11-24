@@ -150,7 +150,7 @@ export function expectTooltipCause(
   cause: string | RegExp,
 ): void {
   if (control.getAttribute("aria-disabled") !== "true") {
-    throw new Error("The control is not blocked: no aria-disabled.");
+    throw new Error("The control isn't blocked: no aria-disabled.");
   }
   if (control.hasAttribute("aria-describedby")) {
     throw new Error("The cause is drawn on the page: aria-describedby.");

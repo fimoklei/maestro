@@ -246,7 +246,7 @@ details may name the exact APM mechanism or file.
 | Preferences, configuration | **Settings** | The area outside the working screens, entered from the Harness button's menu; **Back to app** leaves it. Its pages sit under the sidebar heading *Personal* — a heading only. **Harness location** is its first page and keeps its name; **Appearance** holds how the cockpit looks (#995). |
 | Dark mode, colour mode | **Interface theme** | The one setting on **Appearance**, under the section heading *Theme*. Its values are **System**, **Light** and **Dark**; *System* follows the operating system. Never *mode* or *colour scheme* (#996). |
 | Scaffold | **Scaffold** / **Harness scaffold** | *Scaffold* is the action and *Harness scaffold* is the thing on offer; never *generate* or *initialise*. |
-| Clone folder | **Clone** | The local copy of the Harness repository. Say **folder** for any other directory on disk. |
+| Clone folder | **Clone** | The local copy of the Harness repository; in a sentence, **your clone**. Say **folder** for any other directory on disk. |
 | `apm.yml` | `apm.yml` | Name the file in a `detail`, never in the sentence — the reader meets it in their own editor. |
 | Bulk removal outcome | **Left alone** | A target the run did not remove, whether it refused or failed; never *skipped*. |
 | Remove | **Remove** / **Removal** | *Remove* is the action, *removal* is the noun for the attempt and its outcome. These terms apply to deployed copies in targets; the Harness skill remains. Never call this *delete*. |

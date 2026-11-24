@@ -72,7 +72,7 @@ export const WithPath: Story = {
       label: "Linked skill folder",
       message:
         "Nothing was written. Run rm /Users/developer/.claude/skills/workflow-commit and then deploy again.",
-      detail: "Deleting the link does not delete the folder it points to.",
+      detail: "Deleting the link doesn't delete the folder it points to.",
     },
   },
 };
@@ -86,7 +86,7 @@ export const Inline: Story = {
       level: "info",
       label: "Newer change from a teammate",
       message:
-        "Their version still stands. Pull it into the Harness clone, then Propose change again.",
+        "Their version still stands. Pull it into your clone, then Propose change again.",
     },
   },
 };
@@ -96,7 +96,7 @@ export const WithAction: Story = {
     notice: {
       level: "error",
       label: "the removal failed",
-      message: "apm did not confirm the removal.",
+      message: "apm didn't confirm the removal.",
       detail: "retry removes only what is left",
       action: { label: "retry →", onClick: () => {} },
     },
@@ -110,7 +110,7 @@ export const Dismissible: Story = {
       level: "success",
       label: "Release published",
       message: "Maestro tagged v1.3.0 and re-read Inventory.",
-      detail: "A release cannot change after publication.",
+      detail: "A release can't change after publication.",
     },
     onDismiss: () => {},
   },
