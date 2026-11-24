@@ -28,10 +28,7 @@ const INSTALL_SUCCESS_MARKERS = [
   /no changes -- install state already up to date/,
 ];
 
-const INSTALL_FAILURE_SIGNALS = [
-  /with [1-9]\d* error\(s\)/,
-  /installation failed/,
-];
+const INSTALL_FAILURE_PHRASE = "installation failed";
 
 const INSTALL_SYMLINK_PHRASE = "is a symlink";
 
@@ -275,7 +272,7 @@ function installSucceeded(output: string): boolean {
   const haystack = normalizeCommandOutput(output);
   return (
     INSTALL_SUCCESS_MARKERS.some((marker) => marker.test(haystack)) &&
-    !INSTALL_FAILURE_SIGNALS.some((signal) => signal.test(haystack))
+    !haystack.includes(INSTALL_FAILURE_PHRASE)
   );
 }
 

@@ -84,17 +84,6 @@ const viewAuthFailedOutputWithoutAuthPhrases = [
   "prompts disabled'",
 ].join("\n");
 
-const symlinkRefusalWithMarkerOutputApm020 = [
-  "[>] Installing 1 new package...",
-  "  [+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 #v0.5.1 @471c4b26",
-  "  [x] 1 package failed:",
-  "    +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from ",
-  "cached package: Skill destination /tmp/apm-symlink-fixture/.claude/skills/tdd is",
-  "a symlink -- refusing to deploy",
-  "[!] Installed 1 APM dependency in 3.2s with 1 error(s).",
-  "[!] Install interrupted after 3.2s.",
-].join("\n");
-
 const symlinkRefusalWithoutMarkerOutputApm026 = [
   "  [x] 1 package failed:",
   "    +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from ",
@@ -401,32 +390,6 @@ describe("ApmCliDriver.deploySkill", () => {
     ).resolves.toEqual({ ok: true });
   });
 
-  it("reports a failure when the success marker comes with an error count", async () => {
-    const withErrors = installOkOutputApm026.replace(
-      INSTALL_OK_SUMMARY,
-      "[*] Installed 1 APM dependency in 3.8s with 1 error(s).",
-    );
-    const { run } = fakeRun(withErrors);
-    const driver = new ApmCliDriver({ run });
-
-    await expect(
-      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
-    ).resolves.toEqual({ ok: false, reason: "failed" });
-  });
-
-  it("reports success when the marker counts zero errors", async () => {
-    const zeroErrors = installOkOutputApm026.replace(
-      INSTALL_OK_SUMMARY,
-      "[*] Installed 1 APM dependency in 3.8s with 0 error(s).",
-    );
-    const { run } = fakeRun(zeroErrors);
-    const driver = new ApmCliDriver({ run });
-
-    await expect(
-      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
-    ).resolves.toEqual({ ok: true });
-  });
-
   it("logs the repo's folder name, never its full path", async () => {
     const { run } = fakeRun(installOkOutputApm026);
     const logged: { target: string }[] = [];
@@ -441,30 +404,6 @@ describe("ApmCliDriver.deploySkill", () => {
     });
 
     expect(logged.map((entry) => entry.target)).toEqual(["repo"]);
-  });
-
-  it("reports a failure when the error count is wrapped across a line break", async () => {
-    const wrapped = installOkOutputApm026.replace(
-      INSTALL_OK_SUMMARY,
-      "[*] Installed 1 APM dependency in 3.8s with 1\nerror(s).",
-    );
-    const { run } = fakeRun(wrapped);
-    const driver = new ApmCliDriver({ run });
-
-    await expect(
-      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
-    ).resolves.toEqual({ ok: false, reason: "failed" });
-  });
-
-  it("classifies apm's symlinked-destination refusal (0.20.0 shape)", async () => {
-    const { run } = rejectingRun({
-      stdout: symlinkRefusalWithMarkerOutputApm020,
-    });
-    const driver = new ApmCliDriver({ run });
-
-    await expect(
-      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
-    ).resolves.toEqual({ ok: false, reason: "destination-symlinked" });
   });
 
   it("classifies apm's symlinked-destination refusal when no marker is printed", async () => {

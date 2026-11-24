@@ -39,7 +39,7 @@ it exists so a reader can see why Maestro updates by re-install rather than by
 it. Any fixture that gains a reader loses that licence.
 
 Phrases a fixture comment must never contain: `is a symlink`,
-`installation failed`, `with <n> error(s)`, `installed <n> apm dependenc`,
+`installation failed`, `installed <n> apm dependenc`,
 `authentication failed`, `no token available`, `uninstall complete`,
 `not found in apm.yml`.
 
