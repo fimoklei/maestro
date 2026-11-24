@@ -5,6 +5,7 @@ import {
   EMPTY_SENTENCE,
   EMPTY_TITLE,
   FOLDER_HINT,
+  REPOS_NOT_READ,
   REPOSITORIES_FACT,
   registerMessage,
   repositoriesCounts,
@@ -78,12 +79,12 @@ describe("registerMessage", () => {
   it("never renders the wrapper's own status line for an uncovered code", () => {
     expect(
       registerMessage(new HttpError(500, "Request failed with status 500.")),
-    ).toBe("Nothing was registered. Select Register repository again.");
+    ).toBe("Nothing was registered. Try again.");
   });
 
   it("states the same for a failure that never reached the server", () => {
     expect(registerMessage(new TypeError("network down"))).toBe(
-      "Nothing was registered. Select Register repository again.",
+      "Nothing was registered. Try again.",
     );
   });
 });
@@ -103,6 +104,10 @@ describe("the screen's own words", () => {
         glyph: "⚠",
       },
     });
+  });
+
+  it("names the failed read of the registered repositories", () => {
+    expect(REPOS_NOT_READ.label).toBe("Couldn't read registered repositories");
   });
 
   it("states the empty registry and how to begin", () => {

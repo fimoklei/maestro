@@ -277,7 +277,7 @@ describe("Repositories", () => {
     );
 
     expect(
-      await screen.findByText("Registered repositories not read"),
+      await screen.findByText("Couldn't read registered repositories"),
     ).toBeInTheDocument();
     // Past the pressed re-read's skeleton, the rows the reader had return.
     expect(await screen.findByText("/home/me/acme-web")).toBeInTheDocument();
@@ -288,7 +288,7 @@ describe("Repositories", () => {
     const state: FakeRegistry = { ...threeRepos(), readFails: 503 };
     stubRegistry(state);
     renderRepositories();
-    await screen.findByText("Registered repositories not read");
+    await screen.findByText("Couldn't read registered repositories");
 
     state.readFails = undefined;
     // Two now: band 2's control and the notice's own action.
@@ -300,7 +300,7 @@ describe("Repositories", () => {
     expect(await rowOf("…/me/acme-web")).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        screen.queryByText("Registered repositories not read"),
+        screen.queryByText("Couldn't read registered repositories"),
       ).not.toBeInTheDocument(),
     );
   });
