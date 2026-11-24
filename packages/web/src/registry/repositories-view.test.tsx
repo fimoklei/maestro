@@ -261,6 +261,33 @@ describe("Repositories", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("opens again with no failure from the earlier unregister", async () => {
+    stubRegistry({
+      ...threeRepos(),
+      unregisterFails: { status: 404, error: "not-registered" },
+    });
+    renderRepositories();
+    const first = await chooseUnregister("…/me/scratch");
+    await userEvent.click(
+      within(first).getByRole("button", { name: "Unregister repository" }),
+    );
+    await within(first).findByText("Repository already unregistered");
+    await userEvent.click(
+      within(first)
+        .getAllByRole("button", { name: "Close" })
+        .at(-1) as HTMLElement,
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    const again = await chooseUnregister("…/me/scratch");
+
+    expect(
+      within(again).queryByText("Repository already unregistered"),
+    ).not.toBeInTheDocument();
+  });
+
   // The read rules (#1037): no retry, so the notice lands on the first
   // failure, and the rows the reader already had stay put.
   it("states a failed re-read after one failed request, rows still on screen", async () => {

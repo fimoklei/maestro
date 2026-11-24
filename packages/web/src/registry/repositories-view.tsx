@@ -9,10 +9,8 @@ import { Button } from "../ui/button";
 import { REGISTER_REPOSITORY } from "../ui/control-labels";
 import { queryReading, readFreshness, targetReadings } from "../ui/freshness";
 import { Icon } from "../ui/icon";
-import { named, phrase } from "../ui/phrase";
 import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
-import { useWriteAction } from "../ui/use-write-action";
 import { RegisterRepositoryAction } from "./register-repository-action";
 import {
   type RepositoryAction,
@@ -28,10 +26,9 @@ import {
   repositoriesCounts,
   SCREEN,
   STATUS_READINGS,
-  unregisterNotice,
 } from "./repositories-copy";
-import { UnregisterDialog } from "./unregister-dialog";
-import { REGISTRY_KEY, useRegistry, useUnregisterRepo } from "./use-registry";
+import { UnregisterRepositoryAction } from "./unregister-repository-action";
+import { REGISTRY_KEY, useRegistry } from "./use-registry";
 
 // Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
 // counts; the dot and Read never drop.
@@ -42,7 +39,6 @@ export function RepositoriesView() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const registry = useRegistry();
-  const unregister = useUnregisterRepo();
   const repos = registry.data?.repos ?? [];
   const paths = repos.map((repo) => repo.path);
   // The GitHub column reads what Deploy-state reads.
@@ -69,15 +65,6 @@ export function RepositoriesView() {
     null,
   );
   const [registering, setRegistering] = useState(false);
-  const unregisterWrite = useWriteAction(unregister, {
-    screen,
-    action: "unregister",
-    subject: (_data, path) => ({
-      name: phrase`${named(repoTargetName(path, paths))}`,
-      row: path,
-    }),
-    failure: unregisterNotice,
-  });
 
   const rows: RepositoryRow[] = repos.map((repo, index) => ({
     path: repo.path,
@@ -96,11 +83,8 @@ export function RepositoriesView() {
       navigate("/", { state: { openTarget: repoRowId(row.path) } });
       return;
     }
-    unregister.reset();
     setUnregistering(row);
   };
-  const confirmUnregister = (row: RepositoryRow) =>
-    unregisterWrite.run(row.path, { onSuccess: () => setUnregistering(null) });
   const onActionRef = useRef(onAction);
   onActionRef.current = onAction;
   const columns = useMemo(
@@ -162,11 +146,10 @@ export function RepositoriesView() {
       }}
     >
       {unregistering ? (
-        <UnregisterDialog
-          name={unregistering.name}
-          phase={unregisterWrite.phase}
-          failure={unregisterWrite.failure}
-          onConfirm={() => confirmUnregister(unregistering)}
+        <UnregisterRepositoryAction
+          row={unregistering}
+          paths={paths}
+          screen={screen}
           onClose={() => setUnregistering(null)}
         />
       ) : null}
