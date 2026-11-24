@@ -1,5 +1,6 @@
 import type { HarnessChange } from "@maestro/core";
 import { describe, expect, it } from "vitest";
+import { recordHashes } from "../../scripts/smoke-copies.mjs";
 import {
   type HarnessRead,
   type HarnessReadRow,
@@ -8,6 +9,7 @@ import {
   parseReleaseArg,
   parseScenarioArg,
   readCockpit,
+  readGlobalCockpit,
   releaseMirrorProblem,
   SCENARIO_CATALOG,
   SCENARIO_NAMES,
@@ -46,7 +48,7 @@ describe("parseScenarioArg", () => {
 
   it("expands all to every scenario", () => {
     expect(parseScenarioArg(["--scenario", "all"])).toEqual(SCENARIO_NAMES);
-    expect(SCENARIO_NAMES).toHaveLength(14);
+    expect(SCENARIO_NAMES).toHaveLength(15);
     expect(SCENARIO_NAMES).toEqual(
       expect.arrayContaining([
         "edits-in-harness",
@@ -55,6 +57,7 @@ describe("parseScenarioArg", () => {
         "deploy-again",
         "unreadable",
         "harness-offline",
+        "global-folders",
       ]),
     );
   });
@@ -283,6 +286,206 @@ describe("scenarioMismatch", () => {
         observed,
       ),
     ).toBeNull();
+  });
+});
+
+describe("readGlobalCockpit", () => {
+  const CLAUDE = "~/.claude/skills";
+  const AGENTS = "~/.agents/skills";
+  const folder = (
+    path: string,
+    tool: "claude" | "codex",
+    primitives: ReturnType<typeof skill>[],
+    extra: Record<string, unknown> = {},
+  ) => ({ path, tool, detected: true, primitives, ...extra });
+
+  it("reads each Global folder's word and counts, and Global as its worst folder", () => {
+    const reading = readGlobalCockpit({
+      deployState: {
+        primitives: [
+          skill("code-review", { copy: "local-edits" }),
+          skill("commit-message"),
+          skill("release-notes"),
+        ],
+        folders: [
+          folder(
+            CLAUDE,
+            "claude",
+            [
+              skill("code-review", { copy: "local-edits" }),
+              skill("commit-message"),
+              skill("release-notes"),
+            ],
+            {
+              notUpdated: {
+                targetRelease: "v1.1.0",
+                copies: [{ name: "commit-message", stillAt: "v1.0.0" }],
+              },
+            },
+          ),
+          folder(
+            AGENTS,
+            "codex",
+            [
+              skill("code-review", { copy: "local-edits" }),
+              skill("commit-message"),
+            ],
+            { missing: ["release-notes"] },
+          ),
+        ],
+        skipped: [],
+        otherOrigins: [],
+        releaseHead: head("v1.1.0", "v2.0.0"),
+      },
+      drift: {
+        behind: [
+          { name: "code-review", reading: "behind" },
+          { name: "release-notes", reading: "no-longer-released" },
+        ],
+      },
+    });
+
+    expect(reading).toEqual({
+      status: "Local edits",
+      release: "v1.1.0 → v2.0.0",
+      notice: null,
+      skills: {},
+      folders: {
+        [CLAUDE]: {
+          word: "Local edits",
+          counts: { missing: 0, notUpdated: 1, localEdits: 1 },
+        },
+        [AGENTS]: {
+          word: "Local edits",
+          counts: { missing: 1, notUpdated: 0, localEdits: 1 },
+        },
+      },
+    });
+  });
+
+  it("reads a folder whose copies match the release as Up to date, also while Global is behind", () => {
+    const reading = readGlobalCockpit({
+      deployState: {
+        primitives: [skill("commit-message")],
+        folders: [
+          folder(CLAUDE, "claude", [skill("commit-message")]),
+          folder(AGENTS, "codex", [skill("commit-message")], {
+            missing: [],
+          }),
+          {
+            path: "~/.config/x/skills",
+            tool: "claude",
+            detected: false,
+            primitives: [],
+          },
+        ],
+        skipped: [],
+        otherOrigins: [],
+        releaseHead: head("v1.1.0", "v2.0.0"),
+      },
+      drift: { behind: [] },
+    });
+
+    expect(reading.status).toBe("Behind");
+    expect(Object.keys(reading.folders ?? {})).toEqual([CLAUDE, AGENTS]);
+    expect(reading.folders?.[CLAUDE]?.word).toBe("Up to date");
+  });
+});
+
+describe("scenarioMismatch on Global folders", () => {
+  const counts = (missing: number, notUpdated: number, localEdits: number) => ({
+    missing,
+    notUpdated,
+    localEdits,
+  });
+  const observed = {
+    status: "Local edits",
+    release: "v1.1.0 → v2.0.0",
+    notice: null,
+    skills: {},
+    folders: {
+      "~/.claude/skills": { word: "Local edits", counts: counts(0, 1, 1) },
+    },
+  };
+
+  it("passes when each folder shows its word and counts", () => {
+    expect(
+      scenarioMismatch(
+        {
+          name: "global-folders",
+          expect: {
+            folders: {
+              "~/.claude/skills": {
+                word: "Local edits",
+                counts: counts(0, 1, 1),
+              },
+            },
+          },
+        },
+        "Global",
+        observed,
+      ),
+    ).toBeNull();
+  });
+
+  it("names a folder whose counts differ and a folder the cockpit does not show", () => {
+    expect(
+      scenarioMismatch(
+        {
+          name: "global-folders",
+          expect: {
+            folders: {
+              "~/.claude/skills": {
+                word: "Local edits",
+                counts: counts(1, 1, 1),
+              },
+              "~/.agents/skills": {
+                word: "Local edits",
+                counts: counts(1, 0, 1),
+              },
+            },
+          },
+        },
+        "Global",
+        observed,
+      ),
+    ).toBe(
+      'scenario "global-folders" (Global): Global folder ~/.claude/skills expected "Local edits, 1 missing, 1 not updated, 1 with local edits", got "Local edits, 0 missing, 1 not updated, 1 with local edits"; Global folder ~/.agents/skills expected "Local edits, 1 missing, 0 not updated, 1 with local edits", got none',
+    );
+  });
+});
+
+describe("recordHashes", () => {
+  const lockfile = [
+    "dependencies:",
+    "- repo_url: fimoklei/maestro-fixture-harness",
+    "  deployed_file_hashes:",
+    "    .agents/skills/commit-message/SKILL.md: sha256:aaa",
+    "    .claude/skills/commit-message/SKILL.md: sha256:aaa",
+    "  content_hash: sha256:def",
+  ].join("\n");
+
+  it("replaces the recorded hash of each named file and keeps the rest", () => {
+    expect(
+      recordHashes(lockfile, {
+        ".claude/skills/commit-message/SKILL.md": "sha256:bbb",
+      }),
+    ).toBe(
+      lockfile.replace(
+        ".claude/skills/commit-message/SKILL.md: sha256:aaa",
+        ".claude/skills/commit-message/SKILL.md: sha256:bbb",
+      ),
+    );
+  });
+
+  it("refuses a file the lockfile records no hash for", () => {
+    expect(() =>
+      recordHashes(lockfile, {
+        ".claude/skills/commit-message/notes.md": "sha256:bbb",
+      }),
+    ).toThrow(
+      "the lockfile records no hash for .claude/skills/commit-message/notes.md",
+    );
   });
 });
 

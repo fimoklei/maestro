@@ -8,14 +8,16 @@ export function parseScenarioArg(argv: readonly string[]): string[] | null;
 
 export function parseReleaseArg(argv: readonly string[]): string | null;
 
+export interface CockpitPrimitive {
+  type: "skill";
+  name: string;
+  version: string;
+  copy?: "local-edits" | "unverified" | "edits-in-harness";
+}
+
 export interface CockpitRead {
   deployState: {
-    primitives: {
-      type: "skill";
-      name: string;
-      version: string;
-      copy?: "local-edits" | "unverified";
-    }[];
+    primitives: CockpitPrimitive[];
     skipped: { reason: string }[];
     releaseHead?: { release: string; latestRelease: string | null };
     pinnedPerSkill?: { release: string; skills: number }[];
@@ -40,16 +42,60 @@ export interface CockpitRead {
   }[];
 }
 
+export interface GlobalCockpitRead {
+  deployState: {
+    primitives: CockpitPrimitive[];
+    folders: {
+      path: string;
+      tool: "claude" | "codex";
+      detected: boolean;
+      primitives: CockpitPrimitive[];
+      missing?: string[];
+      notUpdated?: {
+        targetRelease: string;
+        copies: { name: string; stillAt: string | null }[];
+      };
+      strayCopies?: { name: string; atRelease: boolean }[];
+    }[];
+    skipped: { reason: string }[];
+    otherOrigins: string[];
+    releaseHead?: { release: string; latestRelease: string | null };
+    pinnedPerSkill?: { release: string; skills: number }[];
+    pendingOperation?: {
+      kind: "deploy" | "remove" | "update";
+      release: string;
+      desired: string[];
+    };
+  };
+  drift: CockpitRead["drift"];
+}
+
+export interface FolderCounts {
+  missing: number;
+  notUpdated: number;
+  localEdits: number;
+}
+
+export interface FolderReading {
+  word: string | null;
+  counts: FolderCounts;
+}
+
 export interface CockpitReading {
   status: string | null;
   release: string | null;
   notice: string | null;
   skills: Record<string, string>;
+  folders?: Record<string, FolderReading>;
   preview?: { changed: string[]; removed: string[]; newInRelease: string[] };
   imports?: Record<string, string>;
 }
 
 export function readCockpit(read: CockpitRead): CockpitReading;
+
+export function readGlobalCockpit(read: GlobalCockpitRead): CockpitReading & {
+  folders: Record<string, FolderReading>;
+};
 
 export interface ScenarioExpectation {
   status?: string;
@@ -58,6 +104,7 @@ export interface ScenarioExpectation {
   skills?: Record<string, string>;
   preview?: { changed?: string[]; removed?: string[]; newInRelease?: string[] };
   imports?: Record<string, string>;
+  folders?: Record<string, FolderReading>;
 }
 
 export function scenarioMismatch(

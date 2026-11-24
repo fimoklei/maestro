@@ -20,6 +20,8 @@ and zoom the change touches, and each state you could not reach.
      straight after `pnpm smoke`, with no wait loop.
    - A newer or older release after seeding → `pnpm smoke:release <tag>`
      (`v1.0.0`, `v1.1.0`, `v2.0.0`).
+   - Global behind, with local edits, a missing copy and a copy not updated
+     in its folders → `--scenario global-folders`.
    - A Global state no scenario seeds → stub Global's read before opening the
      screen: `ab network route "**/api/deploy-state/global" --body "$(cat
      <file>.json)"`, the JSON shaped as core's `GlobalDeployStateResult`;
