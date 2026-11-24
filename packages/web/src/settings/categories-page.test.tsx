@@ -324,7 +324,7 @@ describe("Settings › Categories", () => {
     });
     renderPage();
 
-    const notice = await screen.findByText(/^Categories not read/);
+    const notice = await screen.findByText(/^Couldn't read your categories/);
     expect(notice.closest("[role]")).toHaveTextContent(
       "/Users/me/.maestro/config.json",
     );
@@ -416,7 +416,9 @@ describe("Settings › Categories", () => {
     );
 
     expect(await screen.findByText("Planning")).toBeInTheDocument();
-    expect(screen.queryByText(/^Categories not read/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/^Couldn't read your categories/),
+    ).not.toBeInTheDocument();
   });
 });
 

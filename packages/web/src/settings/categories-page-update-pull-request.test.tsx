@@ -19,8 +19,8 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const WAITING =
-  "Pull request #45 is open and waiting for a reviewer. Select Update pull request to send your current categories.";
+const DIFFERS =
+  "Pull request #45 is open and waiting for a reviewer. Your categories differ from it. Update the pull request to send them.";
 const CONTAINS =
   "Pull request #45 is open and waiting for a reviewer. It already contains your current categories.";
 
@@ -83,9 +83,7 @@ describe("the row while the operator's own pull request is open", () => {
     renderPage();
 
     expect(
-      await within(await section()).findByText(
-        `${WAITING} Your categories differ from pull request #45.`,
-      ),
+      await within(await section()).findByText(DIFFERS),
     ).toBeInTheDocument();
   });
 

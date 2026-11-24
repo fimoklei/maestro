@@ -26,6 +26,7 @@ import {
   deleteMoves,
   emptyCategoryDeleted,
   HARNESS_CATEGORIES,
+  harnessCategoriesChanged,
   harnessCategoriesCount,
   harnessCategoriesFaulty,
   LOADING_CATEGORIES,
@@ -66,9 +67,15 @@ describe("Categories copy", () => {
   it("names the release whose categories file contains an error", () => {
     const notice = harnessCategoriesFaulty("v1.5.0");
     expect(notice.level).toBe("warning");
-    expect(notice.label).toBe("Couldn't load Harness categories");
+    expect(notice.label).toBe("Couldn't read Harness categories");
     expect(plainText(notice.message)).toBe(
       "The categories file in Harness release v1.5.0 contains an error. You can still propose your own categories for review.",
+    );
+  });
+
+  it("names the release that changed the Harness categories", () => {
+    expect(plainText(harnessCategoriesChanged("v1.5.0").message)).toBe(
+      "Release v1.5.0 changed the Harness categories. Before you copy them, you can compare them with your list.",
     );
   });
 
@@ -125,8 +132,7 @@ describe("Categories copy", () => {
     );
   });
 
-  const UNDO =
-    "You can't undo Replace. Select Add to keep everything you have.";
+  const UNDO = "You can't undo Replace. Add keeps everything you have.";
   const taken = (facts: Partial<CopyFacts>): CopyFacts => ({
     added: [],
     deleted: [],
@@ -226,20 +232,29 @@ describe("Categories copy", () => {
   it.each([
     [
       "no-harness-categories",
+      "No Harness categories to copy",
       "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
     ],
     [
       "harness-categories-unread",
+      "Couldn't read Harness categories",
       "Maestro couldn't read the latest Harness release. Select Close, then select Copy from Harness to try again.",
     ],
-    [null, "Select Close, then select Copy from Harness to try again."],
-  ])("states a copy dialog with nothing to show: %s", (code, message) => {
-    expect(copyPreviewFailed(code)).toEqual({
-      level: "error",
-      label: "Couldn't load Harness categories",
-      message,
-    });
-  });
+    [
+      null,
+      "Couldn't read Harness categories",
+      "Select Close, then select Copy from Harness to try again.",
+    ],
+  ])(
+    "states a copy dialog with nothing to show: %s",
+    (code, label, message) => {
+      expect(copyPreviewFailed(code)).toEqual({
+        level: "error",
+        label,
+        message,
+      });
+    },
+  );
 
   it.each([
     [
@@ -290,7 +305,7 @@ describe("Categories copy", () => {
 
   it("names the config file to repair by hand, then the control that reads it again", () => {
     const notice = categoriesUnreadable("/Users/me/.maestro/config.json");
-    expect(notice.label).toBe("Categories not read");
+    expect(notice.label).toBe("Couldn't read your categories");
     expect(plainText(notice.message)).toBe(
       "Repair the categories in /Users/me/.maestro/config.json manually. Then select Re-read Categories to try again.",
     );
@@ -298,7 +313,7 @@ describe("Categories copy", () => {
 
   it("names the control that recovers a failed read or add", () => {
     expect(CATEGORIES_READ_FAILED).toEqual({
-      label: "Categories not read",
+      label: "Couldn't read your categories",
       message: "Select Re-read Categories to try again.",
     });
     expect(CATEGORY_NOT_ADDED).toEqual({

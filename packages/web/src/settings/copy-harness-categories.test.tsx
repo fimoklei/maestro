@@ -276,7 +276,7 @@ describe("Copy Harness categories", () => {
     expect(
       dialog.getByText(
         sentence(
-          "Drafts isn't in the Harness categories. 2 skills will move to another category, and 1 prompt will have no category. They stay in the Harness. You can't undo Replace. Select Add to keep everything you have.",
+          "Drafts isn't in the Harness categories. 2 skills will move to another category, and 1 prompt will have no category. They stay in the Harness. You can't undo Replace. Add keeps everything you have.",
         ),
       ),
     ).toBeInTheDocument();
@@ -421,28 +421,28 @@ describe("Copy Harness categories", () => {
     ).toContain("Close");
   });
 
-  it.each<[string, Answer, string]>([
+  it.each<[string, Answer, string, string]>([
     [
       "a release without categories",
       () => jsonResponse({ error: "no-harness-categories" }, 409),
+      "No Harness categories to copy",
       "The latest Harness release has no categories to copy. Select Close, then select Re-read Categories.",
     ],
     [
       "a release Maestro couldn't read",
       () => jsonResponse({ error: "harness-categories-unread" }, 503),
+      "Couldn't read Harness categories",
       "Maestro couldn't read the latest Harness release. Select Close, then select Copy from Harness to try again.",
     ],
   ])(
     "states a preview that failed for %s, with nothing to copy",
-    async (_, preview, message) => {
+    async (_, preview, heading, message) => {
       stubServer({ preview });
       renderPage();
 
       const dialog = await openDialog();
 
-      expect(
-        await dialog.findByText("Couldn't load Harness categories"),
-      ).toBeInTheDocument();
+      expect(await dialog.findByText(heading)).toBeInTheDocument();
       expect(dialog.getByText(message)).toBeInTheDocument();
       expect(
         dialog.queryByRole("button", { name: "Copy categories" }),

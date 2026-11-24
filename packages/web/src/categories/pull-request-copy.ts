@@ -18,7 +18,7 @@ import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { type Copy, machine, named, namedList, phrase } from "../ui/phrase";
 import type { StatusReading } from "../ui/status-reading";
-import { countWords } from "./categories-copy";
+import { CATEGORIES_NOT_READ, countWords } from "./categories-copy";
 
 export { CREATE_PULL_REQUEST, UPDATE_PULL_REQUEST };
 
@@ -123,7 +123,8 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
     // The Harness row's own sentence, with the control this row carries.
     case "pull-request-missing":
       return {
-        sentence: `The proposal branch is on GitHub without a pull request. Select ${CREATE_PULL_REQUEST} to open one.`,
+        sentence:
+          "The proposal branch is on GitHub without a pull request. You can create one from your current categories.",
         blocked: listCause(row.list),
         open: stageStatusReading("pull-request-missing"),
         mode: "create",
@@ -138,7 +139,8 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
         mode: "create",
       };
     case "closed": {
-      const next = `was closed without merging. Select ${CREATE_PULL_REQUEST} to propose your current categories as a new pull request.`;
+      const next =
+        "was closed without merging. You can propose your current categories in a new pull request.";
       return {
         sentence: row.byOther
           ? phrase`${named(row.author)}'s pull request #${row.number} ${next}`
@@ -153,19 +155,24 @@ export function pullRequestRow(row: CategoriesProposalRow): PullRequestRowView {
       const asked = `A reviewer asked for changes on pull request #${row.number}.`;
       // A list the write refuses drops the call to update.
       const refused = listCause(row.list) !== null;
-      const state =
-        row.status === "changes-requested"
-          ? refused
-            ? asked
-            : `${asked} Change your categories, then select ${UPDATE_PULL_REQUEST} to send them.`
-          : row.list === "same"
-            ? `${waiting} It already contains your current categories.`
-            : refused
-              ? waiting
-              : `${waiting} Select ${UPDATE_PULL_REQUEST} to send your current categories.`;
       const against = againstPullRequest(row.list, row.number);
+      const sentences =
+        row.status === "changes-requested"
+          ? [
+              refused
+                ? asked
+                : `${asked} Change your categories, then update the pull request to send them.`,
+              against,
+            ]
+          : row.list === "same"
+            ? [`${waiting} It already contains your current categories.`]
+            : row.list === "differs"
+              ? [
+                  `${waiting} Your categories differ from it. Update the pull request to send them.`,
+                ]
+              : [waiting, against];
       return {
-        sentence: against === null ? state : `${state} ${against}`,
+        sentence: sentences.filter((each) => each !== null).join(" "),
         blocked: listCause(row.list),
         open: stageStatusReading(row.status),
         mode: "update",
@@ -311,7 +318,7 @@ const headings = (
     "no-usable-origin": harnessHeadings["no-usable-origin"],
     "categories-unreadable": {
       level: "error",
-      label: "Categories not read",
+      label: CATEGORIES_NOT_READ,
       message: `Select ${CLOSE}, then select ${REREAD_CATEGORIES}.`,
     },
     "no-answer": {

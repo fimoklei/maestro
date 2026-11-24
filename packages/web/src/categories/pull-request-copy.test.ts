@@ -103,17 +103,17 @@ describe("the pull-request row", () => {
         url: `${PULL}/45`,
         list: "same",
       },
-      "A reviewer asked for changes on pull request #45. Change your categories, then select Update pull request to send them.",
+      "A reviewer asked for changes on pull request #45. Change your categories, then update the pull request to send them.",
       null,
     ],
     [
       { state: "pull-request-missing", list: "ready" },
-      "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
+      "The proposal branch is on GitHub without a pull request. You can create one from your current categories.",
       null,
     ],
     [
       { state: "pull-request-missing", list: "empty" },
-      "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
+      "The proposal branch is on GitHub without a pull request. You can create one from your current categories.",
       "Add a category.",
     ],
     [
@@ -144,7 +144,7 @@ describe("the pull-request row", () => {
         url: `${PULL}/45`,
         list: "differs",
       },
-      "Pull request #45 is open and waiting for a reviewer. Select Update pull request to send your current categories. Your categories differ from pull request #45.",
+      "Pull request #45 is open and waiting for a reviewer. Your categories differ from it. Update the pull request to send them.",
       null,
     ],
     [
@@ -168,6 +168,41 @@ describe("the pull-request row", () => {
       },
       "A reviewer asked for changes on pull request #45. Your list is too large for the Harness categories file. Delete categories before creating a pull request.",
       "Delete categories.",
+    ],
+    [
+      {
+        state: "own-open",
+        status: "changes-requested",
+        number: 45,
+        url: `${PULL}/45`,
+        list: "differs",
+      },
+      "A reviewer asked for changes on pull request #45. Change your categories, then update the pull request to send them. Your categories differ from pull request #45.",
+      null,
+    ],
+    [
+      {
+        state: "closed",
+        number: 45,
+        url: `${PULL}/45`,
+        byOther: false,
+        author: "me",
+        list: "ready",
+      },
+      "Pull request #45 was closed without merging. You can propose your current categories in a new pull request.",
+      null,
+    ],
+    [
+      {
+        state: "closed",
+        number: 45,
+        url: `${PULL}/45`,
+        byOther: true,
+        author: "mira",
+        list: "ready",
+      },
+      "mira's pull request #45 was closed without merging. You can propose your current categories in a new pull request.",
+      null,
     ],
     [
       { state: "no-usable-origin" },
@@ -361,6 +396,16 @@ describe("the Create pull request dialog", () => {
     expect(createAfterCloseBody(45, false)).toBe(
       "This creates a new pull request on GitHub that replaces the Harness categories with your list. Pull request #45 stays closed.",
     );
+  });
+
+  it("states categories it couldn't read when proposing them", () => {
+    expect(
+      pullRequestNotice(
+        new HttpError(409, "", "categories-unreadable"),
+        null,
+        null,
+      )?.label,
+    ).toBe("Couldn't read your categories");
   });
 
   it("reports a pushed branch without a pull request", () => {
