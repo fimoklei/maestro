@@ -1,10 +1,20 @@
-import type { HarnessStageRead, HarnessState } from "@maestro/core";
-import { screen, within } from "@testing-library/react";
+import type {
+  HarnessStageRead,
+  HarnessState,
+  RegistryEntry,
+} from "@maestro/core";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { STAGE_TITLES, stageRows } from "../harness/harness-flow-fixture";
 import { stageRow } from "../harness/stage-row-fixture";
-import { jsonResponse, renderWithQuery } from "../test-utils";
+import {
+  expectDescription,
+  jsonResponse,
+  renderWithQuery,
+  shownTooltip,
+} from "../test-utils";
 import { AppRoutes } from "./app-router";
 import { Sidebar } from "./sidebar";
 
@@ -29,10 +39,14 @@ type Reply = { body: unknown; status?: number };
 function stubServer({
   global = { body: { primitives: [], folders: [], skipped: [] } },
   repos = {},
+  missing = [],
+  registryStatus = 200,
   harness = {},
 }: {
   global?: Reply;
   repos?: Record<string, Reply>;
+  missing?: string[];
+  registryStatus?: number;
   harness?: Partial<
     Record<"proposal" | "review" | "release", HarnessStageRead>
   > & {
@@ -76,12 +90,18 @@ function stubServer({
       if (url.startsWith("/api/registry/repos")) {
         return jsonResponse(
           {
-            repos: Object.keys(repos).map((path) => ({
-              path,
-              status: "ok",
-            })),
+            repos: [
+              ...Object.keys(repos).map((path) => ({
+                path,
+                status: "ready" as const,
+              })),
+              ...missing.map((path) => ({
+                path,
+                status: "folder-missing" as const,
+              })),
+            ] satisfies RegistryEntry[],
           },
-          200,
+          registryStatus,
         );
       }
       if (url.startsWith("/api/deploy-state/global")) {
@@ -89,7 +109,10 @@ function stubServer({
       }
       if (url.startsWith("/api/deploy-state?repo=")) {
         const repo = decodeURIComponent(url.split("repo=")[1] ?? "");
-        const reply = repos[repo] ?? { body: {}, status: 404 };
+        const reply = repos[repo] ?? {
+          body: { error: "not-registered" },
+          status: 403,
+        };
         return jsonResponse(reply.body, reply.status ?? 200);
       }
       return jsonResponse({}, 404);
@@ -173,6 +196,70 @@ describe("Deploy-state counter", () => {
       name: "Deploy-state Unknown",
     });
     expect(within(item).getByText("?")).toBeInTheDocument();
+  });
+});
+
+describe("Deploy-state counter with a missing repository folder", () => {
+  it("counts the other targets behind, leaving the missing folder out", async () => {
+    stubServer({
+      repos: { "/work/a": repo(head("v1", "v2")) },
+      missing: ["/work/gone"],
+    });
+    renderSidebar();
+
+    expect(
+      await within(screens()).findByRole("button", {
+        name: "Deploy-state 1 behind",
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows nothing where only missing folders and no target behind stand", async () => {
+    stubServer({ missing: ["/work/gone"] });
+    renderSidebar();
+
+    await screen.findByText("v0.5.0");
+    await waitFor(() =>
+      expect(
+        within(screens()).getByRole("button", { name: "Deploy-state" }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.queryByText("?")).not.toBeInTheDocument();
+  });
+});
+
+describe("Deploy-state counter's ? tooltip", () => {
+  it("names exactly the targets whose read failed, on hover and for a screen reader", async () => {
+    stubServer({
+      global: { body: {}, status: 500 },
+      repos: {
+        "/work/a": repo(head("v1", "v2")),
+        "/work/b": { body: {}, status: 500 },
+      },
+      missing: ["/work/gone"],
+    });
+    renderSidebar();
+
+    const item = await within(screens()).findByRole("button", {
+      name: "Deploy-state Unknown",
+    });
+    const detail =
+      "Couldn't read Global and /work/b. Select Re-read Deploy-state on the Deploy-state screen.";
+    expectDescription(item, detail);
+    await userEvent.hover(item);
+    expect(await shownTooltip()).toHaveTextContent(`Deploy-state${detail}`);
+  });
+
+  it("names the registry read when the list of repositories couldn't be read", async () => {
+    stubServer({ registryStatus: 500 });
+    renderSidebar();
+
+    expectDescription(
+      await within(screens()).findByRole("button", {
+        name: "Deploy-state Unknown",
+      }),
+      "Couldn't read the list of registered repositories. Select Re-read Deploy-state on the Deploy-state screen.",
+    );
   });
 });
 

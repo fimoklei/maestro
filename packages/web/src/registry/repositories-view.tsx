@@ -2,7 +2,7 @@ import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { FolderGit2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { isBehind, repoRowId } from "../deploy-state/target-rows";
+import { repoReadings, repoRowId } from "../deploy-state/target-readings";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { repoTargetName } from "../shell/target-name";
 import { Button } from "../ui/button";
@@ -74,8 +74,8 @@ export function RepositoriesView() {
     github: deployStates[index]?.data?.github,
   }));
 
-  const behind = deployStates.filter((read) =>
-    isBehind(read.data?.releaseHead, read.data?.pendingOperation),
+  const behind = repoReadings(repos, deployStates).filter(
+    (reading) => reading.behind,
   ).length;
 
   const onAction = (row: RepositoryRow, action: RepositoryAction) => {

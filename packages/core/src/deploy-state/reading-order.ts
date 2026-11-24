@@ -9,6 +9,7 @@ type Entry = {
 };
 
 const READINGS = [
+  { kind: "folder-missing", surfaces: ["target"] },
   { kind: "unfinished", surfaces: ["target"] },
   { kind: "attention", surfaces: ["target"] },
   {

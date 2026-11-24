@@ -23,6 +23,7 @@ export const SKILLS_MISSING = reading(
 export const NOT_UPDATED = reading("Not updated", "attention", WARNING_GLYPH);
 export const LOCAL_EDITS = reading("Local edits", "attention", WARNING_GLYPH);
 export const BEHIND = reading("Behind", "attention");
+export const FOLDER_MISSING = reading("Folder missing", "failed");
 export const EDITS_IN_HARNESS = reading("Edits in the Harness", "neutral");
 const UNKNOWN = reading("Unknown", "unknown");
 export const IN_SYNC = reading("In sync", "good");
@@ -35,6 +36,7 @@ type TargetKind = KindOn<"target"> | "unknown";
 const TARGET_ORDER = withUnknown(readingsOn("target"), "behind");
 
 const TARGET_READINGS = {
+  "folder-missing": FOLDER_MISSING,
   attention: ATTENTION,
   "local-edits": LOCAL_EDITS,
   missing: SKILLS_MISSING,
@@ -93,6 +95,9 @@ export const TARGET_CHIPS: readonly StatusChip[] = [
     (kind): StatusChip[] => {
       if (kind === "unfinished") return [];
       const each = TARGET_READINGS[kind];
+      if (kind === "folder-missing") {
+        return [{ word: each.word, family: "failed", covers: [each.word] }];
+      }
       return [
         chipOf(
           each,

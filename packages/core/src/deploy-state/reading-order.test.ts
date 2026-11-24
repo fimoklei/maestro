@@ -11,6 +11,7 @@ import {
 describe("reading order", () => {
   it("orders the target roll-up as GLOSSARY's Target roll-up row states", () => {
     expect(withUnknown(readingsOn("target"), "behind")).toEqual([
+      "folder-missing",
       "unfinished",
       "attention",
       "local-edits",

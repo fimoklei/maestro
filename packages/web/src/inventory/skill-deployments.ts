@@ -10,7 +10,7 @@ import {
 } from "../deploy-state/release-head-copy";
 import type { RemoveDialogTarget } from "../deploy-state/remove-ledger-rows";
 import { type SkillMark, skillMark } from "../deploy-state/skill-mark";
-import { GLOBAL_ROW_ID, repoRowId } from "../deploy-state/target-rows";
+import { GLOBAL_ROW_ID, repoRowId } from "../deploy-state/target-readings";
 import { unfinishedReading } from "../deploy-state/target-status";
 import type { DriftStatus } from "../drift/drift-view-model";
 import { type DeploymentTarget, skillReading } from "./deployed-rollup";

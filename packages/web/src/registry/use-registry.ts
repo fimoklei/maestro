@@ -1,4 +1,4 @@
-import type { RepoStatus } from "@maestro/core";
+import type { RegistryEntry } from "@maestro/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 
@@ -8,7 +8,7 @@ export type RegisteredRepo = { path: string };
 type StoredRepos = { repos: RegisteredRepo[] };
 
 type RegistryResponse = {
-  repos: (RegisteredRepo & { status: RepoStatus })[];
+  repos: RegistryEntry[];
 };
 
 export const REGISTRY_KEY = ["registry", "repos"] as const;

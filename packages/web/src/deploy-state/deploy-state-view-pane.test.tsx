@@ -1,4 +1,4 @@
-import type { DeployedPrimitive } from "@maestro/core";
+import type { DeployedPrimitive, RegistryEntry } from "@maestro/core";
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -1165,6 +1165,44 @@ describe("Deploy-state pane — where each action sits", () => {
     expect(within(pane).getByText("Deploy incomplete")).toBeInTheDocument();
     expect(
       within(pane).queryByText(/changes that aren't in the latest release/),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("Deploy-state pane — a registered repository whose folder is missing", () => {
+  it("reads Folder missing and says how to bring the repository back, with no failed read and no skills list", async () => {
+    stubServer(() => ({
+      repos: {
+        repos: [
+          { path: REPO, status: "folder-missing" },
+        ] satisfies RegistryEntry[],
+      },
+      repo: {
+        [REPO]: { status: 403, body: { error: "not-registered" } },
+      },
+    }));
+    renderDeployState();
+
+    await findRow(LABEL);
+    await waitFor(() => expect(cellsOf(LABEL)[1]).toBe("Folder missing"));
+    await hoverOpen(within(grid()).getByText("Folder missing"));
+    expect(
+      await screen.findByText(
+        "Maestro can't read this repository because its folder isn't at the registered path.",
+      ),
+    ).toBeInTheDocument();
+
+    const pane = await openPane(LABEL);
+    expect(
+      within(pane).getByText(
+        "There's no folder at this path, so Maestro can't read this repository. Put the folder back, then select Re-read Deploy-state. To stop tracking it, select Unregister on the Repositories screen.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(pane).queryByText(/Deploy-state not read/),
+    ).not.toBeInTheDocument();
+    expect(
+      within(pane).queryByRole("heading", { name: /Deployed skills/ }),
     ).not.toBeInTheDocument();
   });
 });
