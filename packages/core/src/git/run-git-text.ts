@@ -1,21 +1,19 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { runProcess } from "../process/run-process";
 import { gitOptions } from "./non-interactive";
-
-const run = promisify(execFile);
 
 export type GitRun =
   | { ok: true; stdout: string }
   | { ok: false; exitCode: number | null };
 
 export async function runGit(root: string, args: string[]): Promise<GitRun> {
-  try {
-    const { stdout } = await run("git", ["-C", root, ...args], gitOptions());
-    return { ok: true, stdout: stdout.trim() };
-  } catch (error) {
-    const code = (error as { code?: unknown }).code;
-    return { ok: false, exitCode: typeof code === "number" ? code : null };
+  const outcome = await runProcess("git", ["-C", root, ...args], gitOptions());
+  if (outcome.ok) {
+    return { ok: true, stdout: outcome.stdout.trim() };
   }
+  return {
+    ok: false,
+    exitCode: outcome.failure === "failed" ? outcome.exitCode : null,
+  };
 }
 
 export async function runGitText(

@@ -1,12 +1,14 @@
-import { execFile } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import type { CloneSync } from "../harness/read-harness-state";
+import {
+  ProcessFailedError,
+  type ProcessOptions,
+  runProcess,
+  stdoutOf,
+} from "../process/run-process";
 import { gitOptions, indexOptions, NO_HOOKS } from "./non-interactive";
-
-const run = promisify(execFile);
 
 // Paths come from git's own listing, so they are matched literally, never as
 // globs. A fast-forward runs `post-merge`, so hooks stay off.
@@ -139,15 +141,14 @@ async function exitsZero(
   args: string[],
   options = gitOptions(),
 ): Promise<boolean> {
-  try {
-    await git(root, args, options);
+  const outcome = await gitOutcome(root, args, options);
+  if (outcome.ok) {
     return true;
-  } catch (error) {
-    if ((error as { code?: unknown }).code === 1) {
-      return false;
-    }
-    throw error;
   }
+  if (outcome.failure === "failed" && outcome.exitCode === 1) {
+    return false;
+  }
+  throw new ProcessFailedError(outcome);
 }
 
 async function text(root: string, args: string[]): Promise<string | null> {
@@ -163,5 +164,9 @@ async function git(
   args: string[],
   options = gitOptions(),
 ): Promise<string> {
-  return (await run("git", ["-C", root, ...BASE, ...args], options)).stdout;
+  return stdoutOf(await gitOutcome(root, args, options));
+}
+
+function gitOutcome(root: string, args: string[], options: ProcessOptions) {
+  return runProcess("git", ["-C", root, ...BASE, ...args], options);
 }

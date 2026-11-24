@@ -10,23 +10,16 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { dirname } from "node:path";
+import { hasErrnoCode } from "../filesystem/errno";
 import type { FileStamp, FileSystemPort, RawDirEntry } from "./file-system";
 
 let writeCounter = 0;
-
-function isNotFound(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "ENOENT"
-  );
-}
 
 async function readdirOrEmpty<T>(op: () => Promise<T[]>): Promise<T[]> {
   try {
     return await op();
   } catch (error) {
-    if (isNotFound(error)) {
+    if (hasErrnoCode(error, "ENOENT")) {
       return [];
     }
     throw error;
@@ -75,7 +68,7 @@ export class NodeFileSystem implements FileSystemPort {
     try {
       return await readFile(path, "utf8");
     } catch (error) {
-      if (isNotFound(error)) {
+      if (hasErrnoCode(error, "ENOENT")) {
         return null;
       }
       throw error;
@@ -87,7 +80,7 @@ export class NodeFileSystem implements FileSystemPort {
       const { mtimeMs, size } = await stat(path);
       return { modifiedMs: mtimeMs, size };
     } catch (error) {
-      if (isNotFound(error)) {
+      if (hasErrnoCode(error, "ENOENT")) {
         return null;
       }
       throw error;
@@ -118,7 +111,7 @@ export class NodeFileSystem implements FileSystemPort {
       await writeFile(path, contents, { encoding: "utf8", flag: "wx" });
       return true;
     } catch (error) {
-      if ((error as { code?: string }).code === "EEXIST") {
+      if (hasErrnoCode(error, "EEXIST")) {
         return false;
       }
       throw error;

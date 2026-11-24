@@ -1,8 +1,13 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { z } from "zod";
 import type { GitOrigin } from "../deploy/git-origin";
 import { normalizeCommandOutput } from "../normalize-command-output";
+import {
+  createProcessRunner,
+  type ProcessFailure,
+  type ProcessRunner,
+  type RunFn,
+  runProcess,
+} from "../process/run-process";
 import type {
   HarnessReviewPort,
   HarnessReviewRead,
@@ -15,8 +20,6 @@ import type {
   ReviewWriteOutcome,
   ViewerRead,
 } from "./harness-review-port";
-
-const defaultRun = promisify(execFile);
 
 const REVIEW_READ_LIMIT = 100;
 
@@ -119,17 +122,11 @@ const requestSchema = z.object({
 
 const documentSchema = z.array(requestSchema);
 
-type RunFn = (
-  file: string,
-  args: string[],
-  options: { env: NodeJS.ProcessEnv; timeout: number },
-) => Promise<{ stdout: string; stderr: string }>;
-
 export class GhCliAdapter implements HarnessReviewPort {
-  private readonly run: RunFn;
+  private readonly run: ProcessRunner;
 
   constructor(deps?: { run?: RunFn }) {
-    this.run = deps?.run ?? defaultRun;
+    this.run = deps?.run ? createProcessRunner(deps.run) : runProcess;
   }
 
   async readReviews(origin: GitOrigin): Promise<HarnessReviewRead> {
@@ -137,38 +134,36 @@ export class GhCliAdapter implements HarnessReviewPort {
       return { outcome: "unavailable", reason: "no-gh" };
     }
 
-    let stdout: string;
-    try {
-      ({ stdout } = await this.run(
-        "gh",
-        [
-          "pr",
-          "list",
-          "--repo",
-          origin.ownerRepo,
-          "--state",
-          "all",
-          "--limit",
-          String(REVIEW_READ_LIMIT),
-          "--json",
-          JSON_FIELDS,
-        ],
-        {
-          env: { ...process.env, ...NON_INTERACTIVE },
-          timeout: GH_TIMEOUT_MS,
-        },
-      ));
-    } catch (error) {
-      if (!noAnswerPossible(error)) {
+    const listed = await this.run(
+      "gh",
+      [
+        "pr",
+        "list",
+        "--repo",
+        origin.ownerRepo,
+        "--state",
+        "all",
+        "--limit",
+        String(REVIEW_READ_LIMIT),
+        "--json",
+        JSON_FIELDS,
+      ],
+      {
+        env: { ...process.env, ...NON_INTERACTIVE },
+        timeout: GH_TIMEOUT_MS,
+      },
+    );
+    if (!listed.ok) {
+      if (!noAnswerPossible(listed)) {
         return { outcome: "failed" };
       }
       return {
         outcome: "unavailable",
-        reason: isMissing(error) ? "no-gh" : "no-answer",
+        reason: listed.failure === "missing" ? "no-gh" : "no-answer",
       };
     }
 
-    const rows = documentSchema.safeParse(parseJson(stdout));
+    const rows = documentSchema.safeParse(parseJson(listed.stdout));
     if (!rows.success) {
       return { outcome: "failed" };
     }
@@ -184,20 +179,18 @@ export class GhCliAdapter implements HarnessReviewPort {
     if (origin.host !== "github.com") {
       return { outcome: "unavailable" };
     }
-    let stdout: string;
-    try {
-      ({ stdout } = await this.run(
-        "gh",
-        ["api", "--hostname", "github.com", "user", "--jq", "{login}"],
-        {
-          env: { ...process.env, ...NON_INTERACTIVE },
-          timeout: GH_TIMEOUT_MS,
-        },
-      ));
-    } catch (error) {
-      return { outcome: noAnswerPossible(error) ? "unavailable" : "failed" };
+    const read = await this.run(
+      "gh",
+      ["api", "--hostname", "github.com", "user", "--jq", "{login}"],
+      {
+        env: { ...process.env, ...NON_INTERACTIVE },
+        timeout: GH_TIMEOUT_MS,
+      },
+    );
+    if (!read.ok) {
+      return { outcome: noAnswerPossible(read) ? "unavailable" : "failed" };
     }
-    const viewer = viewerSchema.safeParse(parseJson(stdout));
+    const viewer = viewerSchema.safeParse(parseJson(read.stdout));
     return viewer.success
       ? { outcome: "read", login: viewer.data.login }
       : { outcome: "failed" };
@@ -288,18 +281,17 @@ export class GhCliAdapter implements HarnessReviewPort {
     if (origin.host !== "github.com") {
       return { ok: false, error: "unavailable" };
     }
-    try {
-      const { stdout } = await this.run("gh", args, {
-        env: { ...process.env, ...NON_INTERACTIVE },
-        timeout: GH_TIMEOUT_MS,
-      });
-      return { ok: true, stdout };
-    } catch (error) {
-      return {
-        ok: false,
-        error: noAnswerPossible(error) ? "unavailable" : "failed",
-      };
+    const outcome = await this.run("gh", args, {
+      env: { ...process.env, ...NON_INTERACTIVE },
+      timeout: GH_TIMEOUT_MS,
+    });
+    if (outcome.ok) {
+      return { ok: true, stdout: outcome.stdout };
     }
+    return {
+      ok: false,
+      error: noAnswerPossible(outcome) ? "unavailable" : "failed",
+    };
   }
 }
 
@@ -337,22 +329,13 @@ function parseJson(stdout: string): unknown {
   }
 }
 
-function isMissing(error: unknown): boolean {
-  return (error as { code?: unknown }).code === "ENOENT";
-}
-
-function noAnswerPossible(error: unknown): boolean {
-  const { code, killed, stderr } = error as {
-    code?: unknown;
-    killed?: unknown;
-    stderr?: unknown;
-  };
-  if (isMissing(error) || killed === true) {
+function noAnswerPossible(failure: ProcessFailure): boolean {
+  if (failure.failure !== "failed") {
     return true;
   }
-  if (code === NOT_SIGNED_IN) {
+  if (failure.exitCode === NOT_SIGNED_IN) {
     return true;
   }
-  const haystack = normalizeCommandOutput(String(stderr ?? ""));
+  const haystack = normalizeCommandOutput(failure.stderr);
   return OFFLINE_PHRASES.some((phrase) => haystack.includes(phrase));
 }
