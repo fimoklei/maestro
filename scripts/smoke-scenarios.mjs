@@ -2,7 +2,6 @@
 // the cockpit's own API and real apm, then read back and checked.
 import { execFileSync } from "node:child_process";
 import {
-  appendFileSync,
   chmodSync,
   existsSync,
   mkdirSync,
@@ -23,9 +22,10 @@ import {
   releasesUpTo,
 } from "./fixture-harness.mjs";
 import { seedToolPresence } from "./seed-sandbox.mjs";
-import { readCockpit } from "./smoke-cockpit-reading.mjs";
+import { readCockpit, readGlobalCockpit } from "./smoke-cockpit-reading.mjs";
+import { editCopyByHand, putOlderCopy } from "./smoke-copies.mjs";
 
-export { readCockpit };
+export { readCockpit, readGlobalCockpit };
 
 const [V1_0, V1_1, V2] = FIXTURE_RELEASES;
 // Between v1.1.0 and v2.0.0 code-review changes, release-notes goes and
@@ -99,8 +99,8 @@ const SCENARIOS = [
     atV2: async (s, repo) => {
       await s.deploy(repo, AT_V2);
       editByHand(repo, "test-plan");
-      await s.importLocalEdits(repo, ["test-plan"]);
     },
+    afterAllDeploys: (s, repo) => s.importLocalEdits(repo, ["test-plan"]),
     expect: {
       status: "Edits in the Harness",
       skills: { "test-plan": "Edits in the Harness" },
@@ -181,6 +181,39 @@ const SCENARIOS = [
   },
 ];
 
+const GLOBAL_SCENARIO = {
+  name: "global-folders",
+  summary:
+    "Global at v1.1.0 while v2.0.0 is out; its folders hold local edits, a missing copy and a v1.0.0 copy.",
+  atV1: async (s, { home, fixtureDir }) => {
+    await s.deploy(null, AT_V1);
+    for (const folder of [".claude/skills", ".agents/skills"])
+      editCopyByHand(join(home, folder, "code-review"));
+    rmSync(join(home, ".agents/skills/release-notes"), { recursive: true });
+    putOlderCopy({
+      root: home,
+      lockfilePath: join(home, ".apm", "apm.lock.yaml"),
+      releaseTree: join(fixtureDir, V1_0),
+      copyDir: ".claude/skills",
+      skill: "commit-message",
+    });
+  },
+  expect: {
+    status: "Local edits",
+    release: "v1.1.0 → v2.0.0",
+    folders: {
+      "~/.claude/skills": {
+        word: "Local edits",
+        counts: { missing: 0, notUpdated: 1, localEdits: 1 },
+      },
+      "~/.agents/skills": {
+        word: "Local edits",
+        counts: { missing: 1, notUpdated: 0, localEdits: 1 },
+      },
+    },
+  },
+};
+
 // Seed the Harness itself, not a consuming repository: one restorable Deletion
 // in Pending proposal and one unreleased Edit to release. No import scenario
 // edits DELETED_LOCALLY, whose copies would read as another Harness's, and
@@ -198,6 +231,7 @@ const UNREACHABLE_ORIGIN = "http://127.0.0.1:1/";
 /** Every scenario `--scenario` seeds, with one line saying what it seeds. */
 export const SCENARIO_CATALOG = [
   ...SCENARIOS.map(({ name, summary }) => ({ name, summary })),
+  { name: GLOBAL_SCENARIO.name, summary: GLOBAL_SCENARIO.summary },
   {
     name: HARNESS_SCENARIO,
     summary:
@@ -212,10 +246,7 @@ export const SCENARIO_CATALOG = [
 export const SCENARIO_NAMES = SCENARIO_CATALOG.map(({ name }) => name);
 
 function editByHand(repo, skill) {
-  appendFileSync(
-    join(repo, ".claude/skills", skill, "SKILL.md"),
-    "\nA line edited by hand after the deploy.\n",
-  );
+  editCopyByHand(join(repo, ".claude/skills", skill));
 }
 
 /** The scenario names `--scenario` asks for, or null when it is absent. */
@@ -253,6 +284,10 @@ export function parseReleaseArg(argv) {
 
 const shown = (value) => (value == null ? "none" : `"${value}"`);
 const list = (names) => [...names].sort().join(", ") || "none";
+const folderShown = (row) =>
+  row === undefined
+    ? "none"
+    : `"${row.word}, ${row.counts.missing} missing, ${row.counts.notUpdated} not updated, ${row.counts.localEdits} with local edits"`;
 
 /** Null when the cockpit shows every fact the scenario declares. */
 export function scenarioMismatch(scenario, repoPath, observed) {
@@ -268,6 +303,13 @@ export function scenarioMismatch(scenario, repoPath, observed) {
     if (observed.skills[name] !== mark)
       problems.push(
         `${name} expected ${shown(mark)}, got ${shown(observed.skills[name])}`,
+      );
+  }
+  for (const [path, row] of Object.entries(expect.folders ?? {})) {
+    const actual = folderShown(observed.folders?.[path]);
+    if (actual !== folderShown(row))
+      problems.push(
+        `Global folder ${path} expected ${folderShown(row)}, got ${actual}`,
       );
   }
   for (const [name, group] of Object.entries(expect.imports ?? {})) {
@@ -562,6 +604,22 @@ async function observe(api, scenario, repo) {
   });
 }
 
+async function observeGlobal(api) {
+  return readGlobalCockpit({
+    deployState: await api.get("/api/deploy-state/global"),
+    drift: await api.get("/api/drift/global"),
+  });
+}
+
+function hashProblem(scenario, where, lockfile) {
+  const unprefixed = existsSync(lockfile)
+    ? unprefixedHashes(readFileSync(lockfile, "utf8"))
+    : [];
+  return unprefixed.length === 0
+    ? null
+    : `scenario "${scenario}" (${where}): recorded hashes without the sha256: prefix: ${unprefixed.join(", ")}`;
+}
+
 /**
  * Wipes earlier scenario repos, builds the fixture Harness, connects it and
  * seeds each named scenario; returns one mismatch message per failing check.
@@ -611,6 +669,9 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
   const steps = seedingSteps(api, paths);
   for (const scenario of scenarios)
     await scenario.atV1?.(steps, repoOf(scenario));
+  const seedsGlobal = names.includes(GLOBAL_SCENARIO.name);
+  if (seedsGlobal)
+    await GLOBAL_SCENARIO.atV1(steps, { home: paths.home, fixtureDir });
 
   publishFixtureRelease({
     workDir: paths.work,
@@ -620,18 +681,18 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
   await refreshAndCheckMirror(api, paths, commits, V2);
   for (const scenario of scenarios)
     await scenario.atV2?.(steps, repoOf(scenario));
+  for (const scenario of scenarios)
+    await scenario.afterAllDeploys?.(steps, repoOf(scenario));
 
   const problems = [];
   for (const scenario of scenarios) {
     const repo = repoOf(scenario);
-    const lockfile = join(repo, "apm.lock.yaml");
-    const unprefixed = existsSync(lockfile)
-      ? unprefixedHashes(readFileSync(lockfile, "utf8"))
-      : [];
-    if (unprefixed.length > 0)
-      problems.push(
-        `scenario "${scenario.name}" (${repo}): recorded hashes without the sha256: prefix: ${unprefixed.join(", ")}`,
-      );
+    const unprefixed = hashProblem(
+      scenario.name,
+      repo,
+      join(repo, "apm.lock.yaml"),
+    );
+    if (unprefixed !== null) problems.push(unprefixed);
     const mismatch = scenarioMismatch(
       scenario,
       repo,
@@ -639,7 +700,19 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
     );
     if (mismatch !== null) problems.push(mismatch);
   }
+  if (seedsGlobal) {
+    for (const problem of [
+      hashProblem(
+        GLOBAL_SCENARIO.name,
+        "Global",
+        join(paths.home, ".apm", "apm.lock.yaml"),
+      ),
+      scenarioMismatch(GLOBAL_SCENARIO, "Global", await observeGlobal(api)),
+    ])
+      if (problem !== null) problems.push(problem);
+  }
   const seeded = scenarios.map(repoOf);
+  if (seedsGlobal) seeded.push(paths.home);
   if (names.some((name) => [HARNESS_SCENARIO, OFFLINE_SCENARIO].includes(name)))
     seeded.push(paths.clone);
   // Last, so no deploy reading is taken against the changed Harness.

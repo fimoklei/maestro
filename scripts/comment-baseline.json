@@ -665,7 +665,7 @@
   "scripts/run-tests.mjs": 8,
   "scripts/seed-sandbox.d.mts": 2,
   "scripts/seed-sandbox.mjs": 16,
-  "scripts/smoke-cockpit-reading.mjs": 9,
+  "scripts/smoke-cockpit-reading.mjs": 8,
   "scripts/smoke-gh.d.mts": 1,
   "scripts/smoke-gh.mjs": 4,
   "scripts/smoke-ready.d.mts": 1,
