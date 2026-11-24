@@ -52,9 +52,8 @@ const localDeletionHeadings = ({
     },
     "no-answer": {
       level: "error",
-      label: "Clone not read",
+      label: "Couldn't read your clone",
       message: `Nothing was deleted. Select ${CLOSE}, then select ${w.deleteLabel} again.`,
-      detail: "Git couldn't read your clone.",
     },
     "destination-unsafe": linkInHarness(
       w,

@@ -218,11 +218,13 @@ describe("Harness local deletion", () => {
     renderHarness();
     const dialog = await openLocalDeletion();
 
-    expect(await within(dialog).findByText("Clone not read")).toBeVisible();
     expect(
-      within(dialog).getByText("Git couldn't read your clone."),
-    ).toBeInTheDocument();
-    expectTooltipCause(confirmButton(dialog), /^Clone not read/);
+      await within(dialog).findByText("Couldn't read your clone"),
+    ).toBeVisible();
+    expect(
+      within(dialog).queryByText("Git couldn't read your clone."),
+    ).toBeNull();
+    expectTooltipCause(confirmButton(dialog), /^Couldn't read your clone/);
     await userEvent.click(confirmButton(dialog));
     expect(localDeletions).toEqual([]);
   });

@@ -6,6 +6,7 @@ import {
   deployStateNotRead,
   folderMetaLine,
   globalLocalEditsLine,
+  localEditsCardLine,
   localEditsLine,
   NO_FILTER_MATCH,
   NO_LONGER_RELEASED_HINT,
@@ -158,9 +159,9 @@ describe("Deploy-state copy", () => {
   it("names the screen's one re-read control in every failed read", () => {
     expect(rereadLabel("Deploy-state")).toBe("Re-read Deploy-state");
     // A Status hover card sentence, so it ends in a full stop.
-    expect(REPO_NOT_READ).toBe("Deploy-state not read.");
+    expect(REPO_NOT_READ).toBe("Couldn't read this repository's deploy-state.");
     expect(REPO_NOT_READ_LINE).toBe(
-      "Deploy-state not read. Select Re-read Deploy-state to read this repository's deploy-state again.",
+      "Couldn't read this repository's deploy-state. Select Re-read Deploy-state to read it again.",
     );
   });
 
@@ -168,20 +169,20 @@ describe("Deploy-state copy", () => {
   it("merges the band's failed reads into one notice that names each part", () => {
     const notice = {
       level: "error",
-      label: "Deploy-state not read",
+      label: "Couldn't read Deploy-state",
       message: "Select Re-read Deploy-state to read every target again.",
     };
     expect(deployStateNotRead(["global"])).toEqual({
       ...notice,
-      detail: "Not read: Global.",
+      detail: "Couldn't read Global.",
     });
     expect(deployStateNotRead(["repos"])).toEqual({
       ...notice,
-      detail: "Not read: registered repositories.",
+      detail: "Couldn't read the list of registered repositories.",
     });
     expect(deployStateNotRead(["global", "repos"])).toEqual({
       ...notice,
-      detail: "Not read: Global and registered repositories.",
+      detail: "Couldn't read Global and the list of registered repositories.",
     });
   });
 
@@ -194,7 +195,7 @@ describe("Deploy-state copy", () => {
     );
     expect(NO_FILTER_MATCH).toEqual({
       title: "No targets match the filters",
-      description: "Select Clear filters to see every target.",
+      description: "Clear filters to show the targets.",
     });
     expect(NO_TARGETS).toEqual({
       title: "No targets yet",
@@ -249,7 +250,7 @@ describe("Deploy-state copy", () => {
   });
 
   it("names every skill with local edits and how to keep them", () => {
-    const keep = "Select Import local edits to keep them.";
+    const keep = "Import them into the Harness to keep them.";
     expect(plainText(localEditsLine(["tdd"], false))).toBe(
       `1 skill has changes that aren't in the latest release: tdd. ${keep}`,
     );
@@ -259,6 +260,15 @@ describe("Deploy-state copy", () => {
     const long = "write-a-very-long-skill-name-that-keeps-going-on-and-on";
     expect(plainText(localEditsLine([long, "tdd"], false))).toBe(
       `2 skills have changes that aren't in the latest release: ${long} and tdd. ${keep}`,
+    );
+  });
+
+  it("keeps the Status hover card's sentence on local edits", () => {
+    expect(plainText(localEditsCardLine(["tdd"], null))).toBe(
+      "1 skill has changes that aren't in the latest release: tdd. Select Import local edits to keep them.",
+    );
+    expect(plainText(localEditsCardLine(["tdd"], "v0.3.4"))).toBe(
+      "1 skill has changes that aren't in the latest release: tdd. To keep them, select Import local edits before you update to v0.3.4.",
     );
   });
 
@@ -306,22 +316,22 @@ describe("Deploy-state copy", () => {
 
   it("advises importing local edits before a behind target updates", () => {
     expect(plainText(localEditsLine(["tdd", "review"], true))).toBe(
-      "2 skills have changes that aren't in the latest release: tdd and review. To keep them, select Import local edits before you update.",
+      "2 skills have changes that aren't in the latest release: tdd and review. Updating replaces them, so import them into the Harness first to keep them.",
     );
   });
 
   it("counts Global's skills with local edits in one paragraph, naming none", () => {
     expect(globalLocalEditsLine(1, false)).toBe(
-      "1 skill has changes that aren't in the latest release. Select Import local edits to keep them.",
+      "1 skill has changes that aren't in the latest release. Import them into the Harness to keep them.",
     );
     expect(globalLocalEditsLine(2, false)).toBe(
-      "2 skills have changes that aren't in the latest release. Select Import local edits to keep them.",
+      "2 skills have changes that aren't in the latest release. Import them into the Harness to keep them.",
     );
     expect(globalLocalEditsLine(1, true)).toBe(
-      "1 skill has changes that aren't in the latest release. To keep them, select Import local edits before you update.",
+      "1 skill has changes that aren't in the latest release. Updating replaces them, so import them into the Harness first to keep them.",
     );
     expect(globalLocalEditsLine(2, true)).toBe(
-      "2 skills have changes that aren't in the latest release. To keep them, select Import local edits before you update.",
+      "2 skills have changes that aren't in the latest release. Updating replaces them, so import them into the Harness first to keep them.",
     );
   });
 });

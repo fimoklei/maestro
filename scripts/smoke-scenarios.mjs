@@ -177,7 +177,7 @@ const SCENARIOS = [
     summary: "An apm.lock.yaml that does not parse.",
     atV2: (_s, repo) =>
       writeFileSync(join(repo, "apm.lock.yaml"), "dependencies: [\n"),
-    expect: { status: "Deploy-state not read." },
+    expect: { status: "Couldn't read this repository's deploy-state." },
   },
 ];
 

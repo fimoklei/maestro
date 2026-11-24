@@ -66,7 +66,7 @@ describe("Settings › Categories, the Harness categories", () => {
 
     const section = await harnessSection();
     expect(
-      await within(section).findByText("Couldn't load Harness categories"),
+      await within(section).findByText("Couldn't read Harness categories"),
     ).toBeInTheDocument();
     expect(
       within(section).getByText(

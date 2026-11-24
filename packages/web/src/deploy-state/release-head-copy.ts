@@ -33,13 +33,29 @@ function behindReason(head: ReleaseHead): Copy {
     : phrase`${head.changed} of ${head.selected} deployed skills changed in ${latest}.`;
 }
 
-// The reason, then the control that moves the target (design.md → Disclosure).
-export function behindLine(head: ReleaseHead): Copy {
+function behindThen(
+  head: ReleaseHead,
+  step: (latest: ReturnType<typeof machine>) => Copy,
+): Copy {
   const reason = behindReason(head);
   return head.latestRelease === null
     ? reason
-    : phrase`${reason} Select ${UPDATE_TARGET} to move this target to ${machine(head.latestRelease)}.`;
+    : phrase`${reason} ${step(machine(head.latestRelease))}`;
 }
+
+export const behindLine = (head: ReleaseHead): Copy =>
+  behindThen(
+    head,
+    (latest) => phrase`You can update this target to ${latest}.`,
+  );
+
+// The reason, then the control that moves the target (design.md → Disclosure).
+export const behindCardLine = (head: ReleaseHead): Copy =>
+  behindThen(
+    head,
+    (latest) =>
+      phrase`Select ${UPDATE_TARGET} to move this target to ${latest}.`,
+  );
 
 /** A worse reading's reason on a Global that is behind. */
 export const globalBehindLine = (reason: Copy, head: ReleaseHead): Copy =>

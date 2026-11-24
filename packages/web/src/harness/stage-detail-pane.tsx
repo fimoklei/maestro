@@ -11,7 +11,7 @@ import {
   correctionLine,
   crossStageLine,
   deployedCopiesLine,
-  detailSentence,
+  paneDetailSentence,
   reviewerLine,
   STAGE_NAMES,
   type StageContext,
@@ -55,7 +55,7 @@ export function StageDetailPane({
         alsoIn === "" ? null : { label: "Also in", value: alsoIn },
       ]}
       paragraph={[
-        detailSentence(row, context),
+        paneDetailSentence(row, context),
         ...[
           reviewerLine(row),
           crossStageLine(row),

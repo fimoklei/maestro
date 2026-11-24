@@ -3,14 +3,30 @@ import { machineValues, unselectedControls } from "../test-utils";
 import * as updateTargetCopy from "./update-target-copy";
 import {
   CHECK_EVERY_BOX,
+  KEEP_WORK_BY_IMPORTING,
   outcomeDetail,
+  RETRY_UPDATE_STEP,
   releaseMoveLine,
+  UPDATE_INCOMPLETE_SENTENCE,
 } from "./update-target-copy";
 
 describe("the Update target cause", () => {
   it("keeps the approved sentence for a missing consent", () => {
     expect(CHECK_EVERY_BOX).toBe(
       "To update this target, check every box above.",
+    );
+  });
+
+  it("keeps the approved sentence for keeping local edits", () => {
+    expect(KEEP_WORK_BY_IMPORTING).toBe(
+      "To keep the edits instead, cancel this update and select Import local edits.",
+    );
+  });
+
+  it("asks the Report to retry the update, and the notice to select Retry update", () => {
+    expect(RETRY_UPDATE_STEP).toBe("Retry the update to run it again.");
+    expect(UPDATE_INCOMPLETE_SENTENCE).toBe(
+      "The update is incomplete. Select Retry update to run the same release again.",
     );
   });
 });

@@ -405,7 +405,7 @@ describe("SkillDetailPane", () => {
 
     expect(
       screen.getByText(
-        "Not deployed to any target. Select Deploy skill to choose a target.",
+        "Not deployed to any target. Deploy it to a repository or to Global.",
       ),
     ).toBeInTheDocument();
   });

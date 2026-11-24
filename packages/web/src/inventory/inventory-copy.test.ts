@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { unselectedControls } from "../test-utils";
 import * as inventoryCopy from "./inventory-copy";
-import { LOCAL_CHANGES_NEXT_STEP } from "./inventory-copy";
+import { inventoryNotRead, LOCAL_CHANGES_NEXT_STEP } from "./inventory-copy";
 
 // Approved sentences, as exact strings.
 describe("Inventory copy", () => {
+  it("names the failed Inventory read and the screen's own Re-read", () => {
+    expect(inventoryNotRead("Skills")).toEqual({
+      level: "error",
+      label: "Couldn't read the Inventory",
+      message: "Select Re-read Skills to try again.",
+    });
+  });
+
   it("names the next step for a target left alone with local changes", () => {
     expect(LOCAL_CHANGES_NEXT_STEP).toBe(
       "Select Deploy skill to restore the released files. Then remove the skill.",

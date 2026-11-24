@@ -82,7 +82,7 @@ export const skillFolderRefusal = (refusal: ImportSkillError): string =>
 const FOLDER_BLOCKERS: Record<SkillsFolderBlocker, NoticeContent> = {
   "source-unreadable": {
     level: "error",
-    label: "Folder not read",
+    label: "Couldn't read the folder",
     message:
       "Nothing was copied. Make the folder readable, then select it again.",
   },
@@ -123,7 +123,7 @@ const ERRORS: NoticeTable<ImportSkillsError> = {
 };
 
 const NOT_READ: NoticeCopy = {
-  label: "Folder not read",
+  label: "Couldn't read the folder",
   message: `The Maestro server didn't respond. Select ${IMPORT_SKILLS} to read the folder again.`,
 };
 

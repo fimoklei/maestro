@@ -635,7 +635,7 @@ describe("Harness home base", () => {
 
   // #1685: a merged change that is only wrong is corrected, not withdrawn.
   it("says how to correct a Pending release change, in each type's words", async () => {
-    const PROMPT_LINE = "To correct this change, select Edit prompt.";
+    const PROMPT_LINE = "To correct this change, edit the prompt.";
     const SKILL_LINE =
       "To correct this change, edit the deployed copy. Then select Import local edits on Deploy-state.";
     stubHarnessServer({

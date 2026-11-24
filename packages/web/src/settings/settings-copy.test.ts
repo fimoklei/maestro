@@ -3,6 +3,7 @@ import {
   CHANGE_LOCATION_SENTENCE,
   CONNECTED_HARNESS,
   FOLDER_HINT,
+  GITHUB_NOT_READ,
   INTERFACE_THEME,
   INTERFACE_THEME_LABELS,
   INTERFACE_THEME_SENTENCE,
@@ -16,6 +17,10 @@ describe("Harness location copy", () => {
   it("names the two sections", () => {
     expect(CONNECTED_HARNESS).toBe("Connected Harness");
     expect(LOCATION).toBe("Location");
+  });
+
+  it("states a GitHub repository it couldn't read", () => {
+    expect(GITHUB_NOT_READ).toBe("Couldn't read");
   });
 
   it("says what Change Harness location does and what the field takes", () => {
@@ -43,7 +48,7 @@ describe("Appearance copy", () => {
     expect(THEME).toBe("Theme");
     expect(INTERFACE_THEME).toBe("Interface theme");
     expect(INTERFACE_THEME_SENTENCE).toBe(
-      "Select System to follow your operating system.",
+      "System follows your operating system.",
     );
     expect(INTERFACE_THEME_LABELS).toEqual({
       system: "System",

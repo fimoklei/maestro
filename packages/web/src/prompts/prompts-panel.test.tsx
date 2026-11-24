@@ -158,7 +158,7 @@ describe("PromptsPanel", () => {
     renderPanel();
 
     expect(await screen.findByText("Read failed")).toBeInTheDocument();
-    expect(screen.getByText("Inventory not read")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't read the Inventory")).toBeInTheDocument();
   });
 
   it("states the empty screen when the latest release holds no prompt", async () => {
@@ -194,7 +194,10 @@ describe("PromptsPanel", () => {
 
     await screen.findByText("Read failed");
     for (const name of ["Filter", "Display"]) {
-      expectTooltipCause(screen.getByRole("button", { name }), /not read/);
+      expectTooltipCause(
+        screen.getByRole("button", { name }),
+        "Couldn't read the Inventory",
+      );
     }
   });
 });

@@ -47,7 +47,7 @@ describe("Written to line", () => {
       tone: "failed",
       fact: "1 of 2 skills missing",
       details: [{ label: "Missing", value: "commit-message" }],
-      step: "Select Retry deploy to deploy it again.",
+      step: "Retry the deploy to run it again.",
     });
   });
 
@@ -60,11 +60,11 @@ describe("Written to line", () => {
     ).toBe("2 skills missing");
   });
 
-  it("asks to write several deviating skills again as them", () => {
+  it("asks to retry several deviating skills with the same step", () => {
     expect(
       writtenToLine(folder([missing("code-review"), missing("tdd")]), true)
         .step,
-    ).toBe("Select Retry deploy to deploy them again.");
+    ).toBe("Retry the deploy to run it again.");
   });
 
   it("names the release a not updated skill is still at, or none", () => {
@@ -159,7 +159,7 @@ describe("Written to line after Update target", () => {
       details: [
         { label: "Not updated", value: "code-review · still at v1.1.0" },
       ],
-      step: "Select Retry update to run the same release again.",
+      step: "Retry the update to run it again.",
     });
     expect(
       updatedToLine(
@@ -187,7 +187,7 @@ describe("Written to line after Update target", () => {
       tone: "failed",
       fact: "1 of 2 skills missing",
       details: [{ label: "Missing", value: "commit-message" }],
-      step: "Select Retry update to run the same release again.",
+      step: "Retry the update to run it again.",
     });
   });
 

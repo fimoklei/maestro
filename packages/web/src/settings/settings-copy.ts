@@ -8,7 +8,7 @@ export const PERSONAL = "Personal";
 export const CONNECTED_HARNESS = "Connected Harness";
 export const LOCAL_CLONE = "Local clone";
 export const GITHUB_REPOSITORY = "GitHub repository";
-export const GITHUB_NOT_READ = "GitHub repository not read";
+export const GITHUB_NOT_READ = "Couldn't read";
 export const LATEST_RELEASE = "Latest release";
 
 export const LOCATION = "Location";
@@ -39,8 +39,7 @@ export function setLocationMessage(code: string | null): string | undefined {
 // The Appearance page (#996).
 export const THEME = "Theme";
 export const INTERFACE_THEME = "Interface theme";
-export const INTERFACE_THEME_SENTENCE =
-  "Select System to follow your operating system.";
+export const INTERFACE_THEME_SENTENCE = "System follows your operating system.";
 export const INTERFACE_THEME_LABELS = {
   system: "System",
   light: "Light",

@@ -13,7 +13,6 @@ import {
   CREATE_PULL_REQUEST,
   CREATE_RELEASE,
   DISCARD_CHANGE,
-  EDIT_PROMPT,
   IMPORT,
   IMPORT_LOCAL_EDITS,
   PROPOSE_CHANGE,
@@ -249,8 +248,8 @@ export function detailSentence(
         : `Pull request ${first(row)} is open and waiting for a reviewer.`;
     case "changes-requested":
       return deletion
-        ? `A reviewer asked for changes on the deletion in pull request ${first(row)}. Select Update proposal to send your changes.`
-        : `A reviewer asked for changes on pull request ${first(row)}. Select Update proposal to send your changes.`;
+        ? `A reviewer asked for changes on the deletion in pull request ${first(row)}. ${MAKE_THE_CHANGES}`
+        : `A reviewer asked for changes on pull request ${first(row)}. ${MAKE_THE_CHANGES}`;
     case "approved-awaiting-merge":
       return deletion
         ? `Pull request ${first(row)} proposes deleting this ${noun} and is approved. Select View pull request to merge it.`
@@ -283,6 +282,56 @@ export function detailSentence(
       return `Another contributor has pull request ${first(row)} open for ${subjectOf(row)}. Wait until it is merged or closed.`;
     case "not-yet-released":
       return releaseSentence(row, release, publish);
+  }
+}
+
+const MAKE_THE_CHANGES = `Make the changes in your clone, then select Update proposal under ${STAGE_NAMES["pending-proposal"]}.`;
+
+const PROPOSE_IT = "You can propose it for review.";
+
+export function paneDetailSentence(
+  row: HarnessStageRow,
+  context: StageContext,
+): Copy {
+  const shared = detailSentence(row, context);
+  if (
+    row.waitingOn !== null ||
+    (row.type === "categories" && listDetailSentence(row) !== null)
+  ) {
+    return shared;
+  }
+  const noun = rowWords(row.type).noun;
+  switch (row.status) {
+    case "not-yet-proposed":
+      if (row.change === "deletion") {
+        return `This ${noun} is deleted in your clone but still in ${NEXT_RELEASE}. You can propose the deletion for review.`;
+      }
+      if (row.change === "addition") {
+        return `This ${noun} isn't in ${NEXT_RELEASE} yet. ${PROPOSE_IT}`;
+      }
+      return offersDiscard(row)
+        ? `Your local copy differs from ${NEXT_RELEASE}. ${PROPOSE_IT} Or select ${DISCARD_CHANGE} to match ${NEXT_RELEASE}.`
+        : `Your local copy differs from ${NEXT_RELEASE}. ${PROPOSE_IT}`;
+    case "new-local-work":
+      return first(row) === ""
+        ? `You edited this ${noun} after preparing its proposal. You can update the proposal with your edits.`
+        : `You edited this ${noun} after pull request ${first(row)}. You can update the proposal with your edits.`;
+    case "pull-request-missing":
+      return "The proposal branch is on GitHub without a pull request. You can create a pull request for it.";
+    case "proposal-closed": {
+      const [closed] = row.requests;
+      if (
+        row.change === "deletion" &&
+        (row.onDisk || closed?.byOther === true)
+      ) {
+        return shared;
+      }
+      return closed?.byOther === true
+        ? phrase`${named(closed.author)}'s pull request ${first(row)} was closed without merging. You can propose your own change.`
+        : `Pull request ${first(row)} was closed without merging. You can reopen the proposal to continue it.`;
+    }
+    default:
+      return shared;
   }
 }
 
@@ -404,7 +453,7 @@ export const deployedCopiesLine = (row: HarnessStageRow): string | null =>
 
 // A merged change that is only wrong is corrected, not withdrawn (#1685).
 const CORRECTION: Record<HarnessPrimitiveType, string> = {
-  prompt: `To correct this change, select ${EDIT_PROMPT}.`,
+  prompt: "To correct this change, edit the prompt.",
   skill: `To correct this change, edit the deployed copy. Then select ${IMPORT_LOCAL_EDITS} on Deploy-state.`,
 };
 

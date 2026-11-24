@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { HttpError } from "../api/http";
 import {
   importPromptsConfirm,
   importPromptsNotice,
@@ -61,6 +62,19 @@ describe("import prompts copy", () => {
       label: "Import not confirmed",
       message:
         "The Maestro server didn't respond, so some prompts may already be imported. Select Close, then check the Harness screen.",
+    });
+  });
+
+  it("names the prompts folder it could not read", () => {
+    expect(
+      importPromptsNotice(
+        new HttpError(422, "", "destination-unreadable", null),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Couldn't read the prompts folder",
+      message:
+        "Nothing was imported. Make the prompts folder readable, then select Import prompts again.",
     });
   });
 });

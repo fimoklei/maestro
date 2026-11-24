@@ -62,7 +62,7 @@ describe("the row after a close without merging", () => {
     const region = await section();
     expect(
       await within(region).findByText(
-        "Pull request #45 was closed without merging. Select Create pull request to propose your current categories as a new pull request.",
+        "Pull request #45 was closed without merging. You can propose your current categories in a new pull request.",
       ),
     ).toBeInTheDocument();
     expect(within(region).getByText("Proposal closed")).toBeInTheDocument();
@@ -81,7 +81,7 @@ describe("the row after a close without merging", () => {
     expect(
       await within(await section()).findByText(
         sentence(
-          "mira's pull request #46 was closed without merging. Select Create pull request to propose your current categories as a new pull request.",
+          "mira's pull request #46 was closed without merging. You can propose your current categories in a new pull request.",
         ),
       ),
     ).toBeInTheDocument();
@@ -94,7 +94,7 @@ describe("the row after a close without merging", () => {
 
     expect(
       await within(await section()).findByText(
-        "Pull request #45 was closed without merging. Select Create pull request to propose your current categories as a new pull request.",
+        "Pull request #45 was closed without merging. You can propose your current categories in a new pull request.",
       ),
     ).toBeInTheDocument();
     expectTooltipCause(await createButton(), "Add a category.");
