@@ -5,7 +5,7 @@ import type {
   UpdatePreview,
 } from "@maestro/core";
 import { focusManager } from "@tanstack/react-query";
-import { act, screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { hoverOpen, jsonResponse } from "../test-utils";
@@ -272,6 +272,42 @@ describe("Deploy-state — Update target on a repository", () => {
       "Status out of date" +
         "Nothing was changed. The target changed after the preview. Select Update target again.",
     );
+  });
+
+  it("opens again with no failure from the earlier update", async () => {
+    stubUpdate(
+      Promise.resolve(
+        jsonResponse({ error: "status-out-of-date", message: "unused" }, 409),
+      ),
+      {
+        before: { repos: [REPO], repo: { [REPO]: repoAt("v0.3.4") } },
+        after: { repos: [REPO], repo: { [REPO]: repoAt("v0.3.4") } },
+      },
+    );
+    renderDeployState();
+    const first = await confirmUpdate("…/me/project");
+    await within(first).findByRole("alert");
+    await userEvent.click(
+      within(first)
+        .getAllByRole("button", { name: "Close" })
+        .at(-1) as HTMLElement,
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    const pane = await screen.findByRole("complementary", {
+      name: "…/me/project detail",
+    });
+    await userEvent.click(
+      within(pane).getByRole("button", { name: /^Update target/ }),
+    );
+    const again = await screen.findByRole("dialog");
+
+    expect(
+      await within(again).findByRole("button", { name: "Update target" }),
+    ).toBeInTheDocument();
+    expect(within(again).queryByRole("alert")).toBeNull();
   });
 
   it("keeps the dialog when a mid-run read finds the update unfinished", async () => {

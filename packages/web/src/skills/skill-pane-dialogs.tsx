@@ -1,6 +1,5 @@
 import { RemoveSkillFlow } from "../deploy-state/remove-skill-flow";
 import { UpdateTargetAction } from "../deploy-state/update-target-action";
-import { useUpdateTarget } from "../deploy-state/use-update-target";
 import { PaneDeletion } from "../inventory/pane-deletion";
 import type { SkillDeployment } from "../inventory/skill-deployments";
 import type { RegisteredRepo } from "../registry/use-registry";
@@ -75,9 +74,10 @@ export function SkillPaneDialog({
       );
     case "update":
       return (
-        <PaneUpdate
-          deployment={dialog.deployment}
-          skillName={skillName}
+        <UpdateTargetAction
+          targetName={dialog.deployment.updateName}
+          target={dialog.deployment.target}
+          add={skillName}
           onClose={onClose}
         />
       );
@@ -92,28 +92,4 @@ export function SkillPaneDialog({
         />
       );
   }
-}
-
-// It owns the mutation, so the dialog keeps the outcome through the run.
-function PaneUpdate({
-  deployment,
-  skillName,
-  onClose,
-}: {
-  deployment: SkillDeployment;
-  skillName: string;
-  onClose: () => void;
-}) {
-  const update = useUpdateTarget();
-  return (
-    <UpdateTargetAction
-      targetName={deployment.updateName}
-      target={deployment.target}
-      update={update}
-      // Priced with this skill, as the Skills entrance always was (#955).
-      add={skillName}
-      defaultOpen
-      onClose={onClose}
-    />
-  );
 }

@@ -51,7 +51,6 @@ import { DEPLOY_STATE_KEY, deployStateQueryOptions } from "./use-deploy-state";
 import type { ListFit, SkillsListBasis } from "./use-deployed-skills-list";
 import { globalDeployStateQueryOptions } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
-import { useUpdateTarget } from "./use-update-target";
 
 const KIND_OPTIONS = [
   { value: GLOBAL, label: GLOBAL },
@@ -371,8 +370,7 @@ function TargetActions({
   row: TargetRow;
   dialog: TargetDialog;
 }) {
-  const update = useUpdateTarget();
-  const openUpdate = dialog === "update";
+  const [updating, setUpdating] = useState(dialog === "update");
   const [importing, setImporting] = useState(dialog === "import");
   return (
     <>
@@ -384,15 +382,11 @@ function TargetActions({
           onClose={() => setImporting(false)}
         />
       ) : null}
-      {openUpdate ||
-      update.isPending ||
-      update.data !== undefined ||
-      update.isError ? (
+      {updating ? (
         <UpdateTargetAction
           targetName={row.updateName}
           target={row.wire}
-          update={update}
-          defaultOpen={openUpdate}
+          onClose={() => setUpdating(false)}
         />
       ) : null}
     </>
