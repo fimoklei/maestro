@@ -215,6 +215,38 @@ describe("Register repository", () => {
     expect(statusRegion()).not.toHaveTextContent("Registered");
   });
 
+  it("opens again on an empty field, with no refusal from the earlier opening", async () => {
+    stubRegistry({
+      repos: [],
+      refusals: { "/home/me/notes": "not-a-git-repo" },
+    });
+    renderRepositories();
+    const first = await openDialog();
+    await userEvent.type(field(), "/home/me/notes");
+    await userEvent.click(confirm(first));
+    await within(first).findByText(
+      "Not a Git repository. Choose a folder that holds one.",
+    );
+    await userEvent.click(
+      within(first)
+        .getAllByRole("button", { name: "Close" })
+        .at(-1) as HTMLElement,
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    const again = await openDialog();
+    expect(field()).toHaveValue("");
+    await userEvent.type(field(), "/home/me/notes");
+    expect(field()).not.toHaveAttribute("aria-invalid");
+    expect(
+      within(again).queryByText(
+        "Not a Git repository. Choose a folder that holds one.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("clears the refusal once the field changes", async () => {
     stubRegistry({
       repos: [],

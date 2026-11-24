@@ -337,7 +337,6 @@
   "packages/web/src/registry/repositories-view.test.tsx": 8,
   "packages/web/src/registry/repositories-view.tsx": 4,
   "packages/web/src/registry/unregister-dialog.tsx": 1,
-  "packages/web/src/registry/use-register-dialog.ts": 10,
   "packages/web/src/registry/use-registry.ts": 2,
   "packages/web/src/settings/add-category-dialog.tsx": 3,
   "packages/web/src/settings/appearance-page.test.tsx": 1,

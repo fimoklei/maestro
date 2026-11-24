@@ -13,7 +13,7 @@ import { named, phrase } from "../ui/phrase";
 import { TableScreen } from "../ui/table-screen";
 import { useTableScreen } from "../ui/use-table-screen";
 import { useWriteAction } from "../ui/use-write-action";
-import { RegisterRepositoryDialog } from "./register-repository-dialog";
+import { RegisterRepositoryAction } from "./register-repository-action";
 import {
   type RepositoryAction,
   type RepositoryRow,
@@ -31,7 +31,6 @@ import {
   unregisterNotice,
 } from "./repositories-copy";
 import { UnregisterDialog } from "./unregister-dialog";
-import { useRegisterDialog } from "./use-register-dialog";
 import { REGISTRY_KEY, useRegistry, useUnregisterRepo } from "./use-registry";
 
 // Band 2 widths in rem, tuned in `pnpm smoke`: the labels go first, then the
@@ -69,11 +68,7 @@ export function RepositoriesView() {
   const [unregistering, setUnregistering] = useState<RepositoryRow | null>(
     null,
   );
-  const register = useRegisterDialog({
-    screen,
-    onAdded: screen.markAdded,
-    registered: paths,
-  });
+  const [registering, setRegistering] = useState(false);
   const unregisterWrite = useWriteAction(unregister, {
     screen,
     action: "unregister",
@@ -120,7 +115,7 @@ export function RepositoriesView() {
     <TableScreen
       state={screen}
       action={
-        <Button variant="primary" onClick={register.openDialog}>
+        <Button variant="primary" onClick={() => setRegistering(true)}>
           {REGISTER_REPOSITORY}
         </Button>
       }
@@ -160,7 +155,7 @@ export function RepositoriesView() {
         description: EMPTY_SENTENCE,
         icon: <Icon of={FolderGit2} />,
         action: (
-          <Button variant="quiet" onClick={register.openDialog}>
+          <Button variant="quiet" onClick={() => setRegistering(true)}>
             {REGISTER_REPOSITORY}
           </Button>
         ),
@@ -175,8 +170,13 @@ export function RepositoriesView() {
           onClose={() => setUnregistering(null)}
         />
       ) : null}
-      {register.open ? (
-        <RegisterRepositoryDialog {...register.dialogProps} />
+      {registering ? (
+        <RegisterRepositoryAction
+          screen={screen}
+          onAdded={screen.markAdded}
+          onClose={() => setRegistering(false)}
+          registered={paths}
+        />
       ) : null}
     </TableScreen>
   );
