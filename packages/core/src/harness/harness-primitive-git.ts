@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { gitOptions, indexOptions } from "../git/non-interactive";
 import { runGit, runGitText } from "../git/run-git-text";
 import {
+  type ProcessFailure,
   type ProcessOptions,
   runProcess,
   stdoutOf,
@@ -45,6 +46,9 @@ const UNQUOTED_NAMES = "-z";
 const PROPOSAL_FORMAT = `%(refname:lstrip=${PROPOSAL_REFS.split("/").length})\t%(objectname)`;
 
 export type PrimitiveObject = { hash: string; mode: string };
+
+const ranAndRefused = (failure: ProcessFailure): boolean =>
+  failure.failure === "failed" && failure.exitCode !== null;
 
 const pathExists = (path: string): Promise<boolean> =>
   access(path).then(
@@ -536,8 +540,7 @@ export async function writePrimitiveInto(
         options,
       );
       if (!read.ok) {
-        // Only a git that ran and refused says `missing`; a cut-off run never reads as absence.
-        return read.failure === "killed" ? "failed" : "missing";
+        return ranAndRefused(read) ? "missing" : "failed";
       }
     } else {
       const read = await readObjectAt(root, commit, path);

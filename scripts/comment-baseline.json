@@ -16,7 +16,7 @@
   "packages/core/src/harness/harness-fetch-gate.ts": 2,
   "packages/core/src/harness/harness-freshness-store.ts": 1,
   "packages/core/src/harness/harness-git.ts": 13,
-  "packages/core/src/harness/harness-primitive-git.ts": 8,
+  "packages/core/src/harness/harness-primitive-git.ts": 7,
   "packages/core/src/harness/harness-primitive.ts": 1,
   "packages/core/src/harness/harness-stages.ts": 1,
   "packages/core/src/harness/import-local-edits.test.ts": 1,

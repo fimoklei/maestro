@@ -28,6 +28,8 @@ export type ProcessRunner = (
   options: ProcessOptions,
 ) => Promise<ProcessOutcome>;
 
+const OUTPUT_OVERFLOW = "ERR_CHILD_PROCESS_STDIO_MAXBUFFER";
+
 export class ProcessFailedError extends Error {
   constructor(readonly outcome: ProcessFailure) {
     super(`process ${outcome.failure}`);
@@ -60,10 +62,10 @@ export function stdoutOf(outcome: ProcessOutcome): string {
 function failureOf(error: unknown): ProcessFailure {
   const printed = field(error, "stderr");
   const stderr = typeof printed === "string" ? printed : "";
-  if (field(error, "killed") === true) {
+  const code = field(error, "code");
+  if (field(error, "killed") === true && code !== OUTPUT_OVERFLOW) {
     return { ok: false, failure: "killed", stderr };
   }
-  const code = field(error, "code");
   if (code === "ENOENT") {
     return { ok: false, failure: "missing", stderr };
   }

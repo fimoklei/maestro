@@ -51,6 +51,23 @@ describe("createProcessRunner", () => {
     });
   });
 
+  it("reports a run cut off for printing too much as a failure, not a timeout", async () => {
+    const run = rejecting(
+      Object.assign(new Error("stdout maxBuffer length exceeded"), {
+        code: "ERR_CHILD_PROCESS_STDIO_MAXBUFFER",
+        killed: true,
+        stderr: "",
+      }),
+    );
+
+    await expect(run("git", [], OPTIONS)).resolves.toEqual({
+      ok: false,
+      failure: "failed",
+      exitCode: null,
+      stderr: "",
+    });
+  });
+
   it("reports a non-zero exit with its exit code and stderr", async () => {
     const run = rejecting(
       Object.assign(new Error("git failed"), {
