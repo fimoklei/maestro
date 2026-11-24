@@ -237,7 +237,7 @@ describe("readCockpit agrees with the Deploy-state screen", () => {
   it.each(reads)("%s", (_label, read) => {
     const drift = driftViewModel({ data: read.drift as never, isError: false });
     const row = repoRow(
-      REPO,
+      { path: REPO, status: "ready" },
       [REPO],
       { data: read.deployState as never, isError: false },
       drift,
@@ -263,7 +263,7 @@ describe("readCockpit agrees with the Deploy-state screen", () => {
 
   it("refused read", () => {
     const row = repoRow(
-      REPO,
+      { path: REPO, status: "ready" },
       [REPO],
       { data: undefined, isError: true },
       driftViewModel({ data: undefined, isError: false }),

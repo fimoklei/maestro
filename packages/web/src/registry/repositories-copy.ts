@@ -1,8 +1,8 @@
 import type { RegisterError, RepoStatus } from "@maestro/core";
 import { HttpError } from "../api/http";
-import { BEHIND } from "../deploy-state/target-status";
+import { BEHIND, FOLDER_MISSING } from "../deploy-state/target-status";
 import { type BandCount, countOf } from "../ui/band-summary";
-import { rereadLabel } from "../ui/control-labels";
+import { rereadLabel, UNREGISTER } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import {
   type NoticeTable,
@@ -15,7 +15,6 @@ import { reading, type StatusReading } from "../ui/status-reading";
 
 export const SCREEN = "Repositories";
 export const REGISTER_TITLE = "Register a repository";
-export const UNREGISTER = "Unregister";
 export const COLUMNS = {
   repository: "Repository",
   path: "Folder path",
@@ -31,7 +30,7 @@ export const EMPTY_SENTENCE =
 
 export const STATUS_READINGS: Record<RepoStatus, StatusReading> = {
   ready: reading("Ready", "good"),
-  "folder-missing": reading("Folder missing", "failed"),
+  "folder-missing": FOLDER_MISSING,
   "not-a-git-repo": reading("Not a Git repository", "attention", WARNING_GLYPH),
 };
 

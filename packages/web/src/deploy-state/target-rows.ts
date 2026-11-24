@@ -4,16 +4,17 @@ import type {
   GlobalFolderState,
   PendingOperation,
   PinnedPerSkill,
+  RegistryEntry,
   ReleaseHead,
   SkippedEntry,
 } from "@maestro/core";
 import type { DriftViewModel } from "../drift/drift-view-model";
 import { UP_TO_DATE } from "../inventory/skill-status";
 import type { DeployTarget } from "../inventory/use-deploy-skill";
-import { repoTargetName } from "../shell/target-name";
 import type { Copy } from "../ui/phrase";
 import type { StatusReading } from "../ui/status-reading";
 import {
+  FOLDER_MISSING_REASON,
   folderMetaLine,
   GLOBAL,
   localEditsCardLine,
@@ -60,9 +61,11 @@ import {
   skippedEntryText,
   skippedNeedsAttention,
 } from "./skipped-entry-text";
+import { GLOBAL_ROW_ID, globalReading, repoReading } from "./target-readings";
 import {
   BEHIND,
   EDITS_IN_HARNESS,
+  FOLDER_MISSING,
   IN_SYNC,
   LOCAL_EDITS,
   NOT_UPDATED,
@@ -119,6 +122,7 @@ export type TargetRow = {
   otherOrigins: string[];
   extraFiles?: number;
   readFailed: boolean;
+  folderMissing: boolean;
   /** A newer release exists and nothing unfinished stands before it. */
   behind: boolean;
   /** A repository's own GitHub page; absent for Global and where none exists. */
@@ -130,19 +134,6 @@ export type TargetRow = {
   /** Global's folders, shown as read-only rows under it; absent on a repository. */
   folders?: FolderRow[];
 };
-
-// A row's id, which another screen names to open that row's pane.
-export const GLOBAL_ROW_ID = "global";
-export const repoRowId = (repoPath: string) => `repo:${repoPath}`;
-
-export const isBehind = (
-  head: ReleaseHead | undefined,
-  pending?: PendingOperation,
-) =>
-  head !== undefined &&
-  head.latestRelease !== null &&
-  head.latestRelease !== head.release &&
-  pending === undefined;
 
 /** Whether one skill's local edits can be imported from its target. */
 export const canImportLocalEdits = (
@@ -250,7 +241,7 @@ export function globalRows(
   // No tool, no folder Global writes: the group's own line says so.
   if (tools.length === 0) return [];
   const pending = data.pendingOperation;
-  const behind = isBehind(data.releaseHead, pending);
+  const { behind } = globalReading({ data, isError: readFailed });
   const table = globalSkillReadings(
     data.primitives.map((primitive) => primitive.name),
     data.folders,
@@ -366,6 +357,7 @@ export function globalRows(
       otherOrigins: data.otherOrigins,
       ...(data.extraFiles === undefined ? {} : { extraFiles: data.extraFiles }),
       readFailed,
+      folderMissing: false,
       behind,
       folders,
     },
@@ -390,19 +382,21 @@ type RepoRead = {
 };
 
 export function repoRow(
-  repoPath: string,
+  entry: RegistryEntry,
   siblings: readonly string[],
   read: RepoRead,
   drift: DriftViewModel,
 ): TargetRow {
-  const data = read.data;
+  const repoPath = entry.path;
+  const { id, name: label, state, behind } = repoReading(entry, siblings, read);
+  const folderMissing = state === "folder-missing";
+  const readFailed = state === "read-failed";
+  const data = folderMissing ? undefined : read.data;
   const head = data?.releaseHead;
   const pinned = data?.pinnedPerSkill;
   const pending = data?.pendingOperation;
-  const behind = isBehind(head, pending);
-  const label = repoTargetName(repoPath, siblings);
   return {
-    id: repoRowId(repoPath),
+    id,
     group: REPOSITORIES,
     name: label,
     path: repoPath,
@@ -410,27 +404,30 @@ export function repoRow(
     wire: { kind: "repo", repoPath },
     updateName: label,
     release: releaseOf(head, pinned),
-    status: targetStatus({
-      indicator: drift.targetIndicator(toDeployedView(read)),
-      pinnedPerSkill: pinned !== undefined,
-      behind,
-      pending: read.isError ? undefined : pending?.kind,
-      localEdits:
-        !read.isError && editedSkills(data?.primitives ?? []).length > 0,
-      editsInHarness:
-        !read.isError && holdsHarnessEdits(data?.primitives ?? []),
-    }),
+    status: folderMissing
+      ? FOLDER_MISSING
+      : targetStatus({
+          indicator: drift.targetIndicator(toDeployedView(read)),
+          pinnedPerSkill: pinned !== undefined,
+          behind,
+          pending: readFailed ? undefined : pending?.kind,
+          localEdits:
+            !readFailed && editedSkills(data?.primitives ?? []).length > 0,
+          editsInHarness:
+            !readFailed && holdsHarnessEdits(data?.primitives ?? []),
+        }),
     skills: data === undefined ? null : data.primitives.length,
     ...(head ? { head } : {}),
     ...(pinned ? { pinned } : {}),
-    ...(pending && !read.isError ? { pending } : {}),
+    ...(pending && !readFailed ? { pending } : {}),
     primitives: data?.primitives ?? [],
     skillRows: repoSkillRows(data?.primitives ?? [], drift),
     drift,
     skipped: data?.skipped ?? [],
     otherOrigins: [],
     ...(data?.extraFiles === undefined ? {} : { extraFiles: data.extraFiles }),
-    readFailed: read.isError,
+    readFailed,
+    folderMissing,
     behind,
     ...(data?.github ? { github: data.github } : {}),
     ...(data?.releaseGitHub ? { releaseGitHub: data.releaseGitHub } : {}),
@@ -518,6 +515,8 @@ export function statusCard(
   row: TargetRow,
   compared: string | null,
 ): StatusCard {
+  if (row.folderMissing)
+    return { reason: FOLDER_MISSING_REASON, readAge: null };
   if (row.readFailed && row.group === REPOSITORIES) {
     return { reason: REPO_NOT_READ, readAge: null };
   }

@@ -6,6 +6,7 @@ import { type RepoPathError, validateRepoPath } from "./repo-path";
 export type RegisteredRepo = { path: string };
 
 export type RepoStatus = "ready" | "folder-missing" | "not-a-git-repo";
+export type RegistryEntry = RegisteredRepo & { status: RepoStatus };
 
 export type RegisterError =
   | RepoPathError
@@ -47,7 +48,7 @@ export class Registry {
     return (await this.store.read()).repos;
   }
 
-  async listWithStatus(): Promise<(RegisteredRepo & { status: RepoStatus })[]> {
+  async listWithStatus(): Promise<RegistryEntry[]> {
     const repos = await this.list();
     return Promise.all(
       repos.map(async (repo) => ({

@@ -38,11 +38,11 @@ import { ImportLocalEditsAction } from "./import-local-edits-action";
 import { TargetDetailPane } from "./target-detail-pane";
 import { targetLinkItems, targetMenuItems } from "./target-menu";
 import { targetPaneActions } from "./target-pane-actions";
+import { repoRowId } from "./target-readings";
 import {
   emptyGroupLines,
   globalRows,
   repoRow,
-  repoRowId,
   type TargetRow,
 } from "./target-rows";
 import { IN_SYNC, TARGET_CHIPS, TARGET_STATUS_WORDS } from "./target-status";
@@ -91,7 +91,8 @@ export function DeployStateView({
     refetchOnWindowFocus: true,
   });
   const globalDrift = useGlobalDrift();
-  const repoPaths = (registry.data?.repos ?? []).map((repo) => repo.path);
+  const repoEntries = registry.data?.repos ?? [];
+  const repoPaths = repoEntries.map((repo) => repo.path);
   const repoDeploy = useQueries({
     queries: repoPaths.map((repo) => ({
       ...deployStateQueryOptions(repo),
@@ -169,9 +170,9 @@ export function DeployStateView({
           globalDeploy.isError,
         )
       : []),
-    ...repoPaths.map((path, index) =>
+    ...repoEntries.map((entry, index) =>
       repoRow(
-        path,
+        entry,
         repoPaths,
         repoDeploy[index] ?? { data: undefined, isError: false },
         driftViewModel(repoDrift[index] ?? { data: undefined, isError: false }),

@@ -4,6 +4,7 @@ import type { FootItem } from "../ui/foot-actions";
 import { GitHubFactLink } from "../ui/github-fact-link";
 import { GitHubMarkLink } from "../ui/github-mark-link";
 import {
+  FOLDER_MISSING_LINE,
   GLOBAL,
   globalLocalEditsLine,
   localEditsLine,
@@ -115,6 +116,7 @@ export function TargetDetailPane({
       : []),
     ...(row.github?.kind === "unknown" ? [ORIGIN_NOT_READ] : []),
     ...(readFailure ? [REPO_NOT_READ_LINE] : []),
+    ...(row.folderMissing ? [FOLDER_MISSING_LINE] : []),
   ];
 
   return (
@@ -188,7 +190,8 @@ export function TargetDetailPane({
         paragraph={[...why, ...row.skipped.map(skippedEntryText)]}
         notices={notice ? [notice] : []}
         subList={
-          row.readFailed && row.primitives.length === 0 ? undefined : (
+          row.folderMissing ||
+          (row.readFailed && row.primitives.length === 0) ? undefined : (
             <>
               {row.folders === undefined ? null : (
                 <GlobalFolders folders={row.folders} />
