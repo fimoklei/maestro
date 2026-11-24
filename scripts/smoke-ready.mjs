@@ -6,6 +6,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { cockpitPorts, cockpitUrls } from "./cockpit-ports.mjs";
+import { requestFailure } from "./lib/request-failure.mjs";
 import { pidsOnPort } from "./port-holders.mjs";
 import { MARKER_FILE, processStartOf, seededPaths } from "./seed-sandbox.mjs";
 import {
@@ -232,7 +233,9 @@ async function requestJson(path, body, method = "POST") {
           },
           body: JSON.stringify(body),
         },
-  );
+  ).catch((error) => {
+    throw requestFailure(body === undefined ? "GET" : method, path, error);
+  });
   return {
     status: response.status,
     body: await response.json().catch(() => null),
