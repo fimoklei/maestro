@@ -176,9 +176,9 @@ function paragraphLines(pane: HTMLElement, first: string) {
 }
 
 const KEEP_BEFORE_UPDATE =
-  "2 skills have changes that aren't in the latest release. To keep them, select Import local edits before you update.";
+  "2 skills have changes that aren't in the latest release. Updating replaces them, so import them into the Harness first to keep them.";
 const KEEP_THEM =
-  "2 skills have changes that aren't in the latest release. Select Import local edits to keep them.";
+  "2 skills have changes that aren't in the latest release. Import them into the Harness to keep them.";
 
 describe("Deploy-state — Global pane paragraph", () => {
   it("says to import before you update where Global is behind, naming no folder or skill", async () => {
@@ -240,7 +240,7 @@ describe("Deploy-state — Global pane paragraph", () => {
     const pane = await openPane("Global");
 
     const behindLine =
-      "1 of 4 deployed skills changed in v0.4.3. Select Update target to move this target to v0.4.3.";
+      "1 of 4 deployed skills changed in v0.4.3. You can update this target to v0.4.3.";
     expect(paragraphLines(pane, behindLine)).toEqual([behindLine]);
     // #1813: Update target is the foot's primary, never beside a fact.
     const foot = within(pane)

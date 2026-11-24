@@ -47,18 +47,16 @@ describe("update outcome report", () => {
     expect(groups[0]?.rows.map(readRow)).toStrictEqual([
       {
         name: "grill",
-        detail:
-          "Still at v0.3.2. Select Retry update to run the same release again.",
+        detail: "Still at v0.3.2. Retry the update to run it again.",
       },
       {
         name: "tdd",
-        detail:
-          "Not deployed. Select Retry update to run the same release again.",
+        detail: "Not deployed. Retry the update to run it again.",
       },
       {
         name: "review",
         detail:
-          "Still deployed, though v0.3.4 drops it. Select Retry update to run the same release again.",
+          "Still deployed, though v0.3.4 drops it. Retry the update to run it again.",
       },
     ]);
     expect(groups[1]?.rows.map(readRow)).toStrictEqual([

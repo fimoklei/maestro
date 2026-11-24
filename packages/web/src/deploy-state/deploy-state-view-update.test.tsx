@@ -474,7 +474,7 @@ describe("Deploy-state — Update target on the global target", () => {
       "✓~/.claude/skillsAt v0.3.5",
       "✕~/.agents/skills1 skill not updated" +
         "Not updatedtdd · still at v0.3.4" +
-        "Select Retry update to run the same release again.",
+        "Retry the update to run it again.",
     ]);
     expect(within(dialog).queryByText("Update incomplete")).toBeNull();
     expect(within(dialog).queryByText(/in Codex/)).toBeNull();
@@ -647,7 +647,7 @@ describe("Deploy-state — Update target on the global target", () => {
     expect(writtenToLines(dialog)).toEqual([
       "✕~/.claude/skills1 skill missing" +
         "Missingtdd" +
-        "Select Retry update to run the same release again.",
+        "Retry the update to run it again.",
       "✓~/.agents/skillsAt v0.3.5",
     ]);
     expect(

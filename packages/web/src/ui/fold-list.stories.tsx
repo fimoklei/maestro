@@ -67,7 +67,7 @@ export const Deviating: Story = {
               "a-skill-with-a-very-long-name-for-wrapping · still at v1.1.0",
           },
         ],
-        step: "Select Retry deploy to deploy them again.",
+        step: "Retry the deploy to run it again.",
       },
     ],
   },

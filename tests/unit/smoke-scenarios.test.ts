@@ -219,7 +219,10 @@ describe("scenarioMismatch", () => {
 
     expect(
       scenarioMismatch(
-        { name: "unreadable", expect: { status: "Deploy-state not read." } },
+        {
+          name: "unreadable",
+          expect: { status: "Couldn't read this repository's deploy-state." },
+        },
         REPO,
         observed,
       ),

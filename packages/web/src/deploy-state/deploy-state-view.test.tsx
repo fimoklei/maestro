@@ -615,9 +615,9 @@ describe("Deploy-state — failed reads", () => {
     }));
     renderDeployState();
 
-    const notice = await screen.findByText("Deploy-state not read");
+    const notice = await screen.findByText("Couldn't read Deploy-state");
     expect(notice.closest("[role=status]")).toHaveTextContent(
-      "Select Re-read Deploy-state to read every target again.Not read: Global.",
+      "Select Re-read Deploy-state to read every target again.Couldn't read Global.",
     );
     expect(
       screen.queryByText(/install claude code or codex/i),
@@ -630,7 +630,7 @@ describe("Deploy-state — failed reads", () => {
     }));
     renderDeployState();
 
-    await screen.findByText("Deploy-state not read");
+    await screen.findByText("Couldn't read Deploy-state");
     expect(document.querySelector('[data-band="2"]')).toHaveTextContent(
       "Read failed",
     );
@@ -641,7 +641,9 @@ describe("Deploy-state — failed reads", () => {
     renderDeployState();
 
     expect(
-      await screen.findByText("Not read: registered repositories."),
+      await screen.findByText(
+        "Couldn't read the list of registered repositories.",
+      ),
     ).toBeInTheDocument();
     expect(
       screen.queryByText(/no repositories yet\./i),
@@ -657,9 +659,11 @@ describe("Deploy-state — failed reads", () => {
     renderDeployState();
 
     expect(
-      await screen.findByText("Not read: Global and registered repositories."),
+      await screen.findByText(
+        "Couldn't read Global and the list of registered repositories.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("Deploy-state not read")).toHaveLength(1);
+    expect(screen.getAllByText("Couldn't read Deploy-state")).toHaveLength(1);
     expect(
       screen.getAllByRole("button", { name: "Re-read Deploy-state" }),
     ).toHaveLength(2);
@@ -975,7 +979,7 @@ describe("Deploy-state — rows and their menu", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Select Clear filters to see every target."),
+      screen.getByText("Clear filters to show the targets."),
     ).toBeInTheDocument();
 
     await userEvent.click(

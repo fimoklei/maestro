@@ -139,7 +139,7 @@ export function readCockpit(read) {
   // A refused read shows the card's failure notice and nothing else.
   if (read.deployState === null)
     return {
-      status: "Deploy-state not read.",
+      status: "Couldn't read this repository's deploy-state.",
       release: null,
       notice: null,
       skills: {},

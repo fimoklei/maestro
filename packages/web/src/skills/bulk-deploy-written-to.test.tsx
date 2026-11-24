@@ -198,7 +198,7 @@ describe("Global deploy Report: Written to", () => {
     expect(fold).toHaveTextContent("1 of 2 skills missing");
     expect(writtenTo(dialog)).toHaveTextContent("Missingcommit-message");
     expect(writtenTo(dialog)).toHaveTextContent(
-      "Select Retry deploy to deploy it again.",
+      "Retry the deploy to run it again.",
     );
     expect(dialog).not.toHaveTextContent(
       "Some deployed skills are missing from the target.",

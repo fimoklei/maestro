@@ -76,7 +76,7 @@ export const Behind: Story = {
   args: {
     ...BEHIND_TARGET,
     paragraph: [
-      "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+      "2 of 5 deployed skills changed in v0.3.4. You can update this target to v0.3.4.",
     ],
     foot: [
       { label: "Deploy skill", onSelect: () => {} },
@@ -90,7 +90,7 @@ export const BehindWithLocalEdits: Story = {
   args: {
     ...BEHIND_TARGET,
     paragraph: [
-      "1 skill has changes that aren't in the latest release: tdd. To keep them, select Import local edits before you update.",
+      "1 skill has changes that aren't in the latest release: tdd. Updating replaces them, so import them into the Harness first to keep them.",
     ],
     foot: [
       { label: "Import local edits", step: "import", onSelect: () => {} },

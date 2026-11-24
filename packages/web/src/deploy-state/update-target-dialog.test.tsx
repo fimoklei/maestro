@@ -449,7 +449,7 @@ describe("UpdateTargetDialog", () => {
     });
 
     const keep = screen.getByText(
-      "To keep the edits instead, select Cancel, then select Import local edits.",
+      "To keep the edits instead, cancel this update and select Import local edits.",
     );
     // Cause first, then the step: the consent precedes the way out.
     const consent = screen.getByRole("checkbox", {
@@ -607,9 +607,7 @@ describe("UpdateTargetDialog outcome", () => {
     expect(screen.getByText("Update incomplete")).toBeInTheDocument();
     expect(
       within(reportGroup("Failed")).getByText(
-        sentence(
-          "Still at v0.3.2. Select Retry update to run the same release again.",
-        ),
+        sentence("Still at v0.3.2. Retry the update to run it again."),
       ),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Retry update" }));

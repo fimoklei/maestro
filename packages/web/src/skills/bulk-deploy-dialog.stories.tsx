@@ -222,7 +222,7 @@ export const GlobalReportFolderShort: Story = {
           tone: "failed",
           fact: "1 of 2 skills missing",
           details: [{ label: "Missing", value: "commit-message" }],
-          step: "Select Retry deploy to deploy it again.",
+          step: "Retry the deploy to run it again.",
         },
       ],
       notice: null,

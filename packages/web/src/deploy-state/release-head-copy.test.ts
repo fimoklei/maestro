@@ -4,6 +4,7 @@ import { machineValues, unselectedControls } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import * as releaseHeadCopy from "./release-head-copy";
 import {
+  behindCardLine,
   behindLine,
   changedFact,
   comparedFact,
@@ -59,9 +60,15 @@ describe("behindLine", () => {
     expect(line({ latestRelease: null })).not.toMatch(/Select/);
   });
 
-  it("names Update target on every target, Global included", () => {
-    expect(plainText(behindLine(head()))).toMatch(
-      /Select Update target to move this target/,
+  it("names Update target in the hover card on every target, Global included", () => {
+    expect(plainText(behindCardLine(head()))).toBe(
+      "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+    );
+  });
+
+  it("says in the pane that the target can update to the latest release", () => {
+    expect(plainText(behindLine(head()))).toBe(
+      "2 of 5 deployed skills changed in v0.3.4. You can update this target to v0.3.4.",
     );
   });
 });

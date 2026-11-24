@@ -37,7 +37,7 @@ describe("Import local edits copy", () => {
     expect(COPIES_DIFFER_LINE).toBe("The copies differ. Select one to import.");
     expect(COPY_TO_IMPORT).toBe("Copy to import");
     expect(MERGE_COPIES_LINE).toBe(
-      "To keep all edits, merge them into one folder yourself. Then select Close, select Re-read Deploy-state, then select Import local edits again.",
+      "To keep all edits, merge them into one folder yourself. Then cancel, select Re-read Deploy-state and select Import local edits again.",
     );
     expect(UNSELECTED_COPIES_LINE).toBe(
       "Copies you don't select stay as they are. Update target replaces them only if you check Discard local edits.",
@@ -112,7 +112,7 @@ describe("Import local edits copy", () => {
     ],
     [
       "target-unreadable",
-      "Deployment record not read",
+      "Couldn't read the deployment record",
       "Nothing was imported. Repair or delete apm.lock.yaml in the target, then select Import local edits again.",
     ],
     [
