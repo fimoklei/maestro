@@ -3,7 +3,6 @@ import { copyChipText } from "../deploy-state/release-head-copy";
 import { targetCount } from "../inventory/inventory-copy";
 import type { SkillState } from "../inventory/skill-status";
 import {
-  DEPLOY_SKILL,
   IMPORT_LOCAL_EDITS,
   IMPORT_SKILLS,
   rereadLabel,
@@ -82,7 +81,7 @@ export const NO_SEARCH_MATCH = {
 };
 export const NO_FILTER_MATCH = {
   title: "No skills match the filters",
-  description: `Select ${CLEAR_FILTERS} to see every skill.`,
+  description: `${CLEAR_FILTERS} to show the skills.`,
 };
 
 // Band 2's count of skills (#1480).
@@ -134,7 +133,8 @@ export function skillStateLine(state: SkillState): Copy {
       return "No newer release changes this skill.";
   }
 }
-export const NOT_DEPLOYED_ANYWHERE = `Not deployed to any target. Select ${DEPLOY_SKILL} to choose a target.`;
+export const NOT_DEPLOYED_ANYWHERE =
+  "Not deployed to any target. Deploy it to a repository or to Global.";
 
 // A target row's ⋮ in the pane, and the foot's removal (#1065). The count is
 // the targets the removal covers: global is one, whatever its tools (#1436).

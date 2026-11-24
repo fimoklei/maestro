@@ -117,7 +117,7 @@ describe("Harness location page", () => {
     expect(
       await screen.findByText("/home/me/agent-harness"),
     ).toBeInTheDocument();
-    expect(screen.getByText("GitHub repository not read")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't read")).toBeInTheDocument();
   });
 
   it("states a Harness with no release in plain words, never in mono", async () => {
@@ -216,10 +216,10 @@ describe("Harness location page", () => {
     stubServer({ primitives: failed });
     renderPage();
 
-    const notice = await screen.findByText("Inventory not read");
+    const notice = await screen.findByText("Couldn't read the Inventory");
     const block = notice.closest("[role]");
     expect(block).toHaveTextContent(
-      /^✕Inventory not readSelect Re-read Inventory to try again\.$/,
+      /^✕Couldn't read the InventorySelect Re-read Inventory to try again\.$/,
     );
     expect(block).toHaveClass("border-red-7", "bg-red-3");
     expect(reread()).toBeInTheDocument();
@@ -235,7 +235,9 @@ describe("Harness location page", () => {
     await screen.findByText("v1.4.0");
     await userEvent.click(reread());
 
-    expect(await screen.findByText("Inventory not read")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn't read the Inventory"),
+    ).toBeInTheDocument();
     expect(await screen.findByText("v1.4.0")).toBeInTheDocument();
   });
 
@@ -247,7 +249,7 @@ describe("Harness location page", () => {
     });
     renderPage();
 
-    await screen.findByText("Inventory not read");
+    await screen.findByText("Couldn't read the Inventory");
     await userEvent.click(reread());
     expect(
       await screen.findByText("Loading the Harness location…"),
@@ -258,7 +260,9 @@ describe("Harness location page", () => {
       await screen.findByText("Harness location loaded."),
     ).toBeInTheDocument();
     expect(await screen.findByText("v1.4.0")).toBeInTheDocument();
-    expect(screen.queryByText("Inventory not read")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Couldn't read the Inventory"),
+    ).not.toBeInTheDocument();
   });
 
   it("announces the recovery when a retry succeeds after a failed re-read", async () => {
@@ -276,7 +280,7 @@ describe("Harness location page", () => {
 
     await screen.findByText("v1.4.0");
     await userEvent.click(reread());
-    await screen.findByText("Inventory not read");
+    await screen.findByText("Couldn't read the Inventory");
 
     await userEvent.click(reread());
     retry.resolve(skills(5));
