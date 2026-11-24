@@ -20,6 +20,8 @@ import {
 } from "./target-rows";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
+const A_READY = { path: "/me/a", status: "ready" } as const;
+
 // Band 2's line, which every Status card repeats.
 const COMPARED = "Read just now";
 
@@ -50,6 +52,7 @@ const row = (facts: Partial<TargetRow>): TargetRow => ({
   skipped: [],
   otherOrigins: [],
   readFailed: false,
+  folderMissing: false,
   behind: false,
   ...facts,
 });
@@ -361,15 +364,15 @@ describe("local edits on a target", () => {
       isError: false,
     });
     const edited = [skill("tdd", "local-edits"), skill("grill")];
-    expect(words(repoRow("/me/a", [], read(edited), syncedDrift))).toBe(
+    expect(words(repoRow(A_READY, [], read(edited), syncedDrift))).toBe(
       "⚠ Local edits",
     );
-    expect(words(repoRow("/me/a", [], read([skill("tdd")]), syncedDrift))).toBe(
+    expect(words(repoRow(A_READY, [], read([skill("tdd")]), syncedDrift))).toBe(
       "✓ In sync",
     );
     expect(
       words(
-        repoRow("/me/a", [], read([skill("tdd", "unverified")]), syncedDrift),
+        repoRow(A_READY, [], read([skill("tdd", "unverified")]), syncedDrift),
       ),
     ).toBe("✓ In sync");
   });
@@ -391,7 +394,7 @@ describe("local edits on a target", () => {
       ...skillsUpToDate,
       targetIndicator: () => "unknown",
     } as unknown as DriftViewModel;
-    expect(words(repoRow("/me/a", [], stale, unknownDrift))).toBe("? Unknown");
+    expect(words(repoRow(A_READY, [], stale, unknownDrift))).toBe("? Unknown");
     const rows = globalRows(
       globalRead([claude([skill("tdd", "local-edits")])], {
         pendingOperation: stale.data.pendingOperation,
@@ -409,7 +412,7 @@ describe("local edits on a target", () => {
       desired: ["tdd"],
     };
     const repo = repoRow(
-      "/me/a",
+      A_READY,
       [],
       {
         data: { primitives: [], skipped: [], pendingOperation },
@@ -455,7 +458,7 @@ describe("edits the Harness holds on a target", () => {
     expect(
       words(
         repoRow(
-          "/me/a",
+          A_READY,
           [],
           read([skill("tdd", "edits-in-harness"), skill("grill")]),
           syncedDrift,
@@ -465,7 +468,7 @@ describe("edits the Harness holds on a target", () => {
     expect(
       words(
         repoRow(
-          "/me/a",
+          A_READY,
           [],
           read([
             skill("tdd", "edits-in-harness"),
@@ -830,5 +833,32 @@ describe("emptyGroupLines", () => {
     expect(
       emptyGroupLines(REPOSITORIES, { ...read, repositories: 2 }),
     ).toBeNull();
+  });
+});
+
+describe("a registered repository whose folder is missing", () => {
+  const unreachableDrift = {
+    ...skillsUpToDate,
+    targetIndicator: () => "unknown",
+  } as unknown as DriftViewModel;
+  const gone = repoRow(
+    { path: "/me/gone", status: "folder-missing" },
+    [],
+    { data: undefined, isError: true },
+    unreachableDrift,
+  );
+
+  it("reads Folder missing, neither a failed read nor behind", () => {
+    expect(words(gone)).toBe("✕ Folder missing");
+    expect(gone.readFailed).toBe(false);
+    expect(gone.behind).toBe(false);
+  });
+
+  it("states the missing folder in its Status card, with no read age", () => {
+    expect(readCard(statusCard(gone, COMPARED))).toEqual({
+      reason:
+        "Maestro can't read this repository because its folder isn't at the registered path.",
+      readAge: null,
+    });
   });
 });

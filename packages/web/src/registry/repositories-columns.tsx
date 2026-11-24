@@ -1,7 +1,7 @@
 // biome-ignore-all lint/plugin/no-title-in-table-cell: Repositories has no declared name cell yet; #1433 left it out of scope, so its native title stays.
 
 import type { GitHubPage } from "@maestro/core";
-import { VIEW_DEPLOY_STATE } from "../ui/control-labels";
+import { UNREGISTER, VIEW_DEPLOY_STATE } from "../ui/control-labels";
 import { createDataTableColumns } from "../ui/data-table";
 import { githubColumn } from "../ui/github-column";
 import { VIEW_REPOSITORY_ON_GITHUB } from "../ui/github-link-copy";
@@ -11,7 +11,7 @@ import { ACTIONS_COLUMN_ID } from "../ui/row-menu-control";
 import { ACTIONS_COLUMN_LABEL, rowActionsLabel } from "../ui/row-menu-copy";
 import { StatusBadge } from "../ui/status-badge";
 import { readingRank, type StatusReading } from "../ui/status-reading";
-import { COLUMNS, SCREEN, UNREGISTER } from "./repositories-copy";
+import { COLUMNS, SCREEN } from "./repositories-copy";
 
 // The Repositories table (#1009): what the registry itself knows, plus the
 // GitHub page the repository's deploy-state read names (#1456).

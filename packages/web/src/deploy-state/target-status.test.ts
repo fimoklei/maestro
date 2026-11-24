@@ -315,6 +315,7 @@ describe("targetStatus", () => {
 
   it("offers every badge word to the Filter, worst first", () => {
     expect(TARGET_STATUS_WORDS).toEqual([
+      "Folder missing",
       "Deploy incomplete",
       "Removal incomplete",
       "Update incomplete",
@@ -334,9 +335,14 @@ describe("targetStatus", () => {
 });
 
 describe("TARGET_CHIPS", () => {
-  it("offers Unknown as failed, and Attention, Local edits, Skills missing, Not updated and Behind as attention, unfinished operations under Attention", () => {
+  it("offers Unknown and Folder missing as failed, and Attention, Local edits, Skills missing, Not updated and Behind as attention, unfinished operations under Attention", () => {
     expect(TARGET_CHIPS).toEqual([
       { word: "Unknown", family: "failed", covers: ["Unknown"] },
+      {
+        word: "Folder missing",
+        family: "failed",
+        covers: ["Folder missing"],
+      },
       {
         word: "Attention",
         family: "attention",

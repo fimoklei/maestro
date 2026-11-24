@@ -3,18 +3,22 @@ import { UNKNOWN_COUNT } from "../shell/sidebar-copy";
 import { cn } from "./cn";
 import { HOVER_TRANSITION } from "./hover-transition";
 import { SignalDot } from "./signal-dot";
+import { Tooltip } from "./tooltip";
 
 // No left-edge bar on the active row: blue is reserved for focus and selection (#991).
 
 export interface NavItemProps {
   icon?: ReactNode;
   /** View name in sentence case, e.g. "Deploy-state". */
-  label: ReactNode;
+  label: string;
   active?: boolean;
   /** Inert (first-run welcome): visually dimmed and non-interactive. */
   disabled?: boolean;
-  /** What waits on this screen (#1115); `unknown` is a read that failed. */
-  counter?: { text: string; unknown: boolean } | null;
+  /** What waits on this screen (#1115); `unknown` is a read that failed, `cause` names it. */
+  counter?:
+    | { text: string; unknown: false }
+    | { text: string; unknown: true; cause: string | null }
+    | null;
   /** A dot after the label; its text is the row's description. */
   signal?: string | null;
   onClick?: MouseEventHandler<HTMLButtonElement>;
@@ -32,7 +36,7 @@ export function NavItem({
   className,
 }: NavItemProps) {
   const signalId = useId();
-  return (
+  const button = (
     <button
       type="button"
       onClick={onClick}
@@ -67,5 +71,12 @@ export function NavItem({
         </span>
       )}
     </button>
+  );
+  return counter?.unknown && counter.cause !== null ? (
+    <Tooltip label={label} detail={counter.cause}>
+      {button}
+    </Tooltip>
+  ) : (
+    button
   );
 }

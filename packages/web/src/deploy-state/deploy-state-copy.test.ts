@@ -4,6 +4,8 @@ import { plainText } from "../ui/phrase";
 import {
   CHECKING_LOCAL_EDITS,
   deployStateNotRead,
+  FOLDER_MISSING_LINE,
+  FOLDER_MISSING_REASON,
   folderMetaLine,
   globalLocalEditsLine,
   localEditsLine,
@@ -322,6 +324,17 @@ describe("Deploy-state copy", () => {
     );
     expect(globalLocalEditsLine(2, true)).toBe(
       "2 skills have changes that aren't in the latest release. To keep them, select Import local edits before you update.",
+    );
+  });
+});
+
+describe("a repository whose folder is missing", () => {
+  it("states the missing folder in the Status card and how to recover in the pane", () => {
+    expect(FOLDER_MISSING_REASON).toBe(
+      "Maestro can't read this repository because its folder isn't at the registered path.",
+    );
+    expect(FOLDER_MISSING_LINE).toBe(
+      "There's no folder at this path, so Maestro can't read this repository. Put the folder back, then select Re-read Deploy-state. To stop tracking it, select Unregister on the Repositories screen.",
     );
   });
 });

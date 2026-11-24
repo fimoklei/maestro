@@ -140,7 +140,7 @@ const PLAIN_MACHINE: Record<string, Record<string, string>> = {
   "deploy-state/skill-list-row.ts": {
     "`${primitive.version} → ${latest}`": "sub-list value, set in mono",
   },
-  "deploy-state/target-rows.ts": {
+  "deploy-state/target-readings.ts": {
     "`repo:${repoPath}`": "key",
   },
   "deploy-state/folder-sub-rows.tsx": {

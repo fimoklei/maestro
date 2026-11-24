@@ -302,6 +302,7 @@ export { NodeFileSystem } from "./registry/node-file-system";
 export {
   type RegisterError,
   Registry,
+  type RegistryEntry,
   type RepoStatus,
 } from "./registry/registry";
 export type { RepoPathError } from "./registry/repo-path";

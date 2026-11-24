@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { FileText, LayoutList, Pencil, Table2 } from "lucide-react";
+import { unreadTargetsDetail } from "../shell/sidebar-copy";
 import { NavItem } from "./nav-item";
 
 const ICON = { size: 16, strokeWidth: 1.5 } as const;
@@ -30,7 +31,19 @@ export const UnknownCounter: Story = {
   args: {
     label: "Harness",
     icon: <Pencil {...ICON} />,
-    counter: { text: "?", unknown: true },
+    counter: { text: "?", unknown: true, cause: null },
+  },
+};
+
+export const UnknownCounterWithCause: Story = {
+  args: {
+    label: "Deploy-state",
+    icon: <LayoutList {...ICON} />,
+    counter: {
+      text: "?",
+      unknown: true,
+      cause: unreadTargetsDetail(["Global", "…/code/acme-web"], false),
+    },
   },
 };
 

@@ -3,6 +3,7 @@ import {
   IMPORT_LOCAL_EDITS,
   REGISTER_REPOSITORY,
   rereadLabel,
+  UNREGISTER,
 } from "../ui/control-labels";
 import { originNotRead } from "../ui/github-link-copy";
 import type { NoticeContent } from "../ui/notice";
@@ -80,6 +81,10 @@ export const deployStateNotRead = (
 // An unread repository is an Unknown reading: its pane states it in a line, not a notice.
 export const REPO_NOT_READ = `${NOT_READ_LABEL}.`;
 export const REPO_NOT_READ_LINE = `${NOT_READ_LABEL}. Select ${rereadLabel("Deploy-state")} to read this repository's deploy-state again.`;
+
+export const FOLDER_MISSING_REASON =
+  "Maestro can't read this repository because its folder isn't at the registered path.";
+export const FOLDER_MISSING_LINE = `There's no folder at this path, so Maestro can't read this repository. Put the folder back, then select ${rereadLabel("Deploy-state")}. To stop tracking it, select ${UNREGISTER} on the Repositories screen.`;
 
 // The GitHub column's Unknown cause, also said in the Status card and the pane.
 export const ORIGIN_NOT_READ = originNotRead("Deploy-state");

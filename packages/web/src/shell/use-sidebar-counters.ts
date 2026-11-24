@@ -1,64 +1,63 @@
 // Nothing shows before every read answered, `?` where one failed, and nothing
 // at zero (#1115).
-import type {
-  HarnessState,
-  PendingOperation,
-  ReleaseHead,
-} from "@maestro/core";
+import type { HarnessState } from "@maestro/core";
 import { useQueries } from "@tanstack/react-query";
-import { isBehind } from "../deploy-state/target-rows";
+import {
+  globalReading,
+  type Read,
+  repoReadings,
+  type TargetReading,
+} from "../deploy-state/target-readings";
 import { deployStateQueryOptions } from "../deploy-state/use-deploy-state";
 import { useGlobalDeployState } from "../deploy-state/use-global-deploy-state";
 import { useHarness } from "../harness/use-harness";
 import { useInventoryConfig } from "../inventory/use-inventory";
 import { useRegistry } from "../registry/use-registry";
-import { behindCount, pendingCount, UNKNOWN_COUNT } from "./sidebar-copy";
+import type { NavItemProps } from "../ui/nav-item";
+import {
+  behindCount,
+  pendingCount,
+  UNKNOWN_COUNT,
+  unreadTargetsDetail,
+} from "./sidebar-copy";
 
-type NavCounter = { text: string; unknown: boolean };
+type NavCounter = NonNullable<NavItemProps["counter"]>;
 
-const UNKNOWN: NavCounter = { text: UNKNOWN_COUNT.shown, unknown: true };
+const unknown = (cause: string | null): NavCounter => ({
+  text: UNKNOWN_COUNT.shown,
+  unknown: true,
+  cause,
+});
 
 const count = (text: string): NavCounter => ({ text, unknown: false });
 
-type Read<T> = { data: T | undefined; isError: boolean };
-
-// One per Deploy-state row: Global is one row while any tool is detected.
 function deployStateCounter(
-  global: Read<{
-    detected: boolean;
-    releaseHead?: ReleaseHead;
-    pending?: PendingOperation;
-  }>,
-  repos: readonly Read<{
-    releaseHead?: ReleaseHead;
-    pendingOperation?: PendingOperation;
-  }>[],
+  registry: Read<unknown>,
+  targets: readonly TargetReading[],
 ): NavCounter | null {
-  const reads = [global, ...repos];
-  if (reads.some((one) => one.isError)) return UNKNOWN;
+  const failed = targets
+    .filter((target) => target.state === "read-failed")
+    .map((target) => target.name);
+  if (registry.isError || failed.length > 0) {
+    return unknown(unreadTargetsDetail(failed, registry.isError));
+  }
   if (
-    global.data === undefined ||
-    repos.some((one) => one.data === undefined)
+    registry.data === undefined ||
+    targets.some((target) => target.state === "loading")
   ) {
     return null;
   }
-  const { detected, releaseHead, pending } = global.data;
-  const globalBehind = detected && isBehind(releaseHead, pending) ? 1 : 0;
-  const behind =
-    globalBehind +
-    repos.filter((one) =>
-      isBehind(one.data?.releaseHead, one.data?.pendingOperation),
-    ).length;
+  const behind = targets.filter((target) => target.behind).length;
   return behind === 0 ? null : count(behindCount(behind));
 }
 
 // The rows the Harness table shows under its three Pending stages: a skill in
 // two stages is two rows.
 function harnessCounter(harness: Read<HarnessState>): NavCounter | null {
-  if (harness.isError) return UNKNOWN;
+  if (harness.isError) return unknown(null);
   if (harness.data === undefined) return null;
   const stages = Object.values(harness.data.stages);
-  if (stages.some((stage) => stage.outcome !== "read")) return UNKNOWN;
+  if (stages.some((stage) => stage.outcome !== "read")) return unknown(null);
   const rows = stages.reduce(
     (sum, stage) => sum + (stage.outcome === "read" ? stage.rows.length : 0),
     0,
@@ -72,9 +71,9 @@ export function useSidebarCounters(): Record<string, NavCounter | null> {
   const connected = (useInventoryConfig().data?.inventoryPath ?? null) !== null;
   const registry = useRegistry();
   const global = useGlobalDeployState(connected);
-  const repoPaths = (registry.data?.repos ?? []).map((repo) => repo.path);
+  const entries = registry.data?.repos ?? [];
   const repos = useQueries({
-    queries: repoPaths.map((path) => ({
+    queries: entries.map(({ path }) => ({
       ...deployStateQueryOptions(path),
       enabled: connected,
     })),
@@ -82,20 +81,10 @@ export function useSidebarCounters(): Record<string, NavCounter | null> {
   const harness = useHarness({ enabled: connected });
 
   return {
-    "/": deployStateCounter(
-      {
-        data: registry.data &&
-          global.data && {
-            detected: global.data.detectedTools.length > 0,
-            ...(global.data.releaseHead
-              ? { releaseHead: global.data.releaseHead }
-              : {}),
-            pending: global.data.pendingOperation,
-          },
-        isError: registry.isError || global.isError,
-      },
-      repos,
-    ),
+    "/": deployStateCounter(registry, [
+      globalReading(global),
+      ...repoReadings(entries, repos),
+    ]),
     "/harness": harnessCounter(harness),
   };
 }
