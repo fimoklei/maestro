@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SUPPORTED_TOOLS } from "../deploy/deploy-tools";
 import { type FileStamp, type FileSystemPort, sameStamp } from "./file-system";
 
 const configSchema = z.object({
@@ -25,7 +26,7 @@ const configSchema = z.object({
         release: z.string(),
         previous: z.array(z.string()),
         desired: z.array(z.string()),
-        tools: z.array(z.enum(["claude", "codex"])).nullable(),
+        tools: z.array(z.enum(SUPPORTED_TOOLS)).nullable(),
         startedAt: z.iso.datetime(),
       }),
     )

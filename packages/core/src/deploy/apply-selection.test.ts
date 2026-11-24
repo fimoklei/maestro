@@ -25,7 +25,7 @@ ${skills.map((skill) => `        - ${skill}`).join("\n")}
 const lockfile = (
   release: string,
   skills: readonly string[],
-  tools = SUPPORTED_TOOLS,
+  tools: readonly SupportedTool[] = SUPPORTED_TOOLS,
 ) => `dependencies:
 - repo_url: ${HARNESS}
   host: github.com

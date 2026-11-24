@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import type { DeployedContentState, DeployTarget } from "./deploy-skill";
-import { deployTargetSubtrees, type SupportedTool } from "./deploy-tools";
+import {
+  deployTargetSubtrees,
+  SUPPORTED_TOOLS,
+  type SupportedTool,
+} from "./deploy-tools";
 import { DeployedContentAdapter } from "./deployed-content";
 import { DeployedLocation } from "./deployed-location";
 
@@ -50,8 +54,6 @@ export type ToolCopyState =
 export type CopyStates =
   | DeployedContentState
   | Partial<Record<SupportedTool, ToolCopyState>>;
-
-const TOOLS: SupportedTool[] = ["claude", "codex"];
 
 export function inMemoryDeployedContent(
   options: {
@@ -127,7 +129,7 @@ export function inMemoryDeployedContent(
     malformed.delete(lockPath);
     const folder = (tool: SupportedTool) =>
       `${root}/${deployTargetSubtrees(name, location.toolRoots(target), [tool])[0]}`;
-    for (const tool of TOOLS) {
+    for (const tool of SUPPORTED_TOOLS) {
       tree.remove(folder(tool));
     }
     const skillFile = (tool: SupportedTool) => `${folder(tool)}/SKILL.md`;
@@ -135,7 +137,7 @@ export function inMemoryDeployedContent(
     if (states === "not-deployed") {
       entries.delete(name);
     } else if (states === "lockfile-malformed") {
-      for (const tool of TOOLS) {
+      for (const tool of SUPPORTED_TOOLS) {
         tree.write(skillFile(tool), `${name}\n`);
       }
       malformed.add(lockPath);
@@ -153,13 +155,13 @@ export function inMemoryDeployedContent(
               claude: states.claude ?? "clean",
               codex: states.codex ?? "clean",
             };
-      for (const tool of TOOLS) {
+      for (const tool of SUPPORTED_TOOLS) {
         if (perTool[tool] !== "not-deployed") {
           tree.write(skillFile(tool), `${name}\n`);
         }
       }
       const recorded = Object.fromEntries(
-        TOOLS.filter((tool) =>
+        SUPPORTED_TOOLS.filter((tool) =>
           ["clean", "diverged", "deleted"].includes(perTool[tool]),
         ).flatMap((tool) =>
           tree
@@ -172,7 +174,7 @@ export function inMemoryDeployedContent(
         ),
       );
       entries.set(name, recorded);
-      for (const tool of TOOLS) {
+      for (const tool of SUPPORTED_TOOLS) {
         if (perTool[tool] === "diverged") {
           tree.write(skillFile(tool), `${name}, edited\n`);
         }

@@ -54,6 +54,41 @@ describe("ConfigStore", () => {
     );
   });
 
+  const operation = (tools: string[]) => ({
+    key: "repo:/Users/me/project",
+    target: { kind: "repo", repoPath: "/Users/me/project" },
+    harness: "fimoklei/agent-harness",
+    kind: "deploy",
+    release: "v1.0.0",
+    previous: [],
+    desired: ["tdd"],
+    tools,
+    startedAt: "2026-11-24T10:00:00.000Z",
+  });
+  const readOperation = (tools: string[]) =>
+    new ConfigStore({
+      fs: new InMemoryFileSystem({
+        files: {
+          [CONFIG_PATH]: JSON.stringify({
+            repos: [],
+            targetOperations: [operation(tools)],
+          }),
+        },
+      }),
+      configPath: () => CONFIG_PATH,
+    }).read();
+
+  it("keeps an operation record naming Claude Code and Codex", async () => {
+    await expect(readOperation(["claude", "codex"])).resolves.toEqual({
+      repos: [],
+      targetOperations: [operation(["claude", "codex"])],
+    });
+  });
+
+  it("drops an operation record naming an unknown tool", async () => {
+    await expect(readOperation(["cursor"])).resolves.toEqual({ repos: [] });
+  });
+
   it("reads a fetch time that is not a real moment as no record at all", async () => {
     const fs = new InMemoryFileSystem({
       files: {
