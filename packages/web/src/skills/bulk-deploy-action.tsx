@@ -21,7 +21,6 @@ import {
   useGlobalDeployState,
 } from "../deploy-state/use-global-deploy-state";
 import { useRetryOperation } from "../deploy-state/use-retry-operation";
-import { useUpdateTarget } from "../deploy-state/use-update-target";
 import { writesToGroup } from "../deploy-state/writes-to-group";
 import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
@@ -107,7 +106,6 @@ export function BulkDeployRun({
   const bulk = useBulkDeploy();
   // Reuses the single-deploy path with the row's own receipt (#66).
   const forceDeploy = useDeploySkill();
-  const update = useUpdateTarget();
   const screen = useScreenWrites();
   // A held run's footer Deploy again; its report replaces the held rows.
   const again = useDeployAgain();
@@ -249,9 +247,7 @@ export function BulkDeployRun({
       <UpdateTargetAction
         targetName={chosenRun.label}
         target={chosenRun.target}
-        update={update}
         add={run.add}
-        defaultOpen
         onClose={close}
       />
     );

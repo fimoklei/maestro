@@ -13,29 +13,37 @@ import {
   useConnectInventory,
 } from "../inventory/use-connect-inventory";
 import { useScaffoldHarness } from "../inventory/use-scaffold-harness";
+import { ACTIONS } from "../ui/busy-copy";
 import type { NoticeContent } from "../ui/notice";
 import { useFolderChooser } from "../ui/use-folder-chooser";
 import { setLocationMessage } from "./settings-copy";
 
-// The Set Harness location dialog's state: the field, the connect and the
-// scaffold offer a connect can come back with. A refusal belongs to the path
-// it was given for, so an edit clears it.
-export function useSetLocationDialog({
+export function useSetLocationFlow({
+  current,
+  report,
   onSet,
+  onClose,
 }: {
-  /** The stored path, which realpath may have changed from the sent one. */
+  current: string;
+  report: (write: string) => void;
   onSet: (path: string) => void;
+  onClose: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [path, setPath] = useState("");
+  const [path, setPath] = useState(current);
   const chooser = useFolderChooser();
   const connect = useConnectInventory();
   const scaffold = useScaffoldHarness();
   const busy = connect.isPending || scaffold.isPending;
 
   const succeed = (result: ConnectResponse) => {
-    setOpen(false);
+    onClose();
     onSet(result.inventoryPath);
+  };
+  const failed = () => report("");
+
+  const runScaffold = (offered: string) => {
+    report(ACTIONS.setLocation.busy);
+    scaffold.mutate(offered, { onSuccess: succeed, onError: failed });
   };
 
   const refused =
@@ -48,40 +56,31 @@ export function useSetLocationDialog({
         refused,
         scaffoldOfferExtras(offerPath, {
           pending: scaffold.isPending,
-          onAccept: () =>
-            offerPath && scaffold.mutate(offerPath, { onSuccess: succeed }),
+          onAccept: () => offerPath && runScaffold(offerPath),
         }),
       ),
       setLocationMessage(connectErrorCode(refused)),
     );
 
   return {
-    open,
-    openDialog(current: string) {
-      setPath(current);
-      connect.reset();
+    path,
+    onPathChange(next: string) {
+      setPath(next);
       scaffold.reset();
-      setOpen(true);
     },
+    chooser,
+    notice,
     busy,
-    dialogProps: {
-      path,
-      onPathChange(next: string) {
-        setPath(next);
-        // A scaffold failure answered the old path, not this one.
-        scaffold.reset();
-      },
-      chooser,
-      notice,
-      busy,
-      onSet() {
-        scaffold.reset();
-        // A re-point never clones (#995): the server refuses any URL.
-        connect.mutate({ path, localOnly: true }, { onSuccess: succeed });
-      },
-      onClose() {
-        if (!busy) setOpen(false);
-      },
+    onSet() {
+      scaffold.reset();
+      report(ACTIONS.setLocation.busy);
+      connect.mutate(
+        { path, localOnly: true },
+        { onSuccess: succeed, onError: failed },
+      );
+    },
+    onClose() {
+      if (!busy) onClose();
     },
   };
 }
