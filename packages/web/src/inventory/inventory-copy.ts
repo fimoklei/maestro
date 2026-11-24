@@ -8,7 +8,7 @@ export const LOADING_INVENTORY_CONNECTION = "Loading the Inventory connection…
 export const inventoryNotRead = (screen: string) =>
   ({
     level: "error",
-    label: "Inventory not read",
+    label: "Couldn't read the Inventory",
     message: `Select ${rereadLabel(screen)} to try again.`,
   }) as const;
 export const INVENTORY_NOT_READ = inventoryNotRead("Skills");

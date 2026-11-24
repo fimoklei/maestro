@@ -28,11 +28,13 @@ export const HARNESS_CATEGORIES = "Harness categories";
 export const harnessCategoriesCount = (count: number) =>
   `The latest Harness release contains ${count} ${count === 1 ? "category" : "categories"}.`;
 
+const HARNESS_CATEGORIES_NOT_READ = "Couldn't read Harness categories";
+
 /** A file with an error never reads as no categories; the own list works on. */
 export const harnessCategoriesFaulty = (tag: string) =>
   ({
     level: "warning",
-    label: "Couldn't load Harness categories",
+    label: HARNESS_CATEGORIES_NOT_READ,
     message: phrase`The categories file in Harness release ${machine(tag)} contains an error. You can still propose your own categories for review.`,
   }) as const satisfies NoticeContent;
 
@@ -44,7 +46,7 @@ export const harnessCategoriesChanged = (tag: string) =>
   ({
     level: "info",
     label: HARNESS_CATEGORIES_CHANGED,
-    message: phrase`Release ${machine(tag)} changed the Harness categories. Select ${COPY_FROM_HARNESS} to compare them with your list before anything changes.`,
+    message: phrase`Release ${machine(tag)} changed the Harness categories. Before you copy them, you can compare them with your list.`,
   }) as const satisfies NoticeContent;
 
 /** The copy dialog's row fact for a category absent from the list the operator last saw. */
@@ -140,7 +142,7 @@ export function replaceWarning({
           }.`,
           phrase`${items === 1 ? "It stays" : "They stay"} in the Harness.`,
         ]),
-    phrase`You can't undo Replace. Select ${COPY_MODE_COPY.add.label} to keep everything you have.`,
+    phrase`You can't undo Replace. ${COPY_MODE_COPY.add.label} keeps everything you have.`,
   ];
   return {
     level: "warning",
@@ -168,16 +170,24 @@ export const RELEASE_UNREAD =
   "Maestro couldn't read the latest Harness release.";
 
 /** Why the copy dialog has nothing to show, by the refusal's code. */
-export const copyPreviewFailed = (code: string | null): NoticeContent => ({
-  level: "error",
-  label: "Couldn't load Harness categories",
-  message:
-    code === "no-harness-categories"
-      ? NOTHING_LEFT
-      : code === "harness-categories-unread"
-        ? `${RELEASE_UNREAD} Select ${CLOSE}, then select ${COPY_FROM_HARNESS} to try again.`
-        : `Select ${CLOSE}, then select ${COPY_FROM_HARNESS} to try again.`,
-});
+export const copyPreviewFailed = (code: string | null): NoticeContent => {
+  if (code === "no-harness-categories") {
+    return {
+      level: "error",
+      label: "No Harness categories to copy",
+      message: NOTHING_LEFT,
+    };
+  }
+  const again = `Select ${CLOSE}, then select ${COPY_FROM_HARNESS} to try again.`;
+  return {
+    level: "error",
+    label: HARNESS_CATEGORIES_NOT_READ,
+    message:
+      code === "harness-categories-unread"
+        ? `${RELEASE_UNREAD} ${again}`
+        : again,
+  };
+};
 
 /** Heading of every failed copy of the Harness categories. */
 export const COPY_FAILED_HEADING = "Couldn't copy Harness categories";
@@ -224,7 +234,7 @@ export const CATEGORY_NAME_ERRORS: Record<CategoryNameProblem, string> = {
 export const nameExistsError = (existing: string): string =>
   `${existing} already exists.`;
 
-const CATEGORIES_NOT_READ = "Categories not read";
+export const CATEGORIES_NOT_READ = "Couldn't read your categories";
 
 /** The broken section the operator repairs by hand; the cockpit offers no reset. */
 export const categoriesUnreadable = (configPath: string) =>

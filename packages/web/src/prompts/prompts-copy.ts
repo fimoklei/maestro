@@ -21,7 +21,7 @@ export const NO_SEARCH_MATCH = {
 };
 export const NO_FILTER_MATCH = {
   title: "No prompts match the filters",
-  description: `Select ${CLEAR_FILTERS} to see every prompt.`,
+  description: `${CLEAR_FILTERS} to show the prompts.`,
 };
 
 // The finding on a badly named prompt file: the Filter's section, the hover

@@ -2,11 +2,7 @@ import type { RegisterError, RepoStatus } from "@maestro/core";
 import { HttpError } from "../api/http";
 import { BEHIND, FOLDER_MISSING } from "../deploy-state/target-status";
 import { type BandCount, countOf } from "../ui/band-summary";
-import {
-  REGISTER_REPOSITORY,
-  rereadLabel,
-  UNREGISTER,
-} from "../ui/control-labels";
+import { rereadLabel, UNREGISTER } from "../ui/control-labels";
 import type { NoticeContent } from "../ui/notice";
 import {
   type NoticeTable,
@@ -61,7 +57,7 @@ export const repositoriesCounts = (
 
 export const REPOS_NOT_READ = {
   level: "error",
-  label: "Registered repositories not read",
+  label: "Couldn't read registered repositories",
   message: `Select ${rereadLabel("Repositories")} to read the registered repositories again.`,
 } as const;
 
@@ -80,7 +76,7 @@ const registerSentences: Record<RegisterError, string> = {
 
 // A failure the table does not cover: a dropped connection, a 500, or a code
 // this build predates.
-const NOT_ANSWERED = `Nothing was registered. Select ${REGISTER_REPOSITORY} again.`;
+const NOT_ANSWERED = "Nothing was registered. Try again.";
 
 /**
  * The field's refusal line. Required return, never `?? error.message`: an

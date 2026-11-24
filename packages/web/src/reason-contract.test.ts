@@ -17,9 +17,9 @@ import { bulkRemoveReportView } from "./skills/bulk-remove-report-view";
 const APPROVED: Record<string, string> = {
   "unsupported-primitive-type": "Skills only",
   "no-supported-tool": "No supported tool",
-  "lockfile-malformed": "Deployment record not read",
-  "deployed-unreadable": "Deployed copy not read",
-  "inventory-unreadable": "Inventory not read",
+  "lockfile-malformed": "Couldn't read the deployment record",
+  "deployed-unreadable": "Couldn't read the deployed copy",
+  "inventory-unreadable": "Couldn't read the Inventory",
   "preflight-failed": "Deployed files not checked",
   "ref-unresolvable": "Deployed version unknown",
   "cost-not-acknowledged": "Removal not confirmed",

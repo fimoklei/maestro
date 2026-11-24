@@ -21,6 +21,11 @@ type DeletionWording = {
   uncommittedDetail: (origin: string) => Phrase;
 };
 
+export const targetsKeepSkills = (count: number): string =>
+  count === 1
+    ? `Your targets keep the skill. After the next release, select ${UPDATE_TARGET} for each target on the Deploy-state screen to remove it.`
+    : `Your targets keep the skills. After the next release, select ${UPDATE_TARGET} for each target on the Deploy-state screen to remove them.`;
+
 export const DELETION_COPY: Record<HarnessPrimitiveType, DeletionWording> = {
   skill: {
     label: DELETE_LABEL.skill,
@@ -30,8 +35,7 @@ export const DELETION_COPY: Record<HarnessPrimitiveType, DeletionWording> = {
       phrase`${DELETE_LABEL.skill} removes the folder from disk. No other copy of ${named(name)} exists.`,
     proposes: (origin) =>
       phrase`${DELETE_LABEL.skill} proposes this deletion to ${named(origin)} for review.`,
-    keeps: () =>
-      phrase`Your targets keep the skill. After the next release, select ${UPDATE_TARGET} on each target to remove it.`,
+    keeps: () => phrase`${targetsKeepSkills(1)}`,
     uncommittedDetail: (origin) =>
       phrase`The skill's files in your clone of ${named(origin)} differ from its last commit.`,
   },

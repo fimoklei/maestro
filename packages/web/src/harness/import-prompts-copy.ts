@@ -97,7 +97,7 @@ const IMPORT_PROMPTS_ERRORS: NoticeTable<ImportPromptsError> = {
   },
   "destination-unreadable": {
     level: "error",
-    label: "Prompts folder not read",
+    label: "Couldn't read the prompts folder",
     message: `${NOTHING} Make the prompts folder readable, then select ${IMPORT_PROMPTS} again.`,
   },
   "import-in-progress": {

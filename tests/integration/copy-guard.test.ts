@@ -39,6 +39,9 @@ describe("copy guard", () => {
         'export const i = "Import skills";',
         'export const j = "Import prompts…";',
         'export const k = "Edit prompt";',
+        'export const l = "Not read yet";',
+        'export const m = "Read failed";',
+        'export const o = "Couldn\'t read your clone";',
         "",
       ].join("\n"),
     );
@@ -99,6 +102,9 @@ describe("copy guard", () => {
     ["Update skill", "Update skill"],
     ["Select Update prompt to change it.", "Update prompt"],
     ["Upload", "Upload"],
+    ["Clone not read", "not read"],
+    ["Deploy-state not read. Select Re-read Deploy-state.", "not read"],
+    ["Couldn't load Harness categories", "Couldn't load"],
     ["Uploads your categories to the connected Harness.", "Uploads"],
     ["Select Upload to open a pull request.", "Upload"],
   ])("fails a string saying %j and names the word", (sentence, word) => {

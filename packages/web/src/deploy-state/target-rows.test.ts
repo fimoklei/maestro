@@ -177,7 +177,10 @@ describe("statusCard", () => {
           COMPARED,
         ),
       ),
-    ).toEqual({ reason: "Deploy-state not read.", readAge: "Read just now" });
+    ).toEqual({
+      reason: "Couldn't read this repository's deploy-state.",
+      readAge: "Read just now",
+    });
   });
 
   it("explains an Unknown reading as the update check that did not run", () => {
@@ -208,7 +211,7 @@ describe("statusCard", () => {
 
   it("states a repository's failed read alone", () => {
     expect(readCard(statusCard(row({ readFailed: true }), COMPARED))).toEqual({
-      reason: "Deploy-state not read.",
+      reason: "Couldn't read this repository's deploy-state.",
       readAge: null,
     });
   });

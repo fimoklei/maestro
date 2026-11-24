@@ -33,9 +33,7 @@ describe("AppearancePage", () => {
     ).toBeInTheDocument();
     expect(within(section).getByText("Interface theme")).toBeInTheDocument();
     expect(
-      within(section).getByText(
-        "Select System to follow your operating system.",
-      ),
+      within(section).getByText("System follows your operating system."),
     ).toBeInTheDocument();
   });
 

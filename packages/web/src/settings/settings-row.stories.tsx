@@ -25,7 +25,7 @@ export const MachineValue: Story = {};
 export const PlainValue: Story = {
   args: {
     name: "GitHub repository",
-    value: "GitHub repository not read",
+    value: "Couldn't read",
     machine: false,
   },
 };

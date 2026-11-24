@@ -42,7 +42,7 @@ export const copiesDifferLegend = (count: number): string =>
 
 export const COPIES_DIFFER_LINE = "The copies differ. Select one to import.";
 export const COPY_TO_IMPORT = "Copy to import";
-export const MERGE_COPIES_LINE = `To keep all edits, merge them into one folder yourself. Then select ${CLOSE}, select ${rereadLabel("Deploy-state")}, then select ${IMPORT_LOCAL_EDITS} again.`;
+export const MERGE_COPIES_LINE = `To keep all edits, merge them into one folder yourself. Then cancel, select ${rereadLabel("Deploy-state")} and select ${IMPORT_LOCAL_EDITS} again.`;
 export const UNSELECTED_COPIES_LINE = `Copies you don't select stay as they are. ${UPDATE_TARGET} replaces them only if you check ${DISCARD_LOCAL_EDITS}.`;
 export const SELECT_A_COPY = "Select a copy.";
 

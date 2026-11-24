@@ -40,7 +40,7 @@ function Screen({
     failure: failed
       ? {
           level: "error",
-          label: "Registered repositories not read",
+          label: "Couldn't read registered repositories",
           message:
             "Select Re-read Repositories to read the registered repositories again.",
         }

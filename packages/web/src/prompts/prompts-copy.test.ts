@@ -3,6 +3,7 @@ import { COPY_EXAMPLE } from "../ui/control-labels";
 import { plainText } from "../ui/phrase";
 import {
   COPY_PART_TEXT,
+  NO_FILTER_MATCH,
   NO_RELEASED_PROMPTS,
   NOT_COPIED,
   nameNotValidNotice,
@@ -19,6 +20,13 @@ describe("Prompts copy", () => {
       title: "No released prompts yet",
       description:
         "Select Import prompts on the Harness screen to add prompts to the Harness.",
+    });
+  });
+
+  it("says the way back is to clear the filters", () => {
+    expect(NO_FILTER_MATCH).toEqual({
+      title: "No prompts match the filters",
+      description: "Clear filters to show the prompts.",
     });
   });
 

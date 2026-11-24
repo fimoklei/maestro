@@ -14,6 +14,9 @@ const SINGULAR_CONFIRM_FILES = new Set([
   "packages/web/src/deploy-state/import-local-edits-copy.ts",
 ]);
 
+const AUXILIARY =
+  "(?:[Dd]id|[Cc]ould|[Dd]oes|[Dd]o|[Ii]s|[Aa]re|[Ww]as|[Ww]ere|[Hh]as|[Hh]ave|[Ww]ill|[Ww]ould|[Ss]hould)";
+
 const RETIRED = [
   /\bInventory source\b/i,
   /\bRe-read Inventory\b/i,
@@ -59,8 +62,10 @@ const RETIRED = [
   /\b(?:[Pp]ress|[Hh]it) [A-Z]\w*/,
   // A failed read is `Couldn't read {the thing}`; a deploy never installs; a running
   // operation reads Target busy or Harness busy (#1459).
-  /\b(?:[Dd]id|[Cc]ould|[Dd]oes|[Dd]o|[Ii]s|[Aa]re|[Ww]as|[Ww]ere|[Hh]as|[Hh]ave|[Ww]ill|[Ww]ould|[Ss]hould) not\b|\b[Cc]annot\b/,
+  new RegExp(String.raw`\b${AUXILIARY} not\b|\b[Cc]annot\b`),
   /\bCommitted copy unreadable\b/i,
+  new RegExp(String.raw`(?<!\b${AUXILIARY} )\bnot read\b`),
+  /\bCouldn't load\b/i,
   /\bUnreadable (?:working tree|Harness clone|folder)\b/i,
   /\bNothing was installed\b/i,
   /\bTarget held by another operation\b/i,

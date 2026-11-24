@@ -2,7 +2,6 @@
 
 import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
 import { IMPORT_LOCAL_EDITS, UPDATE_TARGET } from "../ui/control-labels";
-import { CANCEL } from "../ui/dialog-copy";
 import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
 import { toolDisplayName } from "./tool-presentation";
 
@@ -55,7 +54,7 @@ export const BECOMES_EMPTY =
 export const DISCARD_LOCAL_EDITS = "Discard local edits";
 export const OVERWRITE_UNVERIFIED = "Overwrite unverified copy";
 
-export const KEEP_WORK_BY_IMPORTING = `To keep the edits instead, select ${CANCEL}, then select ${IMPORT_LOCAL_EDITS}.`;
+export const KEEP_WORK_BY_IMPORTING = `To keep the edits instead, cancel this update and select ${IMPORT_LOCAL_EDITS}.`;
 
 export const localEditsSentence = (name: string, release: string): Phrase =>
   phrase`${named(name)} has local edits. This update replaces them with release ${machine(release)}.`;
@@ -92,7 +91,7 @@ export function outcomeHeading(to: string, verdict: OutcomeVerdict): string {
 
 export const RETRY_UPDATE = "Retry update";
 
-export const RETRY_UPDATE_STEP = `Select ${RETRY_UPDATE} to run the same release again.`;
+export const RETRY_UPDATE_STEP = "Retry the update to run it again.";
 
 export const UPDATE_AGAIN = `then select ${UPDATE_TARGET} again.`;
 
@@ -119,4 +118,4 @@ export function outcomeDetail(
 export const UPDATE_INCOMPLETE = "Update incomplete";
 
 export const UPDATE_INCOMPLETE_REASON = "The update is incomplete.";
-export const UPDATE_INCOMPLETE_SENTENCE = `${UPDATE_INCOMPLETE_REASON} ${RETRY_UPDATE_STEP}`;
+export const UPDATE_INCOMPLETE_SENTENCE = `${UPDATE_INCOMPLETE_REASON} Select ${RETRY_UPDATE} to run the same release again.`;

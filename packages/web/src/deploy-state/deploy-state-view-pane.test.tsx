@@ -395,7 +395,7 @@ describe("Deploy-state pane — facts", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "1 skill has changes that aren't in the latest release: tdd. To keep them, select Import local edits before you update.",
+          "1 skill has changes that aren't in the latest release: tdd. Updating replaces them, so import them into the Harness first to keep them.",
         ),
       ),
     ).toBeInTheDocument();
@@ -484,7 +484,7 @@ describe("Deploy-state pane — facts", () => {
     const pane = await openPane(LABEL);
     expect(
       within(pane).getByText(
-        "Deploy-state not read. Select Re-read Deploy-state to read this repository's deploy-state again.",
+        "Couldn't read this repository's deploy-state. Select Re-read Deploy-state to read it again.",
       ),
     ).toBeInTheDocument();
     expect(within(pane).queryByRole("status")).not.toBeInTheDocument();
@@ -1078,7 +1078,7 @@ describe("Deploy-state pane — where each action sits", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "1 skill has changes that aren't in the latest release: tdd. To keep them, select Import local edits before you update.",
+          "1 skill has changes that aren't in the latest release: tdd. Updating replaces them, so import them into the Harness first to keep them.",
         ),
       ),
     ).toBeInTheDocument();
@@ -1138,7 +1138,7 @@ describe("Deploy-state pane — where each action sits", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "2 of 5 deployed skills changed in v0.3.4. Select Update target to move this target to v0.3.4.",
+          "2 of 5 deployed skills changed in v0.3.4. You can update this target to v0.3.4.",
         ),
       ),
     ).toBeInTheDocument();

@@ -112,7 +112,7 @@ describe("the row Propose to Harness", () => {
     [
       "changes-requested",
       "Changes requested",
-      "A reviewer asked for changes on pull request #45. Change your categories, then select Update pull request to send them.",
+      "A reviewer asked for changes on pull request #45. Change your categories, then update the pull request to send them.",
     ],
   ] as const)(
     "states the operator's own pull request, %s, with View on Harness",
@@ -180,7 +180,7 @@ describe("the row Propose to Harness", () => {
     const region = await section();
     expect(
       await within(region).findByText(
-        "The proposal branch is on GitHub without a pull request. Select Create pull request to open one.",
+        "The proposal branch is on GitHub without a pull request. You can create one from your current categories.",
       ),
     ).toBeInTheDocument();
     expect(

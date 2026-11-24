@@ -8,7 +8,6 @@ import type {
 import type { FoldLine } from "../ui/fold-list";
 import type { StatusFamily } from "../ui/status-family";
 import { notWrittenNote } from "./deploy-state-copy";
-import { RETRY_DEPLOY } from "./release-head-copy";
 import { toolDisplayName } from "./tool-presentation";
 import { RETRY_UPDATE_STEP } from "./update-target-copy";
 
@@ -92,17 +91,14 @@ export const unconfirmedLine: WrittenToLine = {
   step: null,
 };
 
-/** `retry`: Retry deploy is in the footer, so a deviating folder names it. */
+/** `retry`: Retry deploy is in the footer, so a deviating folder asks for it. */
 export function writtenToLine(
   folder: FolderOutcome,
   retry: boolean,
 ): WrittenToLine {
   return folderLine(folder, {
     clean: `${skills(folder.skills.length)} deployed`,
-    step: (details) =>
-      retry
-        ? `Select ${RETRY_DEPLOY} to deploy ${details.length === 1 ? "it" : "them"} again.`
-        : null,
+    step: retry ? "Retry the deploy to run it again." : null,
   });
 }
 
@@ -113,7 +109,7 @@ export function updatedToLine(
 ): WrittenToLine {
   const line = folderLine(folder, {
     clean: `At ${update.release}`,
-    step: () => (update.retry ? RETRY_UPDATE_STEP : null),
+    step: update.retry ? RETRY_UPDATE_STEP : null,
   });
   const notUpdated = folder.skills.filter(
     (skill) => skill.outcome === "not-updated",
@@ -130,7 +126,7 @@ function folderLine(
   folder: FolderOutcome,
   words: {
     clean: string;
-    step: (details: readonly Detail[]) => string | null;
+    step: string | null;
   },
 ): WrittenToLine {
   if (!folder.detected) {
@@ -163,6 +159,6 @@ function folderLine(
           : `${missing} of ${skills(total)} missing`
         : `${written} of ${skills(total)} deployed`,
     details,
-    step: words.step(details),
+    step: words.step,
   };
 }

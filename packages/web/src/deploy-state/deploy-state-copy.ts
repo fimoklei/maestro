@@ -38,7 +38,7 @@ export const NO_REPOSITORIES = `No repositories yet. ${REGISTER_STEP}.`;
 
 export const NO_FILTER_MATCH = {
   title: "No targets match the filters",
-  description: `Select ${CLEAR_FILTERS} to see every target.`,
+  description: `${CLEAR_FILTERS} to show the targets.`,
 };
 
 export const NO_TARGETS = {
@@ -62,10 +62,10 @@ export const packageBehindNotice = (
       }),
 });
 
-const NOT_READ_LABEL = "Deploy-state not read";
+const NOT_READ_LABEL = "Couldn't read Deploy-state";
 const NOT_READ_PARTS = {
   global: "Global",
-  repos: "registered repositories",
+  repos: "the list of registered repositories",
 } as const;
 
 // The band's one failed-read notice: every part shares the one re-read.
@@ -76,11 +76,11 @@ export const deployStateNotRead = (
     level: "error",
     label: NOT_READ_LABEL,
     message: `Select ${rereadLabel("Deploy-state")} to read every target again.`,
-    detail: `Not read: ${joinNames(parts.map((part) => NOT_READ_PARTS[part]))}.`,
+    detail: `Couldn't read ${joinNames(parts.map((part) => NOT_READ_PARTS[part]))}.`,
   }) as const;
 // An unread repository is an Unknown reading: its pane states it in a line, not a notice.
-export const REPO_NOT_READ = `${NOT_READ_LABEL}.`;
-export const REPO_NOT_READ_LINE = `${NOT_READ_LABEL}. Select ${rereadLabel("Deploy-state")} to read this repository's deploy-state again.`;
+export const REPO_NOT_READ = "Couldn't read this repository's deploy-state.";
+export const REPO_NOT_READ_LINE = `${REPO_NOT_READ} Select ${rereadLabel("Deploy-state")} to read it again.`;
 
 export const FOLDER_MISSING_REASON =
   "Maestro can't read this repository because its folder isn't at the registered path.";
@@ -230,8 +230,10 @@ export const NO_TOOL_DETECTED =
 export const otherOriginLine = (origins: readonly string[]) =>
   phrase`Holds skills, hooks and MCP servers deployed from ${namedList(origins)}.`;
 
-const KEEP_LOCAL_EDITS = `Select ${IMPORT_LOCAL_EDITS} to keep them.`;
-const KEEP_BEFORE_UPDATE = `To keep them, select ${IMPORT_LOCAL_EDITS} before you update.`;
+const KEEP_LOCAL_EDITS = "Import them into the Harness to keep them.";
+const KEEP_BEFORE_UPDATE =
+  "Updating replaces them, so import them into the Harness first to keep them.";
+const CARD_KEEP_LOCAL_EDITS = `Select ${IMPORT_LOCAL_EDITS} to keep them.`;
 
 const localEditsReason = (names: readonly string[]) =>
   names.length === 1
@@ -251,7 +253,7 @@ export const localEditsCardLine = (
   latest: string | null,
 ) =>
   latest === null
-    ? localEditsLine(names, false)
+    ? phrase`${localEditsReason(names)} ${CARD_KEEP_LOCAL_EDITS}`
     : phrase`${localEditsReason(names)} To keep them, select ${IMPORT_LOCAL_EDITS} before you update to ${machine(latest)}.`;
 
 // A skill row's mark carries its reading's hint as its tooltip: one fact, no action.

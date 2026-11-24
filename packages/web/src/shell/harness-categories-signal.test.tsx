@@ -123,7 +123,7 @@ describe("the Harness categories change signal", () => {
     expect(
       within(section).getByText(
         sentence(
-          "Release v1.5.0 changed the Harness categories. Select Copy from Harness to compare them with your list before anything changes.",
+          "Release v1.5.0 changed the Harness categories. Before you copy them, you can compare them with your list.",
         ),
       ),
     ).toBeInTheDocument();

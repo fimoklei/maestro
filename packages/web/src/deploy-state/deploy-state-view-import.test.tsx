@@ -339,7 +339,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     });
     expect(
       within(refused).getByText(
-        "Your clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
+        "Your clone has uncommitted changes to this skill. Undo them, or select Propose change on the Harness screen, merge on GitHub and pull first.",
       ),
     ).toBeInTheDocument();
     const imported = within(dialog).getByRole("region", {

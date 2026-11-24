@@ -36,6 +36,8 @@ const configSchema = z.object({
 
 export type MaestroConfig = z.infer<typeof configSchema>;
 
+type Mutate<M> = (config: MaestroConfig) => M | Promise<M>;
+
 class ConfigError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
@@ -103,20 +105,17 @@ export class ConfigStore {
     return result.data;
   }
 
-  async update<T = void>(
-    mutate: (config: MaestroConfig) =>
-      | Promise<{ config?: MaestroConfig; result?: T }>
-      | {
-          config?: MaestroConfig;
-          result?: T;
-        },
-  ): Promise<T> {
+  update<T>(mutate: Mutate<{ config?: MaestroConfig; result: T }>): Promise<T>;
+  update(mutate: Mutate<{ config?: MaestroConfig }>): Promise<void>;
+  async update<T>(
+    mutate: Mutate<{ config?: MaestroConfig; result?: T }>,
+  ): Promise<T | undefined> {
     const next = this.tail.then(async () => {
       const { config, result } = await mutate(await this.read());
       if (config !== undefined) {
         await this.write(config);
       }
-      return result as T;
+      return result;
     });
     this.tail = next.catch(() => undefined);
     return next;

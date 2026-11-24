@@ -637,3 +637,13 @@ describe("Repository not registered", () => {
     }
   });
 });
+
+describe("an update preview refused because the Inventory couldn't be read", () => {
+  it("names Re-read Inventory on the Harness location screen, then Update target", () => {
+    expect(
+      readNotice(updatePreviewNotice(refusal("inventory-unreadable")))?.message,
+    ).toBe(
+      "Select Re-read Inventory on the Harness location screen, then select Update target again.",
+    );
+  });
+});

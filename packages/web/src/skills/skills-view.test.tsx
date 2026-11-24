@@ -273,12 +273,12 @@ describe("SkillsView — the table", () => {
       onOpenHarness: vi.fn(),
       failure: {
         level: "error",
-        label: "Inventory not read",
+        label: "Couldn't read the Inventory",
         message: "Select Re-read Skills to try again.",
       },
     });
 
-    expect(screen.getByText("Inventory not read")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't read the Inventory")).toBeInTheDocument();
     expect(
       screen.queryByText("No released skills yet"),
     ).not.toBeInTheDocument();
@@ -417,7 +417,7 @@ describe("SkillsView — band 2", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Select Clear filters to see every skill."),
+      screen.getByText("Clear filters to show the skills."),
     ).toBeInTheDocument();
     expect(screen.getByText("0 of 2")).toBeInTheDocument();
 
@@ -1369,15 +1369,15 @@ describe("SkillsView — reading", () => {
       onReread,
       failure: {
         level: "error",
-        label: "Inventory not read",
+        label: "Couldn't read the Inventory",
         message: "Select Re-read Skills to try again.",
       },
     });
 
-    expect(screen.getByText("Inventory not read")).toBeInTheDocument();
+    expect(screen.getByText("Couldn't read the Inventory")).toBeInTheDocument();
     expect(screen.getByRole("gridcell", { name: "tdd" })).toBeInTheDocument();
     const notice = screen
-      .getByText("Inventory not read")
+      .getByText("Couldn't read the Inventory")
       .closest<HTMLElement>('[role="status"]');
     if (notice === null) throw new Error("the notice isn't a status region");
     await userEvent.click(

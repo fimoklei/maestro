@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { HarnessGitAdapter, ReleasedContentReader } from "@maestro/core";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { removeGitTempTree } from "../helpers/git-fixture";
 
 const run = promisify(execFile);
@@ -169,6 +169,22 @@ describe("Harness primitives by type", { timeout: 30_000 }, () => {
     expect(await readFile(join(into, "pr-review.md"), "utf8")).toBe(
       "Review [PR LINK] and $1\n",
     );
+  });
+
+  it("reports a skill write as failed, never missing, when git cannot start", async () => {
+    const head = (await git(root, "rev-parse", "HEAD")).stdout.trim();
+    const into = join(base, "staging");
+    await mkdir(into);
+    vi.stubEnv("PATH", join(base, "no-binaries"));
+
+    await expect(
+      adapter().writePrimitiveInto(
+        root,
+        { type: "skill", name: "tdd" },
+        head,
+        into,
+      ),
+    ).resolves.toBe("failed");
   });
 
   it("lists the files at the root of a commit, never a nested SKILL.md", async () => {

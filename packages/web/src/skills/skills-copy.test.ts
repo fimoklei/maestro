@@ -3,10 +3,13 @@ import { machineValues, unselectedControls } from "../test-utils";
 import { plainText } from "../ui/phrase";
 import * as skillsCopy from "./skills-copy";
 import {
+  deployedToLine,
   globalOptionLabel,
+  NO_FILTER_MATCH,
   NO_RELEASED_SKILLS,
   NO_TARGET_CHOSEN,
   NO_TARGET_REMOVABLE,
+  NOT_DEPLOYED_ANYWHERE,
   skillStateLine,
   TARGETS_LOADING,
 } from "./skills-copy";
@@ -30,6 +33,27 @@ describe("the empty screen", () => {
       description:
         "Select Import skills on the Harness screen to add skills to the Harness.",
     });
+  });
+});
+
+describe("the filtered-out screen", () => {
+  it("says the way back is to clear the filters", () => {
+    expect(NO_FILTER_MATCH).toEqual({
+      title: "No skills match the filters",
+      description: "Clear filters to show the skills.",
+    });
+  });
+});
+
+describe("a skill on no target", () => {
+  it("keeps the hover card's sentence", () => {
+    expect(deployedToLine(0)).toBe("Not deployed to any target.");
+  });
+
+  it("tells the pane's reader where to deploy it", () => {
+    expect(NOT_DEPLOYED_ANYWHERE).toBe(
+      "Not deployed to any target. Deploy it to a repository or to Global.",
+    );
   });
 });
 

@@ -41,7 +41,7 @@ import {
   globalSkillReadings,
 } from "./global-skill-readings";
 import {
-  behindLine,
+  behindCardLine,
   copyChipText,
   globalBehindLine,
   LATEST_RELEASE_UNKNOWN,
@@ -507,7 +507,7 @@ function statusReason(row: TargetRow): Copy | null {
   }
   if (!row.head) return null;
   if (row.head.latestRelease === null) return LATEST_RELEASE_UNKNOWN;
-  return row.behind ? behindLine(row.head) : ON_LATEST_RELEASE;
+  return row.behind ? behindCardLine(row.head) : ON_LATEST_RELEASE;
 }
 
 /** `compared` is band 2's line, the screen's oldest reading. */

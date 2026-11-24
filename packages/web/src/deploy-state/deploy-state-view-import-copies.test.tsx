@@ -87,7 +87,7 @@ describe("Deploy-state — Import local edits where Global copies differ", () =>
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "To keep all edits, merge them into one folder yourself. Then select Close, select Re-read Deploy-state, then select Import local edits again.",
+        "To keep all edits, merge them into one folder yourself. Then cancel, select Re-read Deploy-state and select Import local edits again.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -165,7 +165,7 @@ describe("Deploy-state — Import local edits where Global copies differ", () =>
     expect(
       await within(pane).findByText(
         sentence(
-          "2 skills have changes that aren't in the latest release. Select Import local edits to keep them.",
+          "2 skills have changes that aren't in the latest release. Import them into the Harness to keep them.",
         ),
       ),
     ).toBeInTheDocument();

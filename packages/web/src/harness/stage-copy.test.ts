@@ -17,6 +17,7 @@ import {
   detailSentence,
   harnessCounts,
   JOURNEY_EMPTY,
+  paneDetailSentence,
   pullRequestState,
   requestedReviewers,
   reviewerLine,
@@ -261,7 +262,7 @@ describe("Detail sentences", () => {
   ])("names the control of a %s row: %s", (status, control) => {
     for (const change of CHANGES) {
       const text = plainText(detail(status, { change }));
-      const selected = [...text.matchAll(/Select (.+?) to /g)].map(
+      const selected = [...text.matchAll(/[Ss]elect (.+?) (?:to|under) /g)].map(
         (match) => match[1],
       );
 
@@ -357,6 +358,18 @@ describe("Detail sentences", () => {
       "new-local-work",
       {},
       "You edited this prompt after pull request #45. Select Update proposal to send the edits.",
+      null,
+    ],
+    [
+      "changes-requested",
+      { change: "deletion" },
+      "A reviewer asked for changes on the deletion in pull request #45. Make the changes in your clone, then select Update proposal under Pending proposal.",
+      null,
+    ],
+    [
+      "changes-requested",
+      {},
+      "A reviewer asked for changes on pull request #45. Make the changes in your clone, then select Update proposal under Pending proposal.",
       null,
     ],
     [
@@ -638,6 +651,117 @@ describe("Detail sentences", () => {
   });
 });
 
+describe("the detail pane's sentence", () => {
+  const pane = (
+    status: StageStatus,
+    over: Partial<HarnessStageRow> = {},
+  ): HarnessStageRow =>
+    row("pending-proposal", status, { requests: [request], ...over });
+  const byOther = { ...request, author: "mira", byOther: true };
+
+  it.each<[StageStatus, Partial<HarnessStageRow>, string]>([
+    [
+      "not-yet-proposed",
+      { change: "addition", requests: [] },
+      "This skill isn't in the next release yet. You can propose it for review.",
+    ],
+    [
+      "not-yet-proposed",
+      { change: "addition", requests: [], type: "prompt" },
+      "This prompt isn't in the next release yet. You can propose it for review.",
+    ],
+    [
+      "not-yet-proposed",
+      { requests: [], remoteTree: "remote-tdd" },
+      "Your local copy differs from the next release. You can propose it for review. Or select Discard change to match the next release.",
+    ],
+    [
+      "not-yet-proposed",
+      { requests: [] },
+      "Your local copy differs from the next release. You can propose it for review.",
+    ],
+    [
+      "not-yet-proposed",
+      { change: "deletion", requests: [] },
+      "This skill is deleted in your clone but still in the next release. You can propose the deletion for review.",
+    ],
+    [
+      "not-yet-proposed",
+      { change: "deletion", requests: [], type: "prompt" },
+      "This prompt is deleted in your clone but still in the next release. You can propose the deletion for review.",
+    ],
+    [
+      "new-local-work",
+      {},
+      "You edited this skill after pull request #45. You can update the proposal with your edits.",
+    ],
+    [
+      "new-local-work",
+      { requests: [], type: "prompt" },
+      "You edited this prompt after preparing its proposal. You can update the proposal with your edits.",
+    ],
+    [
+      "pull-request-missing",
+      { requests: [] },
+      "The proposal branch is on GitHub without a pull request. You can create a pull request for it.",
+    ],
+    [
+      "proposal-closed",
+      {},
+      "Pull request #45 was closed without merging. You can reopen the proposal to continue it.",
+    ],
+    [
+      "proposal-closed",
+      { requests: [byOther] },
+      "mira's pull request #45 was closed without merging. You can propose your own change.",
+    ],
+  ])("words a %s row in the pane (%o)", (status, over, text) => {
+    expect(plainText(paneDetailSentence(pane(status, over), CONTEXT))).toBe(
+      text,
+    );
+  });
+
+  it.each<[StageStatus, Partial<HarnessStageRow>]>([
+    ["not-yet-proposed", { change: "addition", requests: [] }],
+    ["not-yet-proposed", { requests: [] }],
+    ["not-yet-proposed", { change: "deletion", requests: [] }],
+    ["new-local-work", {}],
+    ["pull-request-missing", { requests: [] }],
+    ["proposal-closed", {}],
+    ["proposal-closed", { requests: [byOther] }],
+  ])(
+    "keeps the Status card's own sentence for a %s row (%o)",
+    (status, over) => {
+      expect(paneDetailSentence(pane(status, over), CONTEXT)).not.toEqual(
+        detailSentence(pane(status, over), CONTEXT),
+      );
+    },
+  );
+
+  it("keeps the shipped sentence on another contributor's closed deletion, which offers no Propose change", () => {
+    const deletion = pane("proposal-closed", {
+      change: "deletion",
+      requests: [byOther],
+    });
+
+    expect(plainText(paneDetailSentence(deletion, CONTEXT))).toBe(
+      "mira's pull request #45 was closed without merging. Select Propose change to send your own change.",
+    );
+  });
+
+  it.each<[StageStatus, Partial<HarnessStageRow>]>([
+    ["changes-requested", {}],
+    ["not-yet-proposed", { waitingOn: "mira" }],
+    ["proposal-closed", { change: "deletion", onDisk: true }],
+    ["pull-request-missing", { type: "categories", name: "Categories" }],
+    ["not-yet-released", {}],
+  ])("says what the Status card says for a %s row (%o)", (status, over) => {
+    expect(paneDetailSentence(pane(status, over), CONTEXT)).toEqual(
+      detailSentence(pane(status, over), CONTEXT),
+    );
+  });
+});
+
 describe("the reviewer and cross-stage lines", () => {
   it("omits the reviewer line when nobody is requested", () => {
     expect(
@@ -721,12 +845,12 @@ describe("deployed copies line", () => {
 // A merged change waiting for release is corrected, not withdrawn, when only
 // its content is wrong (#1685).
 describe("correction line", () => {
-  it("names Edit prompt on a Pending release prompt row", () => {
+  it("tells the reader to edit the prompt on a Pending release prompt row", () => {
     expect(
       correctionLine(
         row("pending-release", "not-yet-released", { type: "prompt" }),
       ),
-    ).toBe("To correct this change, select Edit prompt.");
+    ).toBe("To correct this change, edit the prompt.");
   });
 
   it("names the deployed copy and Import local edits on a Pending release skill row", () => {

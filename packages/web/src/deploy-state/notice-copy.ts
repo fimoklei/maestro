@@ -365,7 +365,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
     message: `${CHANGE_LOCATION_STEP}, ${UPDATE_AGAIN}`,
   },
   "inventory-unreadable": {
-    message: `Select ${rereadLabel("Skills")} on the Harness location screen, ${UPDATE_AGAIN}`,
+    message: `Select ${rereadLabel("Inventory")} on the Harness location screen, ${UPDATE_AGAIN}`,
   },
   "no-published-tag": {
     message: `${CREATE_RELEASE_STEP}, ${UPDATE_AGAIN}`,

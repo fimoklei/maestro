@@ -1,12 +1,9 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { NON_INTERACTIVE } from "../git/non-interactive";
+import { runProcess } from "../process/run-process";
 import {
   type CloneFailure,
   classifyCloneFailure,
 } from "./classify-clone-failure";
-
-const run = promisify(execFile);
 
 const STALLED_CLONE_TIMEOUT_MS = 600_000;
 
@@ -18,14 +15,10 @@ export interface CloneRepositoryPort {
 
 export class GitCloneAdapter implements CloneRepositoryPort {
   async clone(url: string, destination: string): Promise<CloneOutcome> {
-    try {
-      await run("git", ["clone", "--", url, destination], {
-        env: { ...process.env, ...NON_INTERACTIVE },
-        timeout: STALLED_CLONE_TIMEOUT_MS,
-      });
-      return "cloned";
-    } catch (error) {
-      return classifyCloneFailure((error as { stderr?: string }).stderr ?? "");
-    }
+    const outcome = await runProcess("git", ["clone", "--", url, destination], {
+      env: { ...process.env, ...NON_INTERACTIVE },
+      timeout: STALLED_CLONE_TIMEOUT_MS,
+    });
+    return outcome.ok ? "cloned" : classifyCloneFailure(outcome.stderr);
   }
 }
