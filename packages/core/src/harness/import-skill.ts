@@ -22,9 +22,9 @@ import {
   parseLockfile,
 } from "../lockfile/lockfile";
 import type { FileSystemPort } from "../registry/file-system";
+import { readFrontmatter } from "./frontmatter";
 import { ensureHarnessPrimitiveDir } from "./harness-primitive-dir";
 import type { ImportMode } from "./import-mode";
-import { metadataCategory } from "./metadata-category";
 import type { HarnessGitPort } from "./read-harness-state";
 import {
   type ManifestAdvisory,
@@ -32,10 +32,7 @@ import {
   rewriteFrontmatterName,
 } from "./skill-manifest";
 import { proposeSkillSlug } from "./skill-slug";
-import {
-  readFrontmatter,
-  validateSkillStructure,
-} from "./validate-skill-structure";
+import { validateSkillStructure } from "./validate-skill-structure";
 
 export type ImportSourceBlocker =
   | "source-unreadable"
@@ -271,7 +268,7 @@ export class ImportSkill {
         provenance.kind === "own" ? null : await this.judgeName(root, name),
       advisories: raw === null ? [] : manifestAdvisories(raw),
       category:
-        raw === null ? null : metadataCategory(readFrontmatter(raw)?.data),
+        raw === null ? null : (readFrontmatter(raw)?.fields.category ?? null),
     };
     return { check, source };
   }

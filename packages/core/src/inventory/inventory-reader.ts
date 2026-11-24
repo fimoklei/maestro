@@ -1,10 +1,9 @@
-import { z } from "zod";
 import { parseGitOrigin } from "../deploy/git-origin";
 import { isValidSkillSlug } from "../deploy/package-ref";
 import { type GitHubPage, githubPageFromOriginUrl } from "../git/github-page";
+import { readFrontmatter } from "../harness/frontmatter";
 import { primitivePath } from "../harness/harness-primitive";
 import { type PromptFile, readPromptFile } from "../harness/prompt-file";
-import { readFrontmatter } from "../harness/validate-skill-structure";
 import type { FileSystemPort } from "../registry/file-system";
 import {
   type PendingRelease,
@@ -40,18 +39,8 @@ export type InventoryResult =
     }
   | { ok: false; error: "not-configured" | "unreadable" };
 
-const frontmatterSchema = z.object({
-  description: z.string(),
-});
-
-function parseDescription(raw: string): string | null {
-  const frontmatter = readFrontmatter(raw);
-  if (frontmatter === null) {
-    return null;
-  }
-  const result = frontmatterSchema.safeParse(frontmatter.data);
-  return result.success ? result.data.description : null;
-}
+const parseDescription = (raw: string): string | null =>
+  readFrontmatter(raw)?.fields.description ?? null;
 
 const promptOf = (
   name: string,
