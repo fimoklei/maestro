@@ -14,6 +14,7 @@ import {
   writeFile,
 } from "node:fs/promises";
 import { join } from "node:path";
+import { hasErrnoCode } from "./errno";
 
 type CopyEntryKind = "file" | "directory" | "symlink" | "other";
 
@@ -102,9 +103,7 @@ export class NodeCopyTreeFs implements CopyTreeFsPort {
     try {
       return openFileOf(await open(path, constants.O_RDONLY));
     } catch (error) {
-      return (error as NodeJS.ErrnoException).code === "ENOENT"
-        ? "missing"
-        : null;
+      return hasErrnoCode(error, "ENOENT") ? "missing" : null;
     }
   }
 

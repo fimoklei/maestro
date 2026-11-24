@@ -1,10 +1,14 @@
-import { execFile } from "node:child_process";
 import { access, lstat, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { gitOptions, indexOptions } from "../git/non-interactive";
 import { runGit, runGitText } from "../git/run-git-text";
+import {
+  type ProcessFailure,
+  type ProcessOptions,
+  runProcess,
+  stdoutOf,
+} from "../process/run-process";
 import {
   HARNESS_PRIMITIVE_TYPES,
   type HarnessObject,
@@ -31,7 +35,9 @@ import {
 } from "./proposal-subject";
 import type { HarnessPromoteRef, ListProposalRefs } from "./read-harness-state";
 
-const run = promisify(execFile);
+const run = async (file: string, args: string[], options: ProcessOptions) => ({
+  stdout: stdoutOf(await runProcess(file, args, options)),
+});
 
 const NO_CONVERSION = ["-c", "core.autocrlf=false", "-c", "core.eol=lf"];
 
@@ -41,8 +47,8 @@ const PROPOSAL_FORMAT = `%(refname:lstrip=${PROPOSAL_REFS.split("/").length})\t%
 
 export type PrimitiveObject = { hash: string; mode: string };
 
-const wasKilled = (error: unknown): boolean =>
-  (error as { killed?: boolean }).killed === true;
+const ranAndRefused = (failure: ProcessFailure): boolean =>
+  failure.failure === "failed" && failure.exitCode !== null;
 
 const pathExists = (path: string): Promise<boolean> =>
   access(path).then(
@@ -54,12 +60,8 @@ const readRawOutput = async (
   root: string,
   args: string[],
 ): Promise<string | null> => {
-  try {
-    const { stdout } = await run("git", ["-C", root, ...args], gitOptions());
-    return stdout;
-  } catch {
-    return null;
-  }
+  const outcome = await runProcess("git", ["-C", root, ...args], gitOptions());
+  return outcome.ok ? outcome.stdout : null;
 };
 
 export const primitiveOnDisk = (
@@ -493,27 +495,24 @@ export async function readStagedDifference(
   root: string,
   ref: PrimitiveRef,
 ): Promise<boolean | null> {
-  try {
-    await run(
-      "git",
-      [
-        "-C",
-        root,
-        "diff-index",
-        "--cached",
-        "--quiet",
-        "HEAD",
-        "--",
-        primitivePath(ref),
-      ],
-      gitOptions(),
-    );
+  const outcome = await runProcess(
+    "git",
+    [
+      "-C",
+      root,
+      "diff-index",
+      "--cached",
+      "--quiet",
+      "HEAD",
+      "--",
+      primitivePath(ref),
+    ],
+    gitOptions(),
+  );
+  if (outcome.ok) {
     return false;
-  } catch (error) {
-    return !wasKilled(error) && (error as { code?: number }).code === 1
-      ? true
-      : null;
   }
+  return outcome.failure === "failed" && outcome.exitCode === 1 ? true : null;
 }
 
 // Writes the primitive into `into` under its own folder or file name. A
@@ -529,21 +528,19 @@ export async function writePrimitiveInto(
   const path = primitivePath(ref);
   try {
     if (primitiveObject(ref.type) === "tree") {
-      try {
-        await run(
-          "git",
-          [
-            "-C",
-            root,
-            "read-tree",
-            `--prefix=${primitiveEntry(ref)}/`,
-            `${commit}:${path}`,
-          ],
-          options,
-        );
-      } catch (error) {
-        // Only a git that ran and refused says `missing`; a cut-off run never reads as absence.
-        return wasKilled(error) ? "failed" : "missing";
+      const read = await runProcess(
+        "git",
+        [
+          "-C",
+          root,
+          "read-tree",
+          `--prefix=${primitiveEntry(ref)}/`,
+          `${commit}:${path}`,
+        ],
+        options,
+      );
+      if (!read.ok) {
+        return ranAndRefused(read) ? "missing" : "failed";
       }
     } else {
       const read = await readObjectAt(root, commit, path);
