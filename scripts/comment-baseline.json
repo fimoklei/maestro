@@ -25,7 +25,6 @@
   "packages/core/src/harness/import-skill.ts": 8,
   "packages/core/src/harness/import-skills.ts": 1,
   "packages/core/src/harness/list-file-git.ts": 3,
-  "packages/core/src/harness/metadata-category.ts": 1,
   "packages/core/src/harness/promote-deletion.test.ts": 1,
   "packages/core/src/harness/prompt-file.ts": 4,
   "packages/core/src/harness/proposal-branch-git.ts": 2,

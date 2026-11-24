@@ -1,9 +1,13 @@
 // Web imports it at runtime (`@maestro/core/prompt-file`), so no `node:` module.
-import { Document, isMap, parse, parseDocument, Scalar } from "yaml";
+import { Document, isMap, parseDocument, Scalar } from "yaml";
 import { isValidSkillSlug } from "../deploy/package-ref";
-import { metadataCategory } from "./metadata-category";
+import {
+  type FrontmatterFields,
+  readFrontmatter,
+  readFrontmatterFields,
+  splitFrontmatter,
+} from "./frontmatter";
 import { proposeSkillSlug } from "./skill-slug";
-import { readFrontmatter, splitFrontmatter } from "./validate-skill-structure";
 
 export type PromptFile = { description: string; text: string; example: string };
 
@@ -30,15 +34,15 @@ export type PromptFields = Omit<PromptDraft, "frontmatter">;
 export const exampleOf = (value: unknown): string =>
   typeof value === "string" && value.trim() !== "" ? value : "";
 
-const frontmatterFields = (
-  data: Record<string, unknown> | undefined,
+const descriptionAndExample = (
+  fields: FrontmatterFields | undefined,
 ): Omit<PromptFile, "text"> => ({
-  description: typeof data?.description === "string" ? data.description : "",
-  example: exampleOf(data?.example),
+  description: fields?.description ?? "",
+  example: exampleOf(fields?.example),
 });
 
 export const readPromptFile = (raw: string): PromptFile => ({
-  ...frontmatterFields(readFrontmatter(raw)?.data),
+  ...descriptionAndExample(readFrontmatter(raw)?.fields),
   text: splitFrontmatter(raw)?.body ?? raw,
 });
 
@@ -101,27 +105,21 @@ export const draftPrompt = (
   const name =
     fileName === null ? "" : proposeSkillSlug(fileName.replace(fileSuffix, ""));
   const frontmatter = readFrontmatter(raw);
-  const body = splitFrontmatter(raw)?.body;
-  if (frontmatter === null || body === undefined) {
+  if (frontmatter === null) {
     return { name, frontmatter: "", description: "", text: raw, example: "" };
   }
-  const { description, example } = frontmatterFields(frontmatter.data);
+  const { description, example } = descriptionAndExample(frontmatter.fields);
   return {
     name,
     frontmatter: frontmatter.block,
     description: oneLine(description),
-    text: body,
+    text: frontmatter.body,
     example,
   };
 };
 
-export const promptCategory = (frontmatter: string): string | null => {
-  try {
-    return metadataCategory(parse(frontmatter));
-  } catch {
-    return null;
-  }
-};
+export const promptCategory = (frontmatter: string): string | null =>
+  readFrontmatterFields(frontmatter)?.category ?? null;
 
 export type PromptFieldProblem =
   | "empty-name"
