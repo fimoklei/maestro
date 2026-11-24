@@ -1,5 +1,5 @@
-import { parse, parseDocument } from "yaml";
-import { readFrontmatter } from "./validate-skill-structure";
+import { parseDocument } from "yaml";
+import { readFrontmatter } from "./frontmatter";
 
 export type ManifestAdvisory = "long-manifest" | "long-description";
 
@@ -12,8 +12,8 @@ export const manifestAdvisories = (raw: string): ManifestAdvisory[] => {
   if (raw.replace(/\n$/, "").split("\n").length > MAX_LINES) {
     advisories.push("long-manifest");
   }
-  const description = readFrontmatter(raw)?.data.description;
-  if (typeof description === "string" && description.length > MAX_DESCRIPTION) {
+  const description = readFrontmatter(raw)?.fields.description;
+  if (description !== undefined && description.length > MAX_DESCRIPTION) {
     advisories.push("long-description");
   }
   return advisories;
@@ -53,14 +53,5 @@ const replaceBlock = (
   rewrite: (block: string) => string,
 ): string => raw.replace(block, () => rewrite(block));
 
-const namesExactly = (raw: string, name: string): boolean => {
-  const block = readFrontmatter(raw)?.block;
-  if (block === undefined) {
-    return false;
-  }
-  try {
-    return (parse(block) as Record<string, unknown>).name === name;
-  } catch {
-    return false;
-  }
-};
+const namesExactly = (raw: string, name: string): boolean =>
+  readFrontmatter(raw)?.fields.name === name;
