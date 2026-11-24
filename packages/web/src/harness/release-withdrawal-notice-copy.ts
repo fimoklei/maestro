@@ -163,5 +163,5 @@ export const releaseWithdrawalNotice = (
 ): NoticeContent | null =>
   noticeFromTable(releaseWithdrawalHeadings(item), error, {
     label: notWithdrawn(item),
-    message: `Nothing was withdrawn. The Maestro server didn't answer. Select ${WITHDRAW_FROM_RELEASE} again.`,
+    message: `Nothing was withdrawn. The Maestro server didn't respond. Select ${WITHDRAW_FROM_RELEASE} again.`,
   });

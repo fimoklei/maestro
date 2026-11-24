@@ -142,5 +142,5 @@ export const withdrawNotice = (
 ): NoticeContent | null =>
   noticeFromTable(withdrawHeadings(context), error, {
     label: "Proposal not withdrawn",
-    message: `The Maestro server didn't answer. Select ${rereadLabel("Harness")}, then select ${WITHDRAW_PROPOSAL} again.`,
+    message: `The Maestro server didn't respond. Select ${rereadLabel("Harness")}, then select ${WITHDRAW_PROPOSAL} again.`,
   });

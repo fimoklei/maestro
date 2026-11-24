@@ -422,7 +422,7 @@ describe("the Create pull request dialog", () => {
       "Your categories stay as they are. Select Close, then select Create pull request again.",
     ],
     [
-      "a server that didn't answer",
+      "a server that didn't respond",
       () => Promise.reject(new TypeError("fetch failed")),
       "Pull request not confirmed",
       "The Maestro server didn't respond, so the pull request may already be open. Select Close, then check the Harness screen.",

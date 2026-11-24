@@ -84,7 +84,7 @@ export const localDeletionNotice = (
 ): NoticeContent | null =>
   noticeFromTable(localDeletionHeadings(context), error, {
     label: `${ITEM_WORDS[context.type].Noun} not deleted`,
-    message: `The Maestro server didn't answer, and the Harness is as it was. Select ${ITEM_WORDS[context.type].deleteLabel} again.`,
+    message: `The Maestro server didn't respond, and the Harness is as it was. Select ${ITEM_WORDS[context.type].deleteLabel} again.`,
   });
 
 // A check that failed, or found no file or folder, before anything was pressed.

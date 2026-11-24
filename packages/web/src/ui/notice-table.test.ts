@@ -12,7 +12,7 @@ const headings: NoticeTable<"web-owns-it"> = {
 
 const fallback = {
   label: "Request not answered",
-  message: "The Maestro server didn't answer. Try again.",
+  message: "The Maestro server didn't respond. Try again.",
 };
 
 describe("noticeFromTable", () => {
@@ -36,7 +36,7 @@ describe("noticeFromTable", () => {
     expect(notice).toEqual({
       level: "error",
       label: "Request not answered",
-      message: "The Maestro server didn't answer. Try again.",
+      message: "The Maestro server didn't respond. Try again.",
     });
   });
 

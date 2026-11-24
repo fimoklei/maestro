@@ -208,7 +208,7 @@ describe("connectNotice", () => {
       level: "error",
       label: "Harness not connected",
       message: "Nothing was connected. Connect it again.",
-      detail: "The Maestro server didn't answer.",
+      detail: "The Maestro server didn't respond.",
     });
   });
 });
@@ -305,7 +305,7 @@ describe("scaffoldNotice", () => {
       level: "error",
       label: "Harness not scaffolded",
       message: "No files were written. Scaffold it again.",
-      detail: "The Maestro server didn't answer.",
+      detail: "The Maestro server didn't respond.",
     });
   });
 });

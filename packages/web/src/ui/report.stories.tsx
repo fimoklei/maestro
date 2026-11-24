@@ -30,7 +30,7 @@ export const Partial: Story = {
           {
             name: "research",
             detail:
-              "The Maestro server didn't answer. Deploy to this target again.",
+              "The Maestro server didn't respond. Deploy to this target again.",
           },
         ],
       },

@@ -101,7 +101,7 @@ export const OutcomeUnknown: Story = {
       label: "Outcome unknown",
       message:
         "The run's outcome is unrecorded. Check the targets before removing again.",
-      detail: "The Maestro server didn't answer.",
+      detail: "The Maestro server didn't respond.",
     },
   },
 };

@@ -22,7 +22,7 @@ const GROUPS = [
       {
         name: "research",
         detail:
-          "The Maestro server didn't answer. Deploy to this target again.",
+          "The Maestro server didn't respond. Deploy to this target again.",
       },
     ],
   },
@@ -73,7 +73,7 @@ describe("Report", () => {
     expect(screen.getByText("research")).toBeVisible();
     expect(
       screen.getByText(
-        "The Maestro server didn't answer. Deploy to this target again.",
+        "The Maestro server didn't respond. Deploy to this target again.",
       ),
     ).toBeVisible();
   });

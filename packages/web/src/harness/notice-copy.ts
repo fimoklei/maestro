@@ -535,13 +535,13 @@ export const CONCURRENT_CHANGE_NOTICE: NoticeContent = {
 export const harnessStateNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "Harness not read",
-    message: `The Maestro server didn't answer. Select ${rereadLabel("Harness")} to read the Harness again.`,
+    message: `The Maestro server didn't respond. Select ${rereadLabel("Harness")} to read the Harness again.`,
   });
 
 export const refreshNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
     label: "GitHub not read",
-    message: `The Maestro server didn't answer, so the Harness is as it was. Select ${rereadLabel("Harness")}.`,
+    message: `The Maestro server didn't respond, so the Harness is as it was. Select ${rereadLabel("Harness")}.`,
   });
 
 // Null before any read has ever succeeded: nothing is out of date yet (#848).
@@ -607,13 +607,13 @@ export const releasePlanNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(releasePlanHeadings, error, {
     label: "Release plan not read",
     message:
-      "The Maestro server didn't answer, so no version was worked out. Open the release again.",
+      "The Maestro server didn't respond, so no version was worked out. Open the release again.",
   });
 
 export const publishReleaseNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(publishReleaseHeadings, error, {
     label: "Release not published",
-    message: `The Maestro server didn't answer, and no tag was pushed. Select ${PUBLISH_RELEASE} again.`,
+    message: `The Maestro server didn't respond, and no tag was pushed. Select ${PUBLISH_RELEASE} again.`,
   });
 
 export const promoteNotice = (
@@ -622,7 +622,7 @@ export const promoteNotice = (
 ): NoticeContent | null =>
   noticeFromTable(promoteHeadings(ITEM_WORDS[type]), error, {
     label: "Change not proposed",
-    message: `The Maestro server didn't answer, and nothing was pushed. Select ${PROPOSE_CHANGE} again.`,
+    message: `The Maestro server didn't respond, and nothing was pushed. Select ${PROPOSE_CHANGE} again.`,
   });
 
 export const deletionNotice = (
@@ -631,7 +631,7 @@ export const deletionNotice = (
 ): NoticeContent | null =>
   noticeFromTable(deletionHeadings(ITEM_WORDS[type]), error, {
     label: "Deletion not proposed",
-    message: `The Maestro server didn't answer, and nothing was pushed. Select ${ITEM_WORDS[type].deleteLabel} again.`,
+    message: `The Maestro server didn't respond, and nothing was pushed. Select ${ITEM_WORDS[type].deleteLabel} again.`,
   });
 
 export const restoreNotice = (
@@ -640,7 +640,7 @@ export const restoreNotice = (
 ): NoticeContent | null =>
   noticeFromTable(restorationHeadings(ITEM_WORDS[type]), error, {
     label: `${ITEM_WORDS[type].Noun} not restored`,
-    message: `Nothing was restored. The Maestro server didn't answer. Select ${ITEM_WORDS[type].restoreLabel} again.`,
+    message: `Nothing was restored. The Maestro server didn't respond. Select ${ITEM_WORDS[type].restoreLabel} again.`,
   });
 
 export const discardNotice = (
@@ -649,7 +649,7 @@ export const discardNotice = (
 ): NoticeContent | null =>
   noticeFromTable(discardHeadings(item), error, {
     label: "Change not discarded",
-    message: `Nothing was discarded. The Maestro server didn't answer. Select ${DISCARD_CHANGE} again.`,
+    message: `Nothing was discarded. The Maestro server didn't respond. Select ${DISCARD_CHANGE} again.`,
   });
 
 // A full restore is a toast. The local half is final either way, so only a
@@ -672,5 +672,5 @@ export const proposalNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(proposalHeadings, error, {
     label: "Pull request unchanged",
     message:
-      "The Maestro server didn't answer, and GitHub is as it was. Start the change again.",
+      "The Maestro server didn't respond, and GitHub is as it was. Start the change again.",
   });

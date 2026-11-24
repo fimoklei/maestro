@@ -334,7 +334,7 @@ describe.each(SURFACES)("$name", (each) => {
 
   it("states a server failure no row covers as an error", () => {
     expect(fallback?.level).toBe("error");
-    expect(fallback?.message).toMatch(/The Maestro server didn't answer/);
+    expect(fallback?.message).toMatch(/The Maestro server didn't respond/);
   });
 
   it("states every refusal as an error", () => {

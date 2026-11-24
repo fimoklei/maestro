@@ -229,7 +229,7 @@ export function connectNotice(
     {
       label: "Harness not connected",
       message: "Nothing was connected. Connect it again.",
-      detail: "The Maestro server didn't answer.",
+      detail: "The Maestro server didn't respond.",
     },
     extras,
   );
@@ -239,7 +239,7 @@ export function scaffoldNotice(error: unknown): NoticeContent | null {
   return noticeFromTable(scaffoldHeadings, error, {
     label: "Harness not scaffolded",
     message: "No files were written. Scaffold it again.",
-    detail: "The Maestro server didn't answer.",
+    detail: "The Maestro server didn't respond.",
   });
 }
 
