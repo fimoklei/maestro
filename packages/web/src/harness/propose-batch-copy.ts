@@ -3,12 +3,12 @@ import {
   CREATE_PULL_REQUEST,
   CREATE_RELEASE,
   rereadLabel,
-  UPDATE_TARGET,
 } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
 import { named, namedList, type Phrase, phrase } from "../ui/phrase";
+import { targetsKeepSkills } from "./deletion-copy";
 import { ITEM_WORDS } from "./item-words";
 import {
   harnessHeadings,
@@ -101,13 +101,7 @@ export const deletionsSentence = (
 
 /** What still holds each deleted type until the next release, one line per type. */
 export const deletionsKept = (skills: number, prompts: number): string[] => [
-  ...(skills === 0
-    ? []
-    : [
-        skills === 1
-          ? `Your targets keep the skill. After the next release, select ${UPDATE_TARGET} on each target to remove it.`
-          : `Your targets keep the skills. After the next release, select ${UPDATE_TARGET} on each target to remove them.`,
-      ]),
+  ...(skills === 0 ? [] : [targetsKeepSkills(skills)]),
   ...(prompts === 0
     ? []
     : [

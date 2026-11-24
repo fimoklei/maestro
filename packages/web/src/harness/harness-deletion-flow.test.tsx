@@ -65,7 +65,8 @@ describe("Harness deletion proposal", () => {
     ).toBeVisible();
     // Remove names a target's deployed copy, so only the targets' sentence
     // may use it (#1370).
-    const targets = "select Update target on each target to remove it.";
+    const targets =
+      "select Update target for each target on the Deploy-state screen to remove it.";
     expect(dialog.textContent ?? "").toContain(targets);
     expect((dialog.textContent ?? "").replace(targets, "")).not.toMatch(
       /remov/i,

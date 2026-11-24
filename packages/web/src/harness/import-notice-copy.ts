@@ -19,7 +19,7 @@ const LOCAL_EDITS_REFUSALS: Record<LocalEditsRefusal, string> = {
   "missing-manifest": `This copy has no SKILL.md. Put it back, then select ${IMPORT_LOCAL_EDITS} again.`,
   "invalid-frontmatter": `Fix the SKILL.md frontmatter, then select ${IMPORT_LOCAL_EDITS} again.`,
   "empty-description": `Fill in the description in SKILL.md, then select ${IMPORT_LOCAL_EDITS} again.`,
-  "harness-copy-uncommitted": `Your clone has uncommitted changes to this skill. Undo them, or select ${PROPOSE_CHANGE}, merge on GitHub and pull first.`,
+  "harness-copy-uncommitted": `Your clone has uncommitted changes to this skill. Undo them, or select ${PROPOSE_CHANGE} on the Harness screen, merge on GitHub and pull first.`,
   "harness-unreadable": `Nothing was copied. Make your clone readable, then select ${IMPORT_LOCAL_EDITS} again.`,
   "nothing-to-carry-back":
     "The Harness already has these changes. See the skill on the Harness screen.",

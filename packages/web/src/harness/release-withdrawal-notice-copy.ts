@@ -52,7 +52,7 @@ const releaseWithdrawalHeadings = (item: WithdrawalItem) => {
     "invalid-skill": invalidNameHeading(w),
     "no-answer": {
       level: "error",
-      label: "Harness not read",
+      label: "Couldn't read the Harness",
       message: `Select ${rereadLabel("Harness")}, then ${again}`,
       detail: "Maestro couldn't read your clone or the latest release.",
     },

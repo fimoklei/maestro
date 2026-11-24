@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { HttpError } from "../api/http";
 import {
+  folderBlockerNotice,
   IMPORT_SKILLS_HINT,
   importSkillsNotice,
   importSkillsScanNotice,
@@ -73,9 +74,18 @@ describe("Import skills copy", () => {
 
   it("asks for another read when the scan was not answered", () => {
     expect(importSkillsScanNotice(new TypeError("offline"))).toMatchObject({
-      label: "Folder not read",
+      label: "Couldn't read the folder",
       message:
         "The Maestro server didn't respond. Select Import skills to read the folder again.",
+    });
+  });
+
+  it("names the chosen folder it could not read", () => {
+    expect(folderBlockerNotice("source-unreadable")).toEqual({
+      level: "error",
+      label: "Couldn't read the folder",
+      message:
+        "Nothing was copied. Make the folder readable, then select it again.",
     });
   });
 

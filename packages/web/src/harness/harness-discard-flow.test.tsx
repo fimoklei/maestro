@@ -48,7 +48,7 @@ describe("Harness discard", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "Your local copy differs from the next release. Select Propose change to send it for review. Or select Discard change to match the next release.",
+          "Your local copy differs from the next release. You can propose it for review. Or select Discard change to match the next release.",
         ),
       ),
     ).toBeInTheDocument();

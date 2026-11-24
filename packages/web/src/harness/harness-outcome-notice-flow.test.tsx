@@ -112,7 +112,9 @@ describe("Harness outcome notices", () => {
     // The restore's own read fails, and the Harness read after it too.
     await restore();
 
-    expect(await screen.findByText("Harness not read")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Couldn't read the Harness"),
+    ).toBeInTheDocument();
     expect(screen.queryByText(STATUS_OUT_OF_DATE)).toBeNull();
     expect(screen.queryByText("Harness clone not updated")).toBeNull();
     expect(screen.queryByText(SKILL_RESTORED)).toBeNull();

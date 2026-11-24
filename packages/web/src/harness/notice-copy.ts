@@ -137,7 +137,7 @@ export const typeFolderNotRead = (
   message: string,
 ): NoticeTable<"destination-unreadable">["destination-unreadable"] => ({
   level: "error",
-  label: `${w.Noun}s folder not read`,
+  label: `Couldn't read the ${w.noun}s folder`,
   message,
 });
 
@@ -275,7 +275,7 @@ export const deletionHeadings = (
     },
     unreadable: {
       level: "error",
-      label: "Working tree not read",
+      label: "Couldn't read your clone",
       message: `Nothing was pushed. Make the Harness folder readable, then select ${DELETE} again.`,
     },
   };
@@ -368,13 +368,12 @@ const restorationHeadings = (w: ItemWords): NoticeTable<RestoreError> => {
     // sends the author to their Git tool rather than naming a missing item.
     "source-unreadable": {
       level: "error",
-      label: "Committed copy not read",
+      label: `Couldn't read the ${w.noun} in your last commit`,
       message: `Check your clone with your Git tool, then select ${RESTORE} again.`,
-      detail: `Maestro couldn't read this ${w.noun} out of your last local commit.`,
     },
     "destination-unreadable": {
       level: "error",
-      label: `${w.Noun}s folder missing`,
+      label: `Couldn't read the ${w.noun}s folder`,
       message: `Put the ${w.home} back in your clone, then select ${RESTORE} again.`,
       detail: `Maestro couldn't read the Harness ${w.home}.`,
     },
@@ -390,9 +389,8 @@ const discardHeadings = ({ type, name }: PrimitiveRef) => {
     "invalid-skill": invalidNameHeading(w),
     "no-answer": {
       level: "error",
-      label: "Clone not read",
+      label: "Couldn't read your clone",
       message: `Select ${CLOSE}, then select ${DISCARD_CHANGE} again.`,
-      detail: "Git couldn't read your clone.",
     },
     "already-proposed": {
       level: "error",
@@ -534,13 +532,13 @@ export const CONCURRENT_CHANGE_NOTICE: NoticeContent = {
 // something different, and the sentence says which (#688).
 export const harnessStateNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
-    label: "Harness not read",
+    label: "Couldn't read the Harness",
     message: `The Maestro server didn't respond. Select ${rereadLabel("Harness")} to read the Harness again.`,
   });
 
 export const refreshNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(harnessHeadings, error, {
-    label: "GitHub not read",
+    label: "Couldn't read GitHub",
     message: `The Maestro server didn't respond, so the Harness is as it was. Select ${rereadLabel("Harness")}.`,
   });
 
@@ -605,7 +603,7 @@ export const releasePublishedNotice = (
 
 export const releasePlanNotice = (error: unknown): NoticeContent | null =>
   noticeFromTable(releasePlanHeadings, error, {
-    label: "Release plan not read",
+    label: "Couldn't read the release plan",
     message:
       "The Maestro server didn't respond, so no version was worked out. Open the release again.",
   });

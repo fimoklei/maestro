@@ -8,6 +8,7 @@ import {
   notInNextReleaseNotice,
   PROPOSE_CHANGES,
   PROPOSED_NOTE,
+  PULL_REQUEST_MISSING_DETAIL,
   proposeBatchHeading,
   proposeBatchNotice,
   proposeBatchTitle,
@@ -36,6 +37,12 @@ describe("Propose changes copy", () => {
       ),
     ).toBe(
       "old-deploy and legacy-review aren't in the next release, so there is nothing to delete. Select Close, then deselect them.",
+    );
+  });
+
+  it("sends a row with no pull request to GitHub or to its own row", () => {
+    expect(PULL_REQUEST_MISSING_DETAIL).toBe(
+      "The proposal branch is on GitHub without a pull request. Select Close, then select Create pull request.",
     );
   });
 
@@ -85,10 +92,10 @@ describe("Propose changes copy", () => {
 
   it("says what keeps each deleted kind until the next release", () => {
     expect(deletionsKept(2, 0)).toEqual([
-      "Your targets keep the skills. After the next release, select Update target on each target to remove them.",
+      "Your targets keep the skills. After the next release, select Update target for each target on the Deploy-state screen to remove them.",
     ]);
     expect(deletionsKept(1, 0)).toEqual([
-      "Your targets keep the skill. After the next release, select Update target on each target to remove it.",
+      "Your targets keep the skill. After the next release, select Update target for each target on the Deploy-state screen to remove it.",
     ]);
     expect(deletionsKept(0, 2)).toEqual([
       "The prompts are kept until the next release.",

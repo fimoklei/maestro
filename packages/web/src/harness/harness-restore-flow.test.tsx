@@ -120,7 +120,7 @@ describe("Harness restore", () => {
     ).not.toHaveAttribute("aria-disabled", "true");
   });
 
-  it("names Propose change as the next step in its detail sentence", async () => {
+  it("states the deletion it can propose in its detail sentence", async () => {
     stubHarnessServer({ read: { body: DELETED_ROW } });
     renderHarness();
 
@@ -128,7 +128,7 @@ describe("Harness restore", () => {
     expect(
       within(pane).getByText(
         sentence(
-          "This skill is deleted in your clone but still in the next release. Select Propose change to propose the deletion.",
+          "This skill is deleted in your clone but still in the next release. You can propose the deletion for review.",
         ),
       ),
     ).toBeInTheDocument();

@@ -115,7 +115,7 @@ describe("DeletionDialog", () => {
 
     expect(
       screen.getByText(
-        "Your targets keep the skill. After the next release, select Update target on each target to remove it.",
+        "Your targets keep the skill. After the next release, select Update target for each target on the Deploy-state screen to remove it.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -233,7 +233,7 @@ describe("DeletionDialog", () => {
         }),
       });
 
-      expectTooltipCause(deleteSkill(), /^Clone not read/);
+      expectTooltipCause(deleteSkill(), /^Couldn't read your clone/);
     });
 
     it("gives the failure notice's heading when the skill is not in the clone", () => {

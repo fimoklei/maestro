@@ -766,7 +766,7 @@ describe("a prompt's notices", () => {
       ),
     ).toEqual({
       level: "error",
-      label: "Skills folder not read",
+      label: "Couldn't read the skills folder",
       message:
         "Nothing was deleted. Make the Harness .apm/skills folder readable, then select Delete skill again.",
     });
@@ -782,7 +782,7 @@ describe("a prompt's notices", () => {
       ),
     ).toEqual({
       level: "error",
-      label: "Prompts folder not read",
+      label: "Couldn't read the prompts folder",
       message:
         "Nothing was discarded. Make the Harness .maestro/prompts folder readable, then select Discard change again.",
     });
@@ -794,6 +794,91 @@ describe("a prompt's notices", () => {
       message:
         "The prompt file is back, but the status is out of date. Select Re-read Harness to read GitHub again.",
     });
+  });
+});
+
+describe("a read that failed", () => {
+  const skill = { type: "skill", name: "tdd" } as const;
+
+  it("names the folder a restore could not read", () => {
+    expect(
+      readNotice(restoreNotice(refusal("destination-unreadable"), "skill")),
+    ).toMatchObject({ label: "Couldn't read the skills folder" });
+    expect(
+      readNotice(restoreNotice(refusal("destination-unreadable"), "prompt")),
+    ).toMatchObject({ label: "Couldn't read the prompts folder" });
+  });
+
+  it("names the item a restore could not read from the last commit, once", () => {
+    expect(
+      readNotice(restoreNotice(refusal("source-unreadable"), "skill")),
+    ).toEqual({
+      level: "error",
+      label: "Couldn't read the skill in your last commit",
+      message:
+        "Nothing was restored. Check your clone with your Git tool, then select Restore skill again.",
+    });
+    expect(
+      readNotice(restoreNotice(refusal("source-unreadable"), "prompt")),
+    ).toMatchObject({ label: "Couldn't read the prompt in your last commit" });
+  });
+
+  it("names the clone a deletion could not read", () => {
+    expect(
+      readNotice(deletionNotice(refusal("unreadable"), "skill")),
+    ).toMatchObject({ label: "Couldn't read your clone" });
+  });
+
+  it("names the clone a discard could not read, once", () => {
+    expect(readNotice(discardNotice(refusal("no-answer"), skill))).toEqual({
+      level: "error",
+      label: "Couldn't read your clone",
+      message:
+        "Nothing was discarded. Select Close, then select Discard change again.",
+    });
+  });
+
+  it("names the clone a local deletion could not read, once", () => {
+    expect(
+      readNotice(
+        localDeletionNotice(refusal("no-answer"), {
+          ...skill,
+          screen: "harness",
+        }),
+      ),
+    ).toEqual({
+      level: "error",
+      label: "Couldn't read your clone",
+      message:
+        "Nothing was deleted. Select Close, then select Delete skill again.",
+    });
+  });
+
+  it("names the Harness, GitHub and the release plan where the server didn't respond", () => {
+    const offline = new TypeError("offline");
+    expect(harnessStateNotice(offline)?.label).toBe(
+      "Couldn't read the Harness",
+    );
+    expect(refreshNotice(offline)?.label).toBe("Couldn't read GitHub");
+    expect(releasePlanNotice(offline)?.label).toBe(
+      "Couldn't read the release plan",
+    );
+  });
+
+  it("names the Harness a release withdrawal could not read", () => {
+    expect(
+      releaseWithdrawalNotice(refusal("no-answer"), {
+        ...skill,
+        openRequests: [],
+        openByOther: false,
+      })?.label,
+    ).toBe("Couldn't read the Harness");
+  });
+
+  it("names Propose change on the Harness screen where the clone has uncommitted changes", () => {
+    expect(localEditsRefusal({ refusal: "harness-copy-uncommitted" })).toBe(
+      "Your clone has uncommitted changes to this skill. Undo them, or select Propose change on the Harness screen, merge on GitHub and pull first.",
+    );
   });
 });
 
