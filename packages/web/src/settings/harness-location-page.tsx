@@ -1,13 +1,14 @@
 import type { GitHubPage } from "@maestro/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { RefreshCw } from "lucide-react";
+import { useState } from "react";
 import { useHarness } from "../harness/use-harness";
 import { inventoryNotRead } from "../inventory/inventory-copy";
 import { refreshInventoryReads } from "../inventory/use-connect-inventory";
 import { useInventory, useInventoryConfig } from "../inventory/use-inventory";
 import { harnessName } from "../shell/target-name";
 import { NOT_RELEASED_YET } from "../ui/band-copy";
-import { ACTIONS, doneSentence } from "../ui/busy-copy";
+import { doneSentence } from "../ui/busy-copy";
 import { Button } from "../ui/button";
 import { rereadLabel } from "../ui/control-labels";
 import { NOT_READ_YET } from "../ui/freshness";
@@ -17,7 +18,7 @@ import { Notice } from "../ui/notice";
 import { plainText } from "../ui/phrase";
 import { ScreenStatusRegion, useScreenStatus } from "../ui/screen-status";
 import { Skeleton } from "../ui/skeleton";
-import { SetLocationDialog } from "./set-location-dialog";
+import { SetLocationAction } from "./set-location-action";
 import {
   CHANGE_LOCATION,
   CHANGE_LOCATION_SENTENCE,
@@ -32,7 +33,6 @@ import { HARNESS_LOCATION_PAGE } from "./settings-pages";
 import { SettingsPanel } from "./settings-panel";
 import { SettingsRow } from "./settings-row";
 import { SettingsSection } from "./settings-section";
-import { useSetLocationDialog } from "./use-set-location-dialog";
 
 const SCREEN = HARNESS_LOCATION_PAGE.label;
 // Re-reads every Inventory view and the Harness, so named for the Inventory.
@@ -47,12 +47,7 @@ export function HarnessLocationPage() {
   const harness = useHarness({ enabled: connected });
   const reading =
     config.isFetching || inventory.isFetching || harness.isFetching;
-  const dialog = useSetLocationDialog({
-    onSet: (stored) =>
-      status.report(
-        plainText(doneSentence("setLocation", harnessName(stored))),
-      ),
-  });
+  const [changing, setChanging] = useState(false);
 
   const reread = () => {
     status.press();
@@ -69,7 +64,7 @@ export function HarnessLocationPage() {
     name: SCREEN,
     reading,
     notice: readNotice,
-    busy: dialog.busy ? ACTIONS.setLocation.busy : null,
+    busy: null,
   });
   const releasedVersion = harness.isSuccess
     ? harness.data.releasedVersion
@@ -126,16 +121,24 @@ export function HarnessLocationPage() {
           name={CHANGE_LOCATION}
           description={CHANGE_LOCATION_SENTENCE}
           control={
-            <Button
-              variant="quiet"
-              onClick={() => dialog.openDialog(path ?? "")}
-            >
+            <Button variant="quiet" onClick={() => setChanging(true)}>
               {CHANGE_LOCATION}
             </Button>
           }
         />
       </SettingsSection>
-      {dialog.open ? <SetLocationDialog {...dialog.dialogProps} /> : null}
+      {changing ? (
+        <SetLocationAction
+          current={path ?? ""}
+          report={status.report}
+          onSet={(stored) =>
+            status.report(
+              plainText(doneSentence("setLocation", harnessName(stored))),
+            )
+          }
+          onClose={() => setChanging(false)}
+        />
+      ) : null}
     </SettingsPanel>
   );
 }

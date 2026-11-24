@@ -256,6 +256,85 @@ describe("Set Harness location", () => {
     ]);
   });
 
+  it("opens again on the current location, not on the path typed before", async () => {
+    stubServer();
+    renderPage();
+    await screen.findByText("/home/me/agent-harness");
+
+    await openDialog();
+    await typePath("/home/me/other-harness");
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    await openDialog();
+    expect(screen.getByLabelText("Folder path")).toHaveValue(
+      "/home/me/agent-harness",
+    );
+  });
+
+  it("opens again with no refusal from the earlier set", async () => {
+    stubServer({
+      connect: () => jsonResponse({ error: "not-an-inventory" }, 400),
+    });
+    renderPage();
+    await screen.findByText("/home/me/agent-harness");
+
+    const first = await openDialog();
+    await userEvent.click(setButton());
+    await within(first).findByText("Not a Harness");
+    await userEvent.click(
+      within(first)
+        .getAllByRole("button", { name: "Close" })
+        .at(-1) as HTMLElement,
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    const again = await openDialog();
+    expect(within(again).queryByText("Not a Harness")).toBeNull();
+  });
+
+  it("opens again with no failure from the earlier scaffold", async () => {
+    stubServer({
+      connect: () =>
+        jsonResponse(
+          { error: "scaffoldable", path: "/home/me/empty-repo" },
+          409,
+        ),
+      scaffold: () => jsonResponse({ error: "write-failed" }, 500),
+    });
+    renderPage();
+    await screen.findByText("/home/me/agent-harness");
+
+    const first = await openDialog();
+    await typePath("/home/me/empty-repo");
+    await userEvent.click(setButton());
+    await userEvent.click(
+      await within(first).findByRole("button", {
+        name: "Scaffold the Harness",
+      }),
+    );
+    await waitFor(() =>
+      expect(
+        within(first).queryByText("Harness scaffold available"),
+      ).not.toBeInTheDocument(),
+    );
+    await userEvent.click(
+      within(first)
+        .getAllByRole("button", { name: "Close" })
+        .at(-1) as HTMLElement,
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+
+    const again = await openDialog();
+    expect(within(again).queryByRole("alert")).toBeNull();
+  });
+
   it("closes on Cancel and sets nothing", async () => {
     const { posts } = stubServer();
     renderPage();
