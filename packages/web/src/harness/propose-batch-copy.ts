@@ -1,9 +1,5 @@
 import type { ProposeBatchError } from "@maestro/core";
-import {
-  CREATE_PULL_REQUEST,
-  CREATE_RELEASE,
-  rereadLabel,
-} from "../ui/control-labels";
+import { CREATE_RELEASE, rereadLabel } from "../ui/control-labels";
 import { CLOSE } from "../ui/dialog-copy";
 import type { NoticeContent, NoticeCopy } from "../ui/notice";
 import { type NoticeTable, noticeFromTable } from "../ui/notice-table";
@@ -40,7 +36,8 @@ export const PROPOSED = "Proposed";
 export const PROPOSED_NOTE = `Review and merge each pull request on GitHub. Then select ${CREATE_RELEASE}.`;
 // A pushed branch whose pull request did not open: its next step, per row.
 export const PULL_REQUEST_MISSING = "Pull request missing";
-export const PULL_REQUEST_MISSING_DETAIL = `The proposal branch is on GitHub without a pull request. Select ${CLOSE}, then select ${CREATE_PULL_REQUEST}.`;
+export const PULL_REQUEST_MISSING_DETAIL =
+  "The proposal branch is on GitHub without a pull request. Create one on GitHub, or create it from its row on the Harness screen.";
 export const CREATE_PULL_REQUEST_ON_GITHUB = "Create pull request on GitHub";
 
 const NO_GH_CAUSE =

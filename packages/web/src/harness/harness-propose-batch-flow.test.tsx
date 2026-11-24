@@ -349,7 +349,7 @@ describe("proposing several changes from the selection bar", () => {
     // gh answered: each row keeps its own next step, and no lead states it.
     expect(
       within(missing).getAllByText(
-        "The proposal branch is on GitHub without a pull request. Select Close, then select Create pull request.",
+        "The proposal branch is on GitHub without a pull request. Create one on GitHub, or create it from its row on the Harness screen.",
       ),
     ).toHaveLength(2);
     expect(within(dialog).queryByText(/not opened$/)).toBeNull();

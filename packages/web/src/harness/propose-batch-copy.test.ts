@@ -42,7 +42,7 @@ describe("Propose changes copy", () => {
 
   it("sends a row with no pull request to GitHub or to its own row", () => {
     expect(PULL_REQUEST_MISSING_DETAIL).toBe(
-      "The proposal branch is on GitHub without a pull request. Select Close, then select Create pull request.",
+      "The proposal branch is on GitHub without a pull request. Create one on GitHub, or create it from its row on the Harness screen.",
     );
   });
 
