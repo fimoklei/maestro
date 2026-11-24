@@ -102,7 +102,7 @@ describe("statusCard", () => {
     expect(readCard(statusCard(row({ head, behind: true }), COMPARED))).toEqual(
       {
         reason:
-          "Changes in v0.3.4 could not be read. Select Update target to move this target to v0.3.4.",
+          "Changes in v0.3.4 couldn't be read. Select Update target to move this target to v0.3.4.",
         readAge: "Read just now",
       },
     );
@@ -117,7 +117,7 @@ describe("statusCard", () => {
         ),
       ),
     ).toEqual({
-      reason: "Latest release could not be read.",
+      reason: "Latest release couldn't be read.",
       readAge: "Read just now",
     });
   });
@@ -182,7 +182,7 @@ describe("statusCard", () => {
     expect(
       readCard(statusCard(row({ head: ON_LATEST, status: unknown }), COMPARED)),
     ).toEqual({
-      reason: "Update check did not run.",
+      reason: "Update check didn't run.",
       readAge: "Read just now",
     });
   });
@@ -230,7 +230,7 @@ describe("statusCard", () => {
       ),
     ).toEqual({
       reason:
-        "2 skills have changes that are not in the latest release: tdd and review. Select Import local edits to keep them.",
+        "2 skills have changes that aren't in the latest release: tdd and review. Select Import local edits to keep them.",
       readAge: "Read just now",
     });
   });
@@ -572,7 +572,7 @@ describe("a Global folder left at an older release", () => {
       copies: [{ name: "code-review", stillAt: null }],
     });
     expect(readCard(statusCard(global, COMPARED)).reason).toBe(
-      "code-review in ~/.agents/skills is not at the Target release v2.0.0.",
+      "code-review in ~/.agents/skills isn't at the Target release v2.0.0.",
     );
   });
 });
@@ -669,7 +669,7 @@ describe("copies in an undetected tool's folder", () => {
     ]);
     expect(words(global)).toBe("⚠ Not updated");
     expect(readCard(statusCard(global, COMPARED)).reason).toBe(
-      "2 copies in ~/.agents/skills differ from v2.0.0. Global does not write there because Codex is not detected.",
+      "2 copies in ~/.agents/skills differ from v2.0.0. Global doesn't write there because Codex isn't detected.",
     );
   });
 
@@ -679,7 +679,7 @@ describe("copies in an undetected tool's folder", () => {
       { name: "tdd", atRelease: true },
     ]);
     expect(readCard(statusCard(global, COMPARED)).reason).toBe(
-      "1 copy in ~/.agents/skills differs from v2.0.0. Global does not write there because Codex is not detected.",
+      "1 copy in ~/.agents/skills differs from v2.0.0. Global doesn't write there because Codex isn't detected.",
     );
   });
 
@@ -801,7 +801,7 @@ describe("emptyGroupLines", () => {
       })?.map(plainText),
     ).toEqual([
       "Install Claude Code or Codex to deploy skills globally.",
-      "hooks/guard is deployed as claude_hook, which Maestro does not manage. Its files are still there.",
+      "hooks/guard is deployed as claude_hook, which Maestro doesn't manage. Its files are still there.",
     ]);
   });
 

@@ -39,10 +39,10 @@ describe("skillMark", () => {
 
   it("tells the two Unverified readings apart by their hint", () => {
     expect(skillMark("unverified", "up-to-date")?.hint).toBe(
-      "The deployment record cannot check this copy.",
+      "The deployment record can't check this copy.",
     );
     expect(skillMark(undefined, "unverified")?.hint).toBe(
-      "Update check did not run.",
+      "Update check didn't run.",
     );
   });
 

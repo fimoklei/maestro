@@ -233,7 +233,7 @@ describe("Harness counter", () => {
   });
 
   it.each(["proposal", "review", "release"] as const)(
-    "reads ? where the %s stage could not be read",
+    "reads ? where the %s stage couldn't be read",
     async (stage) => {
       stubServer({ harness: { [stage]: { outcome: "unavailable" } } });
       renderSidebar();

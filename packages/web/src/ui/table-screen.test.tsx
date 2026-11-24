@@ -526,14 +526,14 @@ describe("TableScreen", () => {
           groups={{
             key: (row) => row.colour,
             order: ["red"],
-            message: () => "Red fruit was not read.",
-            messageText: () => "Red fruit was not read.",
+            message: () => "Red fruit wasn't read.",
+            messageText: () => "Red fruit wasn't read.",
           }}
         />,
       );
 
       expect(
-        within(grid()).getByText("Red fruit was not read."),
+        within(grid()).getByText("Red fruit wasn't read."),
       ).toBeInTheDocument();
       expect(screen.queryByText("No fruit yet")).not.toBeInTheDocument();
     });

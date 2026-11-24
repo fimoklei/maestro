@@ -176,9 +176,9 @@ function paragraphLines(pane: HTMLElement, first: string) {
 }
 
 const KEEP_BEFORE_UPDATE =
-  "2 skills have changes that are not in the latest release. To keep them, select Import local edits before you update.";
+  "2 skills have changes that aren't in the latest release. To keep them, select Import local edits before you update.";
 const KEEP_THEM =
-  "2 skills have changes that are not in the latest release. Select Import local edits to keep them.";
+  "2 skills have changes that aren't in the latest release. Select Import local edits to keep them.";
 
 describe("Deploy-state — Global pane paragraph", () => {
   it("says to import before you update where Global is behind, naming no folder or skill", async () => {
@@ -298,7 +298,7 @@ describe("Deploy-state — Global's Status hover card while behind", () => {
     renderDeployState();
 
     expect(await statusCardLines("Local edits")).toEqual([
-      "2 skills have changes that are not in the latest release: workflow-commit and workflow-ship. To keep them, select Import local edits before you update to v0.4.3.",
+      "2 skills have changes that aren't in the latest release: workflow-commit and workflow-ship. To keep them, select Import local edits before you update to v0.4.3.",
       "Read just now",
     ]);
   });

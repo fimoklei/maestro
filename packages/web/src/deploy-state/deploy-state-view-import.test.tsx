@@ -197,7 +197,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     const dialog = await openDialog();
     const refused = await within(dialog).findByRole("group", {
-      name: "✕ Cannot be imported · 1",
+      name: "✕ Can't be imported · 1",
     });
     const box = within(refused).getByRole("checkbox", { name: "tdd" });
     expect(box).toHaveAttribute("aria-disabled", "true");
@@ -279,7 +279,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
 
     expectTooltipCause(
       await within(dialog).findByRole("button", { name: "Import skills" }),
-      "You cannot import any of these skills.",
+      "You can't import any of these skills.",
     );
     expect(within(dialog).getByRole("checkbox", { name: "tdd" })).toHaveFocus();
     expect(
@@ -339,7 +339,7 @@ describe("Deploy-state — Import local edits on a repository", () => {
     });
     expect(
       within(refused).getByText(
-        "The Harness clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
+        "Your clone has uncommitted changes to this skill. Undo them, or select Propose change, merge on GitHub and pull first.",
       ),
     ).toBeInTheDocument();
     const imported = within(dialog).getByRole("region", {

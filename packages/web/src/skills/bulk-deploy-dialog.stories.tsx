@@ -96,9 +96,9 @@ export const DidNotRun: Story = {
   args: {
     failure: {
       level: "error",
-      label: "Deploy to maestro did not run",
+      label: "Deploy to maestro didn't run",
       message:
-        "The Maestro server did not answer. Deploy to this target again.",
+        "The Maestro server didn't respond. Deploy to this target again.",
     },
   },
 };

@@ -1,4 +1,5 @@
 import type { PromptFile, PromptPart } from "@maestro/core/prompt-file";
+import { useId } from "react";
 import { CategoryField } from "../categories/category-field";
 import type { HeldCategoryAdd } from "../categories/use-held-category-add";
 import { EDIT_PROMPT } from "../ui/control-labels";
@@ -6,7 +7,7 @@ import { Dialog, dialogRun } from "../ui/dialog";
 import { Fact } from "../ui/fact";
 import type { NoticeContent } from "../ui/notice";
 import { PromptBodyFields } from "./prompt-body-fields";
-import { editPromptTitle } from "./prompt-copy";
+import { EDIT_CHANGES, editPromptTitle } from "./prompt-copy";
 import type { PromptFieldErrors } from "./prompt-field-errors";
 
 // A prompt the reader chose: its name is a fact, its fields come filled.
@@ -48,6 +49,7 @@ export function EditPromptDialog({
   categoryAdd: HeldCategoryAdd;
 }) {
   const running = phase === "running";
+  const changesId = useId();
   // Once the write landed without its category, only Close is left.
   const locked = running || outcome;
   return (
@@ -69,14 +71,16 @@ export function EditPromptDialog({
         outcome,
       })}
       failure={failure}
-      // Every field states its own hint and its own refusal beside it.
-      describedBy={null}
+      describedBy={changesId}
       fieldsChanged={changed}
       onClose={close}
     >
       <dl className="m-0">
         <Fact label="Name" value={draft.name} wrap machine={false} />
       </dl>
+      <p id={changesId} className="m-0 text-gray-11">
+        {EDIT_CHANGES}
+      </p>
       <PromptBodyFields
         draft={draft}
         fieldErrors={fieldErrors}

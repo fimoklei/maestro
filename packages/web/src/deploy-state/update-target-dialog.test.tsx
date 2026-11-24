@@ -432,7 +432,7 @@ describe("UpdateTargetDialog", () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        sentence("jobs could not be verified. This update overwrites it."),
+        sentence("jobs couldn't be verified. This update overwrites it."),
       ),
     ).toBeTruthy();
     expect(
@@ -488,7 +488,7 @@ describe("UpdateTargetDialog", () => {
         blocked
         error={{
           label: "No GitHub origin",
-          message: "Point the Harness clone's origin at its GitHub repository.",
+          message: "Point your clone's origin at its GitHub repository.",
         }}
         onCancel={vi.fn()}
         onConfirm={vi.fn()}

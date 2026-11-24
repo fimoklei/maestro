@@ -273,9 +273,7 @@ describe("Harness import prompts flow", () => {
       NOT_TEXT,
     ]);
 
-    const refused = await waitFor(() =>
-      group(dialog, /Cannot be imported · 3/),
-    );
+    const refused = await waitFor(() => group(dialog, /Can't be imported · 3/));
     const reason = (name: string) => {
       const box = within(refused).getByRole("checkbox", { name });
       expect(box).toHaveAttribute("aria-disabled", "true");

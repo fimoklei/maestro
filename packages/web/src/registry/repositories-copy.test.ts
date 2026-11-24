@@ -122,7 +122,7 @@ describe("the screen's own words", () => {
 
   it("says unregistering leaves the folder and its deployed skills alone", () => {
     expect(UNREGISTER_WHAT_STAYS).toBe(
-      "Maestro does not change this folder or anything deployed in it.",
+      "Maestro doesn't change this folder or anything deployed in it.",
     );
   });
 });
@@ -141,7 +141,7 @@ describe("unregisterNotice", () => {
       level: "error",
       label: "Repository not unregistered",
       message:
-        "The list did not change. Select Unregister repository to try again.",
+        "The list didn't change. Select Unregister repository to try again.",
     });
   });
 });

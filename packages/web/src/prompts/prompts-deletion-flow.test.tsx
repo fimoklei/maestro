@@ -216,7 +216,7 @@ describe("Prompts — Delete prompt", () => {
     expect(
       dialog.getByText(
         sentence(
-          "To also delete it from fimoklei/agent-harness, go to the Harness screen and select Propose change.",
+          "To also delete it from fimoklei/agent-harness, select Propose change on the Harness screen.",
         ),
       ),
     ).toBeInTheDocument();
@@ -241,7 +241,7 @@ describe("Prompts — Delete prompt", () => {
       { check: { body: IN_CLONE, heldUntil: never } },
     ],
     [
-      "when the clone could not be read",
+      "when the clone couldn't be read",
       { check: { body: { error: "no-answer" }, status: 409 } },
     ],
   ])(
@@ -270,7 +270,7 @@ describe("Prompts — Delete prompt", () => {
       { harness: { body: { error: "not-configured" }, status: 409 } },
     ],
     [
-      "where the prompt is not in the clone",
+      "where the prompt isn't in the clone",
       {
         check: {
           body: { skill: {}, prompt: { "pr-review": { inClone: false } } },

@@ -3,6 +3,7 @@ import { HttpError } from "../api/http";
 import { readNotice } from "../test-utils";
 import { EDIT_PROMPT } from "../ui/control-labels";
 import {
+  EDIT_CHANGES,
   EXAMPLE_HINT,
   editPromptNotice,
   editPromptTitle,
@@ -38,13 +39,16 @@ describe("Prompt field copy", () => {
       "Prompt text",
       "Example",
     ]);
-    expect(EXAMPLE_HINT).toBe("Optional example prompt.");
+    expect(EXAMPLE_HINT).toBe("Add an example of the prompt, or leave empty.");
   });
 });
 
 describe("Edit prompt copy", () => {
-  it("titles the dialog by the prompt and states why its button is blocked", () => {
+  it("titles the dialog by the prompt, states what an edit changes and why its button is blocked", () => {
     expect(EDIT_PROMPT).toBe("Edit prompt");
+    expect(EDIT_CHANGES).toBe(
+      "Editing changes the prompt file in your clone. Prompts shows the released text until you propose the change and release it.",
+    );
     expect(editPromptTitle("pr-review")).toBe("Edit pr-review");
     expect(NOTHING_CHANGED).toBe(
       "Change the description, text, example or category.",
@@ -68,12 +72,12 @@ describe("Edit prompt copy", () => {
     [
       "destination-unsafe",
       "Link in the Harness",
-      "Nothing was edited. Replace the link with a real file or folder, then select Edit prompt again.",
+      "Nothing changed. Replace the link with a real file or folder, then select Edit prompt again.",
     ],
     [
       "destination-unreadable",
-      "Prompts folder not read",
-      "Nothing was edited. Make the Harness clone readable, then select Edit prompt again.",
+      "Couldn't read the prompt in your clone",
+      "Nothing changed. Make the .maestro/prompts folder and the prompt file readable, then select Edit prompt again.",
     ],
     [
       "import-in-progress",
@@ -83,12 +87,12 @@ describe("Edit prompt copy", () => {
     [
       "write-failed",
       "Prompt not edited",
-      "The Harness is as it was. Make the prompts folder writable, then select Edit prompt again.",
+      "Nothing changed. Make the prompt file writable, then select Edit prompt again.",
     ],
     [
       "unknown",
-      "Prompt not edited",
-      "The Maestro server did not answer, and nothing reached the Harness. Select Edit prompt again.",
+      "Couldn't confirm the edit",
+      "The Maestro server didn't respond. Select Edit prompt again.",
     ],
   ])("states %s in Edit prompt words", (code, label, message) => {
     expect(
@@ -107,12 +111,9 @@ describe("Edit prompt refusal copy", () => {
   it.each([
     [
       "harness",
-      "Nothing was edited. Select Re-read Harness, then select Restore prompt.",
+      "Nothing changed. Select Re-read Harness, then select Restore prompt.",
     ],
-    [
-      "prompts",
-      "Nothing was edited. Select Harness, then select Restore prompt.",
-    ],
+    ["prompts", "Nothing changed. Select Harness, then select Restore prompt."],
   ] as const)(
     "states a file gone on submit from the %s screen",
     (screen, message) => {
@@ -140,7 +141,7 @@ describe("Edit prompt refusal copy", () => {
       level: "error",
       label: "Prompt out of date",
       message:
-        "Nothing was edited. Copy your text, select Close, then select Edit prompt again.",
+        "Nothing changed. Copy your text, select Close, then select Edit prompt again.",
       detail: "The pr-review file changed after this dialog opened.",
     });
   });
@@ -149,10 +150,45 @@ describe("Edit prompt refusal copy", () => {
     expect(harnessPromptReadNotice(refusal("prompt-missing"))).toEqual({
       level: "error",
       label: "Prompt not in your clone",
-      message:
-        "Nothing was edited. Select Re-read Harness, then select Restore prompt.",
+      message: "Select Re-read Harness, then select Restore prompt.",
     });
   });
+
+  it.each([
+    [
+      "not-configured",
+      "No Harness connected",
+      "Select Change Harness location in Settings, then select Edit prompt again.",
+    ],
+    [
+      "destination-unsafe",
+      "Link in the Harness",
+      "Replace the link with a real file or folder, then select Edit prompt again.",
+    ],
+    [
+      "destination-unreadable",
+      "Couldn't read the prompt in your clone",
+      "Make the .maestro/prompts folder and the prompt file readable, then select Edit prompt again.",
+    ],
+    [
+      "unknown",
+      "Couldn't read the prompt in your clone",
+      "The Maestro server didn't respond. Select Edit prompt again.",
+    ],
+  ])(
+    "states a read refused with %s as a read on either screen",
+    (code, label, message) => {
+      const expected = { level: "error", label, message };
+      expect(harnessPromptReadNotice(refusal(code))).toMatchObject(expected);
+      expect(
+        promptReadNotice(refusal(code), {
+          name: "pr-review",
+          origin: null,
+          localDeletion: false,
+        }),
+      ).toMatchObject(expected);
+    },
+  );
 
   it.each([
     [true, "Select Harness, then select Restore prompt."],

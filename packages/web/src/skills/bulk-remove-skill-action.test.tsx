@@ -68,7 +68,7 @@ const targetOf = (body: unknown) => (body as { target: DeployTarget }).target;
 const LOCAL_CHANGES_NEXT =
   "Select Deploy skill to restore the released files. Then remove the skill.";
 const PINNED_NEXT =
-  "Save the changes. Restore the files from the skill's deployed version in the Harness clone. Then remove the skill.";
+  "Save the changes. Restore the files from the skill's deployed version in your clone. Then remove the skill.";
 
 // One mock for both routes: the preflight answers, the bulk run reports.
 function stubServer(
@@ -246,7 +246,7 @@ describe("BulkRemoveRun", () => {
     await openDialog();
 
     const group = await screen.findByRole("group", {
-      name: "✕ Cannot be removed · 1",
+      name: "✕ Can't be removed · 1",
     });
     expect(group).toHaveTextContent("/dev/acme-web");
     expect(group).toHaveTextContent("Repository not registered");
@@ -746,7 +746,7 @@ describe("BulkRemoveRun — while the checks run", () => {
     await openDialog();
 
     expect(
-      await screen.findByRole("group", { name: "✕ Cannot be removed · 1" }),
+      await screen.findByRole("group", { name: "✕ Can't be removed · 1" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("dialog")).not.toHaveTextContent(/Checking/);
   });
@@ -777,7 +777,7 @@ describe("BulkRemoveRun — once the checks answer", () => {
       /2 targets without local edits\s*Only the deployed files are removed\./,
     );
     expect(screen.queryByText(/Loses work/)).toBeNull();
-    expect(screen.queryByText(/Cannot be removed/)).toBeNull();
+    expect(screen.queryByText(/Can't be removed/)).toBeNull();
     expect(confirm).not.toHaveAttribute("aria-disabled");
   });
 
@@ -805,13 +805,13 @@ describe("BulkRemoveRun — once the checks answer", () => {
     const cost = screen.getByRole("group", { name: "⚠ Loses work · 2" });
     expect(cost).toHaveTextContent("/dev/acme-api");
     expect(cost).toHaveTextContent("v1.2.0");
-    expect(cost).toHaveTextContent("Check did not run");
+    expect(cost).toHaveTextContent("Check didn't run");
     expect(
       screen.getByText("1 target without local edits"),
     ).toBeInTheDocument();
     // A target that cannot be touched costs nothing and loses nothing.
     const refused = screen.getByRole("group", {
-      name: "✕ Cannot be removed · 1",
+      name: "✕ Can't be removed · 1",
     });
     expect(within(refused).queryByText(/^v\d/)).toBeNull();
     // Only local changes have a way out the reader can take here and now.
@@ -884,7 +884,7 @@ describe("BulkRemoveRun — once the checks answer", () => {
         "Nothing recorded — may lose work",
       ],
       // An answer naming no tool measured nothing.
-      [[], "Check did not run"],
+      [[], "Check didn't run"],
       [
         [
           {
@@ -949,7 +949,7 @@ describe("BulkRemoveRun — once the checks answer", () => {
     await openDialog();
 
     const refused = await screen.findByRole("group", {
-      name: "✕ Cannot be removed · 2",
+      name: "✕ Can't be removed · 2",
     });
     expect(refused).toHaveTextContent("/dev/acme-webLocal edits");
     expect(refused).toHaveTextContent("/dev/acme-apiLocal edits");

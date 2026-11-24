@@ -255,7 +255,7 @@ describe("BulkDeployAction", () => {
     expect(row("tdd")).toHaveTextContent(
       "Linked skill folder" +
         "Nothing was written. Run rm /Users/dev/.claude/skills/tdd and then deploy again." +
-        "Deleting the link does not delete the folder it points to.",
+        "Deleting the link doesn't delete the folder it points to.",
     );
   });
 
@@ -766,7 +766,7 @@ describe("BulkDeployAction", () => {
 
     // A Notice, never zeroed counts that would read as a clean success (#292).
     const notice = await screen.findByRole("alert");
-    expect(notice).toHaveTextContent("Deploy to Global did not run");
+    expect(notice).toHaveTextContent("Deploy to Global didn't run");
     const dialog = screen.getByRole("dialog");
     expect(
       within(dialog)

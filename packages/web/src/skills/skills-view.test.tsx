@@ -817,7 +817,7 @@ describe("SkillsView — detail pane", () => {
     expect(pane).not.toHaveTextContent(/Loading/);
     expect(pane.querySelector("[aria-busy='true']")).toBeNull();
     expect(
-      within(pane).getByText("Some targets could not be read."),
+      within(pane).getByText("Some targets couldn't be read."),
     ).toBeInTheDocument();
   });
 
@@ -1379,7 +1379,7 @@ describe("SkillsView — reading", () => {
     const notice = screen
       .getByText("Inventory not read")
       .closest<HTMLElement>('[role="status"]');
-    if (notice === null) throw new Error("the notice is not a status region");
+    if (notice === null) throw new Error("the notice isn't a status region");
     await userEvent.click(
       within(notice).getByRole("button", { name: "Re-read Skills" }),
     );

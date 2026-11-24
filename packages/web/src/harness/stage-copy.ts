@@ -230,7 +230,7 @@ export function detailSentence(
         return deleteLocally;
       }
       if (row.change === "addition") {
-        return phrase`This ${noun} is not in ${NEXT_RELEASE} yet. Select ${PROPOSE_CHANGE} to send it for review.`;
+        return phrase`This ${noun} isn't in ${NEXT_RELEASE} yet. Select ${PROPOSE_CHANGE} to send it for review.`;
       }
       return offersDiscard(row)
         ? `Your local copy differs from ${NEXT_RELEASE}. Select ${PROPOSE_CHANGE} to send it for review. Or select ${DISCARD_CHANGE} to match ${NEXT_RELEASE}.`

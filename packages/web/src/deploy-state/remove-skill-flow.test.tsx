@@ -37,7 +37,7 @@ const CLAUDE_PATH = "~/.claude/skills";
 const AGENTS_PATH = "~/.agents/skills";
 // The next step for local edits in a folder Global does not write.
 const NOT_WRITTEN_STEP =
-  "Global does not write to ~/.agents/skills because its tool is not detected. Delete the copy yourself. Then select Remove skill again.";
+  "Global doesn't write to ~/.agents/skills because its tool isn't detected. Delete the copy yourself. Then select Remove skill again.";
 const GLOBAL_TARGET: Target = {
   kind: "global",
   folders: [CLAUDE_PATH, AGENTS_PATH],
@@ -621,7 +621,7 @@ describe("RemoveSkillFlow", () => {
       await answered();
 
       const row = rowFor(CLAUDE_PATH);
-      expect(row).toHaveTextContent("Check did not run — may lose work");
+      expect(row).toHaveTextContent("Check didn't run — may lose work");
       expect(row).not.toHaveTextContent(/nothing recorded/i);
     });
 
@@ -632,8 +632,8 @@ describe("RemoveSkillFlow", () => {
       });
       await answered();
 
-      expect(rowFor(AGENTS_PATH)).toHaveTextContent("Check did not run");
-      expect(rowFor(CLAUDE_PATH)).not.toHaveTextContent("Check did not run");
+      expect(rowFor(AGENTS_PATH)).toHaveTextContent("Check didn't run");
+      expect(rowFor(CLAUDE_PATH)).not.toHaveTextContent("Check didn't run");
     });
 
     it("states a failed check on every row, because it answered for none", async () => {
@@ -641,7 +641,7 @@ describe("RemoveSkillFlow", () => {
       await answered();
 
       for (const row of screen.getAllByRole("listitem")) {
-        expect(row).toHaveTextContent("Check did not run — may lose work");
+        expect(row).toHaveTextContent("Check didn't run — may lose work");
       }
     });
 
@@ -935,7 +935,7 @@ describe("RemoveSkillFlow", () => {
       expect(
         await screen.findByText(
           sentence(
-            "The skill was not removed. Its files in ~/.agents/skills changed after deployment.",
+            "The skill wasn't removed. Its files in ~/.agents/skills changed after deployment.",
           ),
         ),
       ).toBeInTheDocument();

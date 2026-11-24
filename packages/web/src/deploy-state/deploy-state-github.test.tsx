@@ -120,7 +120,7 @@ describe("Deploy-state — GitHub column", () => {
 
     const pane = await openPane(NAME);
     expect(
-      within(pane).getByText(/The origin of this repository could not be read/),
+      within(pane).getByText(/The origin of this repository couldn't be read/),
     ).toBeInTheDocument();
   });
 
@@ -136,7 +136,7 @@ describe("Deploy-state — GitHub column", () => {
     await userEvent.keyboard("{ArrowDown}");
 
     const cause = await screen.findByText(
-      "The origin of this repository could not be read. Select Re-read Deploy-state to read it again.",
+      "The origin of this repository couldn't be read. Select Re-read Deploy-state to read it again.",
     );
     const card = cause.closest("[data-radix-popper-content-wrapper]");
     expect(card).toHaveTextContent(/^Empty/);
@@ -156,7 +156,7 @@ describe("Deploy-state — GitHub column", () => {
     await hoverOpen(within(githubCell(NAME)).getByText("Unknown"));
 
     const cause = await screen.findByText(
-      /The origin of this repository could not be read/,
+      /The origin of this repository couldn't be read/,
     );
     expect(
       cause.closest("[data-radix-popper-content-wrapper]"),

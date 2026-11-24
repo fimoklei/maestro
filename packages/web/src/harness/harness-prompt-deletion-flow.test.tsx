@@ -182,7 +182,7 @@ describe("a prompt row on the Harness screen", () => {
     expect(
       within(dialog).getByText(
         sentence(
-          "Restore prompt brings back the file from your last local commit. Later changes do not come back.",
+          "Restore prompt brings back the file from your last local commit. Later changes don't come back.",
         ),
       ),
     ).toBeInTheDocument();

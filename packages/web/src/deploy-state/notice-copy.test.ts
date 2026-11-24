@@ -201,7 +201,7 @@ describe.each(SURFACES)("$name", (each) => {
     expect(fallback).toEqual(readNotice(each.read(new Error("offline"))));
     expect(fallback?.label).toMatch(/outcome unknown$/);
     expect(fallback?.detail).toBe(
-      "A dropped connection, or a failure this version of Maestro does not name.",
+      "A dropped connection, or a failure this version of Maestro doesn't name.",
     );
   });
 
@@ -226,14 +226,14 @@ describe.each(SURFACES)("$name", (each) => {
   it("keeps the server's request-shape sentence for a malformed request", () => {
     const error = new HttpError(
       400,
-      "Maestro could not start this change. Reload the page, then try again.",
+      "Maestro couldn't start this change. Reload the page, then try again.",
       "invalid-body",
       { detail: "The request carries a type, a name and a target." },
     );
     expect(each.read(error)).toEqual({
-      label: "Maestro could not start the action",
+      label: "Maestro couldn't start the action",
       message:
-        "Maestro could not start this change. Reload the page, then try again.",
+        "Maestro couldn't start this change. Reload the page, then try again.",
     });
   });
 });
@@ -442,7 +442,7 @@ describe("a Global update nothing read back", () => {
     expect(unknown).toBe(true);
     expect(readNotice(notice)).toEqual({
       label: "Update outcome unknown",
-      message: "Maestro could not confirm that the update finished.",
+      message: "Maestro couldn't confirm that the update finished.",
       detail:
         "Some folders may have changed. Check them on the Deploy-state screen, then select Update target again.",
     });
@@ -477,7 +477,7 @@ describe("a linked skill folder", () => {
     expect(machineValues(notice(withoutPath).message)).toEqual([]);
     expect(notice(withPath).detail).toEqual(notice(withoutPath).detail);
     expect(notice(withPath).detail).toBe(
-      "Deleting the link does not delete the folder it points to.",
+      "Deleting the link doesn't delete the folder it points to.",
     );
   });
 
@@ -541,16 +541,16 @@ describe("a retry", () => {
 describe("a deploy that failed", () => {
   it("sends a deploy that left an operation to Retry deploy", () => {
     expect(readNotice(deployNotice(refusal("deploy-failed")))).toEqual({
-      label: "Deploy did not finish",
+      label: "Deploy didn't finish",
       message:
-        "The deploy did not finish. On the Deploy-state screen, select Retry deploy.",
+        "The deploy didn't finish. On the Deploy-state screen, select Retry deploy.",
       detail: "Some of the skill's files may be in the target.",
     });
   });
 
   it("sends a deploy that wrote nothing back to Deploy skill", () => {
     expect(readNotice(deployNotice(refusal("deploy-not-started")))).toEqual({
-      label: "Deploy did not start",
+      label: "Deploy didn't start",
       message:
         "Nothing was deployed. Select Deploy skill on the Skills screen to try again.",
     });
@@ -563,7 +563,7 @@ describe("a timed-out apm call", () => {
       label: "Release check timed out",
       message:
         "Nothing was deployed. Check your network connection, then deploy again.",
-      detail: "The latest release did not load within 1 minute.",
+      detail: "The latest release didn't load within 1 minute.",
     });
   });
 

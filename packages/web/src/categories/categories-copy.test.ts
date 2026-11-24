@@ -251,7 +251,7 @@ describe("Categories copy", () => {
       "Maestro couldn't read the latest Harness release. Select Copy categories to try again.",
     ],
     [null, "Select Copy categories to try again."],
-  ])("states why Copy categories did not land: %s", (code, message) => {
+  ])("states why Copy categories didn't land: %s", (code, message) => {
     expect(copyFailed(code)).toEqual({
       level: "error",
       label: "Couldn't copy Harness categories",
@@ -349,7 +349,7 @@ describe("Categories copy", () => {
       "Choose the category again.",
     ],
   ] as const)(
-    "states why Set category did not land: %s, %o",
+    "states why Set category didn't land: %s, %o",
     (code, items, message) => {
       expect(categoryNotSet(code, items)).toEqual({
         level: "error",
@@ -430,16 +430,13 @@ describe("Categories copy", () => {
       "The category was deleted. Select Re-read Categories to update the list.",
     ],
     ["other", "Select Rename category to try again."],
-  ] as const)(
-    "states why Rename category did not land: %s",
-    (code, message) => {
-      expect(notRenamed(code)).toEqual({
-        level: "error",
-        label: "Category not renamed",
-        message,
-      });
-    },
-  );
+  ] as const)("states why Rename category didn't land: %s", (code, message) => {
+    expect(notRenamed(code)).toEqual({
+      level: "error",
+      label: "Category not renamed",
+      message,
+    });
+  });
 
   it.each([
     [
@@ -447,16 +444,13 @@ describe("Categories copy", () => {
       "The category was deleted. Select Re-read Categories to update the list.",
     ],
     ["other", "Select Delete category to try again."],
-  ] as const)(
-    "states why Delete category did not land: %s",
-    (code, message) => {
-      expect(notDeleted(code)).toEqual({
-        level: "error",
-        label: "Category not deleted",
-        message,
-      });
-    },
-  );
+  ] as const)("states why Delete category didn't land: %s", (code, message) => {
+    expect(notDeleted(code)).toEqual({
+      level: "error",
+      label: "Category not deleted",
+      message,
+    });
+  });
 
   it.each([
     [

@@ -33,7 +33,7 @@ export const bulkDeployTitle = (count: number): string =>
 export const BULK_DEPLOY_TARGET = "Target";
 export const CHOOSE_A_TARGET = "Choose a target";
 export const bulkDeployDidNotRun = (target: string) =>
-  `Deploy to ${target} did not run`;
+  `Deploy to ${target} didn't run`;
 export const TARGETS_LOADING = "Loading targets…";
 export const NO_TARGET_CHOSEN = "Choose a target.";
 export const toDeployLegend = (count: number): string => `To deploy · ${count}`;
@@ -65,7 +65,7 @@ export const targetsWithoutLocalEditsNotice = (count: number): NoticeCopy => ({
 // The way out for a pinned target the removal left alone because its files
 // changed.
 export const PINNED_LOCAL_CHANGES_NEXT_STEP =
-  "Save the changes. Restore the files from the skill's deployed version in the Harness clone. Then remove the skill.";
+  "Save the changes. Restore the files from the skill's deployed version in your clone. Then remove the skill.";
 
 // The bulk Remove dialog's confirm: the targets it walks.
 export const removeFromCountLabel = (count: number): string =>
@@ -97,7 +97,7 @@ export const deployedToLine = (count: number): string =>
     ? "Not deployed to any target."
     : `Deployed to ${count} ${count === 1 ? "target" : "targets"}.`;
 export const moreTargetsLine = (more: number): string => `And ${more} more.`;
-export const SOME_TARGETS_NOT_READ = "Some targets could not be read.";
+export const SOME_TARGETS_NOT_READ = "Some targets couldn't be read.";
 
 // The skill detail pane's state sentence: the Status reading and its next step
 // (#1435).
@@ -129,7 +129,7 @@ export function skillStateLine(state: SkillState): Copy {
         : phrase`${lag} Select ${UPDATE_TARGET} to move ${them} to ${machine(state.to)}.`;
     }
     case "unknown":
-      return `Some targets could not be checked. Select ${rereadLabel("Skills")} to try again.`;
+      return `Some targets couldn't be checked. Select ${rereadLabel("Skills")} to try again.`;
     case "up-to-date":
       return "No newer release changes this skill.";
   }

@@ -61,7 +61,7 @@ export const localEditsSentence = (name: string, release: string): Phrase =>
   phrase`${named(name)} has local edits. This update replaces them with release ${machine(release)}.`;
 
 export const unverifiedSentence = (name: string): Phrase =>
-  phrase`${named(name)} could not be verified. This update overwrites it.`;
+  phrase`${named(name)} couldn't be verified. This update overwrites it.`;
 
 export const consentRowName = (row: CopyConsentRow): string =>
   row.tool === null ? row.name : `${row.name} in ${toolDisplayName(row.tool)}`;
@@ -87,7 +87,7 @@ export function outcomeHeading(to: string, verdict: OutcomeVerdict): string {
   }
   return verdict === "failed"
     ? `Not every skill reached ${to}`
-    : `Maestro could not confirm every skill reached ${to}`;
+    : `Maestro couldn't confirm every skill reached ${to}`;
 }
 
 export const RETRY_UPDATE = "Retry update";
@@ -106,7 +106,7 @@ export function outcomeDetail(
   retry: boolean,
 ): Copy {
   if (state === "unknown") {
-    return "Maestro could not read this skill back. Check its state on the Deploy-state screen.";
+    return "Maestro couldn't read this skill back. Check its state on the Deploy-state screen.";
   }
   const fact = {
     "not-updated": phrase`Still at ${machine(releases.from)}.`,

@@ -6,12 +6,12 @@ import { inMemoryApp } from "../helpers/in-memory-app";
 describe("POST body parsing", () => {
   const PATH_SHAPE = {
     message:
-      "Maestro did not receive a folder. Reload the page, then choose a folder again.",
+      "Maestro didn't receive a folder. Reload the page, then choose a folder again.",
     detail: "The request carries a path: { path: string }.",
   };
   const TARGET_SHAPE = {
     message:
-      "Maestro could not start this change. Reload the page, then try again.",
+      "Maestro couldn't start this change. Reload the page, then try again.",
     detail:
       'The request carries a type, a name and a target: { kind: "repo", repoPath } or { kind: "global" }.',
   };
@@ -23,7 +23,7 @@ describe("POST body parsing", () => {
   };
   const PROPOSAL_SHAPE = {
     message:
-      "Maestro could not change the pull request. Reload the page, then try again.",
+      "Maestro couldn't change the pull request. Reload the page, then try again.",
     detail:
       'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
   };

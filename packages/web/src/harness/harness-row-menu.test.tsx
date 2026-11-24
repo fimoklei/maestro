@@ -377,7 +377,7 @@ describe("Harness row menu", () => {
   // The branch name is shared; a teammate's commit on it is not the author's
   // to delete (#1639).
   it.each(["pull-request-missing", "proposal-closed"] as StageStatus[])(
-    "offers no Withdraw proposal on a branch the author does not own (%s)",
+    "offers no Withdraw proposal on a branch the author doesn't own (%s)",
     async (status) => {
       const menu = await menuOf([
         stageRow("pending-review", status, { ownsBranch: false }),

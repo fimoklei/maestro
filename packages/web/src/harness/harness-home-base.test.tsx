@@ -1061,7 +1061,7 @@ describe("Harness home base", () => {
       expect(
         Array.from(card.querySelectorAll("p"), (line) => line.textContent),
       ).toEqual([
-        "This skill is not in the next release yet. Select Propose change to send it for review.",
+        "This skill isn't in the next release yet. Select Propose change to send it for review.",
         "This change adds tdd to fimoklei/agent-harness.",
         "Not read yet",
       ]);

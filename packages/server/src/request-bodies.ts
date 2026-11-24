@@ -276,7 +276,7 @@ export const PROPOSAL_CREATE_BODY: RequestShape = {
 
 export const PROPOSAL_BODY: RequestShape = {
   message:
-    "Maestro could not change the pull request. Reload the page, then try again.",
+    "Maestro couldn't change the pull request. Reload the page, then try again.",
   detail:
     'The request carries a type, a name and a pull-request number: { type: "skill" | "prompt", name: string, number: number }.',
 };
@@ -382,7 +382,7 @@ export const CATEGORIES_PROPOSAL_BODY: RequestShape = {
 
 export const PATH_BODY: RequestShape = {
   message:
-    "Maestro did not receive a folder. Reload the page, then choose a folder again.",
+    "Maestro didn't receive a folder. Reload the page, then choose a folder again.",
   detail: "The request carries a path: { path: string }.",
 };
 
@@ -425,7 +425,7 @@ export const PROMPT_EDIT_BODY: RequestShape = {
 
 export const TARGET_BODY: RequestShape = {
   message:
-    "Maestro could not start this change. Reload the page, then try again.",
+    "Maestro couldn't start this change. Reload the page, then try again.",
   detail:
     'The request carries a type, a name and a target: { kind: "repo", repoPath } or { kind: "global" }.',
 };

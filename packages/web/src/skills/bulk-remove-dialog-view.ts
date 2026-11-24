@@ -53,7 +53,7 @@ export type BulkRemoveDialogView =
 // cause, not in price: nothing recorded to check against vs. never checked.
 const COST_REASON: Record<Exclude<RemoveRowWarning, "none">, string> = {
   "cannot-verify": "Nothing recorded — may lose work",
-  "check-failed": "Check did not run",
+  "check-failed": "Check didn't run",
 };
 
 // Most certain loss first: a copy the check looked at outranks a sibling tool

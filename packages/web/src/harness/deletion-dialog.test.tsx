@@ -283,7 +283,7 @@ describe("DeletionDialog", () => {
       expect(
         screen.getByText(
           sentence(
-            "To also delete it from fimoklei/harness, go to the Harness screen and select Propose change.",
+            "To also delete it from fimoklei/harness, select Propose change on the Harness screen.",
           ),
         ),
       ).toBeInTheDocument();
@@ -384,7 +384,7 @@ describe("DeletionDialog", () => {
       expect(
         screen.getByText(
           sentence(
-            "To also delete it from fimoklei/harness, go to the Harness screen and select Propose change.",
+            "To also delete it from fimoklei/harness, select Propose change on the Harness screen.",
           ),
         ),
       ).toBeInTheDocument();

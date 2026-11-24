@@ -12,4 +12,4 @@ export const pullRequestLinkName = (number: number): string =>
 export const VIEW_REPOSITORY_ON_GITHUB = "View repository on GitHub";
 /** The cause behind the column's Unknown badge, recovered by the screen's own Re-read. */
 export const originNotRead = (screen: string) =>
-  `The origin of this repository could not be read. Select ${rereadLabel(screen)} to read it again.`;
+  `The origin of this repository couldn't be read. Select ${rereadLabel(screen)} to read it again.`;

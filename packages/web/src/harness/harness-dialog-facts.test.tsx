@@ -79,7 +79,7 @@ describe("Harness confirmation facts", () => {
     expect(within(dialog).getByText(BRANCH)).toBeVisible();
     expectDescription(
       dialog,
-      "This replaces the prompt file in your clone with its copy in the next release. You cannot recover your changes. It closes the pull request and deletes the proposal branch.",
+      "This replaces the prompt file in your clone with its copy in the next release. You can't recover your changes. It closes the pull request and deletes the proposal branch.",
     );
   });
 
@@ -120,7 +120,7 @@ describe("Harness confirmation facts", () => {
     ).toBeVisible();
     expectDescription(
       dialog,
-      "Restore prompt brings back the file from your last local commit. Later changes do not come back.",
+      "Restore prompt brings back the file from your last local commit. Later changes don't come back.",
     );
   });
 
@@ -146,7 +146,7 @@ describe("Harness confirmation facts", () => {
     ).toBeVisible();
     expectDescription(
       dialog,
-      "This replaces the prompt file in your clone with its copy in the next release. You cannot recover your changes.",
+      "This replaces the prompt file in your clone with its copy in the next release. You can't recover your changes.",
     );
   });
 

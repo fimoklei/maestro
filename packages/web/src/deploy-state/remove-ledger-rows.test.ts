@@ -124,7 +124,7 @@ describe("removeLedgerRows", () => {
       const [, codex] = rowsFor(perFolder(answer("claude", "none")));
 
       expect(codex?.name).toBe(AGENTS);
-      expect(codex?.status).toBe("Check did not run — may lose work");
+      expect(codex?.status).toBe("Check didn't run — may lose work");
       expect(codex?.drift).toBe(true);
     });
 
@@ -133,7 +133,7 @@ describe("removeLedgerRows", () => {
         kind: "unanswered",
         warning: "check-failed",
       })) {
-        expect(row.status).toBe("Check did not run — may lose work");
+        expect(row.status).toBe("Check didn't run — may lose work");
         expect(row.drift).toBe(true);
       }
     });

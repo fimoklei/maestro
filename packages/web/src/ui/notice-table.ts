@@ -29,7 +29,7 @@ export function requestShapeNotice(error: unknown): NoticeContent | null {
   // Never show the body's `detail`: it is for developers (#1749).
   return {
     level: "error",
-    label: "Maestro could not start the action",
+    label: "Maestro couldn't start the action",
     message: error.message,
   };
 }

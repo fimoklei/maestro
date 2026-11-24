@@ -129,7 +129,7 @@ export const WorkingTreeAmbiguous: Story = {
       label: "Unfinished merge",
       message:
         "Nothing was pushed. Finish or abort the merge, then Delete skill again.",
-      detail: "A half-merged working tree does not state what should go.",
+      detail: "A half-merged working tree doesn't state what should go.",
     },
   },
 };

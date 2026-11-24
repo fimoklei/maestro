@@ -54,7 +54,7 @@ const localDeletionHeadings = ({
       level: "error",
       label: "Clone not read",
       message: `Nothing was deleted. Select ${CLOSE}, then select ${w.deleteLabel} again.`,
-      detail: "Git could not read your clone.",
+      detail: "Git couldn't read your clone.",
     },
     "destination-unsafe": linkInHarness(
       w,
@@ -84,7 +84,7 @@ export const localDeletionNotice = (
 ): NoticeContent | null =>
   noticeFromTable(localDeletionHeadings(context), error, {
     label: `${ITEM_WORDS[context.type].Noun} not deleted`,
-    message: `The Maestro server did not answer, and the Harness is as it was. Select ${ITEM_WORDS[context.type].deleteLabel} again.`,
+    message: `The Maestro server didn't respond, and the Harness is as it was. Select ${ITEM_WORDS[context.type].deleteLabel} again.`,
   });
 
 // A check that failed, or found no file or folder, before anything was pressed.

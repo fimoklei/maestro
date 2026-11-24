@@ -139,7 +139,7 @@ describe("Harness release", () => {
   });
 
   const IN_FLIGHT_NOTICE = sentence(
-    /^These skills and prompts have newer changes that are not merged: /,
+    /^These skills and prompts have newer changes that aren't merged: /,
   );
   const openReleaseDialog = async (state: HarnessState) => {
     stubHarnessServer({ read: { body: state }, plan: { body: PLAN } });
@@ -175,7 +175,7 @@ describe("Harness release", () => {
     expect(
       within(dialog).getByText(
         sentence(
-          "These skills and prompts have newer changes that are not merged: research and standup.",
+          "These skills and prompts have newer changes that aren't merged: research and standup.",
         ),
       ),
     ).toBeInTheDocument();
@@ -218,7 +218,7 @@ describe("Harness release", () => {
 
     const dialog = await screen.findByRole("dialog");
     expect(
-      await within(dialog).findByText("GitHub did not respond"),
+      await within(dialog).findByText("GitHub didn't respond"),
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
@@ -443,12 +443,12 @@ describe("Harness release", () => {
     expect(
       screen.getByText(
         sentence(
-          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Skills to see the published skills.",
+          "Maestro tagged v1.3.0, but Inventory wasn't read. Select Re-read Skills to see the published skills.",
         ),
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("A release cannot change after publication."),
+      screen.getByText("A release can't change after publication."),
     ).toBeInTheDocument();
 
     // The action is the way back: it reads the Inventory again.
@@ -526,7 +526,7 @@ describe("Harness release", () => {
     expect(
       await screen.findByText(
         sentence(
-          "Maestro tagged v1.3.0, but Inventory was not read. Select Re-read Skills to see the published skills.",
+          "Maestro tagged v1.3.0, but Inventory wasn't read. Select Re-read Skills to see the published skills.",
         ),
       ),
     ).toBeInTheDocument();
@@ -760,7 +760,7 @@ describe("Harness release", () => {
   // "no recomputed plan" and send the author back for a fresh one (#521).
   it.each([
     ["a missing version map", { versions: undefined }],
-    ["a movement that is not one", { delta: [null] }],
+    ["a movement that isn't one", { delta: [null] }],
     [
       "a movement with no type",
       { delta: [{ kind: "added", name: "research", author: null }] },

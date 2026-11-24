@@ -57,7 +57,7 @@ describe("withdrawing a proposal", () => {
     const dialog = await openWithdrawal();
 
     expect(dialog).toHaveTextContent(
-      "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
+      "This replaces the skill folder in your clone with its copy in the next release. You can't recover your changes. It closes the pull request and deletes the proposal branch. Deployed copies remain unchanged.",
     );
   });
 
@@ -214,7 +214,7 @@ describe("withdrawing a proposal", () => {
       const dialog = await openWithdrawal();
 
       expect(dialog).toHaveTextContent(
-        "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
+        "This replaces the skill folder in your clone with its copy in the next release. You can't recover your changes. It deletes the proposal branch. Deployed copies remain unchanged.",
       );
       expect(within(dialog).queryByText("Pull request")).toBeNull();
     });
@@ -295,7 +295,7 @@ describe("withdrawing a proposal", () => {
         "branch-authors-unknown",
         "Branch authors not checked",
         "Select Re-read Harness, then select Withdraw proposal again.",
-        "Maestro could not compare the proposal branch's commit authors with user.email.",
+        "Maestro couldn't compare the proposal branch's commit authors with user.email.",
       ],
     ])(
       "states a refusal over the branch's authors (%s) in the dialog",

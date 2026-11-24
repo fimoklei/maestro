@@ -38,22 +38,22 @@ const withdrawHeadings = ({
     "sparse-checkout": {
       ...deletion["sparse-checkout"],
       message: "Connect a complete clone to withdraw a proposal.",
-      detail: "A partial clone does not hold every file of the Harness.",
+      detail: "A partial clone doesn't hold every file of the Harness.",
     },
     "merge-in-progress": {
       ...deletion["merge-in-progress"],
       message: `Finish or abort the merge, then select ${WITHDRAW_PROPOSAL} again.`,
-      detail: "A half-merged working tree does not state what changed.",
+      detail: "A half-merged working tree doesn't state what changed.",
     },
     "rebase-in-progress": {
       ...deletion["rebase-in-progress"],
       message: `Finish or abort the rebase, then select ${WITHDRAW_PROPOSAL} again.`,
-      detail: "A half-rebased working tree does not state what changed.",
+      detail: "A half-rebased working tree doesn't state what changed.",
     },
     "unresolved-conflicts": {
       ...deletion["unresolved-conflicts"],
       message: `Resolve the conflicts, then select ${WITHDRAW_PROPOSAL} again.`,
-      detail: "A conflicted working tree does not state what changed.",
+      detail: "A conflicted working tree doesn't state what changed.",
     },
     unreadable: {
       ...deletion.unreadable,
@@ -94,7 +94,7 @@ const withdrawHeadings = ({
       level: "error",
       label: "Branch authors not checked",
       message: `Select ${rereadLabel("Harness")}, then select ${WITHDRAW_PROPOSAL} again.`,
-      detail: phrase`Maestro could not compare the proposal branch's commit authors with ${machine("user.email")}.`,
+      detail: phrase`Maestro couldn't compare the proposal branch's commit authors with ${machine("user.email")}.`,
     },
     "replace-failed": {
       level: "error",
@@ -127,7 +127,7 @@ const withdrawHeadings = ({
 };
 
 const LIST_STAYS = "Your categories stay as they are.";
-const CLOSE_REFUSED = "GitHub did not close the pull request.";
+const CLOSE_REFUSED = "GitHub didn't close the pull request.";
 
 /** What a withdrawal's notice names: the item, its branch and its request. */
 export type WithdrawContext = Pick<HarnessStageRow, "type" | "name"> & {
@@ -142,5 +142,5 @@ export const withdrawNotice = (
 ): NoticeContent | null =>
   noticeFromTable(withdrawHeadings(context), error, {
     label: "Proposal not withdrawn",
-    message: `The Maestro server did not answer. Select ${rereadLabel("Harness")}, then select ${WITHDRAW_PROPOSAL} again.`,
+    message: `The Maestro server didn't respond. Select ${rereadLabel("Harness")}, then select ${WITHDRAW_PROPOSAL} again.`,
   });

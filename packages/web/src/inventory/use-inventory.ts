@@ -35,7 +35,7 @@ export function useInventoryOf<T extends InventoryPrimitive["type"]>(type: T) {
     (data: InventoryResponse) => {
       // A throw here fails this type's query only; the other types still list.
       if (data.unreadTypes.includes(type)) {
-        throw new Error(`The ${type} files of the release were not read.`);
+        throw new Error(`The ${type} files of the release weren't read.`);
       }
       return data.primitives.filter(
         (primitive): primitive is Extract<InventoryPrimitive, { type: T }> =>

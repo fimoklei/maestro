@@ -27,7 +27,7 @@ export const Failed: Story = {
       level: "error",
       label: "Repository not unregistered",
       message:
-        "The list did not change. Select Unregister repository to try again.",
+        "The list didn't change. Select Unregister repository to try again.",
     },
   },
 };

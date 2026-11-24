@@ -19,7 +19,7 @@ describe("GitHub link copy", () => {
   it("names the column's menu item and its Unknown cause", () => {
     expect(VIEW_REPOSITORY_ON_GITHUB).toBe("View repository on GitHub");
     expect(originNotRead("Repositories")).toBe(
-      "The origin of this repository could not be read. Select Re-read Repositories to read it again.",
+      "The origin of this repository couldn't be read. Select Re-read Repositories to read it again.",
     );
   });
 

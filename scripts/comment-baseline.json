@@ -192,7 +192,7 @@
   "packages/web/src/harness/discard-dialog.test.tsx": 1,
   "packages/web/src/harness/discard-dialog.tsx": 3,
   "packages/web/src/harness/edit-prompt-action.tsx": 5,
-  "packages/web/src/harness/edit-prompt-dialog.tsx": 7,
+  "packages/web/src/harness/edit-prompt-dialog.tsx": 6,
   "packages/web/src/harness/harness-categories-release-withdrawal.test.tsx": 2,
   "packages/web/src/harness/harness-categories-row.test.tsx": 1,
   "packages/web/src/harness/harness-columns.tsx": 14,

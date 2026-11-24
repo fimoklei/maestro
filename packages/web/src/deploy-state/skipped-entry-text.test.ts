@@ -49,7 +49,7 @@ describe("skippedEntryText", () => {
         }),
       ),
     ).toBe(
-      "hooks/format is deployed as claude_hook, which Maestro does not manage. Its files are still there.",
+      "hooks/format is deployed as claude_hook, which Maestro doesn't manage. Its files are still there.",
     );
   });
 
@@ -84,13 +84,13 @@ describe("skippedEntryText", () => {
       plainText(
         skippedEntryText({ reason: "unreadable", virtualPath: "skills/local" }),
       ),
-    ).toBe("The deployment record's entry for skills/local could not be read.");
+    ).toBe("The deployment record's entry for skills/local couldn't be read.");
   });
 
   it("falls back to an unnamed entry when it has no virtual path", () => {
     expect(
       plainText(skippedEntryText({ reason: "unreadable", virtualPath: null })),
-    ).toBe("One entry in the deployment record could not be read.");
+    ).toBe("One entry in the deployment record couldn't be read.");
   });
 });
 

@@ -74,11 +74,11 @@ describe("Harness promotion", () => {
     // Stated in the row's own pane, and in no other row's.
     const warned = await openPane("lint-rules");
     expect(
-      within(warned).getByText(/Pull it into the Harness clone/i),
+      within(warned).getByText(/Pull it into your clone/i),
     ).toBeInTheDocument();
     const untouched = await openPane("code-review");
     expect(
-      within(untouched).queryByText(/Pull it into the Harness clone/i),
+      within(untouched).queryByText(/Pull it into your clone/i),
     ).not.toBeInTheDocument();
 
     await promoteRow("lint-rules");

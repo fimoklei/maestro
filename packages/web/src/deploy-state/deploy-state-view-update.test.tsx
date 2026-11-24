@@ -250,7 +250,7 @@ describe("Deploy-state — Update target on a repository", () => {
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
       "Linked skill folder" +
         `Nothing was written. Run rm ${linkedPath} and then select Update target again.` +
-        "Deleting the link does not delete the folder it points to.",
+        "Deleting the link doesn't delete the folder it points to.",
     );
   });
 
@@ -549,7 +549,7 @@ describe("Deploy-state — Update target on the global target", () => {
 
     expect(await within(dialog).findByRole("alert")).toHaveTextContent(
       "Update outcome unknown" +
-        "Maestro could not confirm that the update finished." +
+        "Maestro couldn't confirm that the update finished." +
         "Some folders may have changed. Check them on the Deploy-state screen, then select Update target again.",
     );
     expect(writtenToLines(dialog)).toEqual([

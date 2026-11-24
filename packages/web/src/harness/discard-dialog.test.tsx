@@ -53,7 +53,7 @@ describe("DiscardDialog", () => {
     expect(
       screen.getByText(
         sentence(
-          "This replaces the skill folder in your clone with its copy in the next release. You cannot recover your changes. Deployed copies remain unchanged.",
+          "This replaces the skill folder in your clone with its copy in the next release. You can't recover your changes. Deployed copies remain unchanged.",
         ),
       ),
     ).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe("DiscardDialog", () => {
       expect(
         screen.getByText(
           sentence(
-            "This replaces the prompt file in your clone with its copy in the next release. You cannot recover your changes.",
+            "This replaces the prompt file in your clone with its copy in the next release. You can't recover your changes.",
           ),
         ),
       ).toBeInTheDocument();

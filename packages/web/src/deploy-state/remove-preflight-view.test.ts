@@ -163,7 +163,7 @@ describe("removePreflightView", () => {
           data: stale,
           error: new HttpError(
             403,
-            "That repo is not registered with Maestro.",
+            "That repo isn't registered with Maestro.",
             "repo-not-registered",
           ),
           isError: true,
@@ -208,7 +208,7 @@ describe("removePreflightView", () => {
         failedView(
           new HttpError(
             502,
-            "Maestro could not check the deployed copy for local changes.",
+            "Maestro couldn't check the deployed copy for local changes.",
             "preflight-failed",
           ),
         ),
@@ -253,7 +253,7 @@ describe("removePreflightView", () => {
         kind: "refused",
         code: "invalid-body",
         notice: {
-          label: "Maestro could not start the action",
+          label: "Maestro couldn't start the action",
           message,
         },
       });

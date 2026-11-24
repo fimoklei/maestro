@@ -92,7 +92,7 @@ describe("Deploy-state — Import local edits where Global copies differ", () =>
     ).toBeInTheDocument();
     expect(
       within(dialog).getByText(
-        "Copies you do not select stay as they are. Update target replaces them only if you check Discard local edits.",
+        "Copies you don't select stay as they are. Update target replaces them only if you check Discard local edits.",
       ),
     ).toBeInTheDocument();
     expect(
@@ -151,7 +151,7 @@ describe("Deploy-state — Import local edits where Global copies differ", () =>
     });
     expect(
       within(refused).getByText(
-        "The copies changed after the check, so this skill was not imported. Select Import local edits again to check them.",
+        "The copies changed after the check, so this skill wasn't imported. Select Import local edits again to check them.",
       ),
     ).toBeInTheDocument();
   });
@@ -165,7 +165,7 @@ describe("Deploy-state — Import local edits where Global copies differ", () =>
     expect(
       await within(pane).findByText(
         sentence(
-          "2 skills have changes that are not in the latest release. Select Import local edits to keep them.",
+          "2 skills have changes that aren't in the latest release. Select Import local edits to keep them.",
         ),
       ),
     ).toBeInTheDocument();

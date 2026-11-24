@@ -232,7 +232,7 @@ describe("Withdraw from release on the Categories row", () => {
 
     expect(await within(dialog).findByText("Withdrawal blocked")).toBeVisible();
     expect(dialog).toHaveTextContent(
-      "A categories pull request is open, or GitHub could not be read.",
+      "A categories pull request is open, or GitHub couldn't be read.",
     );
   });
 
@@ -268,7 +268,7 @@ describe("Withdraw from release on the Categories row", () => {
         "Merge or close pull request #46 on GitHub.",
       ],
       [
-        "GitHub could not be read",
+        "GitHub couldn't be read",
         { openRequests: null },
         "Select Re-read Harness to read GitHub again.",
       ],

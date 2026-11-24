@@ -63,7 +63,7 @@ export const deleteFromOrigin = (
 ): Phrase =>
   screen === "harness"
     ? phrase`To also delete it from ${named(origin)}, select ${PROPOSE_CHANGE}.`
-    : phrase`To also delete it from ${named(origin)}, go to the Harness screen and select ${PROPOSE_CHANGE}.`;
+    : phrase`To also delete it from ${named(origin)}, select ${PROPOSE_CHANGE} on the Harness screen.`;
 
 export const uncommittedNotice = (
   type: HarnessPrimitiveType,

@@ -50,7 +50,7 @@ describe("useInventoryOf", () => {
     );
 
     expect([...seen].map((error) => error.message)).toEqual([
-      "The prompt files of the release were not read.",
+      "The prompt files of the release weren't read.",
     ]);
   });
 });

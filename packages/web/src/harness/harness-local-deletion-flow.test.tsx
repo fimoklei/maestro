@@ -220,7 +220,7 @@ describe("Harness local deletion", () => {
 
     expect(await within(dialog).findByText("Clone not read")).toBeVisible();
     expect(
-      within(dialog).getByText("Git could not read your clone."),
+      within(dialog).getByText("Git couldn't read your clone."),
     ).toBeInTheDocument();
     expectTooltipCause(confirmButton(dialog), /^Clone not read/);
     await userEvent.click(confirmButton(dialog));

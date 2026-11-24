@@ -263,7 +263,7 @@ describe("driftViewModel — driftCount", () => {
   });
 
   it.each(["unknown", "unverified"] as const)(
-    "is zero when the drift check could not run (%s), never a misleading absent-as-synced",
+    "is zero when the drift check couldn't run (%s), never a misleading absent-as-synced",
     (reason) => {
       const vm =
         reason === "unverified"

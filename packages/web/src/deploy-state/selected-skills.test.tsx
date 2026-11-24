@@ -173,7 +173,7 @@ describe("SelectedSkills marks", () => {
     // Information, so a notice at info: a status, not an alert.
     const notice = screen.getByRole("status");
     expect(notice).toHaveTextContent("Package also behind");
-    expect(notice).toHaveTextContent("foo is not a skill.");
+    expect(notice).toHaveTextContent("foo isn't a skill.");
     expect(within(notice).getByText("foo").tagName).toBe("B");
   });
 });

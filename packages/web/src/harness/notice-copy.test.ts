@@ -334,7 +334,7 @@ describe.each(SURFACES)("$name", (each) => {
 
   it("states a server failure no row covers as an error", () => {
     expect(fallback?.level).toBe("error");
-    expect(fallback?.message).toMatch(/The Maestro server did not answer/);
+    expect(fallback?.message).toMatch(/The Maestro server didn't respond/);
   });
 
   it("states every refusal as an error", () => {
@@ -633,10 +633,10 @@ describe("localEditsRefusal", () => {
 
   it("states a selection the copies no longer match as a change after the check", () => {
     expect(localEditsRefusal({ refusal: "copy-not-selected" })).toBe(
-      "The copies changed after the check and now differ, so this skill was not imported. Select Import local edits again to choose a copy.",
+      "The copies changed after the check and now differ, so this skill wasn't imported. Select Import local edits again to choose a copy.",
     );
     expect(localEditsRefusal({ refusal: "copy-not-offered" })).toBe(
-      "The copies changed after the check, so this skill was not imported. Select Import local edits again to check them.",
+      "The copies changed after the check, so this skill wasn't imported. Select Import local edits again to check them.",
     );
   });
 
@@ -645,7 +645,7 @@ describe("localEditsRefusal", () => {
       "Nothing was copied. Replace the hard-linked file in the skill folder with a plain copy, then select Import local edits again.",
     );
     expect(localEditsRefusal({ refusal: "source-changed" })).toBe(
-      "The skill was not imported. Wait for the folder change to finish, then select Import local edits again.",
+      "The skill wasn't imported. Wait for the folder change to finish, then select Import local edits again.",
     );
   });
 });
@@ -832,7 +832,7 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
       label: "Branch authors not checked",
       message: "Select Re-read Harness, then select Withdraw proposal again.",
       detail:
-        "Maestro could not compare the proposal branch's commit authors with user.email.",
+        "Maestro couldn't compare the proposal branch's commit authors with user.email.",
     });
   });
 
@@ -855,9 +855,9 @@ describe("withdrawal notices without an open pull request (#1639)", () => {
           number: 45,
         }),
       )?.detail,
-    ).toBe("GitHub did not close the pull request.");
+    ).toBe("GitHub didn't close the pull request.");
     expect(notice("close-failed")?.detail).toBe(
-      "Your skill folder now matches its copy in the next release. GitHub did not close the pull request.",
+      "Your skill folder now matches its copy in the next release. GitHub didn't close the pull request.",
     );
   });
 });
@@ -959,7 +959,7 @@ describe("Withdraw from release while a proposal is open", () => {
       message:
         "Nothing was withdrawn. Select Re-read Harness to read GitHub again.",
       detail:
-        "A pull request for this skill is open, or GitHub could not be read.",
+        "A pull request for this skill is open, or GitHub couldn't be read.",
     });
   });
 
@@ -1011,14 +1011,14 @@ describe("Withdraw from release refused on GitHub (#1729)", () => {
         label: "Clone not up to date",
         message:
           "Nothing was withdrawn. Sync your clone with GitHub, then select Withdraw from release again.",
-        detail: "Your clone's last commit is not the one on GitHub.",
+        detail: "Your clone's last commit isn't the one on GitHub.",
       },
     ],
     [
       "offline",
       {
         level: "error",
-        label: "GitHub did not respond",
+        label: "GitHub didn't respond",
         message:
           "Nothing was withdrawn. Select Withdraw from release again once GitHub is reachable.",
       },

@@ -44,7 +44,7 @@ export const PULL_REQUEST_MISSING_DETAIL = `The proposal branch is on GitHub wit
 export const CREATE_PULL_REQUEST_ON_GITHUB = "Create pull request on GitHub";
 
 const NO_GH_CAUSE =
-  "Maestro opens pull requests through gh, and gh is not available.";
+  "Maestro opens pull requests through gh, and gh isn't available.";
 
 /** The Report's one lead without gh: every pushed row's next step at once. */
 export const noGhNotice = (missing: number): NoticeCopy =>
@@ -78,8 +78,8 @@ export const notInNextReleaseNotice = (
   label: NOT_IN_NEXT_RELEASE,
   message:
     names.length === 1
-      ? phrase`${namedList(names)} is not in the next release, so there is nothing to delete. Select ${CLOSE}, then deselect it.`
-      : phrase`${namedList(names)} are not in the next release, so there is nothing to delete. Select ${CLOSE}, then deselect them.`,
+      ? phrase`${namedList(names)} isn't in the next release, so there is nothing to delete. Select ${CLOSE}, then deselect it.`
+      : phrase`${namedList(names)} aren't in the next release, so there is nothing to delete. Select ${CLOSE}, then deselect them.`,
 });
 
 /** The first sentence: what the batch deletes, from which origin. */

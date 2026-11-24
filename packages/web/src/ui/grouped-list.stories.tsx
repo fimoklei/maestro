@@ -44,7 +44,7 @@ export const Checklist: Story = {
       },
       {
         tone: "failed",
-        legend: "✕ Cannot be imported · 1",
+        legend: "✕ Can't be imported · 1",
         rows: [
           {
             key: "brief",
@@ -97,7 +97,7 @@ export const ChecklistWithControls: Story = {
       },
       {
         tone: "failed",
-        legend: "✕ Cannot be imported · 1",
+        legend: "✕ Can't be imported · 1",
         rows: [
           {
             key: "brief",
@@ -136,7 +136,7 @@ export const ChecklistLongName: Story = {
           {
             key: "jobs",
             name: "Overwrite unverified copy for jobs in ~/.agents/skills",
-            sentence: "jobs could not be verified. This update overwrites it.",
+            sentence: "jobs couldn't be verified. This update overwrites it.",
           },
         ],
       },
@@ -169,7 +169,7 @@ export const ReadOnly: Story = {
       },
       {
         tone: "failed",
-        legend: "✕ Cannot be removed · 1",
+        legend: "✕ Can't be removed · 1",
         rows: [
           {
             key: "legacy-etl",
