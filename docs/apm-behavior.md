@@ -3,6 +3,7 @@
 How `apm` actually behaves, captured by running it or reading its source —
 never guessed (the trap in `LEARNINGS.md`). This document describes **one apm
 version: 0.32.0, verified 2026-10-01** (issues #772–#775 for the method).
+Maestro supports apm 0.32.0 and later.
 On an apm upgrade it is re-verified and rewritten section by section per
 `docs/agents/apm-upgrade.md` — sections are replaced, never appended to with
 version deltas; `git log` on this file is the version history.
@@ -95,7 +96,7 @@ The deploy path must not trust the exit code:
    `apm-view-auth-failed.txt`.
 2. **Success = a marker, not the exit code.** Success is `Installed \d+ APM
    dependenc` OR `No changes -- install state already up to date` present,
-   AND no `with <n≥1> error(s)` AND no `Installation failed`. The second
+   AND no `Installation failed`. The second
    marker replaces the first when the ref is already installed and its files
    are unchanged — a re-deploy that did nothing prints `(updated ref in
    apm.yml)`, `[*] Updated apm.yml dependency entries`, `[+] … (cached)` /

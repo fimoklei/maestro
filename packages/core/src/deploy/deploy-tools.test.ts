@@ -23,7 +23,7 @@ describe("deploy tools", () => {
     );
   });
 
-  it("preserves the apm 0.20.0 install flag value", () => {
+  it("passes claude and codex as the apm -t flag value", () => {
     expect(APM_DEPLOY_TARGET_FLAG).toBe("claude,codex");
   });
 
