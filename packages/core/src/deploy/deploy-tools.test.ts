@@ -65,10 +65,10 @@ describe("deploy tools", () => {
 
   it("carries a deploy-immune presence marker per tool", () => {
     expect(
-      DEPLOY_TOOLS.map((tool) => [tool.apmTarget, tool.globalPresenceMarker]),
+      DEPLOY_TOOLS.map((tool) => [tool.apmTarget, tool.globalPresenceMarkers]),
     ).toEqual([
-      ["claude", ".claude.json"],
-      ["codex", ".codex/config.toml"],
+      ["claude", [".claude.json"]],
+      ["codex", [".codex/installation_id", ".codex/config.toml"]],
     ]);
   });
 });
@@ -122,7 +122,10 @@ describe("resolveGlobalLayout", () => {
   it("keeps the default folders and markers while the variable is unset", () => {
     expect(layoutFor(undefined)).toStrictEqual({
       roots: { claude: ".claude", codex: ".agents" },
-      markers: { claude: ".claude.json", codex: ".codex/config.toml" },
+      markers: {
+        claude: [".claude.json"],
+        codex: [".codex/installation_id", ".codex/config.toml"],
+      },
     });
   });
 
@@ -134,8 +137,8 @@ describe("resolveGlobalLayout", () => {
     expect(layoutFor("/Users/ada/.claude-work")).toStrictEqual({
       roots: { claude: ".claude-work", codex: ".agents" },
       markers: {
-        claude: ".claude-work/.claude.json",
-        codex: ".codex/config.toml",
+        claude: [".claude-work/.claude.json"],
+        codex: [".codex/installation_id", ".codex/config.toml"],
       },
     });
   });
@@ -144,9 +147,9 @@ describe("resolveGlobalLayout", () => {
     expect(layoutFor("/Volumes/work/claude/").roots.claude).toBe(
       "/Volumes/work/claude",
     );
-    expect(layoutFor("/Volumes/work/claude").markers.claude).toBe(
+    expect(layoutFor("/Volumes/work/claude").markers.claude).toEqual([
       "/Volumes/work/claude/.claude.json",
-    );
+    ]);
   });
 
   it("expands a leading tilde and resolves a relative value against apm's cwd", () => {
@@ -178,8 +181,8 @@ describe("Global folder names under a moved folder", () => {
   const moved = {
     roots: { claude: "/Volumes/work/claude", codex: ".agents" },
     markers: {
-      claude: "/Volumes/work/claude/.claude.json",
-      codex: ".codex/config.toml",
+      claude: ["/Volumes/work/claude/.claude.json"],
+      codex: [".codex/installation_id", ".codex/config.toml"],
     },
   };
 

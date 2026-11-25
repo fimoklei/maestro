@@ -200,6 +200,21 @@ Amended:
 
 Unchanged: Maestro itself still deletes no copy in an undetected tool's folder.
 
+## Amendment (2026-11-25, issue #1950) — a tool is detected once it has started
+
+Installing Claude Code or Codex writes no marker; the tool's first start does
+(measured on Claude Code 2.1.331 and codex-cli 0.169.0). Codex's
+`config.toml` comes only from its terminal UI, so `codex exec` and the app
+server left Codex undetected.
+
+Amended:
+
+- **Codex is detected by `~/.codex/installation_id` or `~/.codex/config.toml`.**
+  Every measured Codex start writes `installation_id`; `config.toml` stays
+  accepted so no detected machine loses Global.
+- **The no-tool hint asks for a first start.** It tells the reader to install
+  Claude Code or Codex and start it once, then to re-read Deploy-state.
+
 ## Rejected alternatives
 
 - **Model A — one deploy unit mirrored to both tools.** Simpler, matches apm's

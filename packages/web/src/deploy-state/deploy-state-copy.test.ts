@@ -22,6 +22,7 @@ import {
   packageBehindNotice,
   REPO_NOT_READ,
   REPO_NOT_READ_LINE,
+  REREAD_AFTER_TOOL_START,
   skillsMissingLine,
   strayCopiesLine,
   strayCopiesNote,
@@ -190,8 +191,9 @@ describe("Deploy-state copy", () => {
 
   it("keeps the approved empty and zero-tool sentences", () => {
     expect(NO_TOOL_DETECTED).toBe(
-      "Install Claude Code or Codex to deploy skills globally.",
+      "Install Claude Code or Codex and start it once to deploy skills globally.",
     );
+    expect(REREAD_AFTER_TOOL_START).toBe("Then select Re-read Deploy-state.");
     expect(NO_REPOSITORIES).toBe(
       "No repositories yet. Select Register repository on the Repositories screen.",
     );
@@ -202,7 +204,7 @@ describe("Deploy-state copy", () => {
     expect(NO_TARGETS).toEqual({
       title: "No targets yet",
       description:
-        "Select Register repository on the Repositories screen to deploy skills to a repository.",
+        "Select Register repository on the Repositories screen to deploy skills to a repository, or install Claude Code or Codex and start it once to deploy skills globally.",
     });
   });
 

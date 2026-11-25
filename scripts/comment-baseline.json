@@ -753,7 +753,7 @@
   "tests/integration/smoke-ready.test.ts": 22,
   "tests/integration/sweep-temp-trees.test.ts": 3,
   "tests/integration/test-lane-workers.test.ts": 2,
-  "tests/integration/tool-presence.test.ts": 5,
+  "tests/integration/tool-presence.test.ts": 3,
   "tests/integration/update-symlinked-destination.test.ts": 5,
   "tests/integration/web-core-import-boundary.test.ts": 2,
   "tests/integration/web-core-import-boundary.ts": 8,

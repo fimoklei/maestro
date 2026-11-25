@@ -75,9 +75,9 @@ target.
 ## 3. How Maestro detects a tool today
 
 `ToolPresenceAdapter.detectGlobalTools` (`packages/core/src/tools/tool-presence.ts:17–26`)
-checks one file per tool under `HOME`. The files are listed in
+checks each tool's marker files under `HOME`. The files are listed in
 `DEPLOY_TOOLS` (`packages/core/src/deploy/deploy-tools.ts:17–31`):
-`~/.claude.json` for Claude Code and `~/.codex/config.toml` for Codex.
+`~/.claude.json` for Claude Code and `~/.codex/config.toml` for Codex (since #1950 also `~/.codex/installation_id`).
 ADR-0011 chose a config file because a deploy can create a folder
 (`docs/apm-behavior.md` § Global scope). The same table sets
 `skillsDirIsExclusive: true` for Claude (`deploy-tools.ts:22`).
@@ -93,7 +93,7 @@ on this machine: `~/.grok/` holds only `hooks/` and `skills/`, with no
 | Tool | Signal | Moved by | Reliability |
 |---|---|---|---|
 | Claude Code | `~/.claude.json` | `CLAUDE_CONFIG_DIR`? (see § 5) | **Reliable** when the variable is unset: Claude Code "writes [it] for itself" [13] |
-| Codex | `~/.codex/config.toml` | `CODEX_HOME` [14] | **Guess.** The docs say config *lives* there, not that Codex creates it on first run [14]. A Codex user with no config is a false negative |
+| Codex | `~/.codex/installation_id`, or `~/.codex/config.toml` | `CODEX_HOME` [14] | **Measured (#1950, codex-cli 0.169.0).** Interactive `codex`, `codex exec` and `codex app-server` write `installation_id`; only interactive `codex` writes `config.toml`. `--version`, `login status` and `mcp list` write neither |
 | Copilot CLI | `~/.copilot/settings.json` (`config.json` is internal state) | `COPILOT_HOME` [15] | Guess. First-run creation not stated. apm's `copilot` target writes into `~/.copilot` |
 | Cursor | `~/.cursor/cli-config.json` (CLI only) | `CURSOR_CONFIG_DIR`, `XDG_CONFIG_HOME` [16] | Guess. Absent on this machine, which has Cursor.app and a `~/.cursor/` folder. The IDE has no documented marker |
 | Gemini CLI | `~/.gemini/settings.json` | `GEMINI_CLI_HOME` [17] | Guess. Antigravity shares `~/.gemini/`, and apm merges `gemini` hooks into this very file (`targets.py:702`) |

@@ -1,5 +1,3 @@
-// Against a sandbox HOME, never the real one. The signals are the tools' own
-// config files (#127); a skills directory a deploy creates is not one.
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -61,6 +59,18 @@ describe("ToolPresenceAdapter", () => {
 
   it("detects only codex on a Codex-only machine", async () => {
     await addCodex();
+    await expect(adapter().detectGlobalTools()).resolves.toEqual(["codex"]);
+  });
+
+  it("detects codex by the installation_id that codex exec and app-server write", async () => {
+    await mkdir(join(home, ".codex"), { recursive: true });
+    await writeFile(join(home, ".codex", "installation_id"), "id\n", "utf8");
+    await expect(adapter().detectGlobalTools()).resolves.toEqual(["codex"]);
+  });
+
+  it("lists codex once when both of its markers exist", async () => {
+    await addCodex();
+    await writeFile(join(home, ".codex", "installation_id"), "id\n", "utf8");
     await expect(adapter().detectGlobalTools()).resolves.toEqual(["codex"]);
   });
 

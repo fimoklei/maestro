@@ -790,7 +790,7 @@ describe("emptyGroupLines", () => {
     repositories: 0,
   };
 
-  it("names the missing tool on an empty Global group, then each skipped entry", () => {
+  it("names the missing tool on an empty Global group, then the re-read, then each skipped entry", () => {
     expect(
       emptyGroupLines(GLOBAL, {
         ...read,
@@ -806,7 +806,8 @@ describe("emptyGroupLines", () => {
         },
       })?.map(plainText),
     ).toEqual([
-      "Install Claude Code or Codex to deploy skills globally.",
+      "Install Claude Code or Codex and start it once to deploy skills globally.",
+      "Then select Re-read Deploy-state.",
       "hooks/guard is deployed as claude_hook, which Maestro doesn't manage. Its files are still there.",
     ]);
   });

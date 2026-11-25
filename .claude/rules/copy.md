@@ -219,7 +219,8 @@ Tooltip cause: repeats the sentence beside the button
 
 Tooltip cause: names the state, not what to do first
   Weak    Maestro detected no tool for Global on this machine.
-  Better  Install Claude Code or Codex to deploy skills globally.
+  Better  Install Claude Code or Codex and start it once to deploy skills
+          globally.
 
 Detail sentence: clipped fragments instead of one joined sentence
   Weak    code-review waits too. One deploy writes every Global skill at once.

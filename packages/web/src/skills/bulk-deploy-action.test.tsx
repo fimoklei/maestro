@@ -1132,7 +1132,7 @@ describe("BulkDeployAction — the target it deploys to", () => {
     await waitFor(() =>
       expectTooltipCause(
         within(dialog).getByRole("button", { name: "Deploy skill" }),
-        "Install Claude Code or Codex to deploy skills globally.",
+        "Install Claude Code or Codex and start it once to deploy skills globally.",
       ),
     );
   });

@@ -6,7 +6,7 @@ export type SupportedTool = (typeof SUPPORTED_TOOLS)[number];
 
 type ToolFolders = {
   skillsDirPrefix: string;
-  globalPresenceMarker: string;
+  globalPresenceMarkers: readonly string[];
   configDir?: { variable: string; marker: string };
 };
 
@@ -15,12 +15,12 @@ type DeployTool = ToolFolders & { apmTarget: SupportedTool };
 const FOLDERS_BY_TOOL = {
   claude: {
     skillsDirPrefix: ".claude",
-    globalPresenceMarker: ".claude.json",
+    globalPresenceMarkers: [".claude.json"],
     configDir: { variable: "CLAUDE_CONFIG_DIR", marker: ".claude.json" },
   },
   codex: {
     skillsDirPrefix: ".agents",
-    globalPresenceMarker: ".codex/config.toml",
+    globalPresenceMarkers: [".codex/installation_id", ".codex/config.toml"],
   },
 } as const satisfies Record<SupportedTool, ToolFolders>;
 
@@ -32,13 +32,13 @@ export type ToolRoots = Readonly<Record<SupportedTool, string>>;
 
 export type GlobalLayout = {
   roots: ToolRoots;
-  markers: Readonly<Record<SupportedTool, string>>;
+  markers: Readonly<Record<SupportedTool, readonly string[]>>;
 };
 
-const byTool = (value: (tool: DeployTool) => string) =>
+const byTool = <T>(value: (tool: DeployTool) => T) =>
   Object.fromEntries(
     DEPLOY_TOOLS.map((tool) => [tool.apmTarget, value(tool)]),
-  ) as Record<SupportedTool, string>;
+  ) as Record<SupportedTool, T>;
 
 export const REPO_TOOL_ROOTS: ToolRoots = byTool(
   (tool) => tool.skillsDirPrefix,
@@ -75,8 +75,8 @@ export function resolveGlobalLayout(input: {
     markers: byTool((tool) => {
       const dir = dirs.get(tool);
       return dir == null || tool.configDir === undefined
-        ? tool.globalPresenceMarker
-        : `${dir}/${tool.configDir.marker}`;
+        ? tool.globalPresenceMarkers
+        : [`${dir}/${tool.configDir.marker}`];
     }),
   };
 }

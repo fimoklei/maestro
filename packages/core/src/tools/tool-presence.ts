@@ -14,8 +14,11 @@ export class ToolPresenceAdapter implements ToolPresencePort {
     const markers = this.location.presenceMarkers();
     const detected: SupportedTool[] = [];
     for (const tool of DEPLOY_TOOLS) {
-      if (await isFile(markers[tool.apmTarget])) {
-        detected.push(tool.apmTarget);
+      for (const marker of markers[tool.apmTarget]) {
+        if (await isFile(marker)) {
+          detected.push(tool.apmTarget);
+          break;
+        }
       }
     }
     return detected;

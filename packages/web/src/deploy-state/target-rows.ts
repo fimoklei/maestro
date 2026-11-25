@@ -24,6 +24,7 @@ import {
   otherOriginLine,
   REPO_NOT_READ,
   REPOSITORIES,
+  REREAD_AFTER_TOOL_START,
   skillsMissingLine,
   strayCopiesLine,
   strayCopiesNote,
@@ -453,7 +454,11 @@ export function emptyGroupLines(
   if (group === GLOBAL) {
     // With no tool row to open, the line also names each skipped entry.
     return facts.global?.tools === 0
-      ? [NO_TOOL_DETECTED, ...facts.global.skipped.map(skippedEntryText)]
+      ? [
+          NO_TOOL_DETECTED,
+          REREAD_AFTER_TOOL_START,
+          ...facts.global.skipped.map(skippedEntryText),
+        ]
       : null;
   }
   return facts.repositories === 0 ? [NO_REPOSITORIES] : null;
