@@ -2,28 +2,18 @@ import type {
   HarnessChange,
   HarnessStageRow,
   PrimitiveRef,
-  ReleasePlan,
-  SemverStep,
 } from "@maestro/core";
 import { HttpError } from "../api/http";
 import { originName } from "../ui/band-copy";
-import type { WriteAction } from "../ui/use-write-action";
 import { DeletionDialog, type DeletionMode } from "./deletion-dialog";
 import { DiscardDialog } from "./discard-dialog";
 import {
   deletionCheckNotice,
   type LocalDeletionContext,
 } from "./local-deletion-copy";
-import { releasePlanNotice } from "./notice-copy";
-import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { ReleaseWithdrawalDialogHost } from "./release-withdrawal-dialog-host";
 import { RestoreDialog } from "./restore-dialog";
-import {
-  folderInClone,
-  useDeletionCheck,
-  useHarness,
-  type useReleasePlan,
-} from "./use-harness";
+import { folderInClone, useDeletionCheck, useHarness } from "./use-harness";
 import type { useHarnessPresses } from "./use-harness-presses";
 import { WithdrawDialogHost } from "./withdraw-dialog-host";
 
@@ -92,12 +82,6 @@ export type HarnessDialogsProps = {
   releaseWithdrawing: ReleaseWithdrawalItem | null;
   releaseWithdrawal: Presses["releaseWithdrawalWrite"];
   onReleaseWithdrawalClose: () => void;
-  planOpen: boolean;
-  plan: ReturnType<typeof useReleasePlan>;
-  inFlight: readonly string[];
-  publish: Pick<WriteAction<unknown, unknown>, "phase" | "failure">;
-  onPlanClose: () => void;
-  onPublish: (step: SemverStep, plan: ReleasePlan) => void;
 };
 
 export function HarnessDialogs(props: HarnessDialogsProps) {
@@ -195,17 +179,6 @@ export function HarnessDialogs(props: HarnessDialogsProps) {
           target={props.releaseWithdrawing}
           write={props.releaseWithdrawal}
           onClose={props.onReleaseWithdrawalClose}
-        />
-      ) : null}
-      {props.planOpen ? (
-        <ReleaseDialog
-          origin={props.origin}
-          load={planLoad(props.plan)}
-          inFlight={props.inFlight}
-          onClose={props.onPlanClose}
-          onPublish={props.onPublish}
-          publishing={props.publish.phase === "running"}
-          publishError={props.publish.failure}
         />
       ) : null}
     </>
@@ -306,15 +279,4 @@ function deletionMode(
     openRequest:
       open === undefined ? null : { number: open.number, author: open.author },
   };
-}
-
-function planLoad(plan: ReturnType<typeof useReleasePlan>): ReleasePlanLoad {
-  if (plan.data !== undefined) {
-    return { kind: "ready", plan: plan.data };
-  }
-  const failed = releasePlanNotice(plan.error);
-  if (failed !== null) {
-    return { kind: "error", notice: failed };
-  }
-  return { kind: "loading" };
 }

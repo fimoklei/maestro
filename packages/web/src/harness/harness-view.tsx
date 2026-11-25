@@ -24,6 +24,7 @@ import {
   IMPORT_PROMPTS,
   IMPORT_SKILLS,
 } from "../ui/control-labels";
+import { DialogSlot } from "../ui/dialog-slot";
 import { useFreshnessLine } from "../ui/freshness";
 import { GatedButton } from "../ui/gated-button";
 import { GitHubMark } from "../ui/github-mark-link";
@@ -35,6 +36,7 @@ import { SelectionBar } from "../ui/selection-bar";
 import { StatusBadge } from "../ui/status-badge";
 import { reading, readingRank } from "../ui/status-reading";
 import { TableScreen } from "../ui/table-screen";
+import { useDialogSlot } from "../ui/use-dialog-slot";
 import { useTableScreen } from "../ui/use-table-screen";
 import { useWriteAction, type WriteResult } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
@@ -57,6 +59,7 @@ import {
   harnessStateNotice,
   publishReleaseNotice,
   refreshNotice,
+  releasePlanNotice,
   releasePublishedNotice,
   restoredNotice,
   stageReadNotice,
@@ -64,6 +67,7 @@ import {
 } from "./notice-copy";
 import { harnessPromptReadNotice } from "./prompt-copy";
 import { ProposeBatchAction } from "./propose-batch-action";
+import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { type RowActionHandlers, rowItems } from "./row-actions";
 import {
   ALL_RELEASED,
@@ -132,8 +136,10 @@ export function HarnessView({
   }, [written, settle]);
 
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
-  const [planOpen, setPlanOpen] = useState(false);
-  const plan = useReleasePlan(planOpen);
+  const dialog = useDialogSlot<
+    "release" | "import-skills" | "import-prompts"
+  >();
+  const plan = useReleasePlan(dialog.standing === "release");
   const discardPlan = useDiscardReleasePlan();
   const publish = usePublishRelease();
   // An Inventory left unread is the outcome notice above the table instead.
@@ -146,7 +152,7 @@ export function HarnessView({
   });
   const rereadInventory = useRereadInventory();
   const closePlan = () => {
-    setPlanOpen(false);
+    dialog.close();
     discardPlan();
     // A failed attempt must not haunt the next time this dialog opens.
     publish.reset();
@@ -162,15 +168,13 @@ export function HarnessView({
       // The dialog closes on success and keeps no result of its own (#849).
       {
         onSuccess: () => {
-          setPlanOpen(false);
+          dialog.close();
           discardPlan();
         },
       },
     );
   };
 
-  const [importingSkills, setImportingSkills] = useState(false);
-  const [importingPrompts, setImportingPrompts] = useState(false);
   const presses = useHarnessPresses(state, table);
   const editing = useEditPromptOpening();
   // Rendered on the press only, so the view needs a router only once it leaves.
@@ -364,11 +368,11 @@ export function HarnessView({
               items={[
                 {
                   label: IMPORT_SKILLS,
-                  onSelect: () => setImportingSkills(true),
+                  onSelect: () => dialog.open("import-skills"),
                 },
                 {
                   label: IMPORT_PROMPTS,
-                  onSelect: () => setImportingPrompts(true),
+                  onSelect: () => dialog.open("import-prompts"),
                 },
               ]}
             />
@@ -387,7 +391,7 @@ export function HarnessView({
                     : null,
                 nothingToRelease,
               })}
-              onClick={() => setPlanOpen(true)}
+              onClick={() => dialog.open("release")}
             />
           </>
         )
@@ -495,7 +499,7 @@ export function HarnessView({
         title: JOURNEY_EMPTY.title,
         description: JOURNEY_EMPTY.body,
         action: (
-          <Button variant="quiet" onClick={() => setImportingSkills(true)}>
+          <Button variant="quiet" onClick={() => dialog.open("import-skills")}>
             {IMPORT_SKILLS}
           </Button>
         ),
@@ -539,46 +543,66 @@ export function HarnessView({
           onClose={editing.close}
         />
       ) : null}
-      {state !== undefined && importingPrompts ? (
-        <ImportPromptsAction onClose={() => setImportingPrompts(false)} />
-      ) : null}
-      {state !== undefined && importingSkills ? (
-        <ImportSkillsAction
-          screen={table}
-          onClose={() => setImportingSkills(false)}
-        />
-      ) : null}
       {state === undefined ? null : (
-        <HarnessDialogs
-          origin={state.origin}
-          deletionRow={presses.pendingDeletion}
-          deletion={presses.deletionWrite}
-          onDeletionClose={presses.closeConfirmation}
-          localDeletion={presses.localDeletion}
-          deleteLocal={presses.deleteLocalWrite}
-          onLocalDeletionClose={presses.closeLocalDeletion}
-          restoring={presses.restoring}
-          restore={presses.restoreWrite}
-          onRestoreClose={presses.closeRestore}
-          discarding={presses.discarding}
-          discard={presses.discardWrite}
-          onDiscardClose={presses.closeDiscard}
-          withdrawing={presses.withdrawing}
-          proposalAction={presses.proposalWrite}
-          onWithdrawClose={presses.closeWithdrawal}
-          releaseWithdrawing={presses.releaseWithdrawing}
-          releaseWithdrawal={presses.releaseWithdrawalWrite}
-          onReleaseWithdrawalClose={presses.closeReleaseWithdrawal}
-          planOpen={planOpen}
-          plan={plan}
-          inFlight={inFlightNames(releaseRead)}
-          publish={publishWrite}
-          onPlanClose={closePlan}
-          onPublish={handlePublish}
-        />
+        <>
+          <DialogSlot
+            standing={dialog.standing}
+            dialogs={{
+              release: () => (
+                <ReleaseDialog
+                  origin={state.origin}
+                  load={planLoad(plan)}
+                  inFlight={inFlightNames(releaseRead)}
+                  onClose={closePlan}
+                  onPublish={handlePublish}
+                  publishing={publishWrite.phase === "running"}
+                  publishError={publishWrite.failure}
+                />
+              ),
+              "import-skills": () => (
+                <ImportSkillsAction screen={table} onClose={dialog.close} />
+              ),
+              "import-prompts": () => (
+                <ImportPromptsAction onClose={dialog.close} />
+              ),
+            }}
+          />
+          <HarnessDialogs
+            origin={state.origin}
+            deletionRow={presses.pendingDeletion}
+            deletion={presses.deletionWrite}
+            onDeletionClose={presses.closeConfirmation}
+            localDeletion={presses.localDeletion}
+            deleteLocal={presses.deleteLocalWrite}
+            onLocalDeletionClose={presses.closeLocalDeletion}
+            restoring={presses.restoring}
+            restore={presses.restoreWrite}
+            onRestoreClose={presses.closeRestore}
+            discarding={presses.discarding}
+            discard={presses.discardWrite}
+            onDiscardClose={presses.closeDiscard}
+            withdrawing={presses.withdrawing}
+            proposalAction={presses.proposalWrite}
+            onWithdrawClose={presses.closeWithdrawal}
+            releaseWithdrawing={presses.releaseWithdrawing}
+            releaseWithdrawal={presses.releaseWithdrawalWrite}
+            onReleaseWithdrawalClose={presses.closeReleaseWithdrawal}
+          />
+        </>
       )}
     </TableScreen>
   );
+}
+
+function planLoad(plan: ReturnType<typeof useReleasePlan>): ReleasePlanLoad {
+  if (plan.data !== undefined) {
+    return { kind: "ready", plan: plan.data };
+  }
+  const failed = releasePlanNotice(plan.error);
+  if (failed !== null) {
+    return { kind: "error", notice: failed };
+  }
+  return { kind: "loading" };
 }
 
 const isSelectable = (row: HarnessTableRow) => row.stage === "pending-proposal";
