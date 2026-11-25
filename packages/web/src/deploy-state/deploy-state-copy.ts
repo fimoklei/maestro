@@ -41,9 +41,17 @@ export const NO_FILTER_MATCH = {
   description: `${CLEAR_FILTERS} to show the targets.`,
 };
 
+// The Global group's line while no supported tool is detected.
+const TOOL_START_STEP =
+  "Claude Code or Codex and start it once to deploy skills globally";
+
+export const NO_TOOL_DETECTED = `Install ${TOOL_START_STEP}.`;
+
+export const REREAD_AFTER_TOOL_START = `Then select ${rereadLabel("Deploy-state")}.`;
+
 export const NO_TARGETS = {
   title: "No targets yet",
-  description: `${REGISTER_STEP} to deploy skills to a repository.`,
+  description: `${REGISTER_STEP} to deploy skills to a repository, or install ${TOOL_START_STEP}.`,
 };
 
 /** The pane's line for behind names that are no deployed skill. */
@@ -222,10 +230,6 @@ export function notUpdatedLine(
       : "older releases";
   return phrase`${subject} still at ${at}, but the Target release is ${target}.`;
 }
-
-// The Global group's line while no supported tool is detected.
-export const NO_TOOL_DETECTED =
-  "Install Claude Code or Codex to deploy skills globally.";
 
 export const otherOriginLine = (origins: readonly string[]) =>
   phrase`Holds skills, hooks and MCP servers deployed from ${namedList(origins)}.`;

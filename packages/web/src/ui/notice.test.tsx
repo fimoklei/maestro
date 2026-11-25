@@ -35,7 +35,8 @@ describe("Notice", () => {
         notice={{
           level: "info",
           label: "no global tools",
-          message: "Install Claude Code or Codex to deploy skills globally.",
+          message:
+            "Install Claude Code or Codex and start it once to deploy skills globally.",
         }}
       />,
     );

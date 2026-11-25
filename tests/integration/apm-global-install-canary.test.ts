@@ -55,8 +55,10 @@ describe.runIf(enabled)("real apm global install canary", () => {
 
     // Install targets come from live detection, so the sandbox home must carry
     // every supported tool's presence marker or the round-trip proves nothing.
-    for (const tool of DEPLOY_TOOLS) {
-      const marker = join(home, tool.globalPresenceMarker);
+    for (const relative of DEPLOY_TOOLS.flatMap(
+      (tool) => tool.globalPresenceMarkers,
+    )) {
+      const marker = join(home, relative);
       await mkdir(dirname(marker), { recursive: true });
       await writeFile(marker, "");
     }
@@ -137,7 +139,7 @@ describe.runIf(enabled)(
         CLAUDE_CONFIG_DIR: join(home, ".claude-work"),
       };
       const location = new DeployedLocation(env, lenientRealpath);
-      for (const marker of Object.values(location.presenceMarkers())) {
+      for (const marker of Object.values(location.presenceMarkers()).flat()) {
         await mkdir(dirname(marker), { recursive: true });
         await writeFile(marker, "");
       }

@@ -45,7 +45,9 @@ describe("DeployedLocation", () => {
   it("reads Global's Claude Code folder and marker from CLAUDE_CONFIG_DIR, set after startup", () => {
     const env: NodeJS.ProcessEnv = { HOME: "/sandbox-home" };
     const moving = new DeployedLocation(env, (path) => path);
-    expect(moving.presenceMarkers().claude).toBe("/sandbox-home/.claude.json");
+    expect(moving.presenceMarkers().claude).toEqual([
+      "/sandbox-home/.claude.json",
+    ]);
 
     env.CLAUDE_CONFIG_DIR = "/sandbox-home/.claude-work";
     expect(moving.toolRoots(global)).toStrictEqual({
@@ -53,8 +55,11 @@ describe("DeployedLocation", () => {
       codex: ".agents",
     });
     expect(moving.presenceMarkers()).toStrictEqual({
-      claude: "/sandbox-home/.claude-work/.claude.json",
-      codex: "/sandbox-home/.codex/config.toml",
+      claude: ["/sandbox-home/.claude-work/.claude.json"],
+      codex: [
+        "/sandbox-home/.codex/installation_id",
+        "/sandbox-home/.codex/config.toml",
+      ],
     });
     expect(moving.globalLayout().roots.claude).toBe(".claude-work");
   });

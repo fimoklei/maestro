@@ -41,13 +41,15 @@ export class DeployedLocation {
     return target.kind === "repo" ? REPO_TOOL_ROOTS : this.globalLayout().roots;
   }
 
-  presenceMarkers(): Record<SupportedTool, string> {
+  presenceMarkers(): Record<SupportedTool, readonly string[]> {
     const home = resolveHomeDirectory(this.env);
     const { markers } = this.globalLayout();
+    const inHome = (paths: readonly string[]) =>
+      paths.map((path) => resolve(home, path));
     return {
-      claude: resolve(home, markers.claude),
-      codex: resolve(home, markers.codex),
-    } satisfies Record<SupportedTool, string>;
+      claude: inHome(markers.claude),
+      codex: inHome(markers.codex),
+    } satisfies Record<SupportedTool, readonly string[]>;
   }
 
   lockfilePath(target: DeployTarget): string {

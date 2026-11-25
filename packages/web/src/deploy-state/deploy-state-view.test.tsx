@@ -149,7 +149,7 @@ describe("Deploy-state — one table of every target", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Select Register repository on the Repositories screen to deploy skills to a repository.",
+        "Select Register repository on the Repositories screen to deploy skills to a repository, or install Claude Code or Codex and start it once to deploy skills globally.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
@@ -676,8 +676,11 @@ describe("Deploy-state — failed reads", () => {
     await findRow("…/me/a");
     expect(
       within(grid()).getByText(
-        "Install Claude Code or Codex to deploy skills globally.",
+        "Install Claude Code or Codex and start it once to deploy skills globally.",
       ),
+    ).toBeInTheDocument();
+    expect(
+      within(grid()).getByText("Then select Re-read Deploy-state."),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("No supported tool detected"),
@@ -725,7 +728,7 @@ describe("Deploy-state — failed reads", () => {
     for (const name of ["Filter", "Display"]) {
       expectTooltipCause(
         screen.getByRole("button", { name }),
-        "Install Claude Code or Codex to deploy skills globally.",
+        "Install Claude Code or Codex and start it once to deploy skills globally.",
       );
     }
   });
