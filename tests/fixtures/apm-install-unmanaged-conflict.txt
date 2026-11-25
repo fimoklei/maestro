@@ -1,0 +1,14 @@
+[*] Created apm.yml
+[i] Targets set: claude, codex (persisted to apm.yml)
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0
+[*] Updated apm.yml with 1 new package(s)
+[>] Installing 1 new package...
+[>] Resolving fimoklei/agent-harness...
+[i] Targets: claude, codex  (source: --target flag)
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12
+[i] Removed apm.yml created by the failed install.
+[x] Failed to install APM dependencies: Installation refused: skill 'caveman' from 'fimoklei/agent-harness' (source: /Users/dev/repo/apm_modules/fimoklei/agent-harness/.apm/skills/caveman/SKILL.md) conflicts with unmanaged file '.claude/skills/caveman/SKILL.md'. Affected targets: claude, codex.
+Rename the local skill or use a valid existing skills: or targets: selection in apm.yml that excludes these conflicts, then run 'apm install' to deploy the skills without the conflicts.
+[i] Run with --verbose for detailed diagnostics
+[x] Install failed after 2.7s.

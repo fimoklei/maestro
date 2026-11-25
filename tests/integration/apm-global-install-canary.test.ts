@@ -37,7 +37,6 @@ describe.runIf(enabled)("real apm global install canary", () => {
   let home: string;
 
   beforeEach(async () => {
-    // A symlinked HOME makes apm ≥0.29.0 deploy nothing.
     home = await realpath(
       await mkdtemp(join(tmpdir(), "maestro-global-canary-")),
     );

@@ -1,21 +1,20 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseOutdated } from "./parse-outdated";
 
-const capturedOutdatedTable = `
-                                          Dependency Status
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┓
-┃ Package                           ┃ Current    ┃ Latest     ┃ Status       ┃ Source               ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━┩
-│ fimoklei/agent-harness/skills/tdd │ v0.5.0     │ v0.5.1     │ outdated     │ git tags             │
-└───────────────────────────────────┴────────────┴────────────┴──────────────┴──────────────────────┘
-[!] 1 outdated dependency found
-`;
+function fixture(name: string): string {
+  return readFileSync(
+    join(import.meta.dirname, "../../../../tests/fixtures", name),
+    "utf8",
+  );
+}
 
 describe("parseOutdated", () => {
   it("returns the deployed -> latest version pair per behind skill", () => {
-    expect(parseOutdated(capturedOutdatedTable)).toEqual({
+    expect(parseOutdated(fixture("apm-outdated-global.txt"))).toEqual({
       ok: true,
-      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
+      behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.6.0" }],
     });
   });
 
@@ -35,7 +34,7 @@ describe("parseOutdated", () => {
 
   it("recovers the pair from a narrow-width row whose name still fits", () => {
     const narrow =
-      "│ fimoklei/agent-harness/skills/tdd │ v0.5.0 │ v0.5.1 │ outdated │ git tags │";
+      "| fimoklei/agent-harness/skills/tdd | v0.5.0 | v0.5.1 | outdated | git tags |";
     expect(parseOutdated(narrow)).toEqual({
       ok: true,
       behind: [{ name: "tdd", current: "v0.5.0", latest: "v0.5.1" }],
@@ -44,8 +43,8 @@ describe("parseOutdated", () => {
 
   it("ignores rows whose status is not outdated", () => {
     const mixed = [
-      "│ owner/repo/skills/tdd      │ v1.0.0 │ v1.1.0 │ outdated  │ git tags │",
-      "│ owner/repo/skills/diagnose │ v2.0.0 │ v2.0.0 │ up-to-date│ git tags │",
+      "| owner/repo/skills/tdd      | v1.0.0 | v1.1.0 | outdated  | git tags |",
+      "| owner/repo/skills/diagnose | v2.0.0 | v2.0.0 | up-to-date| git tags |",
     ].join("\n");
     expect(parseOutdated(mixed)).toEqual({
       ok: true,
@@ -55,7 +54,7 @@ describe("parseOutdated", () => {
 
   it("fails when apm reports outdated deps but no row parses", () => {
     const driftedFormat = [
-      "│ owner/repo/skills/tdd │ v1.0.0 │ v1.1.0 │ outdated │ git tags │ extra │",
+      "| owner/repo/skills/tdd | v1.0.0 | v1.1.0 | outdated | git tags | extra |",
       "[!] 1 outdated dependency found",
     ].join("\n");
     expect(parseOutdated(driftedFormat)).toEqual({ ok: false });
@@ -68,7 +67,7 @@ describe("parseOutdated", () => {
   it("reports a dep apm could not check as unverified, never up-to-date", () => {
     const couldNotCheck = [
       "                                          Dependency Status",
-      "│ fimoklei/agent-harness/skills/tdd │ v0.5.1 │ - │ unknown │ │",
+      "| fimoklei/agent-harness/skills/tdd | v0.5.1 | - | unknown | |",
       "[i] Some dependencies could not be checked (branch/commit refs)",
     ].join("\n");
     expect(parseOutdated(couldNotCheck)).toEqual({
@@ -79,7 +78,7 @@ describe("parseOutdated", () => {
 
   it("reads 'unknown' outside the Status column as ordinary data, not uncheckable", () => {
     const unknownVersion =
-      "│ owner/repo/skills/tdd │ unknown │ v0.5.1 │ outdated │ git tags │";
+      "| owner/repo/skills/tdd | unknown | v0.5.1 | outdated | git tags |";
     expect(parseOutdated(unknownVersion)).toEqual({
       ok: true,
       behind: [{ name: "tdd", current: "unknown", latest: "v0.5.1" }],
@@ -87,14 +86,14 @@ describe("parseOutdated", () => {
   });
 
   it("finds the Status column on an uncheckable row despite its empty Source cell", () => {
-    const rowOnly = "│ owner/repo/skills/tdd │ v0.5.0 │ - │ unknown │ │";
+    const rowOnly = "| owner/repo/skills/tdd | v0.5.0 | - | unknown | |";
     expect(parseOutdated(rowOnly)).toEqual({ ok: false, reason: "unverified" });
   });
 
   it("never lets an uncheckable dep hide behind a checkable outdated one", () => {
     const mixed = [
-      "│ owner/repo/skills/tdd │ v0.5.0 │ v0.5.1 │ outdated │ git tags │",
-      "│ owner/repo/skills/foo │ v1.0.0 │ - │ unknown │ │",
+      "| owner/repo/skills/tdd | v0.5.0 | v0.5.1 | outdated | git tags |",
+      "| owner/repo/skills/foo | v1.0.0 | - | unknown | |",
       "[i] Some dependencies could not be checked (branch/commit refs)",
     ].join("\n");
     expect(parseOutdated(mixed)).toEqual({ ok: false, reason: "unverified" });
@@ -102,7 +101,7 @@ describe("parseOutdated", () => {
 
   describe("shape of the fields it forwards to the browser", () => {
     const row = (name: string, current: string, latest: string) =>
-      `│ ${name} │ ${current} │ ${latest} │ outdated │ git tags │`;
+      `| ${name} | ${current} | ${latest} | outdated | git tags |`;
 
     it("refuses a package cell whose last segment is not a skill slug", () => {
       expect(

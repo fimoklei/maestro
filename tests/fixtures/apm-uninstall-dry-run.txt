@@ -1,6 +1,6 @@
-[>] Uninstalling 1 package(s)...
+[>] Uninstalling 1 package...
 [+] fimoklei/agent-harness/skills/tdd - found in apm.yml
-[i] Dry run: Would remove 1 package(s):
+[i] Dry run: Would remove 1 package:
 [i]   - fimoklei/agent-harness/skills/tdd from apm.yml
 [i]   - fimoklei/agent-harness/skills/tdd from apm_modules/
 [*] Dry run complete - no changes made

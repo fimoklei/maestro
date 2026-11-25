@@ -1,0 +1,11 @@
+[i] Installing to user scope (/Users/dev/.apm/)
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0 (already in apm.yml)
+[>] Installing 1 new package...
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12 (cached)
+  |-- (files unchanged)
+  [+] <user scope> (local)
+  |-- (files unchanged)
+[i] Upgraded apm.lock.yaml to lockfile_version "4" (hash framing hardening); every package content_hash changes once. Commit it once CI runs APM 0.37 or later.
+
+[*] Updated apm.lock.yaml in 0.7s.

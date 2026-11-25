@@ -1,0 +1,11 @@
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0 (already in apm.yml)
+[>] Installing 1 new package...
+[i] Targets: claude, codex  (source: --target flag)
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12 (cached)
+  |-- (files unchanged)
+[i] Cleaned 2 stale deployed paths for fimoklei/agent-harness:
+  - .agents/skills/tdd/
+  - .claude/skills/tdd/
+
+[*] Cleaned 2 stale files in 0.8s.

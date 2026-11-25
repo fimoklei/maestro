@@ -1,0 +1,16 @@
+[i] Uninstalling from user scope (/Users/dev/.apm/)
+[>] Uninstalling 1 package...
+[+] microsoft/apm-sample-package - found in apm.yml
+[i] Removed microsoft/apm-sample-package from apm_modules/
+[i] Removed transitive dependency github/awesome-copilot/skills/review-and-refactor from apm_modules/
+[i] Cleaned 5 stale deployed paths for microsoft/apm-sample-package:
+  - ~/.claude-work/agents/design-reviewer.md
+  - ~/.claude-work/commands/accessibility-audit.md
+  - ~/.claude-work/commands/design-review.md
+  - ~/.claude-work/rules/design-standards.md
+  - ~/.claude-work/skills/style-checker/
+[i] Cleaned 1 stale deployed path for github/awesome-copilot/skills/review-and-refactor:
+  - ~/.claude-work/skills/review-and-refactor/
+[i] Removed microsoft/apm-sample-package from dependencies.apm in apm.yml
+[*] Updated ~/.apm/apm.yml
+[*] Uninstall complete: removed 1 package and 1 orphaned transitive dependency

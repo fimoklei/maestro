@@ -2,17 +2,18 @@
 
 How `apm` actually behaves, captured by running it or reading its source —
 never guessed (the trap in `LEARNINGS.md`). This document describes **one apm
-version: 0.32.0, verified 2026-10-01** (issues #772–#775 for the method).
-Maestro supports apm 0.32.0 and later.
+version: 0.38.1, verified 2026-11-25** (#1971; issues #772–#775 for the method).
+Maestro supports apm 0.38.1 and later.
 On an apm upgrade it is re-verified and rewritten section by section per
 `docs/agents/apm-upgrade.md` — sections are replaced, never appended to with
 version deltas; `git log` on this file is the version history.
 
-0.32.0 re-run: the real-apm canaries, the integration suite and every fixture
-captured by a single command. The sections that rest on the retired
-`apm-spike-833` repository (Selection narrowing, same-ref resets, mid-install
-failure) were **not** re-run byte for byte; the root-package canary covers
-their contracts on 0.32.0, and their measurements still read as 0.29.0's.
+0.38.1 re-run: the real-apm canaries, the integration suite and every fixture
+captured by a single command, plus hand measurements in a sandbox `HOME`
+for the claims no fixture holds. The sections that rest on the retired
+`apm-spike-833` repository (same-ref resets, mid-install failure) were
+**not** re-run byte for byte; the root-package canary covers their contracts
+on 0.38.1, and their measurements still read as 0.29.0's.
 
 Two grades of evidence back these claims, and they re-verify differently:
 
@@ -84,41 +85,51 @@ ADR-0014.
 The deploy path must not trust the exit code:
 
 1. **Auth fails at `apm view … versions`** (the latest-tag step), exit 1 —
-   never at `install`. The output carries apm's two fixed phrases,
-   `Authentication failed` and `No token available`; only these classify
-   auth-required. Do not match the git passthrough line (on 0.29.0
-   `fatal: unable to get password from user`; it was `could not read
-   Username` on 0.26.0) or the env hints, and never echo the matched text
-   (`security.md`). A nonexistent-but-authorized ref produces the same "all
-   probes failed … verify the path and ref" text as a missing-auth install,
-   so the install stage cannot distinguish auth from a typo'd ref — which is
-   why auth is classified at `view`, where the signal is clean. Fixture:
-   `apm-view-auth-failed.txt`.
-2. **Success = a marker, not the exit code.** Success is `Installed \d+ APM
-   dependenc` OR `No changes -- install state already up to date` present,
-   AND no `Installation failed`. The second
-   marker replaces the first when the ref is already installed and its files
-   are unchanged — a re-deploy that did nothing prints `(updated ref in
-   apm.yml)`, `[*] Updated apm.yml dependency entries`, `[+] … (cached)` /
-   `|-- (files unchanged)` and never the install marker. Both observed
-   failure modes (validation failure, symlink refusal) exit 1 with no marker;
-   an absent marker is failure, fail-closed, regardless of exit code.
-   Fixtures: `apm-install-ok.txt`, `apm-install-no-changes.txt`,
-   `apm-install-probes-failed.txt`, `apm-install-symlink-refused.txt`.
-3. **`is a symlink` = destination refusal** for a per-skill subpath ref
-   (a root package skips the link silently, § A batch install), and only
-   when the *leaf* skill dir is a symlink — a directory-level symlink installs fine (measured in
-   `docs/research/apm-0.25-symlink-topology-impact.md`). Match every phrase
-   on whitespace-normalized, lowercased output: Rich wraps mid-sentence,
-   `install` pins no `COLUMNS`, and the wrap point moves between versions
-   (`LEARNINGS.md` · rich-wraps-phrases-mid-sentence).
-4. **`-g` opens with a scope-support warning block** (`[!] User-scope
-   primitives are fully supported by …` / `Some primitives are not
-   supported: …`, now naming `grok-build` and `grok-cloud` among the fully
-   supported); a per-repo install skips straight to `[*] Created apm.yml`.
-   The block matches none of the signal phrases — inert for classification. Two
-   `[i] Skipped inactive experimental resolver for target 'copilot-cowork'` /
-   `'copilot-app'` lines follow the deployed-file rows — inert too.
+   never at `install`. The message goes to **stderr**, stdout stays empty.
+   It carries apm's two fixed phrases, `Authentication failed` and `No token
+   available`; only these classify auth-required. git's own passthrough line
+   on 0.38.1 (`fatal: Authentication failed for '<url>'`) carries the first
+   phrase too, so it classifies the same way; never match the env hints, and
+   never echo the matched text (`security.md`). A nonexistent-but-authorized
+   ref produces the same "all probes failed … verify the path and ref" text as
+   a missing-auth install, so the install stage cannot distinguish auth from a
+   typo'd ref — which is why auth is classified at `view`, where the signal
+   is clean. Fixture: `apm-view-auth-failed.txt` (stderr).
+2. **Success = a summary line, not the exit code.** The install summary
+   (source, `core/command_logger.py`) ends a run with exactly one of:
+   `Installed <n> APM dependenc…`, `Cleaned <n> stale file(s)` (a narrowing
+   that installed nothing new), `Updated apm.lock.yaml`, `Updated local
+   content`, `Removed <n> stale MCP server(s)`, or `No changes -- install
+   state already up to date`. A failed run ends with `Installation failed …`
+   or `Install failed after <t>s.`; an `Installed …` line can still carry
+   ` with <n> error(s)` or `; some requested packages were skipped`
+   (source). Every observed failure exits 1 or prints no success line; an
+   absent success line is failure, fail-closed, regardless of exit code. A
+   same-ref re-deploy prints `(already in apm.yml)`, `[+] … (cached)`,
+   `|-- (files unchanged)` and the `No changes` line. Fixtures:
+   `apm-install-ok.txt`, `apm-install-no-changes.txt`,
+   `apm-install-narrowed.txt`, `apm-install-probes-failed.txt`,
+   `apm-install-symlink-refused.txt`.
+3. **`Unsafe skill destination '<path>'; refusing deployment.` = a linked
+   destination.** Measured 2026-11-25 for a leaf symlink
+   (`.claude/skills/<name>` → a real folder) and a directory-level symlink
+   (`.claude/skills` → a real folder), per subpath ref and per global root
+   package: the install writes nothing and prints `Install failed after
+   <t>s.`. A directory-level symlink is **no longer** a working layout.
+   Two other linked shapes crash instead, with `Cannot translate
+   PosixPath(…) to a lockfile path: path is outside the project tree … This
+   is a bug -- please report it.`: a **dangling** leaf symlink, and a leaf
+   symlink under a **per-repo root package**. Neither names the link; the
+   driver reads them as a plain failure. Match every phrase on
+   whitespace-normalized, lowercased output: Rich wraps mid-sentence and the
+   wrap point moves between versions (`LEARNINGS.md` ·
+   rich-wraps-phrases-mid-sentence).
+4. **`-g` opens with `[i] Installing to user scope (<home>/.apm/)`**, the
+   home written out in full, and no scope-support warning block.
+   `[i] Skipped inactive experimental resolver for target '…'` lines may
+   follow the deployed-file rows, and a per-repo uninstall outside a git
+   remote prints `[!] Org policy not applied (outcome=no_git_remote, …)`.
+   All match none of the signal phrases — inert for classification.
 5. **A throttled pre-flight probe prints an `[i]` line and continues.**
    The validation step probes a public repo **anonymously** before spending
    the token (source, `install/validation.py`), so a machine whose
@@ -135,8 +146,8 @@ The deploy path must not trust the exit code:
    ("Unobserved" below). Every capture ran non-TTY with no stdin and
    completed.
 7. **An unknown `-t` token is an error, not a fallback** (source,
-   `core/target_detection.py::resolve_targets` → `_validate_canonical_v2`
-   raises `UnknownTargetError`).
+   `core/target_detection.py::_validate_canonical_v2` raises
+   `UnknownTargetError`).
 
 ### Root package and its Selection
 
@@ -155,9 +166,11 @@ whole sequence (issue #957). Captures: `apm-957-*.txt`,
   apm_package`, and `deployed_files` lists the selected skills only.
 - **Narrowing takes two steps:** write the shorter list to `skills:`, then
   install the same names as `--skill` flags (a `--skill` list alone unions
-  with the persisted one, § Deploy / #929). The install prints `Cleaned N
-  stale files`, and the dropped skill leaves disk, `deployed_files` and
-  `skill_subset` in every tool root the package wrote.
+  with the persisted one, § Deploy / #929). The install lists each removed
+  folder under `[i] Cleaned <n> stale deployed path(s) for <pkg>:` and ends
+  with `Cleaned <n> stale file(s)` instead of the install marker; the
+  dropped skill leaves disk, `deployed_files` and `skill_subset` in every
+  tool root the package wrote. Fixture: `apm-install-narrowed.txt`.
 - **`skills: []` is refused, not empty.** The manifest fails to parse before
   anything is touched: `Invalid APM dependency …: skills: must contain at
   least one name; remove the field to install all skills in the bundle.`,
@@ -166,44 +179,48 @@ whole sequence (issue #957). Captures: `apm-957-*.txt`,
   installs the **whole** bundle (36 skills at that tag) and leaves no
   `skill_subset` in the lockfile. An empty Selection therefore has no
   expression: the last removal is an `apm uninstall` of the package.
+- **A subpath package from the same repository is refused beside the root.**
+  Installing `…/.apm/skills/tdd#v0.6.0` over the root package of the same
+  repository exits 1 with `<repo> and its subdirectory package <repo>/<path>
+  cannot both be declared in apm.yml … Keep only one of them.`, restores
+  `apm.yml` and leaves the lockfile unchanged. A manifest that already
+  holds both (a legacy per-skill entry beside the root) makes every install
+  over it fail the same way.
 - **A named uninstall of the root package is scoped.** Measured with a second
-  dependency from the *same repository* (`…/.apm/skills/tdd#v0.6.0`) and a
-  hand-placed `.claude/skills/handmade/` beside it: the Harness entry, its
-  files and its `apm_modules/` subtree go; the other dependency and the
+  dependency from *another* repository (`microsoft/apm-sample-package#v1.0.0`)
+  and a hand-placed `.claude/skills/handmade/` beside it: the Harness entry,
+  its files and its `apm_modules/` subtree go; the other dependency and the
   hand-placed directory stay — in `apm.yml`, in the lockfile and on disk, per
   repo and at `-g`. The lockfile is rewritten while another dependency
   remains; it is deleted only with the last one (§ Remove).
-- **A blocked removal still deletes the rest.** With one deployed file edited
-  locally the uninstall exits 1 with no success marker and retains that file,
-  while the package's other skills are already gone and `apm.yml` and the
-  lockfile still list the whole Selection. Neither the exit code nor the
-  markers say what is on disk.
+- **An edited copy refuses the removal before anything is deleted.** With one
+  deployed file edited locally the uninstall exits 1 with no success marker;
+  every file, `apm.yml` and the lockfile stay as they were (§ Remove).
 
 ### A batch install
 
-One install carrying every staged name, measured 2026-09-22 per repo against
-`github.com/fimoklei/agent-harness#v0.6.0` for a bulk deploy (issue #1039).
-Captures: `apm-1039-*.txt`, `apm.lock.1039-batch-symlink-skipped.yaml`,
-`apm.yml.1039-failed-batch-kept.yaml`; commands in `tests/fixtures/README.md`.
+One install carrying every staged name. Measured 2026-09-22 per repo against
+`github.com/fimoklei/agent-harness#v0.6.0` for a bulk deploy (issue #1039)
+and re-measured on 0.38.1 (2026-11-25). Fixtures:
+`apm-install-unknown-skill.txt`, `apm-install-unmanaged-conflict.txt`.
 
 - **One failing name fails the whole install.** A `--skill` name the package
-  does not carry: exit 1, no success marker, `Installation failed with 1
+  does not carry: exit 1, no success line, `--skill did not match skills in
+  '<repo>'. Requested: <name>. Available: …` and `Installation failed with 1
   error(s) … No install transaction changes were committed.` Nothing reaches
   disk or the lockfile, and a first install removes the `apm.yml` it created.
-  Over an existing Selection the files and the lockfile stay as they were, but
-  `skills:` keeps the list written before the install, failing name included.
-- **A symlinked leaf is skipped, not refused.** With `.claude/skills/<name>` a
-  symlink, the root-package install exits 0 with the success marker, prints
-  `1 file skipped -- local files exist, not managed by APM`, deploys the other
-  names and that name's `.agents` copy, and writes nothing through the link.
-  The lockfile lists the name in `skill_subset` but has no `.claude/skills/<name>`
-  row. Neither the marker nor the exit code shows it, so Maestro refuses a
-  linked destination before the install.
+- **A hand-made folder with a selected name refuses the whole install.** With
+  `.claude/skills/<name>/SKILL.md` present and not owned by apm, the install
+  exits 1 with `Installation refused: skill '<name>' from '<repo>' … conflicts
+  with unmanaged file '.claude/skills/<name>/SKILL.md'.` and writes nothing.
+- **A symlinked leaf fails the whole install** (§ Install signals, item 3).
+  Maestro refuses a linked destination before the install.
 
 ## Lockfile — `apm.lock.yaml`
 
-Top level: `lockfile_version`, `generated_at`, `apm_version`,
-`dependencies: []`, `deployments: []`. A tag-pinned skill entry:
+Top level: `lockfile_version` (`'4'`), `apm_version`, `manifest_targets`
+(the `targets:` list of `apm.yml`), `dependencies: []`, `deployments: []`.
+A tag-pinned skill entry:
 
 ```yaml
 - repo_url: fimoklei/agent-harness
@@ -226,7 +243,7 @@ deployments:                    # one row per deployed file per deploy root
   target: claude                # the DEPLOY ROOT (claude / agents), not a tool
   value: .claude/skills/tdd/SKILL.md   # the deployed path
   runtime: null                 # null in every observed row
-  scope: project                # reads "project" even for -g — see below
+  scope: project                # "user" for -g — see below
   owners:
   - fimoklei/agent-harness/skills/tdd
   active_owner: fimoklei/agent-harness/skills/tdd
@@ -236,8 +253,15 @@ deployments:                    # one row per deployed file per deploy root
 - Deploy-state reads `resolved_ref` (version), `virtual_path` (identity +
   name), `package_type` (primitive type) — nothing else. Its Zod schema
   ignores unknown keys, so additive shape changes are inert for the reader.
-- **0.32.0 drops `generated_at` from new lockfiles** and adds no key (diffed
-  against `apm.lock.tag-pinned.yaml`, 2026-10-01); the parser never required it.
+- **0.38.1 writes `lockfile_version: '4'` and adds `manifest_targets`**;
+  `generated_at` stays absent (diffed against
+  `apm.lock.tag-pinned-v0.5.1.yaml` and
+  `apm.lock.global-claude-config-dir-inside-home.yaml`, 2026-11-25). The
+  first 0.38.1 install over an older lockfile prints `[i] Upgraded
+  apm.lock.yaml to lockfile_version "4" (hash framing hardening); every
+  package content_hash changes once.` and, with nothing else to do, ends
+  with `Updated apm.lock.yaml`. A 0.38.1 uninstall reads an old lockfile
+  directly. The parser reads none of these keys.
 - **No new key for a skill install between 0.26.0 and 0.29.0.** The four
   lockfile fixtures re-captured on 0.29.0 carry the same key set as their
   0.26.0 captures (diffed 2026-09-04). apm's entry model (source,
@@ -266,12 +290,9 @@ deployments:                    # one row per deployed file per deploy root
   `value` is the deployed path; `runtime` was `null` in every observed row.
   `target` therefore no longer says which tool asked for the shared copy —
   the per-tool grouping rework (#172) cannot read it as a tool name.
-- **`scope` reads `project` even for a `-g` install.** A single-tool global
-  and a single-tool per-repo install produce identical payloads
-  (`apm.lock.global-single-tool.yaml` vs `apm.lock.tag-pinned-v0.5.1.yaml`,
-  modulo `generated_at` and a fixture comment header) — scope is known only
-  from *which* lockfile you read (`~/.apm/apm.lock.yaml` vs the repo's),
-  never from a field inside it.
+- **`scope` reads `user` for a `-g` install**; a lockfile last written by an
+  older apm says `project` for both. Scope is known only from *which* lockfile you read
+  (`~/.apm/apm.lock.yaml` vs the repo's), never from a field inside it.
 - A two-tool install (`-t claude,codex`) writes **one** entry with deployed
   files under both `.claude/skills/<name>` and `.agents/skills/<name>` —
   codex uses the cross-client agent-skills dir; there is no `.codex/skills`.
@@ -293,7 +314,8 @@ deployments:                    # one row per deployed file per deploy root
   Since ADR-0011's #1557 amendment it never reclaims `.claude` either:
   Cursor, OpenCode and Devin Desktop read that folder too.
 - **`claude` honours `CLAUDE_CONFIG_DIR` at user scope (measured 2026-11-11,
-  #1796).** With it set, `-g` writes `$CLAUDE_CONFIG_DIR/skills/<name>`, not
+  #1796; re-measured inside `HOME` on 0.38.1, 2026-11-25, outside `HOME`
+  not re-run).** With it set, `-g` writes `$CLAUDE_CONFIG_DIR/skills/<name>`, not
   `~/.claude/skills`. apm trims the value (blank = unset), expands `~`,
   resolves a relative value against its cwd and resolves symlinks on both the
   value and `$HOME`. `deployed_files` and `deployed_file_hashes` record the
@@ -301,32 +323,35 @@ deployments:                    # one row per deployed file per deploy root
   and absolute outside it (`/Volumes/work/claude/skills/tdd/SKILL.md`); long
   absolute hash keys use YAML's `? ` key form. `.agents` never moves.
   Fixtures: `apm.lock.global-claude-config-dir-{inside,outside}-home.yaml`.
-  Setting the variable on a deployment made without it moves the copies: the
-  next `install -g` deletes the `.claude` copies and records only the new
-  folder (measured 2026-11-22, #1872).
+  Setting the variable on a deployment made without it **adds** copies: the
+  next `install -g` writes the new folder, keeps the `.claude` copies, and
+  the lockfile records both (measured 2026-11-25; #1872). An uninstall then
+  removes only the folder the variable selects (§ Remove, item 4).
 
 ## Drift — `apm outdated`
 
 No `--json` (`-v` lists available tags, `-j` sets the parallel-check count).
-The output is a human Rich table; the parser sits behind the driver port,
+The output is a human table drawn in ASCII — `|` between cells, `+---+`
+rules — never box-drawing characters (source, `utils/console.py::new_table`
+refuses any other box); the parser sits behind the driver port,
 integration-tested against captured output. Rich truncates the Package
 column to terminal width — capture and parse non-TTY with `COLUMNS=200`
 (`WIDE_COLUMNS` in `apm-cli-driver.ts`, the width production sets); never
-key the parser on the full package name surviving. Observed states, table
-shape unchanged since 0.26.0:
+key the parser on the full package name surviving. Observed states:
 
 - Tag-pinned, newer tag exists → row `Current v0.5.0 | Latest v0.6.0 |
   Status outdated | Source git tags`.
 - Root package (repository-root ref) → one row for the whole package, named
   by the repository's last segment (`maestro-fixture-harness`); never a row
-  per selected skill (0.32.0, `pnpm smoke:ready --scenario behind`).
+  per selected skill (measured on 0.32.0 via `pnpm smoke:ready --scenario
+  behind`; not re-run on 0.38.1).
 - Local-path dep → `No remote dependencies to check` (drift impossible —
   ADR-0003's reason to forbid local paths).
 - Git unpinned → `All dependencies are up-to-date` (tracks the branch, not
   tags).
 - Tag-pinned, remote unreachable (no auth/network) → a row with `Latest -`,
   `Status unknown`, an **empty Source cell**, summary `[i] Some dependencies
-  could not be checked (branch/commit refs)`, **exit 0**. Fixture:
+  could not be checked`, **exit 0**. Fixture:
   `apm-outdated-could-not-check.txt`. Parse rows with empty cells intact or
   Status shifts a column left. The parser reports `{ ok:false, reason:
   "unverified" }` and runs before row parsing, so a mix of outdated +
@@ -344,7 +369,8 @@ scoped to user deps.
 
 `apm view <owner>/<repo> versions` queries the remote (network + auth for a
 private repo) and prints every tag and branch with its short commit — no
-`--json`, a Rich table that mixes branches in. Maestro keeps only `tag` rows
+`--json`, an ASCII table (`| v0.6.0 | tag | f8208f12 |`) that mixes
+branches in. Maestro keeps only `tag` rows
 shaped `vX.Y.Z` and semver-sorts them itself: apm's row order is not
 contractual, and lexicographic sort gets `v0.10.0 > v0.9.0` wrong. The query
 is repo-level — it lists the repo's tags, not those whose tree contains
@@ -419,66 +445,67 @@ the host-less `<owner>/<repo>/skills/<name>`, and the ref without its tag all
 match the same `apm.yml` entry. A bare skill name does not: `apm uninstall
 tdd` prints `[x] Invalid package format: tdd` and removes nothing.
 
-### Order of operations (source, `commands/uninstall/cli.py`)
+### Order of operations (measured)
 
-Selection first, then deployed files, then `apm.yml`, `apm_modules/`, the
-lockfile. Two consequences: a selection failure changes nothing, and a
-deployed-file failure has already deleted whatever it could before it
-stops.
+Selection first, then a check of every tracked file against its recorded
+hash, then deployed files, `apm.yml`, `apm_modules/`, the lockfile. A
+selection failure and an edited file both stop the run before anything is
+deleted.
 
 ### Uninstall signals
 
-Exit codes now carry meaning — success 0, every abort below 1 — but the
-driver still classifies on markers, because a marker is what proves the
-lockfile entry went.
+Exit codes carry meaning — success 0, every abort below 1 — but the driver
+still classifies on markers, because a marker is what proves the lockfile
+entry went.
 
-1. **Success = `Uninstall complete: Removed \d+ package(s) from apm.yml`.**
-   Absent marker is failure, fail-closed. Fixtures: `apm-uninstall-ok.txt`,
-   `apm-uninstall-global-ok.txt`. Success output names the package without
-   its `#vX.Y.Z` suffix and reports `[i] Cleaned N stale files from <pkg>`;
-   0.26.0's `Cleaned up N integrated skills` / `Removed N deployed skills
-   file(s)` lines are gone.
+1. **Success = `Uninstall complete: removed <n> package(s)`**, optionally
+   followed by ` and <n> orphaned transitive dependenc…`. Absent marker is
+   failure, fail-closed. The run opens with `Uninstalling 1 package...` and
+   lists the deleted folders under `[i] Cleaned <n> stale deployed path(s)
+   for <pkg>:`. Fixtures: `apm-uninstall-ok.txt`,
+   `apm-uninstall-global-ok.txt`.
 2. **Selection is all-or-nothing.** A package that is not in `apm.yml`
    prints `[x] <ref> was not found in apm.yml. Run 'apm deps list' …` and
-   `[x] Uninstall aborted: N requested package(s) could not be selected.
-   Resolve the errors above and retry; no changes were made.`, exit 1. With
-   several packages named, one absent package aborts the whole run before
-   anything is touched — measured with one installed and one absent package:
-   both stayed. 0.26.0's partial-success shape (success marker plus `[!]
-   Note: N package(s) were not found`) can no longer occur; the driver's
-   not-found signals stay as a fail-closed guard. Fixture:
-   `apm-uninstall-not-found.txt`.
-3. **An edited or added file aborts the removal — after deleting the
-   rest.** With one deployed file edited locally:
+   `[x] Uninstall aborted: <n> requested package could not be selected.
+   Resolve the errors above and retry; no changes were made.`, exit 1. One
+   absent package among several aborts the whole run before anything is
+   touched, so the success marker and a not-found line never appear
+   together; the driver's not-found signal stays as a fail-closed guard.
+   Fixture: `apm-uninstall-not-found.txt`.
+3. **An edited file refuses the removal before anything is deleted.** With
+   one deployed file edited locally:
 
    ```
-   [i] Removed <pkg> from apm_modules/
-   Retained user-edited file .claude/skills/tdd/SKILL.md from <pkg>; resolve it and retry.
-   [i] Cleaned 12 stale files from <pkg>
-   [x] Uninstall could not remove tracked target files; manifest and lockfile ownership were preserved. Package directories may already have been removed.
-   [x]   - .claude/skills/tdd
-   [x]   - .claude/skills/tdd/SKILL.md
-   [x] Resolve or remove the listed files, then retry uninstall.
+   [x] Uninstall refused: deleting these tracked files needs deployment evidence that APM wrote them. Nothing was removed; apm.yml and apm.lock.yaml were not changed.
+   [x]   - .claude/skills/tdd/SKILL.md: edited since APM deployed it
+   [x] Move aside any listed file that holds your edits, then run 'apm install' to re-establish deployment evidence (once, with access to the package source), then rerun 'apm uninstall'.
+   [x] If the source is unreachable, move each listed file aside or delete it, then run 'apm uninstall' to finish the uninstall.
    ```
 
-   Exit 1, no success marker. `apm.yml` and the lockfile entry
-   keep the package, but `apm_modules/` no longer does; on disk only the edited file survives —
-   the other files across both tool directories are already gone. An
-   **untracked file** added inside the deployed directory does the same
-   (retained: the directory), and a **missing** deployed file does not:
-   apm counts it among the stale files and completes. Deleting the retained
-   file and running the same uninstall again completes cleanly. Fixture:
-   `apm-uninstall-retained.txt`. Maestro's removal guard refuses a diverged
-   copy in front of this (`apm-driver.md` § Remove, #775).
-4. **With `CLAUDE_CONFIG_DIR` set, every uninstall aborts** (measured
-   2026-11-22, #1947), with or without an earlier switch of folder. The
-   `could not remove tracked target files` block of item 3 lists every file
-   under `$CLAUDE_CONFIG_DIR`, exit 1. Files, `apm.yml` and the lockfile stay
-   as they were, `apm_modules/` is already gone, and a retry fails the same
-   way. With the variable unset, the same sequence succeeds.
-5. **The `Cleaned N stale files` count is what it deleted this run**, so it
-   moves with the state it found (14 for a clean two-tool copy, 12 with one
-   file retained). Never parse it.
+   Exit 1, no success marker, every file and record unchanged. Moving the
+   edited file aside and running the same uninstall again completes. An
+   **untracked file** added inside the deployed folder does not block: the
+   run completes with the marker, deletes the tracked files and keeps the
+   folder with `[!] … Kept skill directory .claude/skills/<name> for 1
+   file(s) not owned by APM`. A **missing** deployed file does not block
+   either. Fixture: `apm-uninstall-retained.txt`. Maestro's removal guard
+   refuses a diverged copy in front of this (`apm-driver.md` § Remove, #775).
+4. **`CLAUDE_CONFIG_DIR` scopes an uninstall to one folder** (measured
+   2026-11-25, #1947). With the copies only under `$CLAUDE_CONFIG_DIR` the
+   uninstall completes like item 1 and removes that folder's copies. After a
+   switch of folder (§ Lockfile: copies under both `.claude` and
+   `$CLAUDE_CONFIG_DIR`), an uninstall with the variable set removes only
+   `$CLAUDE_CONFIG_DIR`'s copies, keeps the package in `apm.yml` and its
+   `.claude` rows in the lockfile, and prints `Removed <pkg> from the
+   selected profile; kept in apm.yml because another profile still uses it`
+   and `Uninstall complete: removed 1 package from the selected profile
+   only`, exit 0. Running it again prints the same and changes nothing; with
+   the variable unset the next uninstall removes the rest and the package.
+   The driver reads `from the selected profile only` as failure. Fixtures:
+   `apm-uninstall-claude-config-dir.txt`,
+   `apm-uninstall-selected-profile-only.txt`.
+5. **The cleaned-paths count is what it deleted this run**, so it moves with
+   the state it found. Never parse it.
 6. Match every phrase whitespace-normalized and lowercased — the output is
    Rich-rendered like install's (`LEARNINGS.md` ·
    rich-wraps-phrases-mid-sentence).
@@ -496,7 +523,7 @@ lockfile entry went.
 ### A legacy entry's removal can take a root package's copies
 
 Observed once, on a real global install (#958, 2026-09-13), not reproduced in
-a sandbox and backed by no fixture. The lockfile was last written by apm
+a sandbox, backed by no fixture and not re-measured on 0.38.1. The lockfile was last written by apm
 0.20.0 and held two entries: a legacy `claude_skill` row
 (`fimoklei/agent-harness`, `virtual_path: skills/47`, no `deployed_files`)
 and a root package from another repository (`fimoklei/harness`, three
@@ -641,7 +668,7 @@ uncheckable offline — measurements and the reasoning are in
 `apm outdated` reports version drift only. Edits to deployed files are
 invisible to `install`, which silently remediates them (above). Only
 `uninstall` compares deployed files against `deployed_file_hashes`, and it
-uses the answer to *retain* the edited file, not to report it (§ Remove).
+uses the answer to *refuse* the removal, not to report the edit (§ Remove).
 Maestro's own detection:
 
 - **Destination drift:** compare `deployed_file_hashes` against a live
@@ -667,18 +694,16 @@ global lockfile means nothing deployed (empty, not an error). A global
 install still appends `apm_modules/` to the **cwd's** `.gitignore` — run
 global deploys from a neutral cwd.
 
-- **A symlink component in `HOME` makes a global install deploy nothing.**
-  apm reports success, creates the skill directories and copies no files
-  into them; the lockfile carries no `deployed_file_hashes`. Cause and
-  trigger in `docs/research/772-apm-0.29.0-findings.md` § F1; a standard
-  `/Users/<name>` home is not affected, a sandbox under `/tmp` or
-  `tmpdir()` is. Every test sandbox `realpath`s its home (`LEARNINGS.md` ·
-  symlinked-home-deploys-nothing). Not filed upstream.
+- **A symlink component in `HOME` no longer empties a global install.**
+  With `HOME` under `/tmp` (a symlink to `/private/tmp`) a 0.38.1 `-g`
+  install deploys every file and records its hashes (measured 2026-11-25;
+  the older failure: `docs/research/772-apm-0.29.0-findings.md` § F1).
+  Every test sandbox still `realpath`s its home, so recorded paths
+  and the reader's `HOME` agree.
 - **`-t` is honoured literally; apm never checks tool presence** (source:
-  `core/target_detection.py::resolve_targets` takes `-t` as Priority 1 and
-  returns those tokens verbatim after validating each is a known target
-  name; the filesystem scan runs only when `-t` and `apm.yml` targets are
-  both absent). `-t claude,codex` on a machine without Codex writes both
+  `core/target_detection.py::resolve_effective_target_decision` returns an
+  explicit `-t` first, before the manifest and the filesystem scan; each
+  token is validated against the known target names). `-t claude,codex` on a machine without Codex writes both
   subtrees, exit 0, no warning.
 - **No apm command lists globally-installed tools.** `apm targets --json` is
   project-scoped — it scans the cwd for markers; in a repo holding only
@@ -698,14 +723,13 @@ global deploys from a neutral cwd.
 - **Ghost entries survive a narrowing `-t` (source + command).** `apm
   install -g -t claude` over a lockfile written by `-t claude,codex` keeps
   the `.agents` `deployed_file_hashes` and leaves the `.agents/skills/<name>`
-  files on disk — re-measured on 0.29.0 (all six `.agents` files and their
-  hashes survived). Source, re-read on 0.32.0 (the file-level hashes above were re-measured on
-  0.29.0 only): `install/phases/targets.py::
-  _read_yaml_targets` sources the declared target universe from the
-  consumer's `apm.yml` alone; `declared_target_profiles` returns `None`
-  when it names nothing, and `core/deployment_state.py::_is_stale` then
-  short-circuits to preserve-all (it also requires
-  `intent.authoritative_targets`, false on the uninstall path). Pruning
+  files on disk — re-measured on 0.38.1 (all six `.agents` files and their
+  hashes survived, `targets:` kept both tools). Source, present on 0.38.1:
+  `install/phases/targets.py::_read_yaml_targets` and
+  `declared_target_profiles` source the declared target universe from the
+  consumer's `apm.yml`, and `core/deployment_state.py::_is_stale` keeps
+  every row unless `intent.authoritative_targets` is set (false on the
+  uninstall path). Pruning
   fires on the install's own active targets or on a row for a known target
   the manifest does not declare — never on `-t`. Because the first install
   persists `targets:` and a narrower `-t` does not rewrite it, the declared
@@ -716,8 +740,7 @@ global deploys from a neutral cwd.
   uninstall -g` — the command that wiped 19 pre-existing skill dirs from a
   real `~/.claude/skills/` while the global lockfile read `dependencies:
   []` — is rejected by the argument parser (`Error: Missing argument
-  'PACKAGES...'`, exit 2, nothing touched; 0.26.0 measurement, parser
-  unchanged in the 0.29.0 `--help` surface). A *named* `-g` uninstall
+  'PACKAGES...'`, exit 2, nothing touched; re-measured on 0.38.1). A *named* `-g` uninstall
   removes only its own package (§ Remove; `apm-uninstall-global-ok.txt`,
   re-captured beside an unrelated skill that survived). The apm version
   behind the incident was not recorded. The rule stands regardless: never

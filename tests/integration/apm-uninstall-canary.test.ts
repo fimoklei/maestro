@@ -117,7 +117,6 @@ describe.runIf(enabled)("real apm global uninstall canary", () => {
   let home: string;
 
   beforeEach(async () => {
-    // A symlinked HOME makes apm ≥0.29.0 deploy nothing.
     home = await realpath(
       await mkdtemp(join(tmpdir(), "maestro-uninstall-global-home-")),
     );
@@ -183,6 +182,91 @@ describe.runIf(enabled)("real apm global uninstall canary", () => {
     const lock = await readFile(join(home, ".apm", "apm.lock.yaml"), "utf8");
     expect(lock).not.toContain(`virtual_path: ${SUBPATH}/${REMOVED}`);
     expect(lock).toContain(`virtual_path: ${SUBPATH}/${KEPT}`);
+  });
+
+  async function globalDriver(env: NodeJS.ProcessEnv) {
+    const { stdout: tokenOut } = await run("gh", ["auth", "token"]);
+    const scratchCwd = join(home, ".apm-scratch");
+    return new ApmCliDriver({
+      run: (file, args, options) =>
+        run(file, args, {
+          ...options,
+          env: {
+            ...process.env,
+            HOME: home,
+            GITHUB_TOKEN: tokenOut.trim(),
+            ...env,
+          },
+        }),
+      prepareGlobalCwd: async () => {
+        await mkdir(scratchCwd, { recursive: true });
+        return scratchCwd;
+      },
+    });
+  }
+
+  it("removes the Harness from the folder CLAUDE_CONFIG_DIR names (#1947)", {
+    timeout: 180_000,
+  }, async () => {
+    const workDir = join(home, ".claude-work");
+    const driver = await globalDriver({ CLAUDE_CONFIG_DIR: workDir });
+    const ref = `github.com/${HARNESS}#v0.6.0`;
+
+    const installed = await driver.deploySkill({
+      target: { kind: "global" },
+      ref,
+      skills: [KEPT],
+      tools: ["claude", "codex"],
+    });
+    expect(installed).toEqual({ ok: true });
+    await expect(
+      access(join(workDir, "skills", KEPT, "SKILL.md")),
+    ).resolves.toBeUndefined();
+
+    const removed = await driver.removeSkill({
+      target: { kind: "global" },
+      ref,
+    });
+
+    expect(removed).toEqual({ ok: true });
+    for (const skillDir of [
+      join(workDir, "skills", KEPT),
+      join(home, ".agents", "skills", KEPT),
+      join(home, ".apm", "apm.lock.yaml"),
+    ]) {
+      await expect(access(skillDir)).rejects.toThrow();
+    }
+  });
+
+  it("fails a Remove that leaves copies in another Claude folder", {
+    timeout: 180_000,
+  }, async () => {
+    const workDir = join(home, ".claude-work");
+    const ref = `github.com/${HARNESS}#v0.6.0`;
+    const deploy = { target: { kind: "global" } as const, ref, skills: [KEPT] };
+    const tools = ["claude"] as const;
+
+    const plain = await globalDriver({});
+    expect(await plain.deploySkill({ ...deploy, tools: [...tools] })).toEqual({
+      ok: true,
+    });
+    const switched = await globalDriver({ CLAUDE_CONFIG_DIR: workDir });
+    expect(
+      await switched.deploySkill({ ...deploy, tools: [...tools] }),
+    ).toEqual({ ok: true });
+
+    const removed = await switched.removeSkill({
+      target: { kind: "global" },
+      ref,
+    });
+
+    expect(removed).toEqual({ ok: false });
+    await expect(
+      access(join(home, ".claude", "skills", KEPT, "SKILL.md")),
+    ).resolves.toBeUndefined();
+    expect(await readFile(join(home, ".apm", "apm.yml"), "utf8")).toContain(
+      `git: ${HARNESS}`,
+    );
   });
 });
 
