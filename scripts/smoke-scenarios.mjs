@@ -24,6 +24,7 @@ import {
 import { seedToolPresence } from "./seed-sandbox.mjs";
 import { readCockpit, readGlobalCockpit } from "./smoke-cockpit-reading.mjs";
 import { editCopyByHand, putOlderCopy } from "./smoke-copies.mjs";
+import { NO_TOOLS_SCENARIO, seedNoTools } from "./smoke-no-tools.mjs";
 
 export { readCockpit, readGlobalCockpit };
 
@@ -240,6 +241,11 @@ export const SCENARIO_CATALOG = [
   {
     name: OFFLINE_SCENARIO,
     summary: "The Harness remote stops answering until the next `pnpm smoke`.",
+  },
+  {
+    name: NO_TOOLS_SCENARIO,
+    summary:
+      "No tool's marker file in the sandbox home and no repository but the other named scenarios': Global detects no tool, and alone it shows No targets yet.",
   },
 ];
 
@@ -715,6 +721,13 @@ export async function seedScenarios({ api, sandboxDir, fixtureDir, names }) {
   if (seedsGlobal) seeded.push(paths.home);
   if (names.some((name) => [HARNESS_SCENARIO, OFFLINE_SCENARIO].includes(name)))
     seeded.push(paths.clone);
+  if (names.includes(NO_TOOLS_SCENARIO)) {
+    const mismatch = await seedNoTools(api, {
+      home: paths.home,
+      keptRepos: scenarios.map(repoOf),
+    });
+    if (mismatch !== null) problems.push(mismatch);
+  }
   // Last, so no deploy reading is taken against the changed Harness.
   if (names.includes(HARNESS_SCENARIO)) {
     pushUnreleasedChange({

@@ -1,6 +1,7 @@
 import type { HarnessChange } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { recordHashes } from "../../scripts/smoke-copies.mjs";
+import { noToolsMismatch } from "../../scripts/smoke-no-tools.mjs";
 import {
   type HarnessRead,
   type HarnessReadRow,
@@ -48,7 +49,7 @@ describe("parseScenarioArg", () => {
 
   it("expands all to every scenario", () => {
     expect(parseScenarioArg(["--scenario", "all"])).toEqual(SCENARIO_NAMES);
-    expect(SCENARIO_NAMES).toHaveLength(15);
+    expect(SCENARIO_NAMES).toHaveLength(16);
     expect(SCENARIO_NAMES).toEqual(
       expect.arrayContaining([
         "edits-in-harness",
@@ -58,6 +59,7 @@ describe("parseScenarioArg", () => {
         "unreadable",
         "harness-offline",
         "global-folders",
+        "no-tools",
       ]),
     );
   });
@@ -618,5 +620,52 @@ describe("releaseMirrorProblem", () => {
         mirrored: { "v1.0.0": "aaa", "v1.1.0": "zzz" },
       }),
     ).toMatch(/refs\/maestro\/tags\/v1\.1\.0 is zzz, expected bbb/);
+  });
+});
+
+describe("noToolsMismatch", () => {
+  const folder = (tool: string, detected: boolean) => ({ tool, detected });
+  const kept = "/sandbox/home/Projects/scenarios/empty";
+
+  it("passes when no folder's tool is detected and only kept repos remain", () => {
+    expect(
+      noToolsMismatch({
+        deployState: {
+          folders: [folder("claude", false), folder("codex", false)],
+        },
+        repos: [{ path: kept }],
+        keptRepos: [kept],
+      }),
+    ).toBeNull();
+  });
+
+  it("names a tool Global still detects", () => {
+    expect(
+      noToolsMismatch({
+        deployState: {
+          folders: [folder("claude", false), folder("codex", true)],
+        },
+        repos: [],
+        keptRepos: [],
+      }),
+    ).toBe('scenario "no-tools": Global expected no detected tool, got codex');
+  });
+
+  it("names a repository left registered", () => {
+    expect(
+      noToolsMismatch({
+        deployState: { folders: [folder("claude", false)] },
+        repos: [{ path: "/sandbox/home/Projects/checkout-service" }],
+        keptRepos: [],
+      }),
+    ).toBe(
+      'scenario "no-tools": expected no other registered repository, got /sandbox/home/Projects/checkout-service',
+    );
+  });
+
+  it("refuses a Global read without folders", () => {
+    expect(
+      noToolsMismatch({ deployState: null, repos: [], keptRepos: [] }),
+    ).toBe('scenario "no-tools": Global expected its folders, got none');
   });
 });
