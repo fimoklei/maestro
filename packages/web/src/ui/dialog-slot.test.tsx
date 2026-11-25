@@ -60,6 +60,8 @@ function RemoveDialog({ onClose }: { onClose: () => void }) {
 
 function Screen() {
   const dialog = useDialogSlot<"rename" | "remove">();
+  const closeRename = () => dialog.close("rename");
+  const closeRemove = () => dialog.close("remove");
   return (
     <>
       <Button variant="quiet" onClick={() => dialog.open("rename")}>
@@ -74,11 +76,14 @@ function Screen() {
         dialogs={{
           rename: () => (
             <RenameDialog
-              onClose={dialog.close}
-              onRemove={() => dialog.open("remove")}
+              onClose={closeRename}
+              onRemove={() => {
+                dialog.open("remove");
+                closeRename();
+              }}
             />
           ),
-          remove: () => <RemoveDialog onClose={dialog.close} />,
+          remove: () => <RemoveDialog onClose={closeRemove} />,
         }}
       />
     </>

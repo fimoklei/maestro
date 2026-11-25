@@ -152,7 +152,7 @@ export function HarnessView({
   });
   const rereadInventory = useRereadInventory();
   const closePlan = () => {
-    dialog.close();
+    dialog.close("release");
     discardPlan();
     // A failed attempt must not haunt the next time this dialog opens.
     publish.reset();
@@ -168,7 +168,7 @@ export function HarnessView({
       // The dialog closes on success and keeps no result of its own (#849).
       {
         onSuccess: () => {
-          dialog.close();
+          dialog.close("release");
           discardPlan();
         },
       },
@@ -560,10 +560,15 @@ export function HarnessView({
                 />
               ),
               "import-skills": () => (
-                <ImportSkillsAction screen={table} onClose={dialog.close} />
+                <ImportSkillsAction
+                  screen={table}
+                  onClose={() => dialog.close("import-skills")}
+                />
               ),
               "import-prompts": () => (
-                <ImportPromptsAction onClose={dialog.close} />
+                <ImportPromptsAction
+                  onClose={() => dialog.close("import-prompts")}
+                />
               ),
             }}
           />
