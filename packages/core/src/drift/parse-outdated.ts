@@ -16,13 +16,14 @@ const VERSION_CELL = /^[0-9A-Za-z][0-9A-Za-z.-]{0,31}$/;
 
 const [PACKAGE, CURRENT, LATEST, STATUS] = [0, 1, 2, 3];
 const COLUMN_COUNT = 5;
+const CELL_BORDER = "|";
 
 const cellsOf = (line: string): string[] | null => {
-  if (!line.includes("│")) {
+  if (!line.includes(CELL_BORDER)) {
     return null;
   }
   const cells = line
-    .split("│")
+    .split(CELL_BORDER)
     .slice(1, -1)
     .map((cell) => cell.trim());
   return cells.length === COLUMN_COUNT ? cells : null;

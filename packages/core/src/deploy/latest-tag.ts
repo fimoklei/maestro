@@ -1,4 +1,4 @@
-const tagRowPattern = /│\s*(v\d+\.\d+\.\d+)\s*│\s*tag\s*│/;
+const tagRowPattern = /\|\s*(v\d+\.\d+\.\d+)\s*\|\s*tag\s*\|/;
 
 export const resolveLatestTagFromVersionsTable = (
   output: string,

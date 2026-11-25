@@ -41,7 +41,7 @@ const poisonedDriftTable = (cell: "package" | "current" | "latest") => {
   cells[cell] = LEAK_SHAPES["a credential embedded in a fetch URL"];
   return {
     stdout: [
-      `│ ${cells.package} │ ${cells.current} │ ${cells.latest} │ outdated │ git tags │`,
+      `| ${cells.package} | ${cells.current} | ${cells.latest} | outdated | git tags |`,
       "[!] 1 outdated dependency found",
     ].join("\n"),
     stderr: "",
@@ -200,7 +200,7 @@ describe("apm output never reaches the client", () => {
     it("still forwards a row whose three fields hold their shape", async () => {
       const { perRepo } = await driftWith({
         stdout: [
-          "│ owner/repo/skills/tdd │ v0.5.0 │ v0.5.1 │ outdated │ git tags │",
+          "| owner/repo/skills/tdd | v0.5.0 | v0.5.1 | outdated | git tags |",
           "[!] 1 outdated dependency found",
         ].join("\n"),
         stderr: "",

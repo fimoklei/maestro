@@ -52,6 +52,9 @@ export function verdict({ text, exit, expectedExit, committed }) {
 const REF = "github.com/fimoklei/agent-harness/skills/tdd";
 const REF6 = "github.com/fimoklei/agent-harness/.apm/skills/tdd";
 const REF47 = "github.com/fimoklei/agent-harness/.apm/skills/47";
+const ROOT = "github.com/fimoklei/agent-harness#v0.6.0";
+const SAMPLE = "microsoft/apm-sample-package#v1.0.0";
+const claudeWork = (s) => ({ CLAUDE_CONFIG_DIR: join(s.home, ".claude-work") });
 
 // One row per fixture; setup runs authed and its output is discarded.
 const cases = [
@@ -76,22 +79,92 @@ const cases = [
     name: "apm-install-symlink-refused.txt",
     setup: (s) => {
       mkdirSync(join(s.home, ".claude/skills"), { recursive: true });
-      symlinkSync("/nonexistent", join(s.home, ".claude/skills/tdd"));
+      mkdirSync(join(s.home, "linked-tdd"));
+      symlinkSync(
+        join(s.home, "linked-tdd"),
+        join(s.home, ".claude/skills/tdd"),
+      );
     },
     cwd: "neutral",
     capture: ["authed", ["install", `${REF}#v0.5.1`, "-g", "-t", "claude"]],
     exit: 1,
   },
   {
+    name: "apm-install-narrowed.txt",
+    setup: (s) => {
+      s.apm([
+        "install",
+        ROOT,
+        "--skill",
+        "47",
+        "--skill",
+        "tdd",
+        "-t",
+        "claude,codex",
+      ]);
+      const manifest = join(s.repo, "apm.yml");
+      writeFileSync(
+        manifest,
+        readFileSync(manifest, "utf8").replace(/\n {8}- tdd\n/, "\n"),
+      );
+    },
+    capture: [
+      "authed",
+      ["install", ROOT, "--skill", "47", "-t", "claude,codex"],
+    ],
+    columns: 200,
+    exit: 0,
+  },
+  {
+    name: "apm-install-unknown-skill.txt",
+    capture: [
+      "authed",
+      [
+        "install",
+        ROOT,
+        "--skill",
+        "47",
+        "--skill",
+        "no-such-skill",
+        "-t",
+        "claude,codex",
+      ],
+    ],
+    columns: 200,
+    exit: 1,
+  },
+  {
+    name: "apm-install-unmanaged-conflict.txt",
+    setup: (s) => {
+      mkdirSync(join(s.repo, ".claude/skills/caveman"), { recursive: true });
+      writeFileSync(join(s.repo, ".claude/skills/caveman/SKILL.md"), "local\n");
+    },
+    capture: [
+      "authed",
+      [
+        "install",
+        ROOT,
+        "--skill",
+        "47",
+        "--skill",
+        "caveman",
+        "-t",
+        "claude,codex",
+      ],
+    ],
+    columns: 200,
+    exit: 1,
+  },
+  {
     name: "apm-view-versions.txt",
     capture: ["authed", ["view", "fimoklei/agent-harness", "versions"]],
-    stdoutOnly: true,
+    streams: "out",
     exit: 0,
   },
   {
     name: "apm-view-auth-failed.txt",
     capture: ["anon", ["view", "fimoklei/agent-harness", "versions"]],
-    stdoutOnly: true,
+    streams: "err",
     exit: 1,
   },
   {
@@ -99,7 +172,7 @@ const cases = [
     setup: (s) => s.apm(["install", `${REF}#v0.5.0`, "-t", "claude"]),
     capture: ["anon", ["outdated"]],
     columns: 200,
-    stdoutOnly: true,
+    streams: "out",
     exit: 0,
   },
   {
@@ -108,7 +181,7 @@ const cases = [
     setup: (s) => s.apm(["install", `${REF}#v0.5.0`, "-g", "-t", "claude"]),
     capture: ["authed", ["outdated", "-g"]],
     columns: 200,
-    stdoutOnly: true,
+    streams: "out",
     exit: 0,
   },
   {
@@ -117,7 +190,7 @@ const cases = [
     setup: (s) => s.apm(["install", `${REF6}#v0.6.0`, "-g", "-t", "claude"]),
     capture: ["authed", ["outdated", "-g"]],
     columns: 200,
-    stdoutOnly: true,
+    streams: "out",
     exit: 0,
   },
   {
@@ -131,7 +204,7 @@ const cases = [
     name: "apm-targets-claude.json",
     setup: (s) => mkdirSync(join(s.repo, ".claude")),
     capture: ["anon", ["targets", "--json"]],
-    stdoutOnly: true,
+    streams: "out",
     exit: 0,
   },
   // Three uninstalls in one repo, in this order.
@@ -186,10 +259,32 @@ const cases = [
     columns: 200,
     exit: 0,
   },
+  {
+    name: "apm-uninstall-claude-config-dir.txt",
+    cwd: "neutral",
+    setup: (s) =>
+      s.apm(["install", SAMPLE, "-g", "-t", "claude"], claudeWork(s)),
+    capture: ["anon", ["uninstall", SAMPLE, "-g"]],
+    env: claudeWork,
+    columns: 200,
+    exit: 0,
+  },
+  {
+    name: "apm-uninstall-selected-profile-only.txt",
+    cwd: "neutral",
+    setup: (s) => {
+      s.apm(["install", SAMPLE, "-g", "-t", "claude"]);
+      s.apm(["install", "-g", "-t", "claude"], claudeWork(s));
+    },
+    capture: ["anon", ["uninstall", SAMPLE, "-g"]],
+    env: claudeWork,
+    columns: 200,
+    exit: 0,
+  },
 ];
 
 // Covers every install, view and outdated above with room for apm's retries.
-const QUOTA_NEEDED = 30;
+const QUOTA_NEEDED = 45;
 
 function baseEnv() {
   const env = { ...process.env, NO_COLOR: "1" };
@@ -215,10 +310,10 @@ function sandbox(root, token) {
     ...(columns ? { COLUMNS: String(columns) } : {}),
   });
   const box = { home, repo, neutral, env, cwd: repo };
-  box.apm = (args) => {
+  box.apm = (args, extraEnv = {}) => {
     const run = spawnSync("apm", args, {
       cwd: box.cwd,
-      env: env("authed"),
+      env: { ...env("authed"), ...extraEnv },
       stdio: "ignore",
     });
     if (run.status !== 0)
@@ -233,8 +328,12 @@ function capture(box, row, file) {
   const fd = openSync(file, "w");
   const run = spawnSync("apm", args, {
     cwd: box.cwd,
-    env: box.env(auth, row.columns),
-    stdio: ["ignore", fd, row.stdoutOnly ? "ignore" : fd],
+    env: { ...box.env(auth, row.columns), ...(row.env?.(box) ?? {}) },
+    stdio: [
+      "ignore",
+      row.streams === "err" ? "ignore" : fd,
+      row.streams === "out" ? "ignore" : fd,
+    ],
   });
   closeSync(fd);
   const text = normalizeHome(readFileSync(file, "utf8"), box.home);

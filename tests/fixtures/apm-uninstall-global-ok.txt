@@ -1,9 +1,11 @@
-[i] Uninstalling from user scope (~/.apm/)
-[>] Uninstalling 1 package(s)...
+[i] Uninstalling from user scope (/Users/dev/.apm/)
+[>] Uninstalling 1 package...
 [+] fimoklei/agent-harness/skills/tdd - found in apm.yml
 [i] Removed fimoklei/agent-harness/skills/tdd from apm_modules/
     Path: fimoklei/agent-harness/skills/tdd
-[i] Cleaned 14 stale files from fimoklei/agent-harness/skills/tdd
+[i] Cleaned 2 stale deployed paths for fimoklei/agent-harness/skills/tdd:
+  - ~/.agents/skills/tdd/
+  - ~/.claude/skills/tdd/
 [i] Removed fimoklei/agent-harness/skills/tdd from dependencies.apm in apm.yml
-[*] Updated /Users/dev/.apm/apm.yml (removed 1 package(s))
-[*] Uninstall complete: Removed 1 package(s) from apm.yml, Removed 1 package(s) from apm_modules/
+[*] Updated ~/.apm/apm.yml
+[*] Uninstall complete: removed 1 package

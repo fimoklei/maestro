@@ -25,18 +25,25 @@ const APM_AUTH_PHRASES = ["authentication failed", "no token available"];
 
 const INSTALL_SUCCESS_MARKERS = [
   /installed \d+ apm dependenc/,
+  /cleaned \d+ stale files?\b/,
+  /updated apm\.lock\.yaml/,
   /no changes -- install state already up to date/,
 ];
 
-const INSTALL_FAILURE_PHRASE = "installation failed";
+const INSTALL_FAILURE_SIGNALS = [
+  /installation failed/,
+  /install failed after/,
+  /with \d+ error\(s\)/,
+  /some requested packages were skipped/,
+];
 
-const INSTALL_SYMLINK_PHRASE = "is a symlink";
+const INSTALL_SYMLINK_PHRASE = "unsafe skill destination";
 
-const UNINSTALL_SUCCESS_MARKER = /uninstall complete: removed \d+ package\(s\)/;
+const UNINSTALL_SUCCESS_MARKER = /uninstall complete: removed \d+ packages?\b/;
 
-const UNINSTALL_NOT_FOUND_SIGNALS = [
-  /- not found in apm\.yml/,
-  /were not found in apm\.yml/,
+const UNINSTALL_INCOMPLETE_SIGNALS = [
+  /was not found in apm\.yml/,
+  /from the selected profile only/,
 ];
 
 type SanitizedLogEntry = {
@@ -272,7 +279,7 @@ function installSucceeded(output: string): boolean {
   const haystack = normalizeCommandOutput(output);
   return (
     INSTALL_SUCCESS_MARKERS.some((marker) => marker.test(haystack)) &&
-    !haystack.includes(INSTALL_FAILURE_PHRASE)
+    !INSTALL_FAILURE_SIGNALS.some((signal) => signal.test(haystack))
   );
 }
 
@@ -280,7 +287,7 @@ function removeSucceeded(output: string): boolean {
   const haystack = normalizeCommandOutput(output);
   return (
     UNINSTALL_SUCCESS_MARKER.test(haystack) &&
-    !UNINSTALL_NOT_FOUND_SIGNALS.some((signal) => signal.test(haystack))
+    !UNINSTALL_INCOMPLETE_SIGNALS.some((signal) => signal.test(haystack))
   );
 }
 

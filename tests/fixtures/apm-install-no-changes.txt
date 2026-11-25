@@ -1,10 +1,8 @@
 [*] Validating 1 package...
-[+] fimoklei/agent-harness/.apm/skills/47#v0.6.0 (updated ref in apm.yml)
-[*] Updated apm.yml dependency entries
+[+] fimoklei/agent-harness/.apm/skills/47#v0.6.0 (already in apm.yml)
 [>] Installing 1 new package...
 [i] Targets: claude, codex  (source: --target flag)
-  [+] github.com/fimoklei/agent-harness/.apm/skills/47#v0.6.0 #v0.6.0 @f8208f12 (cached)
+  [+] github.com/fimoklei/agent-harness/.apm/skills/47 #v0.6.0 @f8208f12 (cached)
   |-- (files unchanged)
-  [i] Skipped inactive experimental resolver for target 'copilot-cowork' during lockfile reconciliation.
-  [i] Skipped inactive experimental resolver for target 'copilot-app' during lockfile reconciliation.
-[i] No changes -- install state already up to date in 1.3s.
+
+[i] No changes -- install state already up to date in 1.9s.

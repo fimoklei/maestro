@@ -41,8 +41,8 @@ treat them as hypotheses, not facts.
    `docs/apm-behavior.md` are marked "(source)" — no command proves them.
    Re-read the named functions in the installed apm source (currently:
    `_read_yaml_targets`, `declared_target_profiles`, `_is_stale` for
-   ghost-entry retention; `core/target_detection.py::resolve_targets` for
-   literal `-t` handling; `core/scope.py` for `Path.home()` derivation)
+   ghost-entry retention; `core/target_detection.py::resolve_effective_target_decision`
+   for literal `-t` handling; `core/scope.py` for `Path.home()` derivation)
    rather than re-running an install.
 4. **Rewrite `docs/apm-behavior.md` section by section.** Replace each
    section's content with what the new version does; bump the version and
@@ -58,7 +58,9 @@ treat them as hypotheses, not facts.
      anything.
    - ADR-0014: has the ref grammar or host gate changed?
    - `CLAUDE_CONFIG_DIR`: re-run the folder switch and the uninstall of
-     #1872 and #1947; 0.35.1 keeps the old copies and removes per folder.
+     #1872 and #1947; 0.38.1 keeps the old copies and removes per folder.
+   - The upgrade path: install with the old apm, then install and uninstall
+     with the new one over that state.
    - `LEARNINGS.md`: reconfirm or archive entries naming an apm version.
    - `.claude/rules/apm-driver.md`: do the imperatives still match the
      measured behavior?

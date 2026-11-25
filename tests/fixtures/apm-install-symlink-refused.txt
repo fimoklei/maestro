@@ -1,29 +1,13 @@
-[i] Installing to user scope (~/.apm/)
-[!] User-scope primitives are fully supported by claude, kiro, gemini, 
-grok-build, grok-cloud, agent-skills, openclaw, hermes, copilot-cowork, 
-copilot-app. Partially supported: copilot, cursor, opencode, antigravity, codex,
-windsurf.
-Some primitives are not supported: cursor (instructions); opencode (hooks); 
-antigravity (instructions, hooks); windsurf (instructions)
-[*] Created 
-/Users/dev/
-.apm/apm.yml
-[i] Targets set: claude (persisted to 
-/Users/dev/
-.apm/apm.yml)
+[i] Installing to user scope (/Users/dev/.apm/)
+[*] Created /Users/dev/.apm/apm.yml
+[i] Targets set: claude (persisted to /Users/dev/.apm/apm.yml)
 [*] Validating 1 package...
 [+] fimoklei/agent-harness/skills/tdd#v0.5.1
 [*] Updated apm.yml with 1 new package(s)
 [>] Installing 1 new package...
 [>] Resolving agent-harness-tdd...
-  [+] github.com/fimoklei/agent-harness/skills/tdd#v0.5.1 #v0.5.1 @471c4b26
-  [+] <project root> (local)
-  |-- (files unchanged)
+  [+] github.com/fimoklei/agent-harness/skills/tdd #v0.5.1 @471c4b26
 [i] Removed apm.yml created by the failed install.
-  [x] 1 package failed:
-    +- fimoklei/agent-harness/skills/tdd -- Failed to integrate primitives from 
-cached package: Skill destination 
-/Users/dev/
-.claude/skills/tdd is a symlink -- refusing to deploy
-[x] Installation failed with 1 error(s) in 4.6s. No install transaction changes 
-were committed.
+[x] Failed to install APM dependencies: Unsafe skill destination 'linked-tdd/SKILL.md'; refusing deployment.
+[i] Run with --verbose for detailed diagnostics
+[x] Install failed after 6.0s.

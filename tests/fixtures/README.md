@@ -1,24 +1,22 @@
 # apm fixture provenance
 
 What produced each captured file, so a future reader can re-run it instead of
-trusting it. The fixtures under **Command output** reflect `apm` **0.32.0**:
-on 2026-10-02 `node scripts/capture-apm-fixtures.mjs` re-ran every one and
-found each identical to its file, timings aside. Every other section names the version it
-was captured on. Each Command-output fixture is in one of two states — the
-difference matters when you audit one:
+trusting it. The fixtures under **Command output** reflect `apm` **0.38.1**:
+on 2026-11-25 `node scripts/capture-apm-fixtures.mjs` re-ran every one.
+Every other section names the version it was captured on. Each
+Command-output fixture is in one of three states — the difference matters
+when you audit one:
 
-- **Re-captured** — the 0.32.0 output differed from the older capture and
-  overwrote it: `apm-install-ok`, `apm-install-no-changes`,
-  `apm-install-symlink-refused`, `apm-outdated-could-not-check`,
-  `apm-view-auth-failed`, `apm-uninstall-ok`, `apm-uninstall-global-ok`,
-  `apm-uninstall-retained`.
-- **Verified unchanged** (✓= below) — the 0.32.0 output matched, so nothing
+- **Re-captured** — the 0.38.1 output differed from the older capture and
+  overwrote it: every row without a mark below.
+- **New** (✚ below) — first captured on 0.38.1.
+- **Verified unchanged** (✓= below) — the 0.38.1 output matched, so nothing
   was written and git still shows the older capture date.
 
 The lockfiles and the `apm-spike-*` fixtures were not re-run: the
 `apm-spike-833` repository is gone, and the root-package canary covers those
-contracts on 0.32.0. A 0.32.0 lockfile lacks `generated_at` and adds no other
-key. An upgrade rewrites this header and the ✓= marks; it never appends a
+contracts on 0.38.1. A 0.38.1 lockfile writes `lockfile_version: '4'` and
+adds `manifest_targets` (`docs/apm-behavior.md` § Lockfile). An upgrade rewrites this header and the ✓= marks; it never appends a
 version paragraph.
 
 What the outputs *mean* lives in `docs/apm-behavior.md`; this file only
@@ -81,18 +79,21 @@ folder: copying a capture over a fixture is the upgrader's call.
 |---|---|---|---|---|
 | `apm-install-ok.txt` | `apm install <ref>#v0.5.0 -t claude` | fresh `git init` repo | 0 | out+err |
 | `apm-install-no-changes.txt` | `apm install github.com/fimoklei/agent-harness/.apm/skills/47#v0.6.0 -t claude,codex` | `COLUMNS=200`, same ref already installed and unchanged | 0 | out+err |
-| `apm-install-probes-failed.txt` ✓= | `apm install <ref>#v0.5.0 -t claude` | no credentials in env | 1 | out+err |
-| `apm-install-symlink-refused.txt` | `apm install <ref>#v0.5.1 -g -t claude` | sandbox `~/.claude/skills/tdd` pre-created as a symlink | 1 | out+err |
-| `apm-view-versions.txt` ✓= | `apm view fimoklei/agent-harness versions` | authed | 0 | out |
-| `apm-view-auth-failed.txt` | `apm view fimoklei/agent-harness versions` | no credentials, `GIT_TERMINAL_PROMPT=0` | 1 | out |
+| `apm-install-probes-failed.txt` | `apm install <ref>#v0.5.0 -t claude` | no credentials in env | 1 | out+err |
+| `apm-install-symlink-refused.txt` | `apm install <ref>#v0.5.1 -g -t claude` | sandbox `~/.claude/skills/tdd` pre-created as a symlink to a real folder | 1 | out+err |
+| `apm-install-narrowed.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -t claude,codex` | `COLUMNS=200`, after installing `--skill 47 --skill tdd` and deleting `- tdd` from `skills:` | 0 | out+err |
+| `apm-install-unknown-skill.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 --skill no-such-skill -t claude,codex` | `COLUMNS=200`, fresh `git init` repo | 1 | out+err |
+| `apm-install-unmanaged-conflict.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 --skill caveman -t claude,codex` | `COLUMNS=200`, hand-made `.claude/skills/caveman/SKILL.md` | 1 | out+err |
+| `apm-view-versions.txt` | `apm view fimoklei/agent-harness versions` | authed | 0 | out |
+| `apm-view-auth-failed.txt` | `apm view fimoklei/agent-harness versions` | no credentials, `GIT_TERMINAL_PROMPT=0` | 1 | err |
 | `apm-outdated-could-not-check.txt` | `apm outdated` | `COLUMNS=200`, repo pinned at v0.5.0, no credentials | 0 | out |
-| `apm-outdated-global.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install pinned at v0.5.0, authed | 0 | out |
+| `apm-outdated-global.txt` | `apm outdated -g` | `COLUMNS=200`, global install pinned at v0.5.0, authed | 0 | out |
 | `apm-outdated-global-uptodate.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install of `.apm/skills/tdd` at the latest tag (v0.6.0), authed | 0 | out |
 | `apm-update-noop.txt` ✓= | `apm update -y -t claude,codex` | `COLUMNS=120`, repo pinned at v0.5.0 while v0.5.1 exists | 0 | out+err |
 | `apm-targets-claude.json` ✓= | `apm targets --json` | repo containing `.claude/` only | 0 | out |
-| `apm-uninstall-dry-run.txt` ✓= | `apm uninstall --dry-run -v <ref>#v0.5.1` | repo holding two deps at `-t claude,codex` | 0 | out+err |
+| `apm-uninstall-dry-run.txt` | `apm uninstall --dry-run -v <ref>#v0.5.1` | repo holding two deps at `-t claude,codex` | 0 | out+err |
 | `apm-uninstall-ok.txt` | `apm uninstall -v <ref>#v0.5.1` | same repo, removes one of the two deps | 0 | out+err |
-| `apm-uninstall-not-found.txt` ✓= | `apm uninstall <ref>#v0.5.1` | same repo, package already gone | 1 | out+err |
+| `apm-uninstall-not-found.txt` | `apm uninstall <ref>#v0.5.1` | same repo, package already gone | 1 | out+err |
 | `apm-spike-941-step1-project.txt` | `apm install github.com/fimoklei/apm-spike-833#v2.0.0 --skill alpha --skill beta --skill gamma --skill delta --skill zeta -t claude,codex` | fresh `git init` repo, no credentials (#941) | 0 | out+err |
 | `apm-spike-941-step1-global.txt` | same, `-g`, from a neutral cwd | sandbox `HOME` | 0 | out+err |
 | `apm-spike-941-step2-narrow-project.txt` | `skills:` written to four, then `apm install <ref>#v2.0.0 --skill alpha --skill beta --skill gamma --skill zeta -t claude,codex` | five installed before | 0 | out+err |
@@ -114,16 +115,19 @@ folder: copying a capture over a fixture is the upgrader's call.
 | `apm-spike-941-step6-install-bare.txt` | `apm install -t claude,codex` | same manifest, second (local-path) dependency present | 0 | out+err |
 | `apm-uninstall-retained.txt` | `apm uninstall -v <ref>#v0.5.1` | same repo, `.claude/skills/tdd/SKILL.md` edited before the call | 1 | out+err |
 | `apm-uninstall-global-ok.txt` | `apm uninstall -g -v <ref>#v0.5.1` | neutral cwd, global install at `-t claude,codex` beside an unrelated skill | 0 | out+err |
+| `apm-uninstall-claude-config-dir.txt` ✚ | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, `CLAUDE_CONFIG_DIR=$HOME/.claude-work` for the install and the uninstall (#1947) | 0 | out+err |
+| `apm-uninstall-selected-profile-only.txt` ✚ | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, installed once without and once with `CLAUDE_CONFIG_DIR=$HOME/.claude-work`; the uninstall with it set | 0 | out+err |
+| `apm-install-lockfile-upgraded.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -g -t claude,codex` | by hand, not in the script: neutral cwd, `COLUMNS=200`, the same install run first with apm 0.32.0 | 0 | out+err |
 
 The five uninstall fixtures came from one scripted run against a throwaway
 sandbox, `COLUMNS=200`, no token in the environment — uninstall needs neither
 network nor credentials. Two lines in them are **not** stable across a
-re-capture and nothing may key on them: `[*] Updated <path>/apm.yml` carries the
-capture sandbox's absolute path, and `[i] Cleaned <n> stale files` counts what
+re-capture and nothing may key on them: `[*] Updated … apm.yml` may carry the
+capture sandbox's path, and `[i] Cleaned <n> stale deployed paths` counts what
 that run deleted (`docs/apm-behavior.md` § Remove).
 
 ✓= marks a **verified unchanged** fixture (see the top of this file): re-run on
-0.32.0, output identical, file untouched.
+0.38.1, output identical, file untouched.
 
 `COLUMNS=200` matches `WIDE_COLUMNS` in `apm-cli-driver.ts` — the width
 production actually sets, so the fixture wraps the way the parser will see it.

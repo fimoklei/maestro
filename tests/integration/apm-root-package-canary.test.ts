@@ -25,14 +25,18 @@ const TAG = "v0.6.0";
 const ROOT_REF = `github.com/${HARNESS}#${TAG}`;
 const KEPT_SKILL = "prototype";
 const DROPPED_SKILL = "caveman";
-const FOREIGN_SKILL = "tdd";
-const FOREIGN_REF = `github.com/${HARNESS}/.apm/skills/${FOREIGN_SKILL}#${TAG}`;
+const SAME_REPO_REF = `github.com/${HARNESS}/.apm/skills/tdd#${TAG}`;
+const FOREIGN_PACKAGE = "microsoft/apm-sample-package";
+const FOREIGN_REF = `${FOREIGN_PACKAGE}#v1.0.0`;
+const FOREIGN_SKILL = "style-checker";
 const HANDMADE = "handmade";
 
 const SUCCESS = "Installed 1 APM dependency";
+const FOREIGN_SUCCESS = "Installed 2 APM dependencies";
+const NARROW_SUCCESS = /cleaned \d+ stale files?\b/;
 const EMPTY_REFUSAL = "skills: must contain at least one name";
-const UNINSTALL_SUCCESS =
-  "Uninstall complete: Removed 1 package(s) from apm.yml";
+const SAME_REPO_REFUSAL = "cannot both be declared in apm.yml";
+const UNINSTALL_SUCCESS = "Uninstall complete: removed 1 package";
 
 type Outcome = { code: number; output: string };
 
@@ -109,7 +113,6 @@ describe.runIf(enabled)("real apm root-package canary", () => {
   let repo: string;
 
   beforeEach(async () => {
-    // A symlinked HOME makes apm ≥0.29.0 deploy nothing.
     home = await realpath(await mkdtemp(join(tmpdir(), "maestro-root-home-")));
     repo = await realpath(await mkdtemp(join(tmpdir(), "maestro-root-repo-")));
   });
@@ -160,13 +163,21 @@ describe.runIf(enabled)("real apm root-package canary", () => {
     ).resolves.toContain("");
     expect(firstLock).not.toContain(`.claude/skills/${FOREIGN_SKILL}`);
 
-    // Same repository, own package: a removal keyed on the repository would take it.
+    const sameRepo = await apm(
+      ["install", SAME_REPO_REF, "-t", "claude"],
+      repo,
+      env,
+    );
+    expect(sameRepo.code).toBe(1);
+    expect(says(sameRepo, SAME_REPO_REFUSAL)).toBe(true);
+    expect(await lockfile(lockPath)).toEqual(firstLock);
+
     const foreign = await apm(
       ["install", FOREIGN_REF, "-t", "claude"],
       repo,
       env,
     );
-    expect(says(foreign, SUCCESS)).toBe(true);
+    expect(says(foreign, FOREIGN_SUCCESS)).toBe(true);
 
     // A `--skill` flag alone unions with the persisted list.
     await writeSelection(manifestPath, [KEPT_SKILL]);
@@ -175,7 +186,7 @@ describe.runIf(enabled)("real apm root-package canary", () => {
       repo,
       env,
     );
-    expect(says(narrowed, SUCCESS)).toBe(true);
+    expect(flatten(narrowed.output)).toMatch(NARROW_SUCCESS);
 
     const narrowedLock = await lockfile(lockPath);
     expect(narrowedLock).toMatch(/skill_subset:\n {2}- prototype\n/);
@@ -212,12 +223,10 @@ describe.runIf(enabled)("real apm root-package canary", () => {
     ).rejects.toThrow();
     const afterRemoval = await readFile(manifestPath, "utf8");
     expect(afterRemoval).not.toContain(`git: ${HARNESS}`);
-    expect(afterRemoval).toContain(
-      `${HARNESS}/.apm/skills/${FOREIGN_SKILL}#${TAG}`,
-    );
+    expect(afterRemoval).toContain(FOREIGN_REF);
     const finalLock = await lockfile(lockPath);
-    expect(finalLock).toContain(`virtual_path: .apm/skills/${FOREIGN_SKILL}`);
-    expect(finalLock).not.toContain("package_type: apm_package");
+    expect(finalLock).toContain(FOREIGN_PACKAGE);
+    expect(finalLock).not.toContain(`repo_url: ${HARNESS}\n`);
     await expect(
       readFile(join(skillDir(FOREIGN_SKILL), "SKILL.md"), "utf8"),
     ).resolves.toBeTruthy();
@@ -272,7 +281,7 @@ describe.runIf(enabled)("real apm root-package canary", () => {
       cwd,
       env,
     );
-    expect(says(foreign, SUCCESS)).toBe(true);
+    expect(says(foreign, FOREIGN_SUCCESS)).toBe(true);
 
     await writeSelection(manifestPath, [KEPT_SKILL]);
     const narrowed = await apm(
@@ -280,7 +289,7 @@ describe.runIf(enabled)("real apm root-package canary", () => {
       cwd,
       env,
     );
-    expect(says(narrowed, SUCCESS)).toBe(true);
+    expect(flatten(narrowed.output)).toMatch(NARROW_SUCCESS);
     const narrowedLock = await lockfile(lockPath);
     expect(narrowedLock).toMatch(/skill_subset:\n {2}- prototype\n/);
     for (const copy of copies(DROPPED_SKILL)) {
@@ -309,18 +318,14 @@ describe.runIf(enabled)("real apm root-package canary", () => {
     }
     const afterRemoval = await readFile(manifestPath, "utf8");
     expect(afterRemoval).not.toContain(`git: ${HARNESS}`);
-    expect(afterRemoval).toContain(
-      `${HARNESS}/.apm/skills/${FOREIGN_SKILL}#${TAG}`,
-    );
-    expect(await lockfile(lockPath)).toContain(
-      `virtual_path: .apm/skills/${FOREIGN_SKILL}`,
-    );
+    expect(afterRemoval).toContain(FOREIGN_REF);
+    expect(await lockfile(lockPath)).toContain(FOREIGN_PACKAGE);
     await expect(
       readFile(join(home, ".claude", "skills", HANDMADE, "SKILL.md"), "utf8"),
     ).resolves.toContain("hand-placed");
   });
 
-  it("stops a named removal on a locally edited copy after deleting the rest", {
+  it("refuses a named removal on a locally edited copy before deleting anything", {
     timeout: 300_000,
   }, async () => {
     const env = await tokenEnv(home);
@@ -348,12 +353,12 @@ describe.runIf(enabled)("real apm root-package canary", () => {
     const removed = await apm(["uninstall", ROOT_REF], repo, env);
     expect(removed.code).toBe(1);
     expect(says(removed, UNINSTALL_SUCCESS)).toBe(false);
-    expect(says(removed, "Retained user-edited file")).toBe(true);
+    expect(says(removed, "edited since APM deployed it")).toBe(true);
 
     await expect(readFile(edited, "utf8")).resolves.toContain("local edit");
     await expect(
       readFile(join(skillDir(KEPT_SKILL), "SKILL.md"), "utf8"),
-    ).rejects.toThrow();
+    ).resolves.toBeTruthy();
     const manifest = await readFile(join(repo, "apm.yml"), "utf8");
     expect(manifest).toMatch(/skills:\n {8}- caveman\n {8}- prototype\n/);
     expect(await lockfile(join(repo, "apm.lock.yaml"))).toContain(
