@@ -1,8 +1,13 @@
-import { execFile } from "node:child_process";
 import { basename } from "node:path";
-import { promisify } from "node:util";
 import { type OutdatedResult, parseOutdated } from "../drift/parse-outdated";
 import { normalizeCommandOutput } from "../normalize-command-output";
+import {
+  createProcessRunner,
+  type ProcessOutcome,
+  type ProcessRunner,
+  type RunFn,
+  runProcess,
+} from "../process/run-process";
 import type {
   ApmDriverPort,
   DeploySkillDriverResult,
@@ -16,8 +21,6 @@ import {
   type SupportedTool,
 } from "./deploy-tools";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
-
-const defaultRun = promisify(execFile);
 
 const WIDE_COLUMNS = "200";
 
@@ -57,20 +60,19 @@ type SanitizedLogEntry = {
   durationMs: number;
 };
 
-type RunFn = (
-  file: string,
-  args: string[],
-  options: { cwd?: string; env?: NodeJS.ProcessEnv; signal: AbortSignal },
-) => Promise<{ stdout: string; stderr: string }>;
-
 const READ_TIMEOUT_MS = 60_000;
 const WRITE_TIMEOUT_MS = 300_000;
 
-class ApmTimedOut extends Error {}
+const TIMED_OUT: ProcessOutcome = {
+  ok: false,
+  failure: "killed",
+  stdout: "",
+  stderr: "",
+};
 
 export class ApmCliDriver implements ApmDriverPort {
   private readonly log: (entry: SanitizedLogEntry) => void;
-  private readonly run: RunFn;
+  private readonly run: ProcessRunner;
   private readonly prepareGlobalCwd: () => Promise<string>;
 
   constructor(deps?: {
@@ -79,7 +81,7 @@ export class ApmCliDriver implements ApmDriverPort {
     prepareGlobalCwd?: () => Promise<string>;
   }) {
     this.log = deps?.log ?? (() => undefined);
-    this.run = deps?.run ?? defaultRun;
+    this.run = deps?.run ? createProcessRunner(deps.run) : runProcess;
     this.prepareGlobalCwd =
       deps?.prepareGlobalCwd ??
       (() => {
@@ -89,20 +91,18 @@ export class ApmCliDriver implements ApmDriverPort {
 
   async resolveLatestTag(ownerRepo: string): Promise<ResolveLatestTagResult> {
     const started = Date.now();
-    let stdout: string;
-    try {
-      ({ stdout } = await this.runApm(
-        ["view", ownerRepo, "versions"],
-        {},
-        READ_TIMEOUT_MS,
-      ));
-    } catch (error) {
+    const outcome = await this.runApm(
+      ["view", ownerRepo, "versions"],
+      {},
+      READ_TIMEOUT_MS,
+    );
+    if (!outcome.ok) {
       return {
         ok: false,
         reason:
-          error instanceof ApmTimedOut
+          outcome.failure === "killed"
             ? "timed-out"
-            : hasAuthPhrase(error)
+            : hasAuthPhrase(outcome)
               ? "auth-required"
               : "failed",
       };
@@ -113,7 +113,7 @@ export class ApmCliDriver implements ApmDriverPort {
       exitCode: 0,
       durationMs: Date.now() - started,
     });
-    const tag = resolveLatestTagFromVersionsTable(stdout);
+    const tag = resolveLatestTagFromVersionsTable(outcome.stdout);
     return tag === null ? { ok: false, reason: "no-tag" } : { ok: true, tag };
   }
 
@@ -130,21 +130,12 @@ export class ApmCliDriver implements ApmDriverPort {
       input.tools,
       input.skills,
     );
-    let output: string;
-    try {
-      const { stdout, stderr } = await this.runApm(
-        args,
-        { cwd },
-        WRITE_TIMEOUT_MS,
-      );
-      output = `${stdout}\n${stderr}`;
-    } catch (error) {
-      if (error instanceof ApmTimedOut) {
-        return { ok: false, reason: "timed-out" };
-      }
-      return { ok: false, reason: classifyInstallFailure(outputOf(error)) };
+    const outcome = await this.runApm(args, { cwd }, WRITE_TIMEOUT_MS);
+    if (!outcome.ok && outcome.failure === "killed") {
+      return { ok: false, reason: "timed-out" };
     }
-    if (!installSucceeded(output)) {
+    const output = outputOf(outcome);
+    if (!outcome.ok || !installSucceeded(output)) {
       return { ok: false, reason: classifyInstallFailure(output) };
     }
     this.log({
@@ -170,21 +161,11 @@ export class ApmCliDriver implements ApmDriverPort {
         : ["uninstall", input.ref, "-g"];
     const logTarget =
       target.kind === "repo" ? basename(target.repoPath) : "global";
-    let output: string;
-    try {
-      const { stdout, stderr } = await this.runApm(
-        args,
-        { cwd },
-        WRITE_TIMEOUT_MS,
-      );
-      output = `${stdout}\n${stderr}`;
-    } catch (error) {
-      if (error instanceof ApmTimedOut) {
-        return { ok: false, reason: "timed-out" };
-      }
-      output = outputOf(error);
+    const outcome = await this.runApm(args, { cwd }, WRITE_TIMEOUT_MS);
+    if (!outcome.ok && outcome.failure === "killed") {
+      return { ok: false, reason: "timed-out" };
     }
-    if (!removeSucceeded(output)) {
+    if (!removeSucceeded(outputOf(outcome))) {
       return { ok: false };
     }
     this.log({
@@ -201,41 +182,43 @@ export class ApmCliDriver implements ApmDriverPort {
     const cwd =
       target.kind === "repo" ? target.repoPath : await this.prepareGlobalCwd();
     const args = target.kind === "repo" ? ["outdated"] : ["outdated", "-g"];
-    try {
-      const { stdout } = await this.runApm(
-        args,
-        { cwd, env: { ...process.env, COLUMNS: WIDE_COLUMNS } },
-        READ_TIMEOUT_MS,
-      );
-      this.log({
-        operation: "check-outdated",
-        target: target.kind === "repo" ? basename(target.repoPath) : "global",
-        exitCode: 0,
-        durationMs: Date.now() - started,
-      });
-      return parseOutdated(stdout);
-    } catch (error) {
-      return error instanceof ApmTimedOut
+    const outcome = await this.runApm(
+      args,
+      { cwd, env: { ...process.env, COLUMNS: WIDE_COLUMNS } },
+      READ_TIMEOUT_MS,
+    );
+    if (!outcome.ok) {
+      return outcome.failure === "killed"
         ? { ok: false, reason: "timed-out" }
         : { ok: false };
     }
+    this.log({
+      operation: "check-outdated",
+      target: target.kind === "repo" ? basename(target.repoPath) : "global",
+      exitCode: 0,
+      durationMs: Date.now() - started,
+    });
+    return parseOutdated(outcome.stdout);
   }
 
   private async runApm(
     args: string[],
     options: { cwd?: string; env?: NodeJS.ProcessEnv },
     timeoutMs: number,
-  ): Promise<{ stdout: string; stderr: string }> {
+  ): Promise<ProcessOutcome> {
     const controller = new AbortController();
-    const timedOut = new Promise<never>((_, reject) => {
-      controller.signal.addEventListener("abort", () =>
-        reject(new ApmTimedOut()),
-      );
+    const timedOut = new Promise<ProcessOutcome>((resolve) => {
+      controller.signal.addEventListener("abort", () => resolve(TIMED_OUT));
     });
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       return await Promise.race([
-        this.run("apm", args, { ...options, signal: controller.signal }),
+        this.run("apm", args, {
+          env: process.env,
+          timeout: 0,
+          ...options,
+          signal: controller.signal,
+        }),
         timedOut,
       ]);
     } finally {
@@ -299,19 +282,11 @@ function classifyInstallFailure(
     : "failed";
 }
 
-function outputOf(error: unknown): string {
-  return `${streamOf(error, "stdout")}\n${streamOf(error, "stderr")}`;
+function outputOf(outcome: ProcessOutcome): string {
+  return `${outcome.stdout}\n${outcome.stderr}`;
 }
 
-function streamOf(error: unknown, stream: "stdout" | "stderr"): string {
-  if (typeof error !== "object" || error === null || !(stream in error)) {
-    return "";
-  }
-  const value: unknown = Reflect.get(error, stream);
-  return String(value ?? "");
-}
-
-function hasAuthPhrase(error: unknown): boolean {
-  const haystack = normalizeCommandOutput(outputOf(error));
+function hasAuthPhrase(outcome: ProcessOutcome): boolean {
+  const haystack = normalizeCommandOutput(outputOf(outcome));
   return APM_AUTH_PHRASES.some((phrase) => haystack.includes(phrase));
 }

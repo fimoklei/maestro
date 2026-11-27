@@ -1,20 +1,8 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const run = promisify(execFile);
+import { runGit } from "../git/run-git-text";
 
 export const isRepositoryRoot = async (
   realRepoPath: string,
 ): Promise<boolean> => {
-  try {
-    const { stdout } = await run("git", [
-      "-C",
-      realRepoPath,
-      "rev-parse",
-      "--show-toplevel",
-    ]);
-    return stdout.trim() === realRepoPath;
-  } catch {
-    return false;
-  }
+  const toplevel = await runGit(realRepoPath, ["rev-parse", "--show-toplevel"]);
+  return toplevel.ok && toplevel.stdout === realRepoPath;
 };

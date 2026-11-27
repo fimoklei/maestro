@@ -1,8 +1,5 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { ProcessFailedError, runProcessBytes } from "../process/run-process";
 import { gitOptions } from "./non-interactive";
-
-const run = promisify(execFile);
 
 const OBJECT_HEADER = /^[0-9a-f]{40,64} (\w+) (\d+)$/;
 
@@ -15,13 +12,16 @@ export async function readBlobs(
   if (askable.length === 0) {
     return specs.map(() => null);
   }
-  const pending = run("git", ["-C", root, "cat-file", "--batch"], {
-    ...gitOptions(),
-    encoding: "buffer",
-    maxBuffer: 256 * 1024 * 1024,
-  });
-  pending.child.stdin?.end(askable.map((spec) => `${spec}\n`).join(""));
-  const { stdout } = await pending;
+  const outcome = await runProcessBytes(
+    "git",
+    ["-C", root, "cat-file", "--batch"],
+    { ...gitOptions(), maxBuffer: 256 * 1024 * 1024 },
+    askable.map((spec) => `${spec}\n`).join(""),
+  );
+  if (!outcome.ok) {
+    throw new ProcessFailedError(outcome);
+  }
+  const { stdout } = outcome;
 
   const answers = new Map<string, Buffer | null>();
   let offset = 0;

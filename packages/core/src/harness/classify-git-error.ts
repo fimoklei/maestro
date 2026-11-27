@@ -1,12 +1,7 @@
+import type { ProcessFailure } from "../process/run-process";
+
 export const classifyGitError = <T>(
-  error: unknown,
+  failure: ProcessFailure,
   classify: (stderr: string) => T,
-): "offline" | T => {
-  if (typeof error !== "object" || error === null) {
-    return classify("");
-  }
-  if ("killed" in error && error.killed === true) {
-    return "offline";
-  }
-  return classify("stderr" in error ? String(error.stderr) : "");
-};
+): "offline" | T =>
+  failure.failure === "killed" ? "offline" : classify(failure.stderr);

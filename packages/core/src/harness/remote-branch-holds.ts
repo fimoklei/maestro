@@ -1,9 +1,4 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-import { gitOptions } from "../git/non-interactive";
-import { runGitText } from "../git/run-git-text";
-
-const run = promisify(execFile);
+import { runGit, runGitText } from "../git/run-git-text";
 
 const OBJECT_NAME = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
@@ -21,11 +16,7 @@ export async function remoteBranchHolds(
   if (tip === commit) {
     return true;
   }
-  const succeeds = (args: string[]) =>
-    run("git", ["-C", root, ...args], gitOptions()).then(
-      () => true,
-      () => false,
-    );
+  const succeeds = async (args: string[]) => (await runGit(root, args)).ok;
   return (
     (await succeeds(["fetch", "origin", refspec])) &&
     (await succeeds(["merge-base", "--is-ancestor", commit, tip]))

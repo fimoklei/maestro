@@ -1,26 +1,20 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
-
-const run = promisify(execFile);
+import { runGitProcess } from "../git/run-git-text";
 
 export type HeadProbe = "commit" | "no-head" | "unknown";
 
 export const probeHead = async (repoPath: string): Promise<HeadProbe> => {
-  try {
-    const { stdout } = await run("git", [
-      "-C",
-      repoPath,
-      "rev-parse",
-      "--verify",
-      "--quiet",
-      "HEAD^{commit}",
-    ]);
-    return stdout.trim().length > 0 ? "commit" : "no-head";
-  } catch (error) {
-    const { code, stderr } = error as {
-      code?: number | string;
-      stderr?: string;
-    };
-    return code === 1 && (stderr ?? "").trim() === "" ? "no-head" : "unknown";
+  const outcome = await runGitProcess(repoPath, [
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    "HEAD^{commit}",
+  ]);
+  if (outcome.ok) {
+    return outcome.stdout.trim().length > 0 ? "commit" : "no-head";
   }
+  return outcome.failure === "failed" &&
+    outcome.exitCode === 1 &&
+    outcome.stderr.trim() === ""
+    ? "no-head"
+    : "unknown";
 };

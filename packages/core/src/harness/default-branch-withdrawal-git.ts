@@ -1,10 +1,8 @@
-import { execFile } from "node:child_process";
 import { lstat, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
-import { gitOptions, NO_HOOKS } from "../git/non-interactive";
-import { runGitText } from "../git/run-git-text";
+import { NO_HOOKS } from "../git/non-interactive";
+import { runGitProcess, runGitText } from "../git/run-git-text";
 import { classifyGitError } from "./classify-git-error";
 import { classifyPushFailure } from "./classify-push-failure";
 import {
@@ -23,7 +21,8 @@ import type {
 } from "./read-harness-state";
 import { remoteBranchHolds } from "./remote-branch-holds";
 
-const run = promisify(execFile);
+const gitWithoutHooks = (root: string, args: string[]) =>
+  runGitProcess(root, [...NO_HOOKS, ...args]);
 
 const changesFrom = async (
   root: string,
@@ -90,32 +89,24 @@ const push = async (
   commit: string,
 ): Promise<WithdrawalPushOutcome> => {
   const branchRef = `refs/heads/${defaultBranch}`;
-  try {
-    await run(
-      "git",
-      [
-        "-C",
-        root,
-        ...NO_HOOKS,
-        "push",
-        `--force-with-lease=${branchRef}:${tip}`,
-        "origin",
-        `${commit}:${branchRef}`,
-      ],
-      gitOptions(),
-    );
+  const pushed = await gitWithoutHooks(root, [
+    "push",
+    `--force-with-lease=${branchRef}:${tip}`,
+    "origin",
+    `${commit}:${branchRef}`,
+  ]);
+  if (pushed.ok) {
     return "pushed";
-  } catch (error) {
-    const failure = classifyGitError(error, classifyPushFailure);
-    if (failure === "stale-tip" || failure === "refused") {
-      return failure;
-    }
-    return (await remoteBranchHolds(root, branchRef, commit, branchRef))
-      ? "pushed"
-      : failure === "offline"
-        ? "offline"
-        : "push-failed";
   }
+  const failure = classifyGitError(pushed, classifyPushFailure);
+  if (failure === "stale-tip" || failure === "refused") {
+    return failure;
+  }
+  return (await remoteBranchHolds(root, branchRef, commit, branchRef))
+    ? "pushed"
+    : failure === "offline"
+      ? "offline"
+      : "push-failed";
 };
 
 // The push is the commit point: a failed step here is reconciled by the next
@@ -125,11 +116,7 @@ const follow = async (
   { defaultBranch, tip, refs }: DefaultBranchWithdrawal,
   commit: string,
 ): Promise<void> => {
-  const step = (args: string[]) =>
-    run("git", ["-C", root, ...NO_HOOKS, ...args], gitOptions()).then(
-      () => true,
-      () => false,
-    );
+  const step = async (args: string[]) => (await gitWithoutHooks(root, args)).ok;
   // Compare-and-swap: a HEAD that moved since the check stays where it is.
   if (!(await step(["update-ref", "HEAD", commit, tip]))) {
     return;
@@ -165,20 +152,13 @@ const setListBack = async (
     await rm(join(root, path), { force: true });
     return;
   }
-  await run(
-    "git",
-    [
-      "-C",
-      root,
-      ...NO_HOOKS,
-      "checkout",
-      "-q",
-      commit,
-      "--",
-      subjectPathspec(subject),
-    ],
-    gitOptions(),
-  ).catch(() => undefined);
+  await gitWithoutHooks(root, [
+    "checkout",
+    "-q",
+    commit,
+    "--",
+    subjectPathspec(subject),
+  ]);
 };
 
 const blobAt = async (

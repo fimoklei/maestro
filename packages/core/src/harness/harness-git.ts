@@ -1,13 +1,11 @@
-import { execFile } from "node:child_process";
 import { access, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
 import { type GitOrigin, parseGitOrigin } from "../deploy/git-origin";
 import { catchUpClone, readCloneSync } from "../git/catch-up-clone";
 import { readConfiguredGitOriginUrl } from "../git/configured-origin";
-import { gitOptions, NO_HOOKS } from "../git/non-interactive";
-import { runGitText } from "../git/run-git-text";
+import { NO_HOOKS } from "../git/non-interactive";
+import { runGitProcess, runGitText } from "../git/run-git-text";
 import { readRemoteDefaultBranch } from "../inventory/default-branch";
 import {
   HARNESS_SKILLS_DIR,
@@ -75,8 +73,6 @@ import {
 } from "./released-content";
 import { remoteBranchHolds } from "./remote-branch-holds";
 
-const run = promisify(execFile);
-
 const REMOTE_HEAD = "refs/remotes/origin/HEAD";
 
 export const MAESTRO_TAGS = "refs/maestro/tags";
@@ -97,22 +93,25 @@ export class HarnessGitAdapter implements HarnessGitPort {
   }
 
   async fetch(root: string): Promise<HarnessFetchOutcome> {
-    const options = gitOptions();
-    try {
-      await run(
-        "git",
-        ["-C", root, "fetch", "--prune", "origin", BRANCH_REFSPEC, TAG_REFSPEC],
-        options,
-      );
-      await run(
-        "git",
-        ["-C", root, "remote", "set-head", "origin", "--auto"],
-        options,
-      );
-      return "fetched";
-    } catch (error) {
-      return classifyGitError(error, classifyFetchFailure);
+    const fetched = await runGitProcess(root, [
+      "fetch",
+      "--prune",
+      "origin",
+      BRANCH_REFSPEC,
+      TAG_REFSPEC,
+    ]);
+    if (!fetched.ok) {
+      return classifyGitError(fetched, classifyFetchFailure);
     }
+    const headSet = await runGitProcess(root, [
+      "remote",
+      "set-head",
+      "origin",
+      "--auto",
+    ]);
+    return headSet.ok
+      ? "fetched"
+      : classifyGitError(headSet, classifyFetchFailure);
   }
 
   async publishTag(
@@ -121,26 +120,18 @@ export class HarnessGitAdapter implements HarnessGitPort {
     commit: string,
     defaultBranch: string,
   ): Promise<PublishTagOutcome> {
-    const options = gitOptions();
     const branchRef = `refs/heads/${defaultBranch}`;
-    try {
-      await run(
-        "git",
-        [
-          "-C",
-          root,
-          ...NO_HOOKS,
-          "push",
-          "--atomic",
-          `--force-with-lease=${branchRef}:${commit}`,
-          "origin",
-          `${commit}:refs/tags/${name}`,
-          `${commit}:${branchRef}`,
-        ],
-        options,
-      );
-    } catch (error) {
-      const failure = classifyGitError(error, classifyPushFailure);
+    const pushed = await runGitProcess(root, [
+      ...NO_HOOKS,
+      "push",
+      "--atomic",
+      `--force-with-lease=${branchRef}:${commit}`,
+      "origin",
+      `${commit}:refs/tags/${name}`,
+      `${commit}:${branchRef}`,
+    ]);
+    if (!pushed.ok) {
+      const failure = classifyGitError(pushed, classifyPushFailure);
       const settled = await this.settlePush(
         root,
         name,
@@ -151,11 +142,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
         return settled;
       }
     }
-    await run(
-      "git",
-      ["-C", root, "update-ref", `${MAESTRO_TAGS}/${name}`, commit],
-      options,
-    ).catch(() => {});
+    await runGitProcess(root, [
+      "update-ref",
+      `${MAESTRO_TAGS}/${name}`,
+      commit,
+    ]);
     return "pushed";
   }
 
@@ -398,17 +389,11 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     ref: PrimitiveRef,
   ): Promise<void> {
-    await run(
-      "git",
-      [
-        "-C",
-        root,
-        "fetch",
-        "origin",
-        `+refs/heads/${proposalBranch(ref)}:${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
-      ],
-      gitOptions(),
-    ).catch(() => {});
+    await runGitProcess(root, [
+      "fetch",
+      "origin",
+      `+refs/heads/${proposalBranch(ref)}:${PROPOSAL_REFS}/${proposalBranchLeaf(ref)}`,
+    ]);
   }
 
   // Never `--force`: a branch this commit does not descend from is a refusal,
@@ -418,27 +403,20 @@ export class HarnessGitAdapter implements HarnessGitPort {
     ref: PrimitiveRef,
     commit: string,
   ): Promise<SkillPushOutcome> {
-    try {
-      await run(
-        "git",
-        [
-          "-C",
-          root,
-          ...NO_HOOKS,
-          "push",
-          "origin",
-          `${commit}:refs/heads/${proposalBranch(ref)}`,
-        ],
-        gitOptions(),
-      );
+    const pushed = await runGitProcess(root, [
+      ...NO_HOOKS,
+      "push",
+      "origin",
+      `${commit}:refs/heads/${proposalBranch(ref)}`,
+    ]);
+    if (pushed.ok) {
       return "pushed";
-    } catch (error) {
-      const failure =
-        classifyGitError(error, classifyFetchFailure) === "offline"
-          ? "offline"
-          : "push-failed";
-      return await this.settlePromotion(root, ref, commit, failure);
     }
+    const failure =
+      classifyGitError(pushed, classifyFetchFailure) === "offline"
+        ? "offline"
+        : "push-failed";
+    return await this.settlePromotion(root, ref, commit, failure);
   }
 
   private async settlePromotion(
@@ -640,12 +618,8 @@ export class HarnessGitAdapter implements HarnessGitPort {
     root: string,
     args: string[],
   ): Promise<string | null> {
-    try {
-      const { stdout } = await run("git", ["-C", root, ...args], gitOptions());
-      return stdout;
-    } catch {
-      return null;
-    }
+    const read = await runGitProcess(root, args);
+    return read.ok ? read.stdout : null;
   }
 
   async readTags(root: string): Promise<HarnessTag[] | null> {
