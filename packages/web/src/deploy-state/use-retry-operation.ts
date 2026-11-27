@@ -1,5 +1,8 @@
 // Retries at the release and Selection the server recorded (#951, #1363).
-import type { PendingOperation, WriteReport } from "@maestro/core";
+import type {
+  PendingOperation,
+  RetryTargetOperationResult,
+} from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import {
@@ -22,7 +25,10 @@ export type Retried = {
 
 type RetryVariables = Retried & { target: DeployTarget };
 
-type RetryResponse = { completed: PendingOperation; report?: WriteReport };
+type RetryResponse = Omit<
+  Extract<RetryTargetOperationResult, { ok: true }>,
+  "ok"
+>;
 
 export type RetryOperation = {
   run: (target: DeployTarget) => void;

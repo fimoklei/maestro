@@ -62,6 +62,7 @@ export {
   type PendingOperation,
   RetryTargetOperation,
   type RetryTargetOperationError,
+  type RetryTargetOperationResult,
 } from "./deploy/retry-target-operation";
 export { TargetOperationStore } from "./deploy/target-operation";
 export {

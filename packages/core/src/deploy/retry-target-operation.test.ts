@@ -5,13 +5,26 @@ import { InFlightLocks } from "./in-flight-locks";
 import { RetryTargetOperation } from "./retry-target-operation";
 import { selectionWorld } from "./selection-writer-fake";
 
+type RetryOutcomes = ConstructorParameters<
+  typeof RetryTargetOperation
+>[0]["outcomes"];
+
 const HARNESS = "fimoklei/agent-harness";
 const target: DeployTarget = { kind: "repo", repoPath: "/repo" };
 
-function buildUseCase(
-  state: DeployedContentState = "clean",
-  readLockfile?: () => Promise<never>,
-) {
+const silentFolders: RetryOutcomes = {
+  read: async ({ release }) => ({ release, places: [] }),
+};
+
+function buildUseCase({
+  state = "clean",
+  readLockfile,
+  outcomes = silentFolders,
+}: {
+  state?: DeployedContentState;
+  readLockfile?: () => Promise<never>;
+  outcomes?: RetryOutcomes;
+} = {}) {
   const world = selectionWorld();
   const content = copiesIn(state).content;
   const retry = new RetryTargetOperation({
@@ -23,7 +36,7 @@ function buildUseCase(
     toolPresence: { detectGlobalTools: async () => ["claude" as const] },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
-    outcomes: { read: async ({ release }) => ({ release, places: [] }) },
+    outcomes,
   });
   return { world, retry };
 }
@@ -38,6 +51,45 @@ const interrupted = {
   desired: ["prototype", "review"],
   tools: null,
 };
+
+const interruptedGlobal = {
+  ...interrupted,
+  key: "global",
+  target: { kind: "global" } as const,
+  tools: ["claude" as const, "codex" as const],
+};
+
+function globalFolders(missing: {
+  claude: readonly string[];
+  codex: readonly string[];
+}): RetryOutcomes {
+  const readings = (names: readonly string[], gone: readonly string[]) =>
+    names.map((name) => ({
+      name,
+      reading: gone.includes(name)
+        ? ("missing" as const)
+        : ("at-release" as const),
+    }));
+  return {
+    read: async ({ release, names }) => ({
+      release,
+      places: [
+        {
+          tool: "claude",
+          path: "~/.claude/skills",
+          detected: true,
+          skills: readings(names, missing.claude),
+        },
+        {
+          tool: "codex",
+          path: "~/.agents/skills",
+          detected: true,
+          skills: readings(names, missing.codex),
+        },
+      ],
+    }),
+  };
+}
 
 describe("RetryTargetOperation", () => {
   it("has nothing to offer on a target with no unfinished operation", async () => {
@@ -69,6 +121,7 @@ describe("RetryTargetOperation", () => {
         desired: ["prototype", "review"],
       },
       report: { release: "v0.6.0", places: [] },
+      landed: [],
     });
     expect(world.calls).toEqual([
       {
@@ -81,7 +134,7 @@ describe("RetryTargetOperation", () => {
   });
 
   it("discards a consented edited copy an Update dropped, and finishes", async () => {
-    const { world, retry } = buildUseCase("diverged");
+    const { world, retry } = buildUseCase({ state: "diverged" });
     world.seed({ release: "v0.6.0", skills: ["prototype", "review"] });
     world.edits("claude", "review");
     await world.operations.begin({
@@ -167,6 +220,43 @@ describe("RetryTargetOperation", () => {
     ]);
   });
 
+  it("states each skill a completed Global retry finished as written in every Global folder", async () => {
+    const { world, retry } = buildUseCase({
+      outcomes: globalFolders({ claude: [], codex: [] }),
+    });
+    await world.operations.begin(interruptedGlobal);
+
+    const result = await retry.execute({ target: { kind: "global" } });
+
+    const written = [
+      { name: "prototype", state: "written" },
+      { name: "review", state: "written" },
+    ];
+    expect(result).toMatchObject({
+      ok: true,
+      report: {
+        release: "v0.6.0",
+        places: [
+          { path: "~/.claude/skills", skills: written },
+          { path: "~/.agents/skills", skills: written },
+        ],
+      },
+      landed: ["prototype", "review"],
+    });
+  });
+
+  it("names as landed only the skills the retry wrote in every Global folder", async () => {
+    const { world, retry } = buildUseCase({
+      outcomes: globalFolders({ claude: [], codex: ["review"] }),
+    });
+    await world.operations.begin(interruptedGlobal);
+
+    expect(await retry.execute({ target: { kind: "global" } })).toMatchObject({
+      ok: true,
+      landed: ["prototype"],
+    });
+  });
+
   it("finishes a Global removal over its saved tools while another folder keeps the removed skill", async () => {
     const { world, retry } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
@@ -199,7 +289,7 @@ describe("RetryTargetOperation", () => {
   });
 
   it("refuses a copy edited since the interruption, and offers its own receipt", async () => {
-    const { world, retry } = buildUseCase("diverged");
+    const { world, retry } = buildUseCase({ state: "diverged" });
     world.seed({ release: "v0.6.0", skills: ["prototype"] });
     await world.operations.begin(interrupted);
 
@@ -214,7 +304,7 @@ describe("RetryTargetOperation", () => {
   });
 
   it("runs once the reader consents to the copy the retry just read", async () => {
-    const { world, retry } = buildUseCase("diverged");
+    const { world, retry } = buildUseCase({ state: "diverged" });
     world.seed({ release: "v0.6.0", skills: ["prototype"] });
     await world.operations.begin(interrupted);
     const refused = await retry.execute({ target });
@@ -229,7 +319,7 @@ describe("RetryTargetOperation", () => {
   });
 
   it("offers no consent past an unreadable copy", async () => {
-    const { world, retry } = buildUseCase("unreadable");
+    const { world, retry } = buildUseCase({ state: "unreadable" });
     world.seed({ release: "v0.6.0", skills: ["prototype"] });
     await world.operations.begin(interrupted);
 
@@ -258,6 +348,7 @@ describe("RetryTargetOperation", () => {
         desired: ["prototype", "review"],
       },
       report: { release: "v0.6.0", places: [] },
+      landed: [],
     });
     expect(world.calls).toEqual([
       {
@@ -270,8 +361,10 @@ describe("RetryTargetOperation", () => {
   });
 
   it("answers a failed retry with no word of the error it caught", async () => {
-    const { world, retry } = buildUseCase("clean", async () => {
-      throw new Error("apm exited 1: token ghp_secret");
+    const { world, retry } = buildUseCase({
+      readLockfile: async () => {
+        throw new Error("apm exited 1: token ghp_secret");
+      },
     });
     await world.operations.begin(interrupted);
 

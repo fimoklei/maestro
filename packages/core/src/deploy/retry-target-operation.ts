@@ -10,7 +10,11 @@ import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import { type CopyVerdict, LocalCopyGuard } from "./local-copy-guard";
 import type { PlaceReader } from "./place-reading";
 import type { TargetOperation, TargetOperationKind } from "./target-operation";
-import { reportWrite, type WriteReport } from "./write-report";
+import {
+  reportWrite,
+  type WriteReport,
+  writtenEverywhere,
+} from "./write-report";
 
 export type PendingOperation = {
   kind: TargetOperationKind;
@@ -32,7 +36,12 @@ export type RetryTargetOperationError =
   | "retry-failed";
 
 export type RetryTargetOperationResult =
-  | { ok: true; completed: PendingOperation; report?: WriteReport }
+  | {
+      ok: true;
+      completed: PendingOperation;
+      report?: WriteReport;
+      landed: readonly string[];
+    }
   | {
       ok: false;
       error: RetryTargetOperationError;
@@ -167,19 +176,25 @@ export class RetryTargetOperation {
             tools: tools ?? [],
           })
           .catch(() => null);
+        const report =
+          readings === null
+            ? undefined
+            : reportWrite({
+                readings,
+                names: record.desired,
+                wrote: new Set(record.desired),
+                refused: new Map(),
+              });
         return {
           ok: true,
           completed: summarise(record),
-          ...(readings === null
-            ? {}
-            : {
-                report: reportWrite({
-                  readings,
-                  names: record.desired,
-                  wrote: new Set(record.desired),
-                  refused: new Map(),
-                }),
-              }),
+          ...(report === undefined ? {} : { report }),
+          landed:
+            report === undefined
+              ? []
+              : record.desired.filter((name) =>
+                  writtenEverywhere(report, name),
+                ),
         };
       }
       return {

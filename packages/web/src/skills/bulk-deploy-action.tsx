@@ -1,7 +1,6 @@
 import type {
   BulkDeployReport,
   GlobalFolderState,
-  PendingOperation,
   WriteReport,
 } from "@maestro/core";
 import { useState } from "react";
@@ -21,7 +20,10 @@ import {
   type GlobalDeployStateView,
   useGlobalDeployState,
 } from "../deploy-state/use-global-deploy-state";
-import { useRetryOperation } from "../deploy-state/use-retry-operation";
+import {
+  type RetryOperation,
+  useRetryOperation,
+} from "../deploy-state/use-retry-operation";
 import { writesToGroup } from "../deploy-state/writes-to-group";
 import { type DriftViewModel, driftViewModel } from "../drift/drift-view-model";
 import { useDrift, useGlobalDrift } from "../drift/use-drift";
@@ -58,7 +60,7 @@ import {
   TARGETS_LOADING,
 } from "./skills-copy";
 import { useBulkDeploy, useDeployAgain } from "./use-bulk-deploy";
-import { landedSince, writtenToLines } from "./written-to-view";
+import { landedByRetry, writtenToLines } from "./written-to-view";
 
 type BulkDeployProps = {
   stagedNames: string[];
@@ -234,7 +236,7 @@ export function BulkDeployRun({
           skippedClean: run.plan.skippedClean,
           redeployed: run.redeployed,
           retried: retry.landed(chosenRun.target)?.report ?? null,
-          completed: retry.landed(chosenRun.target)?.completed ?? null,
+          landedByRetry: retryLanded(retry.landed(chosenRun.target)),
           reread: run.reread,
           targetLabel: chosenRun.label,
           requestFailed: bulk.isError,
@@ -428,7 +430,7 @@ function bulkDeployReportView(input: {
   redeployed: SkillRelease[];
   // A completed Retry deploy's read of the Global folders; null before one.
   retried: WriteReport | null;
-  completed: Pick<PendingOperation, "release" | "desired"> | null;
+  landedByRetry: { release: string; landed: readonly string[] } | null;
   // A row's Deploy again's read of the Global folders; null before one.
   reread: WriteReport | null;
   targetLabel: string;
@@ -473,7 +475,7 @@ function bulkDeployReportView(input: {
     (places === null
       ? null
       : writtenToLines({ ran: report, report: places, skipped, retry }));
-  const landed = landedSince(report, input.completed);
+  const landed = landedByRetry(report, input.landedByRetry);
   const deployed = [...report.deployed, ...landed, ...redeployed];
 
   return {
@@ -497,6 +499,13 @@ function bulkDeployReportView(input: {
     },
   };
 }
+
+const retryLanded = (
+  answer: ReturnType<RetryOperation["landed"]>,
+): { release: string; landed: readonly string[] } | null =>
+  answer === null
+    ? null
+    : { release: answer.completed.release, landed: answer.landed };
 
 const retryFailure = (
   notice: DeployStateNotice | null,
