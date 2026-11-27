@@ -51,6 +51,13 @@ describe("verdict", () => {
     expect(verdict({ ...capture, text, committed })).toBe("same");
   });
 
+  it("is same when only apm's failure timing differs", () => {
+    const text = "[x] Install failed after 5.9s.\n";
+    const committed = "[x] Install failed after 5.8s.\n";
+
+    expect(verdict({ ...capture, text, committed })).toBe("same");
+  });
+
   it("differs when the output changed", () => {
     expect(verdict({ ...capture, committed: "[+] other\n" })).toBe("differs");
   });

@@ -54,10 +54,10 @@ Phrases a fixture comment must never contain: `is a symlink`,
   — the `HOME` redirect strips the gh credential helper. "No credentials" means
   both unset, plus `GH_TOKEN`.
 - The install pre-flight probe runs **anonymously** for a public repo. When the
-  machine's unauthenticated GitHub quota is spent, every install prints an
+  IP address's unauthenticated GitHub quota is spent, every install prints an
   `[i] GitHub API rate limit hit …` line and continues. Capture install fixtures
-  only when that line is absent — it is an artefact of the capturing machine,
-  not of apm's install path.
+  only when that line is absent — it is an artefact of the capturing IP
+  address, not of apm's install path.
 - Skill under test: `github.com/fimoklei/agent-harness/skills/tdd` at v0.5.0 /
   v0.5.1 — the retired demo Harness at historic tags, so these captures carry
   the old root `skills/` subpath. The canonical shape is `.apm/skills/<name>`

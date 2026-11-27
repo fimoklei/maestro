@@ -15,11 +15,14 @@ treat them as hypotheses, not facts.
   one permitted form is a *named* package under a sandbox `HOME`, solely to
   re-capture `apm-uninstall-global-ok.txt` in step 2.
 
-- Every install spends the machine's anonymous GitHub quota (60 an hour), token
-  or not. The capture script refuses to start on a short quota; before any
-  other batch run `node scripts/github-quota.mjs <calls>` and wait for the
-  reset it prints. Discard any capture that holds a
-  `GitHub API rate limit hit` line. The canaries pass on a spent quota; only
+- A default install spends the IP address's anonymous GitHub quota (60 an
+  hour), token or not; an auth-first install (`APM_GITHUB_AUTH_FIRST=1`)
+  spends none (`docs/apm-behavior.md` § Install signals). Run setup installs
+  by hand auth-first; run every command whose output you keep or measure
+  default, as the capture script does. The capture script refuses to start on
+  a short quota; before any other batch run
+  `node scripts/github-quota.mjs <calls>` and wait for the reset it prints.
+  Discard any capture that holds a `GitHub API rate limit hit` line. The canaries pass on a spent quota; only
   captures need it.
 
 ## Steps

@@ -136,14 +136,22 @@ The deploy path must not trust the exit code:
    All match none of the signal phrases — inert for classification.
 5. **A throttled pre-flight probe prints an `[i]` line and continues.**
    The validation step probes a public repo **anonymously** before spending
-   the token (source, `install/validation.py`), so a machine whose
+   the token (source, `install/validation.py`), so an IP address whose
    unauthenticated GitHub quota is spent prints `[i] GitHub API rate limit
    hit while checking github.com; skipping the pre-flight accessibility
-   probe …` on every install and lets the download step verify access. The
-   line matches no signal phrase. With no token at all, the failure then
+   probe …` on every default install and lets the download step verify
+   access. The line matches no signal phrase. With no token at all, the failure then
    surfaces at the download step and carries `Authentication failed` / `No
    token available` in the *install* output — the one case where those
    phrases appear outside `view`; the driver never classifies them there.
+   Measured 2026-11-27, sandbox `HOME`, token set, the anonymous quota read
+   before and after each run: one default install of `skills/tdd#v0.5.0`
+   spends **2** anonymous calls; the same install with
+   `APM_GITHUB_AUTH_FIRST=1` spends **0** and adds one line,
+   `[!] github-auth-first is enabled: git credentials will be forwarded on
+   the first HTTPS attempt to github.com. …`. Each twice, same result. One
+   run of `scripts/capture-apm-fixtures.mjs`, setup auth-first and captured
+   commands default, spends **20**.
 6. **`--trust-bin` / `--no-trust-bin` exist; nothing turns interactive.**
    No warning line appeared in any capture, because no skill under test
    carries a `bin/` payload — the warning is conditional on one

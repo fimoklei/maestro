@@ -34,7 +34,7 @@ export function normalizeHome(text, home) {
 // apm's own timings change on every run.
 const comparable = (text) => {
   const lines = text
-    .replace(/ in \d+(\.\d+)?s\b/g, " in <t>s")
+    .replace(/ (in|after) \d+(\.\d+)?s\b/g, " $1 <t>s")
     .split("\n")
     .map((line) => line.trimEnd());
   const start = lines.findIndex((line) => !/^(# |\$ )/.test(line));
@@ -56,7 +56,6 @@ const ROOT = "github.com/fimoklei/agent-harness#v0.6.0";
 const SAMPLE = "microsoft/apm-sample-package#v1.0.0";
 const claudeWork = (s) => ({ CLAUDE_CONFIG_DIR: join(s.home, ".claude-work") });
 
-// One row per fixture; setup runs authed and its output is discarded.
 const cases = [
   {
     name: "apm-install-ok.txt",
@@ -283,18 +282,23 @@ const cases = [
   },
 ];
 
-// Covers every install, view and outdated above with room for apm's retries.
-const QUOTA_NEEDED = 45;
+const CAPTURED_COMMANDS_QUOTA = 20;
 
 function baseEnv() {
   const env = { ...process.env, NO_COLOR: "1" };
-  for (const key of ["GH_TOKEN", "GITHUB_TOKEN", "GITHUB_APM_PAT", "COLUMNS"]) {
+  for (const key of [
+    "GH_TOKEN",
+    "GITHUB_TOKEN",
+    "GITHUB_APM_PAT",
+    "APM_GITHUB_AUTH_FIRST",
+    "COLUMNS",
+  ]) {
     delete env[key];
   }
   return env;
 }
 
-function sandbox(root, token) {
+export function sandbox(root, token) {
   const home = realpathSync(mkdtempSync(join(root, "h")));
   const repo = join(home, "repo");
   const neutral = join(home, "neutral");
@@ -313,7 +317,7 @@ function sandbox(root, token) {
   box.apm = (args, extraEnv = {}) => {
     const run = spawnSync("apm", args, {
       cwd: box.cwd,
-      env: { ...env("authed"), ...extraEnv },
+      env: { ...env("authed"), APM_GITHUB_AUTH_FIRST: "1", ...extraEnv },
       stdio: "ignore",
     });
     if (run.status !== 0)
@@ -323,7 +327,7 @@ function sandbox(root, token) {
 }
 
 // Both streams share one descriptor so they interleave as apm wrote them.
-function capture(box, row, file) {
+export function capture(box, row, file) {
   const [auth, args] = row.capture;
   const fd = openSync(file, "w");
   const run = spawnSync("apm", args, {
@@ -343,10 +347,10 @@ function capture(box, row, file) {
 
 async function main() {
   const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-  const quota = await checkQuota(QUOTA_NEEDED);
+  const quota = await checkQuota(CAPTURED_COMMANDS_QUOTA);
   if (!quota.ok) {
     console.error(
-      `anonymous GitHub quota: ${quota.remaining ?? "unknown"} left, need ${QUOTA_NEEDED}; resets ${quota.resetAt ?? "unknown"}. Captures taken now would hold the rate-limit line.`,
+      `anonymous GitHub quota: ${quota.remaining ?? "unknown"} left, need ${CAPTURED_COMMANDS_QUOTA}; resets ${quota.resetAt ?? "unknown"}. Captures taken now would hold the rate-limit line.`,
     );
     process.exit(1);
   }
