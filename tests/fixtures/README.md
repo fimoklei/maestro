@@ -117,7 +117,7 @@ folder: copying a capture over a fixture is the upgrader's call.
 | `apm-uninstall-global-ok.txt` ✓= | `apm uninstall -g -v <ref>#v0.5.1` | neutral cwd, global install at `-t claude,codex` beside an unrelated skill | 0 | out+err |
 | `apm-uninstall-claude-config-dir.txt` ✓= | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, `CLAUDE_CONFIG_DIR=$HOME/.claude-work` for the install and the uninstall (#1947) | 0 | out+err |
 | `apm-uninstall-selected-profile-only.txt` ✓= | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, installed once without and once with `CLAUDE_CONFIG_DIR=$HOME/.claude-work`; the uninstall with it set | 0 | out+err |
-| `apm-install-lockfile-upgraded.txt` | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -g -t claude,codex` | by hand, not in the script: neutral cwd, `COLUMNS=200`, the same install run first with apm 0.32.0 | 0 | out+err |
+| `apm-install-lockfile-upgraded.txt` ✓= | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -g -t claude,codex` | by hand, not in the script: neutral cwd, `COLUMNS=200`, the same install run first with apm 0.32.0 | 0 | out+err |
 
 The five uninstall fixtures came from one scripted run against a throwaway
 sandbox, `COLUMNS=200`, no token in the environment — uninstall needs neither
