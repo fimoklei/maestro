@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import {
   ApmCliDriver,
   type DeployTarget,
-  type FolderOutcomes,
+  type WriteReport,
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { deployWorld, HOME, lockfilePath } from "../helpers/deploy-world";
@@ -41,9 +41,21 @@ describe("deploy HTTP route", () => {
     const res = await w.deploy({ target: repoTarget });
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({
-      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+    const body = (await res.json()) as {
+      deployed: unknown;
+      report: WriteReport;
+    };
+    expect(body.deployed).toEqual({
+      type: "skill",
+      name: "tdd",
+      version: "v0.5.1",
     });
+    expect(body.report.places.map((place) => [place.tool, place.path])).toEqual(
+      [
+        ["claude", null],
+        ["codex", null],
+      ],
+    );
     expect(w.installs).toEqual([
       { target: repoTarget, ref: HARNESS_REF, skills: ["tdd"] },
     ]);
@@ -87,13 +99,13 @@ describe("deploy HTTP route", () => {
     expect(res.status).toBe(200);
     // What each folder got is proven in the core lane; the route carries it.
     // Checked by the toEqual below before its folders are read.
-    const body = (await res.json()) as { outcome: FolderOutcomes };
+    const body = (await res.json()) as { report: WriteReport };
     expect(body).toEqual({
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
-      outcome: { release: "v0.5.1", folders: expect.any(Array) },
+      report: { release: "v0.5.1", places: expect.any(Array) },
     });
     expect(
-      body.outcome.folders.map((folder) => `${folder.path} ${folder.detected}`),
+      body.report.places.map((place) => `${place.path} ${place.detected}`),
     ).toEqual(["~/.claude/skills true", "~/.agents/skills true"]);
     expect(w.installs).toEqual([
       {

@@ -72,7 +72,7 @@ describe("remove HTTP route", () => {
     const response = await w.removeConfirmed(repoTarget);
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toEqual({
+    expect(await response.json()).toMatchObject({
       removed: {
         type: "skill",
         name: "tdd",
@@ -229,10 +229,14 @@ describe("remove HTTP route", () => {
     const response = await w.removeConfirmed(repoTarget);
 
     expect(response.status).toBe(502);
-    expect(await response.json()).toEqual({
-      error: "remove-failed",
-      outcome: { scope: "repo", state: "not-removed" },
-    });
+    const body = (await response.json()) as {
+      error: string;
+      report: { places: { tool: string; skills: unknown[] }[] };
+    };
+    expect(body.error).toBe("remove-failed");
+    expect(
+      body.report.places.find((place) => place.tool === "claude")?.skills,
+    ).toEqual([{ name: "tdd", state: "not-removed" }]);
   });
 
   it("refuses a primitive type other than a skill", async () => {
@@ -271,7 +275,7 @@ describe("remove HTTP route", () => {
       const response = await w.removeConfirmed(globalTarget);
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({
+      expect(await response.json()).toMatchObject({
         removed: {
           type: "skill",
           name: "tdd",

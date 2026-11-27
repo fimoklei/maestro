@@ -179,7 +179,7 @@ describe("RemoveDeployedSkill", () => {
   it("hands apm the tag-pinned ref the lockfile records", async () => {
     const { useCase, calls } = buildUseCase();
 
-    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
       ok: true,
       removed: {
         type: "skill",
@@ -200,7 +200,7 @@ describe("RemoveDeployedSkill", () => {
       },
     });
 
-    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
       ok: true,
       removed: {
         type: "skill",
@@ -214,17 +214,17 @@ describe("RemoveDeployedSkill", () => {
   it("reports the detected tools a global removal ran against", async () => {
     const { useCase } = buildUseCase({ detectedTools: ["claude"] });
 
-    await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
-      {
-        ok: true,
-        removed: {
-          type: "skill",
-          name: "tdd",
-          version: VERSION,
-          scope: { kind: "global", tools: ["claude"] },
-        },
+    await expect(
+      confirmedExecute(useCase, removeTddGlobally),
+    ).resolves.toMatchObject({
+      ok: true,
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: { kind: "global", tools: ["claude"] },
       },
-    );
+    });
   });
 
   it("refuses a primitive type other than a skill", async () => {
@@ -308,7 +308,7 @@ describe("RemoveDeployedSkill", () => {
 
     await expect(
       useCase.execute({ ...removeTdd, confirmedRemovalReceipt }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       ok: true,
       removed: {
         type: "skill",
@@ -403,7 +403,7 @@ describe("RemoveDeployedSkill", () => {
   it("removes a copy the guard found untouched on disk", async () => {
     const { useCase, calls } = buildUseCase({ deployedState: "not-deployed" });
 
-    await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
       ok: true,
       removed: {
         type: "skill",
@@ -554,7 +554,7 @@ describe("RemoveDeployedSkill when the copy changed since it was priced", () => 
         ...removeTdd,
         confirmedRemovalReceipt: refused.ok ? undefined : refused.receipt,
       }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       ok: true,
       removed: {
         type: "skill",
@@ -634,34 +634,34 @@ describe("RemoveDeployedSkill on the global target", () => {
   it("removes the skill in one action, naming the global scope to apm", async () => {
     const { useCase, calls } = buildUseCase();
 
-    await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
-      {
-        ok: true,
-        removed: {
-          type: "skill",
-          name: "tdd",
-          version: VERSION,
-          scope: GLOBAL_SCOPE,
-        },
+    await expect(
+      confirmedExecute(useCase, removeTddGlobally),
+    ).resolves.toMatchObject({
+      ok: true,
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: GLOBAL_SCOPE,
       },
-    );
+    });
     expect(calls.removes).toEqual([{ target: { kind: "global" }, ref: REF }]);
   });
 
   it("never asks the repo registry about a request that carries no path", async () => {
     const { useCase, calls } = buildUseCase({ registered: false });
 
-    await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
-      {
-        ok: true,
-        removed: {
-          type: "skill",
-          name: "tdd",
-          version: VERSION,
-          scope: GLOBAL_SCOPE,
-        },
+    await expect(
+      confirmedExecute(useCase, removeTddGlobally),
+    ).resolves.toMatchObject({
+      ok: true,
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: GLOBAL_SCOPE,
       },
-    );
+    });
     expect(calls.removes).toHaveLength(1);
   });
 
@@ -861,17 +861,17 @@ describe("RemoveDeployedSkill on a machine without Claude Code", () => {
       deployedState: "unverifiable",
     });
 
-    await expect(confirmedExecute(useCase, removeTddGlobally)).resolves.toEqual(
-      {
-        ok: true,
-        removed: {
-          type: "skill",
-          name: "tdd",
-          version: VERSION,
-          scope: CODEX_SCOPE,
-        },
+    await expect(
+      confirmedExecute(useCase, removeTddGlobally),
+    ).resolves.toMatchObject({
+      ok: true,
+      removed: {
+        type: "skill",
+        name: "tdd",
+        version: VERSION,
+        scope: CODEX_SCOPE,
       },
-    );
+    });
   });
 });
 
@@ -1020,6 +1020,29 @@ describe("RemoveDeployedSkill.preflight", () => {
   });
 });
 
+const everyRepoTool = (state: string) =>
+  (["claude", "codex"] as const).map((tool) => ({
+    tool,
+    path: null,
+    detected: true,
+    skills: [{ name: "tdd", state }],
+  }));
+
+describe("RemoveDeployedSkill reporting a removal that landed", () => {
+  it("states each of the repository's tools as removed", async () => {
+    const { useCase } = buildUseCase({
+      afterApmRemove: (copies) =>
+        copies.setCopy(removeTdd.target, "tdd", "not-deployed"),
+    });
+
+    const result = await confirmedExecute(useCase, removeTdd);
+
+    expect(result.ok ? result.report?.places : null).toEqual(
+      everyRepoTool("removed"),
+    );
+  });
+});
+
 describe("RemoveDeployedSkill reporting a failed removal per target", () => {
   it("reports the repo's own copy as gone when the probe finds nothing left", async () => {
     const { useCase } = buildUseCase({
@@ -1031,7 +1054,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
       error: "remove-failed",
-      outcome: { scope: "repo", state: "removed" },
+      report: expect.objectContaining({ places: everyRepoTool("removed") }),
     });
   });
 
@@ -1041,7 +1064,7 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
       error: "remove-failed",
-      outcome: { scope: "repo", state: "not-removed" },
+      report: expect.objectContaining({ places: everyRepoTool("not-removed") }),
     });
   });
 
@@ -1060,13 +1083,22 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
       {
         ok: false,
         error: "remove-failed",
-        outcome: {
-          scope: "global",
-          tools: [
-            { tool: "claude", path: "~/.claude/skills", state: "removed" },
-            { tool: "codex", path: "~/.agents/skills", state: "not-removed" },
+        report: expect.objectContaining({
+          places: [
+            {
+              tool: "claude",
+              path: "~/.claude/skills",
+              detected: true,
+              skills: [{ name: "tdd", state: "removed" }],
+            },
+            {
+              tool: "codex",
+              path: "~/.agents/skills",
+              detected: true,
+              skills: [{ name: "tdd", state: "not-removed" }],
+            },
           ],
-        },
+        }),
       },
     );
   });
@@ -1079,23 +1111,25 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
     const result = await confirmedExecute(useCase, removeTddGlobally);
 
     expect(
-      result.ok === false && result.outcome?.scope === "global"
-        ? result.outcome.tools.map((entry) => entry.tool)
+      result.ok === false
+        ? result.report?.places.map((place) => place.tool)
         : null,
     ).toEqual(["codex", "claude"]);
   });
 
-  it("calls a probe that threw unknown, never removed", async () => {
+  it("calls a probe that threw not confirmed, never removed", async () => {
     const { useCase } = buildUseCase({ removed: false, probeThrows: true });
 
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
       ok: false,
       error: "remove-failed",
-      outcome: { scope: "repo", state: "unknown" },
+      report: expect.objectContaining({
+        places: everyRepoTool("not-confirmed"),
+      }),
     });
   });
 
-  it("calls a copy it could not read unknown, never removed", async () => {
+  it("calls a copy it could not read not confirmed, never removed", async () => {
     for (const state of ["unreadable", "lockfile-malformed"] as const) {
       const { useCase } = buildUseCase({
         removed: false,
@@ -1103,11 +1137,15 @@ describe("RemoveDeployedSkill reporting a failed removal per target", () => {
           copies.setCopy(removeTdd.target, "tdd", state),
       });
 
-      await expect(confirmedExecute(useCase, removeTdd)).resolves.toEqual({
-        ok: false,
-        error: "remove-failed",
-        outcome: { scope: "repo", state: "unknown" },
-      });
+      const result = await confirmedExecute(useCase, removeTdd);
+
+      expect(result).toMatchObject({ ok: false, error: "remove-failed" });
+      expect(
+        result.ok
+          ? null
+          : result.report?.places.find((place) => place.tool === "claude")
+              ?.skills,
+      ).toEqual([{ name: "tdd", state: "not-confirmed" }]);
     }
   });
 
@@ -1308,7 +1346,9 @@ describe("RemoveDeployedSkill removing one skill from many targets", () => {
       {
         target: repo("/repo-a"),
         reason: "remove-failed",
-        outcome: { scope: "repo", state: "not-removed" },
+        report: expect.objectContaining({
+          places: everyRepoTool("not-removed"),
+        }),
       },
       { target: repo("/repo-b"), reason: "repo-not-registered" },
     ]);

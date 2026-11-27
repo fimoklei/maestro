@@ -64,7 +64,17 @@ function stubServer(attentionError: string) {
       if (url === "/api/deploy/update") {
         return jsonResponse({
           release: "v0.3.4",
-          outcome: [{ name: "tdd", tool: null, state: "updated" }],
+          report: {
+            release: "v0.3.4",
+            places: [
+              {
+                tool: "claude",
+                path: null,
+                detected: true,
+                skills: [{ name: "tdd", state: "written" }],
+              },
+            ],
+          },
         });
       }
       throw new Error(`Unexpected request: ${url}`);

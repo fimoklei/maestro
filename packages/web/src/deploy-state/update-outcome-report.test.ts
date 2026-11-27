@@ -1,8 +1,9 @@
-import type { FolderOutcomes, UpdateOutcomeRow } from "@maestro/core";
+import type { WriteReport } from "@maestro/core";
 import { isValidElement, type ReactElement } from "react";
 import { describe, expect, it } from "vitest";
 import { type Copy, plainText } from "../ui/phrase";
 import {
+  type UpdateRow,
   updateFoldersReport,
   updateOutcomeReport,
 } from "./update-outcome-report";
@@ -15,7 +16,7 @@ const readRow = <R extends { detail?: Copy | ReactElement }>(row: R) =>
     ? row
     : { ...row, detail: plainText(row.detail) };
 
-const report = (rows: UpdateOutcomeRow[], retry = true) =>
+const report = (rows: UpdateRow[], retry = true) =>
   updateOutcomeReport({ rows, releases: RELEASES, retry });
 
 describe("update outcome report", () => {
@@ -23,7 +24,7 @@ describe("update outcome report", () => {
   it("states a clean update in its heading, with no row", () => {
     expect(
       report([
-        { name: "tdd", tool: null, state: "updated" },
+        { name: "tdd", tool: null, state: "written" },
         { name: "review", tool: null, state: "removed" },
       ]),
     ).toStrictEqual({
@@ -40,7 +41,7 @@ describe("update outcome report", () => {
       { name: "grill", tool: null, state: "not-updated" },
       { name: "tdd", tool: null, state: "missing" },
       { name: "review", tool: null, state: "not-removed" },
-      { name: "spec", tool: null, state: "unknown" },
+      { name: "spec", tool: null, state: "not-confirmed" },
     ]);
 
     expect(heading).toBe("Not every skill reached v0.3.4");
@@ -71,8 +72,8 @@ describe("update outcome report", () => {
   it("claims no failure where a skill could only not be read back", () => {
     expect(
       report([
-        { name: "tdd", tool: null, state: "updated" },
-        { name: "spec", tool: null, state: "unknown" },
+        { name: "tdd", tool: null, state: "written" },
+        { name: "spec", tool: null, state: "not-confirmed" },
       ]).heading,
     ).toBe("Maestro couldn't confirm every skill reached v0.3.4");
   });
@@ -99,7 +100,7 @@ describe("update outcome report", () => {
 
   it("names the tool on each row where the tools disagree", () => {
     const { groups } = report([
-      { name: "grill", tool: "claude", state: "updated" },
+      { name: "grill", tool: "claude", state: "written" },
       { name: "grill", tool: "codex", state: "not-updated" },
     ]);
 
@@ -112,25 +113,25 @@ describe("update outcome report", () => {
 describe("Global update outcome report", () => {
   const everyFolderAt = {
     release: "v0.3.4",
-    folders: [
+    places: [
       {
-        path: "~/.claude/skills",
         tool: "claude",
+        path: "~/.claude/skills",
         detected: true,
-        skills: [{ name: "tdd", outcome: "written" }],
+        skills: [{ name: "tdd", state: "written" }],
       },
     ],
-  } satisfies FolderOutcomes;
+  } satisfies WriteReport;
 
   it("states a finished update in its heading", () => {
     expect(
-      updateFoldersReport({ folders: everyFolderAt, retry: false }).heading,
+      updateFoldersReport({ report: everyFolderAt, retry: false }).heading,
     ).toBe("Updated to v0.3.4");
   });
 
   it("claims no success while the update is incomplete, though every folder reads at the release", () => {
     expect(
-      updateFoldersReport({ folders: everyFolderAt, retry: true }).heading,
+      updateFoldersReport({ report: everyFolderAt, retry: true }).heading,
     ).toBe("Update incomplete");
   });
 });

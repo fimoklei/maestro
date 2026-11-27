@@ -134,7 +134,15 @@ describe("apm output never reaches the client", () => {
     expect(status).toBe(502);
     expect(JSON.parse(body)).toEqual({
       error: "remove-failed",
-      outcome: { scope: "repo", state: "removed" },
+      report: {
+        release: "v0.5.1",
+        places: ["claude", "codex"].map((tool) => ({
+          tool,
+          path: null,
+          detected: true,
+          skills: [{ name: "tdd", state: "removed" }],
+        })),
+      },
     });
   });
 

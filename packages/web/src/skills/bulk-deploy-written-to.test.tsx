@@ -1,8 +1,4 @@
-import type {
-  BulkDeployReport,
-  FolderOutcomes,
-  SkillOutcome,
-} from "@maestro/core";
+import type { BulkDeployReport, ReportSkill, WriteReport } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -20,23 +16,23 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const written = (name: string): SkillOutcome => ({ name, outcome: "written" });
+const written = (name: string): ReportSkill => ({ name, state: "written" });
 
 const outcome = (
-  claude: SkillOutcome[],
-  codex: SkillOutcome[] | null,
-): FolderOutcomes => ({
+  claude: ReportSkill[],
+  codex: ReportSkill[] | null,
+): WriteReport => ({
   release: "v1.0.0",
-  folders: [
+  places: [
     {
-      path: "~/.claude/skills",
       tool: "claude",
+      path: "~/.claude/skills",
       detected: true,
       skills: claude,
     },
     {
-      path: "~/.agents/skills",
       tool: "codex",
+      path: "~/.agents/skills",
       detected: codex !== null,
       skills: codex ?? [],
     },
@@ -51,14 +47,13 @@ const BOTH_WRITTEN = outcome(
 // One install wrote commit-message to the Claude Code folder only.
 const ONE_SHORT: BulkDeployReport = {
   target: { kind: "global" },
-  deployed: [],
+  deployed: [{ name: "code-review", version: "v1.0.0" }],
   attention: [],
-  failed: [
-    { error: "deploy-incomplete", names: ["code-review", "commit-message"] },
-  ],
-  outcome: outcome(
+  failed: [{ error: "deploy-incomplete", names: ["commit-message"] }],
+  unfinished: true,
+  report: outcome(
     [written("code-review"), written("commit-message")],
-    [written("code-review"), { name: "commit-message", outcome: "missing" }],
+    [written("code-review"), { name: "commit-message", state: "missing" }],
   ),
 };
 
@@ -71,7 +66,7 @@ function stub(
         release: "v1.0.0",
         desired: ["code-review", "commit-message"],
       },
-      outcome: BOTH_WRITTEN,
+      report: BOTH_WRITTEN,
     }),
 ) {
   vi.stubGlobal(
@@ -93,7 +88,7 @@ function stub(
             name: "commit-message",
             version: "v1.0.0",
           },
-          outcome: BOTH_WRITTEN,
+          report: BOTH_WRITTEN,
         });
       }
       throw new Error(`Unexpected request: ${url}`);
@@ -143,7 +138,7 @@ describe("Global deploy Report: Written to", () => {
       ],
       attention: [],
       failed: [],
-      outcome: BOTH_WRITTEN,
+      report: BOTH_WRITTEN,
     });
 
     const dialog = await deployToGlobal();
@@ -160,6 +155,31 @@ describe("Global deploy Report: Written to", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("never counts a skill the deploy refused as deployed, though its copy sits in the folder", async () => {
+    const refused: ReportSkill = {
+      name: "code-review",
+      state: "refused",
+      reason: "local-diverged-from-tag",
+    };
+    stub({
+      target: { kind: "global" },
+      deployed: [{ name: "commit-message", version: "v1.0.0" }],
+      attention: [],
+      failed: [{ error: "local-diverged-from-tag", names: ["code-review"] }],
+      report: outcome(
+        [refused, written("commit-message")],
+        [refused, written("commit-message")],
+      ),
+    });
+
+    const dialog = await deployToGlobal();
+
+    expect(lines(dialog)).toEqual([
+      "✕~/.claude/skills1 of 2 skills deployedNot writtencode-review",
+      "✕~/.agents/skills1 of 2 skills deployedNot writtencode-review",
+    ]);
+  });
+
   it("names the undetected tool of a folder the deploy skipped", async () => {
     stub({
       target: { kind: "global" },
@@ -169,7 +189,7 @@ describe("Global deploy Report: Written to", () => {
       ],
       attention: [],
       failed: [],
-      outcome: outcome(
+      report: outcome(
         [written("code-review"), written("commit-message")],
         null,
       ),
@@ -261,11 +281,11 @@ describe("Global deploy Report: Written to", () => {
         },
       ],
       failed: [],
-      outcome: outcome(
+      report: outcome(
         [written("code-review"), written("commit-message")],
         [
           written("code-review"),
-          { name: "commit-message", outcome: "not-updated", stillAt: "v0.9.0" },
+          { name: "commit-message", state: "not-updated", stillAt: "v0.9.0" },
         ],
       ),
     });

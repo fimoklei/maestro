@@ -20,6 +20,18 @@ export type HeldDeployView = {
   lines: FoldLine[];
 };
 
+const wroteAny = (report: BulkDeployReport): boolean => {
+  const asked = new Set([
+    ...report.attention.map((row) => row.name),
+    ...report.failed.flatMap((line) => line.names),
+  ]);
+  return (report.report?.places ?? []).some((place) =>
+    place.skills.some(
+      (skill) => asked.has(skill.name) && skill.state !== "refused",
+    ),
+  );
+};
+
 /**
  * Null unless every row of a Global run that wrote nothing is held by local
  * edits. `skipped`: the skills the plan did not send as already up to date.
@@ -33,7 +45,7 @@ export function heldDeployView(
   const isHold =
     report.target.kind === "global" &&
     report.deployed.length === 0 &&
-    report.outcome === undefined &&
+    !wroteAny(report) &&
     rows.length > 0 &&
     rows.every(
       (row) =>

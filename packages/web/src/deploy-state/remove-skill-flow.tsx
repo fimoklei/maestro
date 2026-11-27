@@ -1,8 +1,4 @@
-import type {
-  RemoveOutcome,
-  RemoveTargetState,
-  RemoveToolOutcome,
-} from "@maestro/core";
+import type { WriteReport } from "@maestro/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { HttpError } from "../api/http";
@@ -21,6 +17,7 @@ import {
   removePreflightQueryOptions,
   useRemovePreflight,
 } from "./use-remove-preflight";
+import { writeReportIn } from "./write-report-body";
 
 type RemovedSkill = {
   name: string;
@@ -35,61 +32,6 @@ function removedName({ name, version, target }: RemovedSkill): Phrase {
   const release =
     version === undefined ? "(version unknown)" : machine(version);
   return phrase`${named(name)} ${release} from ${scope}`;
-}
-
-const STATES: Record<string, RemoveTargetState> = {
-  removed: "removed",
-  "not-removed": "not-removed",
-  unknown: "unknown",
-};
-
-const KNOWN_TOOLS: Record<RemoveToolOutcome["tool"], true> = {
-  claude: true,
-  codex: true,
-};
-
-function isKnown(tool: string): tool is RemoveToolOutcome["tool"] {
-  return Object.hasOwn(KNOWN_TOOLS, tool);
-}
-
-// Nothing validates this body. A report this build cannot read is dropped
-// whole: a ledger built on a guess states an outcome the server never proved.
-function removalOutcome(error: unknown): RemoveOutcome | null {
-  if (!(error instanceof HttpError)) {
-    return null;
-  }
-  // An HttpError body, read field by field; every field stays unknown.
-  const outcome = (error.body as { outcome?: unknown } | undefined)?.outcome as
-    | { scope?: unknown; state?: unknown; tools?: unknown }
-    | undefined;
-  if (outcome?.scope === "repo") {
-    const state = STATES[String(outcome.state)];
-    return state === undefined ? null : { scope: "repo", state };
-  }
-  if (outcome?.scope === "global" && Array.isArray(outcome.tools)) {
-    const tools: RemoveToolOutcome[] = [];
-    // An array, checked above; every field stays unknown.
-    for (const entry of outcome.tools as {
-      tool?: unknown;
-      path?: unknown;
-      state?: unknown;
-    }[]) {
-      const state = STATES[String(entry?.state)];
-      const tool = entry?.tool;
-      const path = entry?.path;
-      if (
-        state === undefined ||
-        typeof tool !== "string" ||
-        !isKnown(tool) ||
-        typeof path !== "string"
-      ) {
-        return null;
-      }
-      tools.push({ tool, path, state });
-    }
-    return { scope: "global", tools };
-  }
-  return null;
 }
 
 // The question a refused removal restated (#364). All or nothing: a fresh cost
@@ -112,13 +54,13 @@ const alreadyGone = (error: unknown) =>
   error instanceof HttpError && error.code === "not-deployed";
 
 type RemovalNews =
-  | { kind: "failed"; notice: DeployStateNotice; outcome: RemoveOutcome | null }
+  | { kind: "failed"; notice: DeployStateNotice; outcome: WriteReport | null }
   | { kind: "restated"; notice: DeployStateNotice };
 
 const removalFailure = (error: unknown): RemovalNews => ({
   kind: "failed",
   notice: removeNotice(error),
-  outcome: removalOutcome(error),
+  outcome: writeReportIn(error),
 });
 
 // One skill's removal from one target: its check, confirmation and run.

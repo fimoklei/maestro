@@ -132,8 +132,8 @@ export const Outcome: Story = {
     outcome: {
       kind: "skills",
       rows: [
-        { name: "tdd", tool: null, state: "updated" },
-        { name: "jobs", tool: null, state: "updated" },
+        { name: "tdd", tool: null, state: "written" },
+        { name: "jobs", tool: null, state: "written" },
         { name: "review", tool: null, state: "removed" },
       ],
     },
@@ -146,8 +146,8 @@ export const IncompleteOutcome: Story = {
     outcome: {
       kind: "skills",
       rows: [
-        { name: "tdd", tool: null, state: "updated" },
-        { name: "jobs", tool: "claude", state: "updated" },
+        { name: "tdd", tool: null, state: "written" },
+        { name: "jobs", tool: "claude", state: "written" },
         { name: "jobs", tool: "codex", state: "not-updated" },
         { name: "review", tool: null, state: "not-removed" },
       ],
@@ -157,7 +157,7 @@ export const IncompleteOutcome: Story = {
 
 const SELECTED = ["tdd", "jobs", "grill", "brief", "worktree"];
 const written = (names: readonly string[]) =>
-  names.map((name) => ({ name, outcome: "written" as const }));
+  names.map((name) => ({ name, state: "written" as const }));
 
 export const GlobalUpdated: Story = {
   args: {
@@ -165,9 +165,9 @@ export const GlobalUpdated: Story = {
     folders: GLOBAL_FOLDERS,
     outcome: {
       kind: "folders",
-      folders: {
+      report: {
         release: "v0.3.4",
-        folders: [
+        places: [
           {
             path: "~/.claude/skills",
             tool: "claude",
@@ -193,9 +193,9 @@ export const GlobalOneFolderBehind: Story = {
     incomplete: true,
     outcome: {
       kind: "folders",
-      folders: {
+      report: {
         release: "v0.3.4",
-        folders: [
+        places: [
           {
             path: "~/.claude/skills",
             tool: "claude",
@@ -207,9 +207,9 @@ export const GlobalOneFolderBehind: Story = {
             tool: "codex",
             detected: true,
             skills: [
-              { name: "tdd", outcome: "not-updated", stillAt: "v0.3.2" },
-              { name: "jobs", outcome: "not-updated", stillAt: null },
-              { name: "grill", outcome: "missing" },
+              { name: "tdd", state: "not-updated", stillAt: "v0.3.2" },
+              { name: "jobs", state: "not-updated", stillAt: null },
+              { name: "grill", state: "missing" },
               ...written(["brief", "worktree"]),
             ],
           },

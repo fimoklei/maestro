@@ -1,4 +1,4 @@
-import type { RemoveOutcome, RemoveTargetState } from "@maestro/core";
+import type { ReportSkillState, WriteReport } from "@maestro/core";
 import type { DeployableType } from "../inventory/type-filter";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import type { ReportGroup } from "../ui/report";
@@ -68,6 +68,35 @@ export function removeLedgerLeadIn(type: DeployableType): string {
 // What a removal leaves alone, and the way back.
 export const REMOVE_KEEPS = `The Harness keeps the skill. To add it back, select ${DEPLOY_SKILL}.`;
 
+type RemoveTargetState = "removed" | "not-removed" | "unknown";
+
+const REMOVE_STATES: Partial<Record<ReportSkillState, RemoveTargetState>> = {
+  removed: "removed",
+  "not-removed": "not-removed",
+};
+
+const removedStates = (report: WriteReport) =>
+  report.places.map((place) => {
+    const [skill] = place.skills;
+    return {
+      path: place.path,
+      state:
+        place.skills.length === 1 && skill !== undefined
+          ? (REMOVE_STATES[skill.state] ?? "unknown")
+          : "unknown",
+    };
+  });
+
+export function targetRemoveState(report: WriteReport): RemoveTargetState {
+  const states = removedStates(report).map((place) => place.state);
+  if (states.includes("not-removed")) {
+    return "not-removed";
+  }
+  return states.length > 0 && states.every((state) => state === "removed")
+    ? "removed"
+    : "unknown";
+}
+
 const OUTCOME_GROUPS: {
   state: RemoveTargetState;
   tone: ReportGroup["tone"];
@@ -83,33 +112,32 @@ const OUTCOME_GROUPS: {
 // the order; the heading counts the server's report, never the rows on screen.
 export function removeOutcomeReport(
   target: RemoveDialogTarget,
-  outcome: RemoveOutcome,
+  report: WriteReport,
 ): { heading: string; groups: ReportGroup[] } {
-  const reported: readonly { name: string; state: RemoveTargetState }[] =
-    outcome.scope === "repo"
-      ? [
-          {
-            name: target.kind === "repo" ? target.name : "",
-            state: outcome.state,
-          },
-        ]
-      : outcome.tools.map((entry) => ({
-          name: entry.path,
-          state: entry.state,
-        }));
+  const global = report.places.some((place) => place.path !== null);
+  const reported: readonly { name: string; state: RemoveTargetState }[] = global
+    ? removedStates(report).map((place) => ({
+        name: place.path ?? "",
+        state: place.state,
+      }))
+    : [
+        {
+          name: target.kind === "repo" ? target.name : "",
+          state: targetRemoveState(report),
+        },
+      ];
   const onScreen = target.kind === "repo" ? [target.name] : target.folders;
   const ordered = [...reported].sort(
     (a, b) => rank(onScreen, a.name) - rank(onScreen, b.name),
   );
   const removed = reported.filter((entry) => entry.state === "removed").length;
-  const noun =
-    outcome.scope === "global"
-      ? reported.length === 1
-        ? "folder"
-        : "folders"
-      : reported.length === 1
-        ? "target"
-        : "targets";
+  const noun = global
+    ? reported.length === 1
+      ? "folder"
+      : "folders"
+    : reported.length === 1
+      ? "target"
+      : "targets";
   return {
     heading: `Removed from ${removed} of ${reported.length} ${noun}`,
     groups: OUTCOME_GROUPS.map(({ state, tone, label }) => ({

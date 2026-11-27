@@ -2,9 +2,10 @@
 // a number, a target left behind is a row with its reason. A run with no
 // report states no counts — zeroes would read as a clean run.
 
-import type { BulkRemoveReport, RemoveOutcome } from "@maestro/core";
+import type { BulkRemoveReport, WriteReport } from "@maestro/core";
 import { HttpError } from "../api/http";
 import { REASON } from "../deploy-state/reason-copy";
+import { targetRemoveState } from "../deploy-state/remove-ledger-rows";
 import { targetQueryKey } from "../inventory/use-deploy-skill";
 import { localChangesNote, REFUSAL_REASON } from "./bulk-remove-dialog-view";
 import type { BulkRemoveCandidate } from "./bulk-remove-targets";
@@ -93,22 +94,17 @@ export function bulkRemoveReportView(input: {
 
 // What the server's probe of the disk found after apm failed, appended to the
 // reason. Silence where the probe proved nothing.
-function probed(outcome: RemoveOutcome | undefined): string {
-  if (outcome === undefined) {
+function probed(report: WriteReport | undefined): string {
+  if (report === undefined) {
     return "";
   }
   // apm removes for every tool at once, so one tool still holding a copy
   // leaves the whole target uncleared.
-  const states =
-    outcome.scope === "repo"
-      ? [outcome.state]
-      : outcome.tools.map((entry) => entry.state);
-  if (states.includes("not-removed")) {
+  const state = targetRemoveState(report);
+  if (state === "not-removed") {
     return " — still there";
   }
-  return states.length > 0 && states.every((state) => state === "removed")
-    ? " — gone anyway"
-    : "";
+  return state === "removed" ? " — gone anyway" : "";
 }
 
 // In the confirmation's order; a target the caller did not list still gets a
@@ -139,7 +135,7 @@ function orderedLeftAlone(
     rows.set(key, {
       label: labels.get(key) ?? key,
       outcome: "failed",
-      reason: `${REASON[row.reason] ?? row.reason}${probed(row.outcome)}`,
+      reason: `${REASON[row.reason] ?? row.reason}${probed(row.report)}`,
     });
   }
 

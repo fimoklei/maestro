@@ -33,10 +33,8 @@ import {
   updateBodySchema,
   updatePreflightBodySchema,
 } from "../request-bodies";
-import {
-  updateOutcomeBody,
-  updatePreviewBody,
-} from "../update-preview-response";
+import { updatePreviewBody } from "../update-preview-response";
+import { reportField, writeReportBody } from "../write-report-response";
 
 const refusalBody = (result: {
   copyReceipt?: string;
@@ -130,7 +128,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     }
     return c.json({
       deployed: result.deployed,
-      ...(result.outcome ? { outcome: result.outcome } : {}),
+      ...reportField(result.report),
     });
   });
 
@@ -146,7 +144,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return c.json(
         {
           error: result.error,
-          ...(result.outcome ? { outcome: result.outcome } : {}),
+          ...reportField(result.report),
           ...(result.check && result.receipt
             ? { check: result.check, receipt: result.receipt }
             : {}),
@@ -155,7 +153,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
         status,
       );
     }
-    return c.json({ removed: result.removed });
+    return c.json({ removed: result.removed, ...reportField(result.report) });
   });
 
   app.post("/api/deploy/remove/preflight", async (c) => {
@@ -207,22 +205,22 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     }
 
     const result = await deps.update.run(body.data);
-    const outcome = updateOutcomeBody(result);
     if (!result.ok) {
       const { status } = updateRunErrorResponses[result.error];
       return c.json(
         {
           error: result.error,
-          ...(outcome ?? {}),
+          ...reportField(result.report),
           ...refusalBody(result),
         },
         status,
       );
     }
-    if (outcome === null) {
+    const report = writeReportBody(result.report);
+    if (report === null) {
       return c.json({ error: "update-failed" }, 502);
     }
-    return c.json({ release: result.release, ...outcome });
+    return c.json({ release: result.release, report });
   });
 
   app.post("/api/deploy/retry", async (c) => {
@@ -244,7 +242,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     }
     return c.json({
       completed: result.completed,
-      ...(result.outcome === undefined ? {} : { outcome: result.outcome }),
+      ...reportField(result.report),
     });
   });
 
@@ -288,8 +286,8 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
 
-    const report = await deps.deploy.executeBatch(body.data);
-    return c.json(report);
+    const { report, ...ran } = await deps.deploy.executeBatch(body.data);
+    return c.json({ ...ran, ...reportField(report) });
   });
 
   app.post("/api/deploy/again", async (c) => {
@@ -298,8 +296,8 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
       return body.response;
     }
 
-    const report = await deps.deploy.deployAgain(body.data);
-    return c.json(report);
+    const { report, ...ran } = await deps.deploy.deployAgain(body.data);
+    return c.json({ ...ran, ...reportField(report) });
   });
 
   app.post("/api/deploy/remove/bulk", async (c) => {
@@ -309,7 +307,13 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     }
 
     const report = await deps.remove.executeBatch(body.data);
-    return c.json(report);
+    return c.json({
+      ...report,
+      failed: report.failed.map(({ report: probed, ...row }) => ({
+        ...row,
+        ...reportField(probed),
+      })),
+    });
   });
 
   app.get("/api/drift", async (c) => {

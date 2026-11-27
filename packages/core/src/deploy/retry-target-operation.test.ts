@@ -23,7 +23,7 @@ function buildUseCase(
     toolPresence: { detectGlobalTools: async () => ["claude" as const] },
     canonicalPath: async (path: string) => path,
     locks: new InFlightLocks(),
-    outcomes: { read: async () => ({ release: "", folders: [] }) },
+    outcomes: { read: async ({ release }) => ({ release, places: [] }) },
   });
   return { world, retry };
 }
@@ -68,6 +68,7 @@ describe("RetryTargetOperation", () => {
         release: "v0.6.0",
         desired: ["prototype", "review"],
       },
+      report: { release: "v0.6.0", places: [] },
     });
     expect(world.calls).toEqual([
       {
@@ -256,6 +257,7 @@ describe("RetryTargetOperation", () => {
         release: "v0.6.0",
         desired: ["prototype", "review"],
       },
+      report: { release: "v0.6.0", places: [] },
     });
     expect(world.calls).toEqual([
       {
@@ -289,7 +291,7 @@ describe("RetryTargetOperation", () => {
       toolPresence: { detectGlobalTools: async () => ["claude" as const] },
       canonicalPath: async (path: string) => path,
       locks: new InFlightLocks(),
-      outcomes: { read: async () => ({ release: "", folders: [] }) },
+      outcomes: { read: async ({ release }) => ({ release, places: [] }) },
     });
 
     expect(await retry.execute({ target })).toEqual({

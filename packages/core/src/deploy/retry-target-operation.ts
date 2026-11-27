@@ -6,10 +6,11 @@ import type {
   DeployTarget,
 } from "./deploy-skill";
 import { discardDroppedCopies } from "./discard-dropped-copies";
-import type { FolderOutcomeReader, FolderOutcomes } from "./folder-outcome";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import { type CopyVerdict, LocalCopyGuard } from "./local-copy-guard";
+import type { PlaceReader } from "./place-reading";
 import type { TargetOperation, TargetOperationKind } from "./target-operation";
+import { reportWrite, type WriteReport } from "./write-report";
 
 export type PendingOperation = {
   kind: TargetOperationKind;
@@ -31,7 +32,7 @@ export type RetryTargetOperationError =
   | "retry-failed";
 
 export type RetryTargetOperationResult =
-  | { ok: true; completed: PendingOperation; outcome?: FolderOutcomes }
+  | { ok: true; completed: PendingOperation; report?: WriteReport }
   | {
       ok: false;
       error: RetryTargetOperationError;
@@ -61,7 +62,7 @@ export class RetryTargetOperation {
     toolPresence: ToolPresencePort;
     canonicalPath: (path: string) => Promise<string>;
     locks: InFlightLocks;
-    outcomes: Pick<FolderOutcomeReader, "read">;
+    outcomes: Pick<PlaceReader, "read">;
   };
 
   private readonly copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
@@ -158,18 +159,27 @@ export class RetryTargetOperation {
         ...(tools === undefined ? {} : { tools }),
       });
       if (applied.ok) {
+        const readings = await this.deps.outcomes
+          .read({
+            target: input.target,
+            release: record.release,
+            names: record.desired,
+            tools: tools ?? [],
+          })
+          .catch(() => null);
         return {
           ok: true,
           completed: summarise(record),
-          ...(input.target.kind === "global"
-            ? {
-                outcome: await this.deps.outcomes.read({
-                  release: record.release,
+          ...(readings === null
+            ? {}
+            : {
+                report: reportWrite({
+                  readings,
                   names: record.desired,
-                  written: tools ?? [],
+                  wrote: new Set(record.desired),
+                  refused: new Map(),
                 }),
-              }
-            : {}),
+              }),
         };
       }
       return {

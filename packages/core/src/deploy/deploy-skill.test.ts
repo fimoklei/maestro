@@ -10,11 +10,11 @@ import {
 } from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import { deployedCopies } from "./deployed-content.fake";
-import type { FolderOutcomes } from "./folder-outcome";
 import { DEFAULT_GLOBAL_LAYOUT } from "./global-layout.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
 import { selectionWorld } from "./selection-writer-fake";
+import type { WriteReport } from "./write-report";
 
 const repo = (repoPath: string): DeployTarget => ({ kind: "repo", repoPath });
 const globalTarget: DeployTarget = { kind: "global" };
@@ -131,9 +131,9 @@ const buildDeps = (
     locks: new InFlightLocks(),
     selection: world.writer,
     outcomes: {
-      read: async ({ release }: { release: string }) => ({
+      read: async ({ release }: { release: string | null }) => ({
         release,
-        folders: [],
+        places: [],
       }),
     },
     ...overrides,
@@ -181,24 +181,25 @@ describe("DeploySkill", () => {
       release,
       names,
     }: {
-      release: string;
+      release: string | null;
       names: readonly string[];
     }) => ({
       release,
-      folders: [
+      places: [
         {
           path: "~/.claude/skills",
           tool: "claude" as const,
           detected: true,
-          skills: names.map((name) => ({ name, outcome: "written" as const })),
+          skills: names.map((name) => ({
+            name,
+            reading: "at-release" as const,
+          })),
         },
       ],
     }),
   };
-  const outcomeNames = (outcome: FolderOutcomes | undefined) =>
-    outcome?.folders.flatMap((folder) =>
-      folder.skills.map((skill) => skill.name),
-    );
+  const outcomeNames = (report: WriteReport | undefined) =>
+    report?.places.flatMap((place) => place.skills.map((skill) => skill.name));
 
   it("reads every Global folder back over the whole Selection the install wrote", async () => {
     const { deps, world } = buildDeps({ outcomes: echoedOutcomes });
@@ -209,7 +210,7 @@ describe("DeploySkill", () => {
       target: globalTarget,
     });
 
-    expect(outcomeNames(report.outcome)).toEqual(["review", "tdd"]);
+    expect(outcomeNames(report.report)).toEqual(["review", "tdd"]);
   });
 
   it("states the Global folders after a single deploy too", async () => {
@@ -221,10 +222,10 @@ describe("DeploySkill", () => {
       target: globalTarget,
     });
 
-    expect(result.ok ? outcomeNames(result.outcome) : null).toEqual(["tdd"]);
+    expect(result.ok ? outcomeNames(result.report) : null).toEqual(["tdd"]);
   });
 
-  it("states no folders after a single deploy to a repository", async () => {
+  it("states the repository's places after a single deploy to it", async () => {
     const { deps } = buildDeps({ outcomes: echoedOutcomes });
 
     const result = await new DeploySkill(deps).execute({
@@ -233,10 +234,7 @@ describe("DeploySkill", () => {
       target: repo("/registered/repo"),
     });
 
-    expect(result).toEqual({
-      ok: true,
-      deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
-    });
+    expect(result.ok ? outcomeNames(result.report) : null).toEqual(["tdd"]);
   });
 
   it("refuses a global install that landed only part of the selection", async () => {
@@ -309,6 +307,7 @@ describe("DeploySkill", () => {
     ).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      report: { release: "v0.5.1", places: [] },
     });
   });
 
@@ -337,6 +336,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      report: { release: "v0.5.1", places: [] },
     });
     expect(deployed).toEqual([
       {
@@ -361,6 +361,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.4.0" },
+      report: { release: "v0.4.0", places: [] },
     });
     expect(deployed).toEqual([
       {
@@ -527,7 +528,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
-      outcome: { release: "v0.5.1", folders: [] },
+      report: { release: "v0.5.1", places: [] },
     });
     expect(deployed).toEqual([
       {
@@ -668,7 +669,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
-      outcome: { release: "v0.5.1", folders: [] },
+      report: { release: "v0.5.1", places: [] },
     });
     expect(deployed).toHaveLength(1);
   });
@@ -776,6 +777,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      report: { release: "v0.5.1", places: [] },
     });
     expect(deployed).toHaveLength(1);
   });
@@ -1183,6 +1185,7 @@ describe("DeploySkill", () => {
     expect(result).toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      report: { release: "v0.5.1", places: [] },
     });
     expect(deployed).toHaveLength(1);
   });
@@ -1330,6 +1333,7 @@ describe("DeploySkill", () => {
     await expect(first).resolves.toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
+      report: { release: "v0.5.1", places: [] },
     });
   });
 
@@ -1400,7 +1404,7 @@ describe("DeploySkill", () => {
     await expect(first).resolves.toEqual({
       ok: true,
       deployed: { type: "skill", name: "tdd", version: "v0.5.1" },
-      outcome: { release: "v0.5.1", folders: [] },
+      report: { release: "v0.5.1", places: [] },
     });
   });
 
@@ -1513,6 +1517,7 @@ describe("DeploySkill.executeBatch", () => {
       ],
       attention: [],
       failed: [],
+      report: { release: "v0.5.1", places: [] },
     });
     expect(deployed).toEqual([
       {
@@ -1582,6 +1587,7 @@ describe("DeploySkill.executeBatch", () => {
     expect(single).toEqual({
       ok: true,
       deployed: { type: "skill", name: "review", version: "v0.5.1" },
+      report: { release: "v0.5.1", places: [] },
     });
   });
 
@@ -1924,6 +1930,7 @@ describe("DeploySkill.executeBatch", () => {
     expect(single).toEqual({
       ok: true,
       deployed: { type: "skill", name: "review", version: "v0.5.1" },
+      report: { release: "v0.5.1", places: [] },
     });
   });
 
@@ -1959,6 +1966,7 @@ describe("DeploySkill.executeBatch", () => {
           linkedPath: "/registered/repo/.claude/skills/review",
         },
       ],
+      report: { release: "v0.4.0", places: [] },
     });
   });
 
@@ -2131,7 +2139,7 @@ describe("DeploySkill.deployAgain", () => {
       { name: "commit-message", version: "v0.5.1" },
     ]);
     expect(report.attention).toEqual([]);
-    expect(report.outcome).toEqual({ release: "v0.5.1", folders: [] });
+    expect(report.report).toEqual({ release: "v0.5.1", places: [] });
     expect(deployed.map((call) => call.skills)).toEqual([
       ["commit-message", "code-review"],
     ]);
@@ -2191,5 +2199,154 @@ describe("DeploySkill.deployAgain", () => {
     expect(report.deployed).toEqual([{ name: "tdd", version: "v0.5.1" }]);
     expect(report.attention.map((row) => row.name)).toEqual(["docs"]);
     expect(deployed.map((call) => call.skills)).toEqual([["tdd"]]);
+  });
+});
+
+describe("DeploySkill's Report of every place", () => {
+  const skill = (name: string) => ({
+    type: "skill" as const,
+    name,
+    description: name,
+    path: `.apm/skills/${name}`,
+    pendingRelease: null,
+  });
+  const everyCopyAtRelease = {
+    read: async (input: {
+      release: string | null;
+      names: readonly string[];
+      tools: readonly SupportedTool[];
+    }) => ({
+      release: input.release,
+      places: (["claude", "codex"] as const).map((tool) => ({
+        tool,
+        path: tool === "claude" ? "~/.claude/skills" : "~/.agents/skills",
+        detected: input.tools.includes(tool),
+        skills: input.tools.includes(tool)
+          ? input.names.map((name) => ({
+              name,
+              reading: "at-release" as const,
+            }))
+          : [],
+      })),
+    }),
+  };
+  const harnessOf = (diverged: readonly string[]) => ({
+    outcomes: everyCopyAtRelease,
+    inventory: {
+      read: async () => ({
+        ok: true as const,
+        primitives: [
+          skill("tdd"),
+          skill("code-review"),
+          skill("release-notes"),
+        ],
+        unreadTypes: [],
+      }),
+    },
+    inventoryGit: {
+      skillExistsAtTag: async () => true,
+      skillDivergesFromTag: async (_tag: string, name: string) =>
+        diverged.includes(name),
+      readSkillFilesAtTag: async () => null,
+    },
+  });
+  const stateIn = (report: BulkDeployReport, name: string) =>
+    report.report?.places.map((place) => ({
+      path: place.path,
+      skill: place.skills.find((each) => each.name === name),
+    }));
+
+  it("reports a refused skill as refused in every Global folder, though its copy at the release sits there", async () => {
+    const { deps } = buildDeps(harnessOf(["code-review"]));
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["tdd", "code-review"],
+      target: globalTarget,
+    });
+
+    expect(stateIn(report, "code-review")).toEqual([
+      {
+        path: "~/.claude/skills",
+        skill: {
+          name: "code-review",
+          state: "refused",
+          reason: "local-diverged-from-tag",
+        },
+      },
+      {
+        path: "~/.agents/skills",
+        skill: {
+          name: "code-review",
+          state: "refused",
+          reason: "local-diverged-from-tag",
+        },
+      },
+    ]);
+    expect(stateIn(report, "tdd")).toEqual([
+      { path: "~/.claude/skills", skill: { name: "tdd", state: "written" } },
+      { path: "~/.agents/skills", skill: { name: "tdd", state: "written" } },
+    ]);
+  });
+
+  it("states each skill in every Global folder when the deploy refuses every skill", async () => {
+    const { deps } = buildDeps(harnessOf(["code-review", "release-notes"]));
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["code-review", "release-notes"],
+      target: globalTarget,
+    });
+
+    const refused = (name: string) => ({
+      name,
+      state: "refused",
+      reason: "local-diverged-from-tag",
+    });
+    expect(report.report).toEqual({
+      release: "v0.5.1",
+      places: [
+        {
+          tool: "claude",
+          path: "~/.claude/skills",
+          detected: true,
+          skills: [refused("code-review"), refused("release-notes")],
+        },
+        {
+          tool: "codex",
+          path: "~/.agents/skills",
+          detected: true,
+          skills: [refused("code-review"), refused("release-notes")],
+        },
+      ],
+    });
+  });
+
+  it("never reads a skill whose install failed as written by this run, though its copy at the release sits there", async () => {
+    const { deps, world } = buildDeps(harnessOf([]));
+    world.refuseWith({ ok: false, reason: "failed" });
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["tdd"],
+      target: globalTarget,
+    });
+
+    expect(stateIn(report, "tdd")?.map((place) => place.skill?.state)).toEqual([
+      "refused",
+      "refused",
+    ]);
+  });
+
+  it("reads a skill the run left alone at the release as already there, not written by this run", async () => {
+    const { deps, world } = buildDeps(harnessOf([]));
+    world.seed({ release: "v0.5.1", skills: ["release-notes"] });
+
+    const report = await new DeploySkill(deps).executeBatch({
+      names: ["tdd"],
+      target: globalTarget,
+    });
+
+    expect(stateIn(report, "release-notes")?.[0]?.skill).toEqual({
+      name: "release-notes",
+      state: "already-at-release",
+    });
   });
 });

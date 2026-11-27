@@ -1,4 +1,4 @@
-import type { RemoveOutcome } from "@maestro/core";
+import type { WriteReport } from "@maestro/core";
 import { useId } from "react";
 import { ACTIONS } from "../ui/busy-copy";
 import { REMOVE_SKILL } from "../ui/control-labels";
@@ -75,7 +75,7 @@ export function RemoveSkillDialog({
   // removal is still on offer.
   restated: DeployStateNotice | null;
   // Null where the probe proved nothing: an unobserved outcome is never drawn.
-  outcome: RemoveOutcome | null;
+  outcome: WriteReport | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {

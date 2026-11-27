@@ -3,8 +3,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import { DeployedContentAdapter } from "./deployed-content";
-import { FolderOutcomeReader } from "./folder-outcome";
 import { DEFAULT_GLOBAL_LAYOUT } from "./global-layout.fake";
+import { PlaceReader } from "./place-reading";
 
 const HOME = "/home";
 const LOCKFILE = `${HOME}/.apm/apm.lock.yaml`;
@@ -56,7 +56,7 @@ function written(
     },
   });
   const historyReadable = options.historyReadable !== false;
-  return new FolderOutcomeReader({
+  return new PlaceReader({
     content: {
       openReading: (input) => content.openReading(input),
       harnessHolds: (input) => content.harnessHolds(input),
@@ -73,8 +73,8 @@ function written(
   });
 }
 
-describe("FolderOutcomeReader after a Global write", () => {
-  it("reads a copy equal to the release as written in every folder", async () => {
+describe("PlaceReader after a Global write", () => {
+  it("reads a copy equal to the release as at the release in every folder", async () => {
     const reader = written({
       ".claude": { "code-review": { at: "v2.0.0" } },
       ".agents": { "code-review": { at: "v2.0.0" } },
@@ -83,23 +83,24 @@ describe("FolderOutcomeReader after a Global write", () => {
     const outcome = await reader.read({
       release: "v2.0.0",
       names: ["code-review"],
-      written: ["claude", "codex"],
+      target: { kind: "global" },
+      tools: ["claude", "codex"],
     });
 
     expect(outcome).toEqual({
       release: "v2.0.0",
-      folders: [
+      places: [
         {
           path: "~/.claude/skills",
           tool: "claude",
           detected: true,
-          skills: [{ name: "code-review", outcome: "written" }],
+          skills: [{ name: "code-review", reading: "at-release" }],
         },
         {
           path: "~/.agents/skills",
           tool: "codex",
           detected: true,
-          skills: [{ name: "code-review", outcome: "written" }],
+          skills: [{ name: "code-review", reading: "at-release" }],
         },
       ],
     });
@@ -113,11 +114,12 @@ describe("FolderOutcomeReader after a Global write", () => {
     const outcome = await reader.read({
       release: "v2.0.0",
       names: ["code-review"],
-      written: ["claude", "codex"],
+      target: { kind: "global" },
+      tools: ["claude", "codex"],
     });
 
-    expect(outcome.folders[1]?.skills).toEqual([
-      { name: "code-review", outcome: "missing" },
+    expect(outcome.places[1]?.skills).toEqual([
+      { name: "code-review", reading: "missing" },
     ]);
   });
 
@@ -129,11 +131,12 @@ describe("FolderOutcomeReader after a Global write", () => {
     const outcome = await reader.read({
       release: "v2.0.0",
       names: ["code-review"],
-      written: ["claude"],
+      target: { kind: "global" },
+      tools: ["claude"],
     });
 
-    expect(outcome.folders[0]?.skills).toEqual([
-      { name: "code-review", outcome: "not-updated", stillAt: "v1.1.0" },
+    expect(outcome.places[0]?.skills).toEqual([
+      { name: "code-review", reading: "not-updated", stillAt: "v1.1.0" },
     ]);
   });
 
@@ -145,11 +148,12 @@ describe("FolderOutcomeReader after a Global write", () => {
     const outcome = await reader.read({
       release: "v2.0.0",
       names: ["code-review"],
-      written: ["claude"],
+      target: { kind: "global" },
+      tools: ["claude"],
     });
 
-    expect(outcome.folders[0]?.skills).toEqual([
-      { name: "code-review", outcome: "not-updated", stillAt: null },
+    expect(outcome.places[0]?.skills).toEqual([
+      { name: "code-review", reading: "not-updated", stillAt: null },
     ]);
   });
 
@@ -161,11 +165,12 @@ describe("FolderOutcomeReader after a Global write", () => {
     const outcome = await reader.read({
       release: "v2.0.0",
       names: ["code-review"],
-      written: ["claude"],
+      target: { kind: "global" },
+      tools: ["claude"],
     });
 
-    expect(outcome.folders[0]?.skills).toEqual([
-      { name: "code-review", outcome: "not-confirmed" },
+    expect(outcome.places[0]?.skills).toEqual([
+      { name: "code-review", reading: "not-confirmed" },
     ]);
   });
 
@@ -178,11 +183,12 @@ describe("FolderOutcomeReader after a Global write", () => {
     const outcome = await reader.read({
       release: "v2.0.0",
       names: ["code-review"],
-      written: ["claude"],
+      target: { kind: "global" },
+      tools: ["claude"],
     });
 
-    expect(outcome.folders[0]?.skills).toEqual([
-      { name: "code-review", outcome: "not-confirmed" },
+    expect(outcome.places[0]?.skills).toEqual([
+      { name: "code-review", reading: "not-confirmed" },
     ]);
   });
 
@@ -195,11 +201,12 @@ describe("FolderOutcomeReader after a Global write", () => {
     const outcome = await reader.read({
       release: "v2.0.0",
       names: ["code-review"],
-      written: ["claude"],
+      target: { kind: "global" },
+      tools: ["claude"],
     });
 
-    expect(outcome.folders[0]?.skills).toEqual([
-      { name: "code-review", outcome: "not-updated", stillAt: null },
+    expect(outcome.places[0]?.skills).toEqual([
+      { name: "code-review", reading: "not-updated", stillAt: null },
     ]);
   });
 
@@ -212,10 +219,11 @@ describe("FolderOutcomeReader after a Global write", () => {
     const outcome = await reader.read({
       release: "v2.0.0",
       names: ["code-review"],
-      written: ["claude"],
+      target: { kind: "global" },
+      tools: ["claude"],
     });
 
-    expect(outcome.folders[1]).toEqual({
+    expect(outcome.places[1]).toEqual({
       path: "~/.agents/skills",
       tool: "codex",
       detected: false,

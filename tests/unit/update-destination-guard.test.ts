@@ -48,7 +48,7 @@ describe("update journey against the destination guard", () => {
     const w = await world();
     expect((await w.update()).status).toBe(200);
 
-    expect(await w.update()).toEqual({
+    expect(await w.update()).toMatchObject({
       status: 200,
       body: { deployed: { type: "skill", name: "tdd", version: LATEST_TAG } },
     });
@@ -64,7 +64,7 @@ describe("update journey against the destination guard", () => {
     w.disk.write(`${REPO}/.agents/skills/tdd/SKILL.md`, atRelease);
     w.answers.releasedFiles = { "SKILL.md": sha(atRelease) };
 
-    expect(await w.update()).toEqual({
+    expect(await w.update()).toMatchObject({
       status: 200,
       body: { deployed: { type: "skill", name: "tdd", version: LATEST_TAG } },
     });
@@ -119,7 +119,7 @@ describe("update journey against the destination guard", () => {
       body: { error: "deployed-unverifiable" },
     });
     expect((await w.update(refusal.body.copyReceipt)).status).toBe(200);
-    expect(await w.update()).toEqual({
+    expect(await w.update()).toMatchObject({
       status: 200,
       body: { deployed: { type: "skill", name: "tdd", version: LATEST_TAG } },
     });

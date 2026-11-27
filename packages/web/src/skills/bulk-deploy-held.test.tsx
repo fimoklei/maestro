@@ -1,7 +1,7 @@
 import type {
   BulkDeployReport,
   DeployedPrimitive,
-  SkillOutcome,
+  ReportSkill,
 } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -39,14 +39,38 @@ const heldRow = (name: "code-review" | "commit-message") => ({
   ],
 });
 
+const refused = (name: string): ReportSkill => ({
+  name,
+  state: "refused",
+  reason: "deployed-diverged-from-lock",
+});
+const bothRefused = [refused("code-review"), refused("commit-message")];
+
 const HELD: BulkDeployReport = {
   target: { kind: "global" },
   deployed: [],
   attention: [heldRow("code-review"), heldRow("commit-message")],
   failed: [],
+  report: {
+    release: "v1.0.0",
+    places: [
+      {
+        tool: "claude",
+        path: "~/.claude/skills",
+        detected: true,
+        skills: bothRefused,
+      },
+      {
+        tool: "codex",
+        path: "~/.agents/skills",
+        detected: true,
+        skills: bothRefused,
+      },
+    ],
+  },
 };
 
-const written = (name: string): SkillOutcome => ({ name, outcome: "written" });
+const written = (name: string): ReportSkill => ({ name, state: "written" });
 const both = [written("code-review"), written("commit-message")];
 
 const DEPLOYED_AGAIN: BulkDeployReport = {
@@ -57,16 +81,16 @@ const DEPLOYED_AGAIN: BulkDeployReport = {
   ],
   attention: [],
   failed: [],
-  outcome: {
+  report: {
     release: "v1.0.0",
-    folders: [
+    places: [
       {
-        path: "~/.claude/skills",
         tool: "claude",
+        path: "~/.claude/skills",
         detected: true,
         skills: both,
       },
-      { path: "~/.agents/skills", tool: "codex", detected: true, skills: both },
+      { tool: "codex", path: "~/.agents/skills", detected: true, skills: both },
     ],
   },
 };

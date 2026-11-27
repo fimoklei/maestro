@@ -1,6 +1,7 @@
-import type { FolderOutcome, SkillOutcome } from "@maestro/core";
+import type { ReportSkill } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
+  type FolderReport,
   folderLines,
   heldLine,
   updatedToLine,
@@ -8,9 +9,9 @@ import {
 } from "./written-to-copy";
 
 const folder = (
-  skills: SkillOutcome[],
-  options: Partial<FolderOutcome> = {},
-): FolderOutcome => ({
+  skills: ReportSkill[],
+  options: Partial<FolderReport> = {},
+): FolderReport => ({
   path: "~/.agents/skills",
   tool: "codex",
   detected: true,
@@ -18,8 +19,8 @@ const folder = (
   ...options,
 });
 
-const written = (name: string): SkillOutcome => ({ name, outcome: "written" });
-const missing = (name: string): SkillOutcome => ({ name, outcome: "missing" });
+const written = (name: string): ReportSkill => ({ name, state: "written" });
+const missing = (name: string): ReportSkill => ({ name, state: "missing" });
 
 // Approved strings, as exact strings.
 describe("Written to line", () => {
@@ -35,6 +36,44 @@ describe("Written to line", () => {
     expect(writtenToLine(folder([written("tdd")]), true).fact).toBe(
       "1 skill deployed",
     );
+  });
+
+  it("counts a skill already at the release before the run as deployed, with no fold", () => {
+    expect(
+      writtenToLine(
+        folder([
+          written("tdd"),
+          { name: "code-review", state: "already-at-release" },
+        ]),
+        true,
+      ),
+    ).toEqual({
+      tone: "good",
+      fact: "2 skills deployed",
+      details: [],
+      step: null,
+    });
+  });
+
+  it("names a skill the run refused under Not written, never counting it as deployed", () => {
+    expect(
+      writtenToLine(
+        folder([
+          written("commit-message"),
+          {
+            name: "code-review",
+            state: "refused",
+            reason: "local-diverged-from-tag",
+          },
+        ]),
+        false,
+      ),
+    ).toEqual({
+      tone: "failed",
+      fact: "1 of 2 skills deployed",
+      details: [{ label: "Not written", value: "code-review" }],
+      step: null,
+    });
   });
 
   it("counts the missing skills and names each under Missing", () => {
@@ -72,8 +111,8 @@ describe("Written to line", () => {
       writtenToLine(
         folder([
           written("tdd"),
-          { name: "code-review", outcome: "not-updated", stillAt: "v1.1.0" },
-          { name: "commit-message", outcome: "not-updated", stillAt: null },
+          { name: "code-review", state: "not-updated", stillAt: "v1.1.0" },
+          { name: "commit-message", state: "not-updated", stillAt: null },
         ]),
         false,
       ),
@@ -90,7 +129,7 @@ describe("Written to line", () => {
 
   it("reads a folder nothing could confirm as Not confirmed, with no fold", () => {
     expect(
-      writtenToLine(folder([{ name: "tdd", outcome: "not-confirmed" }]), true),
+      writtenToLine(folder([{ name: "tdd", state: "not-confirmed" }]), true),
     ).toEqual({
       tone: "unknown",
       fact: "Not confirmed",
@@ -102,7 +141,7 @@ describe("Written to line", () => {
   it("names a skill it could not confirm beside written ones", () => {
     expect(
       writtenToLine(
-        folder([written("tdd"), { name: "review", outcome: "not-confirmed" }]),
+        folder([written("tdd"), { name: "review", state: "not-confirmed" }]),
         false,
       ),
     ).toEqual({
@@ -126,9 +165,9 @@ describe("Written to line", () => {
 });
 
 describe("Written to line after Update target", () => {
-  const notUpdated = (name: string, stillAt: string | null): SkillOutcome => ({
+  const notUpdated = (name: string, stillAt: string | null): ReportSkill => ({
     name,
-    outcome: "not-updated",
+    state: "not-updated",
     stillAt,
   });
   const update = (retry: boolean) => ({ release: "v2.0.0", retry });
@@ -207,7 +246,7 @@ describe("Written to line after Update target", () => {
   it("reads a folder nothing could confirm as Not confirmed", () => {
     expect(
       updatedToLine(
-        folder([{ name: "tdd", outcome: "not-confirmed" }]),
+        folder([{ name: "tdd", state: "not-confirmed" }]),
         update(true),
       ).fact,
     ).toBe("Not confirmed");

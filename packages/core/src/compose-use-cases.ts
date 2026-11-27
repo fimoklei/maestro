@@ -12,9 +12,9 @@ import { REPO_TOOL_ROOTS } from "./deploy/deploy-tools";
 import { DeployedContentAdapter } from "./deploy/deployed-content";
 import { DeployedLocation } from "./deploy/deployed-location";
 import { DeployedRefAdapter } from "./deploy/deployed-ref";
-import { FolderOutcomeReader } from "./deploy/folder-outcome";
 import { InFlightLocks } from "./deploy/in-flight-locks";
 import { LocalCopyGuard } from "./deploy/local-copy-guard";
+import { PlaceReader } from "./deploy/place-reading";
 import { RecordedPackageAdapter } from "./deploy/recorded-package";
 import { RemoveDeployedSkill } from "./deploy/remove-deployed-skill";
 import { RetryTargetOperation } from "./deploy/retry-target-operation";
@@ -248,7 +248,7 @@ export function composeUseCases(ports: UseCasePorts) {
     apm,
     operations: new TargetOperationStore({ store }),
   });
-  const outcomes = new FolderOutcomeReader({
+  const outcomes = new PlaceReader({
     content: releaseAwareContent,
     releaseTags: () => releaseHead.releaseTags(),
     globalLayout,
