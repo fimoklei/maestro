@@ -31,6 +31,10 @@ every rule file whose `paths:` matches a changed file. Cite the file and the rul
 changes what `packages/web` renders and lists no browser check in its body is
 a finding (`verify-ui` skill).
 
+**Reviewing approved copy:** a string the operator approved on its issue, and
+that its copy test pins as an exact string, is settled. Put a doubt about it in
+the report as a question for the operator, not as a finding.
+
 **Reviewing a rule change:** when a diff changes `.claude/rules/**`,
 `AGENTS.md` or this file, read every other rule file. A new rule that
 contradicts one, and a `paths:` change that stops a rule loading for files its

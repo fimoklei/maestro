@@ -1,7 +1,7 @@
 // Fills the smoke sandbox with an inventory clone and a few candidate repos,
 // all under the sandbox HOME.
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const PROJECTS_DIR = "Projects";
@@ -18,6 +18,17 @@ const CANDIDATES = [
 
 // The markers Maestro probes to decide a tool is installed (#131). Config-file
 // stand-ins, never the skills dirs a deploy creates, so a deploy leaves them.
+const TOOL_MARKERS = [
+  ".claude.json",
+  ".codex/installation_id",
+  ".codex/config.toml",
+];
+
+export function removeToolPresence(home) {
+  for (const marker of TOOL_MARKERS)
+    rmSync(join(home, marker), { force: true });
+}
+
 export function seedToolPresence(home) {
   writeFileSync(join(home, ".claude.json"), "{}\n");
   mkdirSync(join(home, ".codex"), { recursive: true });
