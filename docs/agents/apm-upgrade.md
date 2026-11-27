@@ -58,7 +58,7 @@ treat them as hypotheses, not facts.
      anything.
    - ADR-0014: has the ref grammar or host gate changed?
    - `CLAUDE_CONFIG_DIR`: re-run the folder switch and the uninstall of
-     #1872 and #1947; 0.38.1 keeps the old copies and removes per folder.
+     #1872 and #1947; since 0.38.1 apm keeps the old copies and removes per folder.
    - The upgrade path: install with the old apm, then install and uninstall
      with the new one over that state.
    - `LEARNINGS.md`: reconfirm or archive entries naming an apm version.

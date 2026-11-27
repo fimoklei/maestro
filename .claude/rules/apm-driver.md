@@ -112,9 +112,9 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
 
 - Never use `apm update` to move an exact tag pin — it is a no-op. Update =
   resolve the latest tag + re-install at that tag.
-- Never same-ref install over a dirty subtree — apm silently resets local
-  edits and drops untracked files, printing `(files unchanged)`. The deploy
-  use-case's guards stay in front of every install.
+- Never install over a dirty subtree; the deploy use-case's guards stay in
+  front of every install. Never read a success marker as proof that an
+  edited copy was reset.
 
 ## Remove
 

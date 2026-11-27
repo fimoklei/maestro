@@ -5,7 +5,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const REQUIRED_APM_VERSION = "0.38.1";
+const REQUIRED_APM_VERSION = "0.39.1";
 
 function apmInstallLine(platform) {
   return platform === "win32"
@@ -21,7 +21,7 @@ function commandVersion(run, cmd) {
   }
 }
 
-/** The apm CLI's version out of its banner line ("... version 0.38.1"). */
+/** The apm CLI's version out of its banner line ("... version 0.39.1"). */
 function apmVersionNumber(banner) {
   return /version (\d+\.\d+\.\d+)/.exec(banner)?.[1] ?? banner;
 }

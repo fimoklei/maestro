@@ -2,18 +2,19 @@
 
 How `apm` actually behaves, captured by running it or reading its source —
 never guessed (the trap in `LEARNINGS.md`). This document describes **one apm
-version: 0.38.1, verified 2026-11-25** (#1971; issues #772–#775 for the method).
-Maestro supports apm 0.38.1 and later.
+version: 0.39.1, verified 2026-11-27** (#1991; issues #772–#775 for the method).
+Maestro supports apm 0.39.1 and later.
 On an apm upgrade it is re-verified and rewritten section by section per
 `docs/agents/apm-upgrade.md` — sections are replaced, never appended to with
 version deltas; `git log` on this file is the version history.
 
-0.38.1 re-run: the real-apm canaries, the integration suite and every fixture
+0.39.1 re-run: the real-apm canaries, the integration suite and every fixture
 captured by a single command, plus hand measurements in a sandbox `HOME`
-for the claims no fixture holds. The sections that rest on the retired
-`apm-spike-833` repository (same-ref resets, mid-install failure) were
-**not** re-run byte for byte; the root-package canary covers their contracts
-on 0.38.1, and their measurements still read as 0.29.0's.
+for the claims no fixture holds, and a diff of the source-read functions
+against 0.38.1. The sections that rest on the retired `apm-spike-833`
+repository (mid-install failure) were **not** re-run byte for byte; the
+root-package canary covers their contracts on 0.39.1, and their measurements
+still read as 0.29.0's.
 
 Two grades of evidence back these claims, and they re-verify differently:
 
@@ -111,11 +112,14 @@ The deploy path must not trust the exit code:
    `apm-install-narrowed.txt`, `apm-install-probes-failed.txt`,
    `apm-install-symlink-refused.txt`.
 3. **`Unsafe skill destination '<path>'; refusing deployment.` = a linked
-   destination.** Measured 2026-11-25 for a leaf symlink
-   (`.claude/skills/<name>` → a real folder) and a directory-level symlink
-   (`.claude/skills` → a real folder), per subpath ref and per global root
-   package: the install writes nothing and prints `Install failed after
-   <t>s.`. A directory-level symlink is **no longer** a working layout.
+   destination.** Measured 2026-11-25 and again on 0.39.1 (2026-11-27) for a
+   leaf symlink (`.claude/skills/<name>` → a real folder) and a
+   directory-level symlink (`.claude/skills` → a real folder), per subpath
+   ref and per global root package: the install writes nothing and prints
+   `Install failed after <t>s.`. For the directory-level link the quoted
+   path is the link's target (`real-skills/tdd/SKILL.md`), not
+   `.claude/skills`. A directory-level symlink is **no longer** a working
+   layout.
    Two other linked shapes crash instead, with `Cannot translate
    PosixPath(…) to a lockfile path: path is outside the project tree … This
    is a bug -- please report it.`: a **dangling** leaf symlink, and a leaf
@@ -185,7 +189,8 @@ whole sequence (issue #957). Captures: `apm-957-*.txt`,
   cannot both be declared in apm.yml … Keep only one of them.`, restores
   `apm.yml` and leaves the lockfile unchanged. A manifest that already
   holds both (a legacy per-skill entry beside the root) makes every install
-  over it fail the same way.
+  over it fail the same way: a bare `apm install -t claude` over such a
+  manifest exits 1 with the same line (re-measured on 0.39.1, 2026-11-27).
 - **A named uninstall of the root package is scoped.** Measured with a second
   dependency from *another* repository (`microsoft/apm-sample-package#v1.0.0`)
   and a hand-placed `.claude/skills/handmade/` beside it: the Harness entry,
@@ -201,7 +206,7 @@ whole sequence (issue #957). Captures: `apm-957-*.txt`,
 
 One install carrying every staged name. Measured 2026-09-22 per repo against
 `github.com/fimoklei/agent-harness#v0.6.0` for a bulk deploy (issue #1039)
-and re-measured on 0.38.1 (2026-11-25). Fixtures:
+and re-measured on 0.39.1 (2026-11-27). Fixtures:
 `apm-install-unknown-skill.txt`, `apm-install-unmanaged-conflict.txt`.
 
 - **One failing name fails the whole install.** A `--skill` name the package
@@ -253,15 +258,25 @@ deployments:                    # one row per deployed file per deploy root
 - Deploy-state reads `resolved_ref` (version), `virtual_path` (identity +
   name), `package_type` (primitive type) — nothing else. Its Zod schema
   ignores unknown keys, so additive shape changes are inert for the reader.
-- **0.38.1 writes `lockfile_version: '4'` and adds `manifest_targets`**;
+- **apm writes `lockfile_version: '4'` and adds `manifest_targets`**;
   `generated_at` stays absent (diffed against
   `apm.lock.tag-pinned-v0.5.1.yaml` and
   `apm.lock.global-claude-config-dir-inside-home.yaml`, 2026-11-25). The
-  first 0.38.1 install over an older lockfile prints `[i] Upgraded
+  first install over an older lockfile prints `[i] Upgraded
   apm.lock.yaml to lockfile_version "4" (hash framing hardening); every
   package content_hash changes once.` and, with nothing else to do, ends
-  with `Updated apm.lock.yaml`. A 0.38.1 uninstall reads an old lockfile
-  directly. The parser reads none of these keys.
+  with `Updated apm.lock.yaml` (on 0.39.1 over a 0.29.0 lockfile,
+  2026-11-27). An uninstall reads an old lockfile directly. The parser reads
+  none of these keys.
+- **An edited copy under a version-1 lockfile fails the whole install.**
+  Measured on 0.39.1 (2026-11-27), global root package installed with 0.29.0
+  and with 0.32.0, one `SKILL.md` edited, then an install at a newer tag:
+  exit 1, one `Skipped <file>: no trustworthy local deployment baseline.
+  Move the conflicting file aside and retry. …` line per file of the
+  skill, edited or not, and `Installation failed with <n> error(s) … No
+  install transaction changes were committed.` `apm.yml` is restored and
+  the edit stays. Without the edit the same install passes and upgrades the
+  lockfile.
 - **No new key for a skill install between 0.26.0 and 0.29.0.** The four
   lockfile fixtures re-captured on 0.29.0 carry the same key set as their
   0.26.0 captures (diffed 2026-09-04). apm's entry model (source,
@@ -397,13 +412,16 @@ tag (`apm view`) + install at that tag; no other apm command is involved.
 - `-t` is mandatory: a bare `install`/`update` with both harnesses present
   in the project cwd fails `Multiple harnesses detected: claude, codex`.
   `-t` takes one comma list; repeating the flag is unsupported (last wins).
-- A same-tag re-install prints `(files unchanged)` — but only a clean
-  subtree makes that true. Measured on 0.29.0 with one deployed file edited,
-  and again with an untracked file added beside the deployed ones: both runs
-  print `(cached)` / `(files unchanged)` and the no-op marker, and both
-  leave the subtree reset to the tag — the edit and the extra file are gone,
-  with no line saying so. The uninstall protection below does **not** apply
-  to install.
+- **An install keeps an edited copy and still succeeds.** Measured on
+  0.38.1 and 0.39.1 (2026-11-27), global root package, one deployed
+  `SKILL.md` edited, lockfile written by the same apm: a same-tag
+  re-install and an install at a newer tag both exit 0 with the success
+  marker (`No changes …` and `Installed 1 APM dependency`) and print
+  `[!] Kept .claude/skills/<name>/SKILL.md: it was modified since APM
+  deployed it. Move it aside, then run 'apm install -g' to restore it.` The
+  edit stays on disk. Under a version-1 lockfile the same install fails
+  (§ Lockfile). An untracked file added beside the deployed ones was last
+  measured on 0.29.0, where the install deleted it silently.
 - **An update never deletes a symlinked leaf.** Measured 2026-09-27 (#1217),
   global root package `fimoklei/harness` `v0.3.5` → `v0.4.1`,
   `-g -t claude,codex`, with `.claude/skills/<name>` a relative symlink into
@@ -477,7 +495,7 @@ entry went.
 
    ```
    [x] Uninstall refused: deleting these tracked files needs deployment evidence that APM wrote them. Nothing was removed; apm.yml and apm.lock.yaml were not changed.
-   [x]   - .claude/skills/tdd/SKILL.md: edited since APM deployed it
+   [x]   - .claude/skills/tdd/SKILL.md: edited since APM deployed it; kept even with --trust-lockfile
    [x] Move aside any listed file that holds your edits, then run 'apm install' to re-establish deployment evidence (once, with access to the package source), then rerun 'apm uninstall'.
    [x] If the source is unreachable, move each listed file aside or delete it, then run 'apm uninstall' to finish the uninstall.
    ```
@@ -491,7 +509,7 @@ entry went.
    either. Fixture: `apm-uninstall-retained.txt`. Maestro's removal guard
    refuses a diverged copy in front of this (`apm-driver.md` § Remove, #775).
 4. **`CLAUDE_CONFIG_DIR` scopes an uninstall to one folder** (measured
-   2026-11-25, #1947). With the copies only under `$CLAUDE_CONFIG_DIR` the
+   2026-11-25, #1947; both fixtures verified unchanged on 0.39.1). With the copies only under `$CLAUDE_CONFIG_DIR` the
    uninstall completes like item 1 and removes that folder's copies. After a
    switch of folder (§ Lockfile: copies under both `.claude` and
    `$CLAUDE_CONFIG_DIR`), an uninstall with the variable set removes only
@@ -663,12 +681,13 @@ each find nothing. No source names a tokenizer, so the token half is
 uncheckable offline — measurements and the reasoning are in
 `docs/research/356-skill-md-token-budget.md`.
 
-## Content drift — apm detects it only on uninstall
+## Content drift — apm never reports it as a state
 
-`apm outdated` reports version drift only. Edits to deployed files are
-invisible to `install`, which silently remediates them (above). Only
-`uninstall` compares deployed files against `deployed_file_hashes`, and it
-uses the answer to *refuse* the removal, not to report the edit (§ Remove).
+`apm outdated` reports version drift only. `install` keeps an edited
+deployed file, warns with a `Kept …` line and still prints its success
+marker (§ Update). `uninstall` compares deployed files against
+`deployed_file_hashes` and uses the answer to *refuse* the removal
+(§ Remove).
 Maestro's own detection:
 
 - **Destination drift:** compare `deployed_file_hashes` against a live
