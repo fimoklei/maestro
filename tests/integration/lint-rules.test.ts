@@ -60,7 +60,7 @@ describe("lint rules", () => {
 
   it("refuses exec and shell: true when starting a process", () => {
     const output = lint(
-      "packages/core/src/probe.ts",
+      "packages/server/src/probe.ts",
       'import { exec, execFile } from "node:child_process";\nexecFile("git", ["status"], { shell: true });\nexec("ls");\n',
     );
 
@@ -68,6 +68,20 @@ describe("lint rules", () => {
       "Start a process with execFile or spawn and an args array.",
     );
     expect(output).toContain("Remove shell: true.");
+  });
+
+  it("lets only the process module start a process in core", () => {
+    const message = "Start a process through runProcess or runProcessBytes";
+    const source =
+      'import { execFile } from "node:child_process";\nexport const e = execFile;\n';
+
+    expect(lint("packages/core/src/harness/probe.ts", source)).toContain(
+      message,
+    );
+    expect(
+      lint("packages/core/src/process/run-process.ts", source),
+    ).not.toContain(message);
+    expect(lint("packages/server/src/probe.ts", source)).not.toContain(message);
   });
 
   it("refuses the hover card outside the shared building blocks", () => {
