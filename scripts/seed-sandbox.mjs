@@ -18,7 +18,7 @@ const CANDIDATES = [
 
 // The markers Maestro probes to decide a tool is installed (#131). Config-file
 // stand-ins, never the skills dirs a deploy creates, so a deploy leaves them.
-export const TOOL_MARKERS = [
+const TOOL_MARKERS = [
   ".claude.json",
   ".codex/installation_id",
   ".codex/config.toml",
