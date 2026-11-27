@@ -44,8 +44,9 @@ describe("the tracer journey through one cockpit", () => {
       target: { kind: "repo", repoPath: registeredPath },
     });
     expect(deployed.status).toBe(200);
-    expect(await deployed.json()).toEqual({
+    expect(await deployed.json()).toMatchObject({
       deployed: { type: "skill", name: "tdd", version: LATEST_TAG },
+      report: { release: LATEST_TAG },
     });
 
     const state = await w.app.request(

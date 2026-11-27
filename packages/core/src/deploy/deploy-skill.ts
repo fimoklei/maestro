@@ -8,8 +8,11 @@ import type {
   InventoryGitPort,
   RecordedPackagePort,
 } from "./deploy-ports";
-import type { GlobalLayout, SupportedTool } from "./deploy-tools";
-import type { FolderOutcomeReader, FolderOutcomes } from "./folder-outcome";
+import {
+  type GlobalLayout,
+  SUPPORTED_TOOLS,
+  type SupportedTool,
+} from "./deploy-tools";
 import type { GitOrigin } from "./git-origin";
 import { type BlockingCopy, blockingCopies, heldByCopies } from "./held-copies";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
@@ -23,6 +26,12 @@ import {
   worstVerdict,
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
+import type { PlaceReader } from "./place-reading";
+import {
+  reportWrite,
+  type WriteReport,
+  writtenEverywhere,
+} from "./write-report";
 
 export type {
   ApmDriverPort,
@@ -79,7 +88,7 @@ export type DeploySkillResult =
   | {
       ok: true;
       deployed: { type: "skill"; name: string; version: string };
-      outcome?: FolderOutcomes;
+      report?: WriteReport;
     }
   | {
       ok: false;
@@ -118,10 +127,17 @@ export type BulkDeployReport = {
   deployed: { name: string; version: string }[];
   attention: BulkAttentionRow[];
   failed: BulkFailure[];
-  outcome?: FolderOutcomes;
+  unfinished?: true;
+  report?: WriteReport;
 };
 
-type OutcomeSink = { outcome?: FolderOutcomes };
+type RunSink = {
+  release?: string;
+  tools?: readonly SupportedTool[];
+  previous?: readonly string[];
+  wrote?: readonly string[];
+  unfinished?: true;
+};
 
 const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
   "deployed-diverged-from-lock": { forceable: true },
@@ -162,7 +178,7 @@ export class DeploySkill {
     // Shared with the remove use-case: both rewrite the same apm.lock.yaml.
     locks: InFlightLocks;
     selection: SelectionWriter;
-    outcomes: Pick<FolderOutcomeReader, "read">;
+    outcomes: Pick<PlaceReader, "read">;
   };
 
   private readonly copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
@@ -177,20 +193,22 @@ export class DeploySkill {
     if (input.type !== "skill") {
       return { ok: false, error: "unsupported-primitive-type" };
     }
-    const read: OutcomeSink = {};
-    const [answer] = await this.run(
+    const sink: RunSink = {};
+    const rows = await this.run(
       [input.name],
       input.target,
       { whole: input.confirmedCopyReceipt, each: [] },
-      read,
+      sink,
     );
-    const result = answer?.result ?? {
+    const result = rows[0]?.result ?? {
       ok: false,
       error: "deploy-not-started",
     };
-    return result.ok && read.outcome !== undefined
-      ? { ...result, outcome: read.outcome }
-      : result;
+    if (!result.ok) {
+      return result;
+    }
+    const report = await this.reportOf(input.target, rows, sink);
+    return report === undefined ? result : { ...result, report };
   }
 
   async executeBatch(input: {
@@ -218,9 +236,9 @@ export class DeploySkill {
   ): Promise<BulkDeployReport> {
     const input = { names, target };
     let rows: BatchDeployResult[];
-    const read: OutcomeSink = {};
+    const sink: RunSink = {};
     try {
-      rows = await this.run(input.names, input.target, consent, read);
+      rows = await this.run(input.names, input.target, consent, sink);
     } catch {
       rows = input.names.map((name) => ({
         name,
@@ -228,12 +246,22 @@ export class DeploySkill {
       }));
     }
 
+    const report = await this.reportOf(input.target, rows, sink);
     const deployed: BulkDeployReport["deployed"] = [];
     const attention: BulkAttentionRow[] = [];
     const failures = new Map<string, BulkFailure>();
     for (const { name, result } of rows) {
       if (result.ok) {
         deployed.push({ name, version: result.deployed.version });
+        continue;
+      }
+      if (
+        result.error === "deploy-incomplete" &&
+        sink.release !== undefined &&
+        report !== undefined &&
+        writtenEverywhere(report, name)
+      ) {
+        deployed.push({ name, version: sink.release });
         continue;
       }
       const offer = ATTENTION[result.error];
@@ -263,15 +291,51 @@ export class DeploySkill {
       deployed,
       attention,
       failed: [...failures.values()],
-      ...(read.outcome === undefined ? {} : { outcome: read.outcome }),
+      ...(sink.unfinished ? { unfinished: true } : {}),
+      ...(report === undefined ? {} : { report }),
     };
+  }
+
+  private async reportOf(
+    target: DeployTarget,
+    rows: readonly BatchDeployResult[],
+    sink: RunSink,
+  ): Promise<WriteReport | undefined> {
+    if (target.kind === "global" && sink.tools === undefined) {
+      return undefined;
+    }
+    const wrote = new Set(sink.wrote ?? []);
+    const refused = new Map<string, DeploySkillError>();
+    for (const { name, result } of rows) {
+      if (!result.ok && !wrote.has(name)) {
+        refused.set(name, result.error);
+      }
+    }
+    const names = union(
+      sink.previous ?? [],
+      rows.map((row) => row.name),
+    );
+    const readings = await this.deps.outcomes
+      .read({
+        target,
+        release: sink.release ?? null,
+        names:
+          sink.release === undefined
+            ? []
+            : names.filter((name) => !refused.has(name)),
+        tools: sink.tools ?? SUPPORTED_TOOLS,
+      })
+      .catch(() => null);
+    return readings === null
+      ? undefined
+      : reportWrite({ readings, names, wrote, refused });
   }
 
   private async run(
     names: readonly string[],
     target: DeployTarget,
     consent: Consent,
-    read: OutcomeSink,
+    sink: RunSink,
   ): Promise<BatchDeployResult[]> {
     const results = new Map<string, DeploySkillResult>();
     const valid = [...new Set(names)].filter((name) => {
@@ -286,7 +350,7 @@ export class DeploySkill {
         valid,
         target,
         consent,
-        read,
+        sink,
       )) {
         results.set(name, result);
       }
@@ -301,7 +365,7 @@ export class DeploySkill {
     names: readonly string[],
     target: DeployTarget,
     consent: Consent,
-    read: OutcomeSink,
+    sink: RunSink,
   ): Promise<Map<string, DeploySkillResult>> {
     const every = (error: DeploySkillError) =>
       new Map(names.map((name) => [name, { ok: false as const, error }]));
@@ -321,7 +385,7 @@ export class DeploySkill {
     }
 
     const run = await this.deps.locks.run(lockKey, () =>
-      this.deploy(names, target, lockKey, consent, read),
+      this.deploy(names, target, lockKey, consent, sink),
     );
     return run.ok ? run.value : every("deploy-in-progress");
   }
@@ -331,7 +395,7 @@ export class DeploySkill {
     target: DeployTarget,
     lockKey: string,
     consent: Consent,
-    read: OutcomeSink,
+    sink: RunSink,
   ): Promise<Map<string, DeploySkillResult>> {
     const results = new Map<string, DeploySkillResult>();
     const refuseRest = (error: DeploySkillError) => {
@@ -376,6 +440,7 @@ export class DeploySkill {
           return refuseRest("no-supported-tool");
         }
         globalTools = detected;
+        sink.tools = detected;
       }
       const toolScope = globalTools === undefined ? {} : { tools: globalTools };
 
@@ -410,6 +475,7 @@ export class DeploySkill {
         }
         tag = tagResult.tag;
       }
+      sink.release = tag;
       await this.deps.syncHarness();
 
       const latest = once(() => this.latestTag(origin.ownerRepo));
@@ -431,6 +497,7 @@ export class DeploySkill {
       }
 
       const deployed = current.kind === "root" ? current.deployed : [];
+      sink.previous = deployed;
       const scope = { write: "deploy", target } as const;
       const checkOver = (names: readonly string[]) =>
         this.copyGuard.check({
@@ -501,15 +568,11 @@ export class DeploySkill {
             ...toolScope,
           })
           .catch((): SelectionResult => ({ ok: false, error: "apply-failed" }));
-        if (
-          globalTools !== undefined &&
-          (applied.ok || applied.error === "apply-incomplete")
-        ) {
-          read.outcome = await this.deps.outcomes.read({
-            release: tag,
-            names: desired,
-            written: globalTools,
-          });
+        if (applied.ok || applied.error === "apply-incomplete") {
+          sink.wrote = go;
+        }
+        if (!applied.ok && applied.error === "apply-incomplete") {
+          sink.unfinished = true;
         }
         if (applied.ok) {
           for (const name of go) {

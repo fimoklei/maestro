@@ -40,6 +40,24 @@ const RELEASES = {
 const everyTool = (name: string, state: string) =>
   ["claude", "codex"].map((tool) => ({ name, tool, state }));
 
+type Places = {
+  places: { tool: string; skills: { name: string; state: string }[] }[];
+};
+
+const rowsOf = (report: Places | undefined) => {
+  const places = report?.places ?? [];
+  const names = [
+    ...new Set(places.flatMap((place) => place.skills.map((s) => s.name))),
+  ];
+  return names.flatMap((name) =>
+    places.flatMap((place) =>
+      place.skills
+        .filter((skill) => skill.name === name)
+        .map((skill) => ({ name, tool: place.tool, state: skill.state })),
+    ),
+  );
+};
+
 function makeApp() {
   const w = deployWorld({ released: ["tdd"] });
   w.harness.tags = Object.entries(RELEASES).map(([tag, skills]) => ({
@@ -237,14 +255,13 @@ describe("update HTTP journey", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toStrictEqual({
-      release: "v0.3.4",
-      outcome: [
-        ...everyTool("tdd", "updated"),
-        ...everyTool("grill", "updated"),
-        ...everyTool("review", "removed"),
-      ],
-    });
+    const body = (await response.json()) as { release: string; report: Places };
+    expect(body.release).toBe("v0.3.4");
+    expect(rowsOf(body.report)).toStrictEqual([
+      ...everyTool("tdd", "written"),
+      ...everyTool("grill", "written"),
+      ...everyTool("review", "removed"),
+    ]);
     expect(w.read("apm.yml")).toBe(consumerManifest(["grill", "tdd"]));
     // The deploy-state reads the release the update just recorded.
     const state = await w.app.request(
@@ -267,14 +284,13 @@ describe("update HTTP journey", () => {
     });
 
     expect(response.status).toBe(502);
-    expect(await response.json()).toStrictEqual({
-      error: "update-incomplete",
-      outcome: [
-        ...everyTool("tdd", "updated"),
-        ...everyTool("grill", "missing"),
-        ...everyTool("review", "removed"),
-      ],
-    });
+    const body = (await response.json()) as { error: string; report: Places };
+    expect(body.error).toBe("update-incomplete");
+    expect(rowsOf(body.report)).toStrictEqual([
+      ...everyTool("tdd", "written"),
+      ...everyTool("grill", "missing"),
+      ...everyTool("review", "removed"),
+    ]);
   });
 
   it("adopts the release and adds the requested skill in one confirm", async () => {
@@ -287,15 +303,14 @@ describe("update HTTP journey", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(await response.json()).toStrictEqual({
-      release: "v0.3.4",
-      outcome: [
-        ...everyTool("tdd", "updated"),
-        ...everyTool("grill", "updated"),
-        ...everyTool("review", "removed"),
-        ...everyTool("wizard", "updated"),
-      ],
-    });
+    const body = (await response.json()) as { release: string; report: Places };
+    expect(body.release).toBe("v0.3.4");
+    expect(rowsOf(body.report)).toStrictEqual([
+      ...everyTool("tdd", "written"),
+      ...everyTool("grill", "written"),
+      ...everyTool("review", "removed"),
+      ...everyTool("wizard", "written"),
+    ]);
     expect(w.read("apm.yml")).toBe(
       consumerManifest(["grill", "tdd", "wizard"]),
     );
@@ -415,23 +430,23 @@ describe("update HTTP journey on Global", () => {
 
     expect(response.status).toBe(200);
     const written = [
-      { name: "tdd", outcome: "written" },
-      { name: "grill", outcome: "written" },
+      { name: "tdd", state: "written" },
+      { name: "grill", state: "written" },
     ];
     expect(await response.json()).toStrictEqual({
       release: "v0.6.0",
-      folders: {
+      report: {
         release: "v0.6.0",
-        folders: [
+        places: [
           {
-            path: "~/.claude/skills",
             tool: "claude",
+            path: "~/.claude/skills",
             detected: true,
             skills: written,
           },
           {
-            path: "~/.agents/skills",
             tool: "codex",
+            path: "~/.agents/skills",
             detected: true,
             skills: written,
           },
@@ -450,17 +465,17 @@ describe("update HTTP journey on Global", () => {
     expect(response.status).toBe(502);
     const body = (await response.json()) as {
       error: string;
-      folders: { folders: { path: string; skills: unknown[] }[] };
+      report: { places: { path: string; skills: unknown[] }[] };
     };
     expect(body.error).toBe("update-incomplete");
-    expect(body.folders.folders.map((folder) => folder.skills)).toStrictEqual([
+    expect(body.report.places.map((place) => place.skills)).toStrictEqual([
       [
-        { name: "tdd", outcome: "written" },
-        { name: "grill", outcome: "written" },
+        { name: "tdd", state: "written" },
+        { name: "grill", state: "written" },
       ],
       [
-        { name: "tdd", outcome: "missing" },
-        { name: "grill", outcome: "written" },
+        { name: "tdd", state: "missing" },
+        { name: "grill", state: "written" },
       ],
     ]);
   });
@@ -472,23 +487,23 @@ describe("update HTTP journey on Global", () => {
 
     expect(response.status).toBe(200);
     const body = (await response.json()) as {
-      folders: { folders: { path: string; skills: unknown[] }[] };
+      report: { places: { path: string; skills: unknown[] }[] };
     };
     expect(
-      body.folders.folders.map((folder) => [folder.path, folder.skills]),
+      body.report.places.map((place) => [place.path, place.skills]),
     ).toStrictEqual([
       [
         "/work/claude/skills",
         [
-          { name: "tdd", outcome: "written" },
-          { name: "grill", outcome: "written" },
+          { name: "tdd", state: "written" },
+          { name: "grill", state: "written" },
         ],
       ],
       [
         "~/.agents/skills",
         [
-          { name: "tdd", outcome: "written" },
-          { name: "grill", outcome: "written" },
+          { name: "tdd", state: "written" },
+          { name: "grill", state: "written" },
         ],
       ],
     ]);

@@ -1,7 +1,8 @@
 import type {
   BulkDeployReport,
-  FolderOutcomes,
   GlobalFolderState,
+  PendingOperation,
+  WriteReport,
 } from "@maestro/core";
 import { useState } from "react";
 import { GLOBAL, NO_TOOL_DETECTED } from "../deploy-state/deploy-state-copy";
@@ -57,7 +58,7 @@ import {
   TARGETS_LOADING,
 } from "./skills-copy";
 import { useBulkDeploy, useDeployAgain } from "./use-bulk-deploy";
-import { writtenToView } from "./written-to-view";
+import { landedSince, writtenToLines } from "./written-to-view";
 
 type BulkDeployProps = {
   stagedNames: string[];
@@ -115,10 +116,10 @@ export function BulkDeployRun({
       : { ...again.data, failed: [...bulk.data.failed, ...again.data.failed] };
   // Retry deploy in the Report's footer; its outcome replaces the run's.
   const retry = useRetryOperation(screen, () =>
-    ran?.outcome === undefined
+    ran?.report?.release == null
       ? null
       : {
-          operation: { kind: "deploy", release: ran.outcome.release },
+          operation: { kind: "deploy", release: ran.report.release },
           subject: null,
         },
   );
@@ -232,7 +233,8 @@ export function BulkDeployRun({
             : [],
           skippedClean: run.plan.skippedClean,
           redeployed: run.redeployed,
-          retried: retry.landed(chosenRun.target)?.outcome ?? null,
+          retried: retry.landed(chosenRun.target)?.report ?? null,
+          completed: retry.landed(chosenRun.target)?.completed ?? null,
           reread: run.reread,
           targetLabel: chosenRun.label,
           requestFailed: bulk.isError,
@@ -341,7 +343,7 @@ export function BulkDeployRun({
                         confirmedCopyReceipt,
                       },
                       {
-                        onSuccess: ({ deployed, outcome }) =>
+                        onSuccess: ({ deployed, report }) =>
                           setRun((current) =>
                             redeployedIn(
                               current,
@@ -349,7 +351,7 @@ export function BulkDeployRun({
                                 name: deployed.name,
                                 version: deployed.version,
                               },
-                              outcome,
+                              report,
                             ),
                           ),
                       },
@@ -425,9 +427,10 @@ function bulkDeployReportView(input: {
   // Attention rows a later Deploy again succeeded on.
   redeployed: SkillRelease[];
   // A completed Retry deploy's read of the Global folders; null before one.
-  retried: FolderOutcomes | null;
+  retried: WriteReport | null;
+  completed: Pick<PendingOperation, "release" | "desired"> | null;
   // A row's Deploy again's read of the Global folders; null before one.
-  reread: FolderOutcomes | null;
+  reread: WriteReport | null;
   targetLabel: string;
   // `report` carries no real data when true — must never be read.
   requestFailed?: boolean;
@@ -456,23 +459,22 @@ function bulkDeployReportView(input: {
   );
   // On Global the folders state an unfinished install; its retry reads them
   // again.
-  const outcome = input.retried ?? input.reread ?? report.outcome;
+  const global = report.target.kind === "global";
+  const places = global
+    ? (input.retried ?? input.reread ?? report.report ?? null)
+    : null;
   const retry =
-    outcome !== undefined &&
-    input.retried === null &&
-    report.failed.some((line) => line.error === "deploy-incomplete");
+    places !== null && input.retried === null && report.unfinished === true;
   // Its rows are stated once, in the block above the folders.
   const hold = heldDeployView(report, input.globalFolders, skippedClean);
   const skipped = skippedClean.filter((name) => !hold?.names.includes(name));
-  const folders =
-    outcome === undefined
+  const lines =
+    hold?.lines ??
+    (places === null
       ? null
-      : writtenToView({ report, outcome, skipped, retry });
-  const deployed = [
-    ...report.deployed,
-    ...(folders?.deployed ?? []),
-    ...redeployed,
-  ];
+      : writtenToLines({ ran: report, report: places, skipped, retry }));
+  const landed = landedSince(report, input.completed);
+  const deployed = [...report.deployed, ...landed, ...redeployed];
 
   return {
     tone: "ran",
@@ -480,16 +482,18 @@ function bulkDeployReportView(input: {
     deployed,
     skipped,
     attention: hold === null ? attention : [],
-    failed: folders?.failed ?? report.failed,
-    writtenTo: folders?.lines ?? hold?.lines ?? null,
+    failed:
+      places === null
+        ? report.failed
+        : report.failed.filter((line) => line.error !== "deploy-incomplete"),
+    writtenTo: lines,
     retry,
     hold,
     counts: {
       deployed: deployed.length,
       skipped: skipped.length,
       attention: hold?.names.length ?? attention.length,
-      // A name the folders hold back still counts as not deployed.
-      failed: failedCount - (folders?.deployed.length ?? 0),
+      failed: failedCount - landed.length,
     },
   };
 }

@@ -24,6 +24,7 @@ import {
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
 import { RemoveConsentIssuer } from "./remove-consent";
+import type { WriteReport } from "./write-report";
 
 export type DeployedRefPort = {
   resolve(input: {
@@ -115,25 +116,15 @@ function editedFolders(
   };
 }
 
-export type RemoveTargetState = "removed" | "not-removed" | "unknown";
+type RemoveState = "removed" | "not-removed" | "not-confirmed";
 
-export type RemoveToolOutcome = {
-  tool: SupportedTool;
-  path: string;
-  state: RemoveTargetState;
-};
-
-export type RemoveOutcome =
-  | { scope: "repo"; state: RemoveTargetState }
-  | { scope: "global"; tools: readonly RemoveToolOutcome[] };
-
-const PROBE_STATES: Record<DeployedContentState, RemoveTargetState> = {
+const PROBE_STATES: Record<DeployedContentState, RemoveState> = {
   "not-deployed": "removed",
   clean: "not-removed",
   diverged: "not-removed",
   unverifiable: "not-removed",
-  unreadable: "unknown",
-  "lockfile-malformed": "unknown",
+  unreadable: "not-confirmed",
+  "lockfile-malformed": "not-confirmed",
 };
 
 export type RemovePreflightError =
@@ -174,11 +165,12 @@ type RemoveDeployedSkillResult =
         version: string;
         scope: RemovedScope;
       };
+      report: WriteReport;
     }
   | ({
       ok: false;
       error: RemoveDeployedSkillError;
-      outcome?: RemoveOutcome;
+      report?: WriteReport;
       check?: RemoveCheck;
       receipt?: string;
     } & EditedFolders);
@@ -205,7 +197,7 @@ type BulkRemoveRefusedRow = {
 type BulkRemoveFailedRow = {
   target: DeployTarget;
   reason: RemoveDeployedSkillError;
-  outcome?: RemoveOutcome;
+  report?: WriteReport;
 };
 
 export type BulkRemoveReport = {
@@ -461,7 +453,7 @@ export class RemoveDeployedSkill {
         report.failed.push({
           target: entry.target,
           reason: result.error,
-          ...(result.outcome ? { outcome: result.outcome } : {}),
+          ...(result.report ? { report: result.report } : {}),
         });
       }
     }
@@ -600,9 +592,10 @@ export class RemoveDeployedSkill {
         return {
           ok: false,
           error: failure,
-          outcome: await this.probeOutcome(
+          report: await this.probeReport(
             target,
             input.name,
+            version,
             priced.check.scope === "global"
               ? priced.check.tools.map((folder) => folder.tool)
               : undefined,
@@ -621,6 +614,7 @@ export class RemoveDeployedSkill {
               ? { kind: "repo" }
               : { kind: "global", tools: detected },
         },
+        report: await this.probeReport(target, input.name, version, detected),
       };
     } catch {
       return { ok: false, error: "remove-failed" };
@@ -673,27 +667,31 @@ export class RemoveDeployedSkill {
       : "remove-failed";
   }
 
-  private async probeOutcome(
+  private async probeReport(
     target: DeployTarget,
     name: string,
+    release: string,
     folders: readonly SupportedTool[] | undefined,
-  ): Promise<RemoveOutcome> {
+  ): Promise<WriteReport> {
     const lockfile = await this.deps.deployedContent.readLockfile(target);
-    if (folders === undefined) {
-      return {
-        scope: "repo",
-        state: await this.probeTarget(target, lockfile, name),
-      };
-    }
-    const tools: RemoveToolOutcome[] = [];
-    for (const tool of folders) {
-      tools.push({
+    const places: WriteReport["places"] = [];
+    for (const tool of folders ?? SUPPORTED_TOOLS) {
+      places.push({
         tool,
-        path: globalFolderPath(tool, this.deps.globalLayout()),
-        state: await this.probeTarget(target, lockfile, name, [tool]),
+        path:
+          folders === undefined
+            ? null
+            : globalFolderPath(tool, this.deps.globalLayout()),
+        detected: true,
+        skills: [
+          {
+            name,
+            state: await this.probeTarget(target, lockfile, name, [tool]),
+          },
+        ],
       });
     }
-    return { scope: "global", tools };
+    return { release, places };
   }
 
   private async probeTarget(
@@ -701,7 +699,7 @@ export class RemoveDeployedSkill {
     lockfile: LockfileReading,
     name: string,
     tools?: readonly SupportedTool[],
-  ): Promise<RemoveTargetState> {
+  ): Promise<RemoveState> {
     try {
       return PROBE_STATES[
         await this.deps.deployedContent.classify({
@@ -712,7 +710,7 @@ export class RemoveDeployedSkill {
         })
       ];
     } catch {
-      return "unknown";
+      return "not-confirmed";
     }
   }
 }

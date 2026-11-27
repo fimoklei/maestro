@@ -56,7 +56,7 @@ describe("RemoveDeployedSkill on a target following one release", () => {
 
     const result = await removeConfirmed(remove, "caveman");
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: true,
       removed: {
         type: "skill",

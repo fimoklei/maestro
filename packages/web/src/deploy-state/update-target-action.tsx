@@ -6,16 +6,13 @@ import {
   updateNotice,
   updatePreviewNotice,
 } from "./notice-copy";
-import {
-  type UpdateRunView,
-  updateFolders,
-  updateOutcomeRows,
-} from "./update-outcome-report";
+import { type UpdateRunView, updateRows } from "./update-outcome-report";
 import { UpdateTargetDialog } from "./update-target-dialog";
 import { useGlobalDeployState } from "./use-global-deploy-state";
 import { useRetryOperation } from "./use-retry-operation";
 import { useUpdatePreflight } from "./use-update-preflight";
 import { useUpdateTarget } from "./use-update-target";
+import { writeReportIn } from "./write-report-body";
 
 export function UpdateTargetAction({
   targetName,
@@ -50,25 +47,23 @@ export function UpdateTargetAction({
     action: "update",
     subject: () => null,
     failure: (error) =>
-      updateOutcomeRows(error) !== null || updateFolders(error) !== null
+      writeReportIn(error) !== null
         ? null
         : global
           ? globalUpdateNotice(error).notice
           : updateNotice(error),
   });
   // A completed Retry update reads the folders again; its read replaces the run's.
-  const retried = retry.landed(target)?.outcome ?? null;
-  const folders =
-    retried ?? update.data?.folders ?? updateFolders(update.error);
-  const rows = update.data?.outcome ?? updateOutcomeRows(update.error);
+  const retried = global ? (retry.landed(target)?.report ?? null) : null;
+  const report = retried ?? update.data?.report ?? writeReportIn(update.error);
   const outcome: UpdateRunView | null =
-    folders !== null
-      ? { kind: "folders", folders }
-      : rows !== null
-        ? { kind: "skills", rows }
-        : global && update.isError && globalUpdateNotice(update.error).unknown
-          ? { kind: "unknown" }
-          : null;
+    report !== null
+      ? global
+        ? { kind: "folders", report }
+        : { kind: "skills", rows: updateRows(report) }
+      : global && update.isError && globalUpdateNotice(update.error).unknown
+        ? { kind: "unknown" }
+        : null;
 
   return (
     <UpdateTargetDialog

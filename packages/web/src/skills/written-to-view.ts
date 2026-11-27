@@ -1,53 +1,43 @@
-// A Global deploy's per-folder outcome, folded into its Report: the folders
-// state what each got, so an unfinished install is no Failed row of its own.
-import type { BulkDeployReport, FolderOutcomes } from "@maestro/core";
-import { folderLines, writtenToLine } from "../deploy-state/written-to-copy";
+import type {
+  BulkDeployReport,
+  PendingOperation,
+  WriteReport,
+} from "@maestro/core";
+import {
+  folderLines,
+  folderReports,
+  writtenToLine,
+} from "../deploy-state/written-to-copy";
 import type { FoldLine } from "../ui/fold-list";
 
-type WrittenToView = {
-  /** Skills every written folder holds at the release. */
-  deployed: { name: string; version: string }[];
-  failed: BulkDeployReport["failed"];
-  lines: FoldLine[];
-};
-
-/**
- * `outcome`: the latest read of the folders, the run's or its retry's.
- * `skipped`: skills the Report counts as up to date; the folders state them too.
- */
-export function writtenToView(input: {
-  report: BulkDeployReport;
-  outcome: FolderOutcomes;
+export function writtenToLines(input: {
+  ran: BulkDeployReport;
+  report: WriteReport;
   skipped: readonly string[];
   retry: boolean;
-}): WrittenToView {
-  const { report, outcome, retry } = input;
-  const ran = new Set([
-    ...report.deployed.map((row) => row.name),
-    ...report.attention.map((row) => row.name),
-    ...report.failed.flatMap((line) => line.names),
+}): FoldLine[] {
+  const { ran, retry } = input;
+  const stated = new Set([
+    ...ran.deployed.map((row) => row.name),
+    ...ran.attention.map((row) => row.name),
+    ...ran.failed.flatMap((line) => line.names),
     ...input.skipped,
   ]);
-  const folders = outcome.folders.map((folder) => ({
+  const folders = folderReports(input.report.places).map((folder) => ({
     ...folder,
-    skills: folder.skills.filter((skill) => ran.has(skill.name)),
+    skills: folder.skills.filter((skill) => stated.has(skill.name)),
   }));
-  const writtenEverywhere = (name: string) =>
-    folders.every(
-      (folder) =>
-        !folder.detected ||
-        folder.skills.some(
-          (skill) => skill.name === name && skill.outcome === "written",
-        ),
-    );
-  const unfinished = report.failed
+  return folderLines(folders, (folder) => writtenToLine(folder, retry));
+}
+
+export function landedSince(
+  ran: BulkDeployReport,
+  retried: Pick<PendingOperation, "release" | "desired"> | null,
+): { name: string; version: string }[] {
+  if (retried === null) return [];
+  return ran.failed
     .filter((line) => line.error === "deploy-incomplete")
-    .flatMap((line) => line.names);
-  return {
-    deployed: unfinished
-      .filter(writtenEverywhere)
-      .map((name) => ({ name, version: outcome.release })),
-    failed: report.failed.filter((line) => line.error !== "deploy-incomplete"),
-    lines: folderLines(folders, (folder) => writtenToLine(folder, retry)),
-  };
+    .flatMap((line) => line.names)
+    .filter((name) => retried.desired.includes(name))
+    .map((name) => ({ name, version: retried.release }));
 }

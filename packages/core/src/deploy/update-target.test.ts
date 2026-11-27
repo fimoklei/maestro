@@ -13,7 +13,8 @@ import { inMemoryDeployedContent, placedOnRead } from "./deployed-content.fake";
 import { InFlightLocks } from "./in-flight-locks";
 import { LocalCopyGuard } from "./local-copy-guard";
 import { copyPaths, selectionWorld } from "./selection-writer-fake";
-import { type UpdateSkillState, UpdateTarget } from "./update-target";
+import { type UpdateRunResult, UpdateTarget } from "./update-target";
+import type { ReportSkillState } from "./write-report";
 
 const REPO: DeployTarget = { kind: "repo", repoPath: "/repo" };
 const GLOBAL: DeployTarget = { kind: "global" };
@@ -159,7 +160,7 @@ function subject(options: Options = {}) {
       classify,
     },
     outcomes: {
-      read: async ({ release }) => ({ release, folders: [] }),
+      read: async ({ release }) => ({ release, places: [] }),
     },
     canonicalPath: options.canonicalPath ?? (async (path) => path),
     locks,
@@ -689,8 +690,22 @@ describe("UpdateTarget preflight token", () => {
   });
 });
 
-const everyTool = (name: string, state: UpdateSkillState) =>
+const everyTool = (name: string, state: ReportSkillState) =>
   (["claude", "codex"] as const).map((tool) => ({ name, tool, state }));
+
+const rowsOf = (result: UpdateRunResult) => {
+  const places = result.report?.places ?? [];
+  const names = [
+    ...new Set(places.flatMap((place) => place.skills.map((s) => s.name))),
+  ];
+  return names.flatMap((name) =>
+    places.flatMap((place) =>
+      place.skills
+        .filter((skill) => skill.name === name)
+        .map((skill) => ({ name, tool: place.tool, state: skill.state })),
+    ),
+  );
+};
 
 async function confirmed(options: Options = {}) {
   const running = subject(options);
@@ -707,17 +722,18 @@ describe("UpdateTarget.run", () => {
 
     const result = await running.run({ token: running.token });
 
-    expect(result).toStrictEqual({
+    expect(result).toMatchObject({
       ok: true,
       release: "v0.3.4",
-      outcome: [
-        ...everyTool("tdd", "updated"),
-        ...everyTool("grill", "updated"),
-        ...everyTool("jobs", "updated"),
-        ...everyTool("review", "removed"),
-        ...everyTool("brief", "updated"),
-      ],
+      report: { release: "v0.3.4" },
     });
+    expect(rowsOf(result)).toStrictEqual([
+      ...everyTool("tdd", "written"),
+      ...everyTool("grill", "written"),
+      ...everyTool("jobs", "written"),
+      ...everyTool("review", "removed"),
+      ...everyTool("brief", "written"),
+    ]);
     expect(running.world.files.get("/target/apm.yml")).toContain("- brief");
     expect(running.world.files.get("/target/apm.yml")).not.toContain("review");
   });
@@ -769,8 +785,8 @@ describe("UpdateTarget.run", () => {
     const result = await running.run({ token: running.token });
 
     expect(result.ok ? null : result.error).toBe("update-incomplete");
-    expect(result.ok ? [] : (result.outcome ?? []).slice(0, 2)).toStrictEqual([
-      { name: "tdd", tool: "claude", state: "updated" },
+    expect(result.ok ? [] : rowsOf(result).slice(0, 2)).toStrictEqual([
+      { name: "tdd", tool: "claude", state: "written" },
       { name: "tdd", tool: "codex", state: "missing" },
     ]);
   });
@@ -783,11 +799,8 @@ describe("UpdateTarget.run", () => {
 
     const result = await running.run({ token: running.token });
 
-    expect(result).toStrictEqual({
-      ok: true,
-      release: "v0.3.4",
-      outcome: everyTool("review", "removed"),
-    });
+    expect(result).toMatchObject({ ok: true, release: "v0.3.4" });
+    expect(rowsOf(result)).toStrictEqual(everyTool("review", "removed"));
     expect(running.world.calls.map((call) => call.command)).toStrictEqual([
       "uninstall",
     ]);
@@ -799,9 +812,9 @@ describe("UpdateTarget.run", () => {
 
     const result = await running.run({ token: running.token });
 
-    expect(result).toMatchObject({
-      outcome: expect.arrayContaining(everyTool("review", "not-removed")),
-    });
+    expect(rowsOf(result)).toEqual(
+      expect.arrayContaining(everyTool("review", "not-removed")),
+    );
   });
 
   it("keeps the operation and states what did not land when the install is partial", async () => {
@@ -812,8 +825,8 @@ describe("UpdateTarget.run", () => {
 
     expect(result.ok).toBe(false);
     expect(result.ok ? null : result.error).toBe("update-incomplete");
-    expect(result.ok ? [] : (result.outcome ?? [])).toStrictEqual([
-      ...everyTool("tdd", "updated"),
+    expect(result.ok ? [] : rowsOf(result)).toStrictEqual([
+      ...everyTool("tdd", "written"),
       ...everyTool("grill", "missing"),
       ...everyTool("jobs", "missing"),
       ...everyTool("review", "removed"),
@@ -842,7 +855,7 @@ describe("UpdateTarget.run", () => {
     const result = await running.run({ token: running.token });
 
     expect(result.ok).toBe(false);
-    expect(result.ok ? [] : (result.outcome ?? [])).toContainEqual({
+    expect(result.ok ? [] : rowsOf(result)).toContainEqual({
       name: "tdd",
       tool: "claude",
       state: "not-updated",
@@ -854,10 +867,10 @@ describe("UpdateTarget.run", () => {
 
     const result = await running.run({ token: running.token });
 
-    expect(result).toMatchObject({
-      outcome: expect.arrayContaining([
-        { name: "tdd", tool: "claude", state: "unknown" },
-      ]),
+    expect(rowsOf(result)).toContainEqual({
+      name: "tdd",
+      tool: "claude",
+      state: "not-confirmed",
     });
   });
 
@@ -866,10 +879,10 @@ describe("UpdateTarget.run", () => {
 
     const result = await running.run({ token: running.token });
 
-    expect(result.ok ? result.outcome : []).toContainEqual({
+    expect(result.ok ? rowsOf(result) : []).toContainEqual({
       name: "grill",
       tool: "claude",
-      state: "unknown",
+      state: "not-confirmed",
     });
   });
 
@@ -930,7 +943,7 @@ describe("UpdateTarget.run", () => {
     });
 
     expect(result.ok).toBe(true);
-    expect(result.ok ? result.outcome : []).toContainEqual({
+    expect(result.ok ? rowsOf(result) : []).toContainEqual({
       name: "review",
       tool: "claude",
       state: "removed",
@@ -1056,18 +1069,15 @@ describe("UpdateTarget.run", () => {
 
     const result = await running.run({ token: running.token, add: "wizard" });
 
-    expect(result).toStrictEqual({
-      ok: true,
-      release: "v0.3.4",
-      outcome: [
-        ...everyTool("tdd", "updated"),
-        ...everyTool("grill", "updated"),
-        ...everyTool("jobs", "updated"),
-        ...everyTool("review", "removed"),
-        ...everyTool("brief", "updated"),
-        ...everyTool("wizard", "updated"),
-      ],
-    });
+    expect(result).toMatchObject({ ok: true, release: "v0.3.4" });
+    expect(rowsOf(result)).toStrictEqual([
+      ...everyTool("tdd", "written"),
+      ...everyTool("grill", "written"),
+      ...everyTool("jobs", "written"),
+      ...everyTool("review", "removed"),
+      ...everyTool("brief", "written"),
+      ...everyTool("wizard", "written"),
+    ]);
     expect(running.world.calls[0]?.skills).toContain("wizard");
     expect(running.world.files.get("/target/apm.yml")).toContain("- wizard");
   });

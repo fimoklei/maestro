@@ -11,7 +11,6 @@ import type {
 } from "./deploy-skill";
 import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
 import { discardDroppedCopies } from "./discard-dropped-copies";
-import type { FolderOutcomeReader, FolderOutcomes } from "./folder-outcome";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
@@ -21,8 +20,14 @@ import {
   type LocalCopyGuard,
   linkedPathAmong,
 } from "./local-copy-guard";
+import type { PlaceReader } from "./place-reading";
 import { ConsentSigner } from "./signed-consent";
 import type { TargetSelection } from "./target-selection";
+import {
+  type ReportSkill,
+  reportWrite,
+  type WriteReport,
+} from "./write-report";
 
 export type UpdateSkillRow = { name: string; url: string | null };
 
@@ -80,20 +85,6 @@ export type UpdateScope = {
   copies: LocalCopyCheck;
 };
 
-export type UpdateSkillState =
-  | "updated"
-  | "removed"
-  | "not-updated"
-  | "missing"
-  | "not-removed"
-  | "unknown";
-
-export type UpdateOutcomeRow = {
-  name: string;
-  tool: SupportedTool | null;
-  state: UpdateSkillState;
-};
-
 export type UpdateRunError =
   | UpdatePreviewError
   | "status-out-of-date"
@@ -106,18 +97,13 @@ export type UpdateRunError =
   | "update-timed-out"
   | "update-failed";
 
-type UpdateOutcome =
-  | { outcome: readonly UpdateOutcomeRow[]; folders?: never }
-  | { folders: FolderOutcomes; outcome?: never };
-
 export type UpdateRunResult =
-  | ({ ok: true; release: string } & UpdateOutcome)
+  | { ok: true; release: string; report: WriteReport }
   | {
       ok: false;
       error: UpdateRunError;
       linkedPath?: string;
-      outcome?: readonly UpdateOutcomeRow[];
-      folders?: FolderOutcomes;
+      report?: WriteReport;
       copyReceipt?: string;
     };
 
@@ -128,22 +114,27 @@ const COPY_ERRORS: Record<Exclude<CopyVerdict, "clean">, UpdateRunError> = {
   "lockfile-malformed": "lockfile-malformed",
 };
 
-const KEPT: Record<DeployedContentState, UpdateSkillState> = {
-  clean: "updated",
+type RepoState = Exclude<
+  ReportSkill["state"],
+  "already-at-release" | "refused"
+>;
+
+const KEPT: Record<DeployedContentState, RepoState> = {
+  clean: "written",
   "not-deployed": "missing",
   diverged: "not-updated",
-  unverifiable: "unknown",
-  unreadable: "unknown",
-  "lockfile-malformed": "unknown",
+  unverifiable: "not-confirmed",
+  unreadable: "not-confirmed",
+  "lockfile-malformed": "not-confirmed",
 };
 
-const DROPPED: Record<DeployedContentState, UpdateSkillState> = {
+const DROPPED: Record<DeployedContentState, RepoState> = {
   "not-deployed": "removed",
   clean: "not-removed",
   diverged: "not-removed",
   unverifiable: "not-removed",
-  unreadable: "unknown",
-  "lockfile-malformed": "unknown",
+  unreadable: "not-confirmed",
+  "lockfile-malformed": "not-confirmed",
 };
 
 export class UpdateTarget {
@@ -157,7 +148,7 @@ export class UpdateTarget {
     selection: Pick<SelectionWriter, "apply" | "pending" | "readTarget">;
     deployedCleanup: DeployedCleanupPort;
     deployedContent: Pick<DeployedContentPort, "readLockfile" | "classify">;
-    outcomes: Pick<FolderOutcomeReader, "read">;
+    outcomes: Pick<PlaceReader, "read">;
     canonicalPath: (path: string) => Promise<string>;
     locks: InFlightLocks;
   };
@@ -268,18 +259,22 @@ export class UpdateTarget {
         desired: scope.desired,
         ...(scope.tools.length === 0 ? {} : { tools: scope.tools }),
       });
-      const outcome: UpdateOutcome =
+      const report =
         input.target.kind === "global"
-          ? {
-              folders: await this.deps.outcomes.read({
+          ? reportWrite({
+              readings: await this.deps.outcomes.read({
+                target: input.target,
                 release: scope.chosenRelease,
                 names: scope.desired,
-                written: scope.tools,
+                tools: scope.tools,
               }),
-            }
-          : { outcome: await this.outcome(scope, origin) };
+              names: scope.desired,
+              wrote: new Set(scope.desired),
+              refused: new Map(),
+            })
+          : await this.repoReport(scope, origin);
       if (applied.ok) {
-        return { ok: true, release: scope.chosenRelease, ...outcome };
+        return { ok: true, release: scope.chosenRelease, report };
       }
       return {
         ok: false,
@@ -292,18 +287,17 @@ export class UpdateTarget {
               : applied.error === "apply-timed-out"
                 ? "update-timed-out"
                 : "update-failed",
-        ...outcome,
+        report,
       };
     } catch {
       return { ok: false, error: "update-failed" };
     }
   }
 
-  private async outcome(
+  private async repoReport(
     scope: UpdateScope,
     origin: GitOrigin,
-  ): Promise<UpdateOutcomeRow[]> {
-    const tools = SUPPORTED_TOOLS;
+  ): Promise<WriteReport> {
     const kept = new Set(scope.desired);
     const landed = await this.deps.selection
       .readTarget(scope.target, origin)
@@ -312,10 +306,12 @@ export class UpdateTarget {
       landed === null || landed.kind !== "root"
         ? null
         : landed.release === scope.chosenRelease;
-    const rows: UpdateOutcomeRow[] = [];
     const lockfile = await this.deps.deployedContent.readLockfile(scope.target);
-    for (const name of [...new Set([...scope.current, ...scope.desired])]) {
-      for (const tool of tools) {
+    const names = [...new Set([...scope.current, ...scope.desired])];
+    const places: WriteReport["places"] = [];
+    for (const tool of SUPPORTED_TOOLS) {
+      const skills: ReportSkill[] = [];
+      for (const name of names) {
         const state = await this.deps.deployedContent
           .classify({
             target: scope.target,
@@ -325,16 +321,18 @@ export class UpdateTarget {
             lockfile,
           })
           .catch(() => "unreadable" as const);
-        rows.push({
-          name,
-          tool,
-          state: kept.has(name)
-            ? whereRecorded(KEPT[state], onRelease)
-            : DROPPED[state],
-        });
+        skills.push(
+          reportSkill(
+            name,
+            kept.has(name)
+              ? whereRecorded(KEPT[state], onRelease)
+              : DROPPED[state],
+          ),
+        );
       }
+      places.push({ tool, path: null, detected: true, skills });
     }
-    return rows;
+    return { release: scope.chosenRelease, places };
   }
 
   accepts(scope: UpdateScope, token: string | undefined): boolean {
@@ -504,15 +502,15 @@ export class UpdateTarget {
   }
 }
 
-function whereRecorded(
-  state: UpdateSkillState,
-  onRelease: boolean | null,
-): UpdateSkillState {
-  if (state !== "updated" || onRelease === true) {
+function whereRecorded(state: RepoState, onRelease: boolean | null): RepoState {
+  if (state !== "written" || onRelease === true) {
     return state;
   }
-  return onRelease === null ? "unknown" : "not-updated";
+  return onRelease === null ? "not-confirmed" : "not-updated";
 }
+
+const reportSkill = (name: string, state: RepoState): ReportSkill =>
+  state === "not-updated" ? { name, state, stillAt: null } : { name, state };
 
 function readSelection(
   selection: TargetSelection,

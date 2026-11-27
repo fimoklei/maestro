@@ -101,10 +101,20 @@ export const FailedPerTarget: Story = {
     preflight: folderChecks({ claude: "none", codex: "none" }),
     error: noticeFor("remove-failed"),
     outcome: {
-      scope: "global",
-      tools: [
-        { tool: "claude", path: "~/.claude/skills", state: "removed" },
-        { tool: "codex", path: "~/.agents/skills", state: "not-removed" },
+      release: "v1.0.0",
+      places: [
+        {
+          tool: "claude",
+          path: "~/.claude/skills",
+          detected: true,
+          skills: [{ name: "tdd", state: "removed" }],
+        },
+        {
+          tool: "codex",
+          path: "~/.agents/skills",
+          detected: true,
+          skills: [{ name: "tdd", state: "not-removed" }],
+        },
       ],
     },
   },
@@ -113,7 +123,15 @@ export const FailedPerTarget: Story = {
 export const FailedOutcomeUnknown: Story = {
   args: {
     error: noticeFor("remove-failed"),
-    outcome: { scope: "repo", state: "unknown" },
+    outcome: {
+      release: "v1.0.0",
+      places: (["claude", "codex"] as const).map((tool) => ({
+        tool,
+        path: null,
+        detected: true,
+        skills: [{ name: "tdd", state: "not-confirmed" as const }],
+      })),
+    },
   },
 };
 

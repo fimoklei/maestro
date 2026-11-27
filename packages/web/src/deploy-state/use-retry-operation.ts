@@ -1,5 +1,5 @@
 // Retries at the release and Selection the server recorded (#951, #1363).
-import type { FolderOutcomes, PendingOperation } from "@maestro/core";
+import type { PendingOperation, WriteReport } from "@maestro/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "../api/http";
 import {
@@ -22,8 +22,7 @@ export type Retried = {
 
 type RetryVariables = Retried & { target: DeployTarget };
 
-// `outcome`: a Global retry's read of each folder.
-type RetryResponse = { completed: PendingOperation; outcome?: FolderOutcomes };
+type RetryResponse = { completed: PendingOperation; report?: WriteReport };
 
 export type RetryOperation = {
   run: (target: DeployTarget) => void;

@@ -1,4 +1,4 @@
-import type { FolderOutcomes } from "@maestro/core";
+import type { WriteReport } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   type BulkDeployRunState,
@@ -7,8 +7,8 @@ import {
 } from "./bulk-deploy-run-state";
 
 const plan = { toDeploy: ["tdd", "grill"], skippedClean: ["review"] };
-const firstRead: FolderOutcomes = { release: "v1.0.0", folders: [] };
-const secondRead: FolderOutcomes = { release: "v1.1.0", folders: [] };
+const firstRead: WriteReport = { release: "v1.0.0", places: [] };
+const secondRead: WriteReport = { release: "v1.1.0", places: [] };
 
 describe("bulk deploy run state", () => {
   it("starts a run with no row deployed again and no folders read back", () => {

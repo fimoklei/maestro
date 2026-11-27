@@ -2,6 +2,7 @@ import type {
   RemoveCheck,
   RemoveToolCheck,
   RemoveWarning,
+  WriteReport,
 } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -165,6 +166,43 @@ const rowFor = (name: string) =>
 
 const footerClose = () =>
   screen.getAllByRole("button", { name: "Close" }).at(-1) as HTMLElement;
+
+const removalIn = (
+  places: { tool: string; path: string | null; state: string }[],
+) => ({
+  release: "v1.0.0",
+  places: places.map(({ tool, path, state }) => ({
+    tool,
+    path,
+    detected: true,
+    skills: [{ name: "tdd", state }],
+  })),
+});
+
+type RemovalState = "removed" | "not-removed" | "not-confirmed";
+
+const validRemoval = (
+  places: {
+    tool: "claude" | "codex";
+    path: string | null;
+    state: RemovalState;
+  }[],
+) =>
+  ({
+    release: "v1.0.0",
+    places: places.map(({ tool, path, state }) => ({
+      tool,
+      path,
+      detected: true,
+      skills: [{ name: "tdd", state }],
+    })),
+  }) satisfies WriteReport;
+
+const repoRemoval = (state: RemovalState) =>
+  validRemoval([
+    { tool: "claude", path: null, state },
+    { tool: "codex", path: null, state },
+  ]);
 
 describe("RemoveSkillFlow", () => {
   it("asks without a version when the row has none to name", async () => {
@@ -372,15 +410,12 @@ describe("RemoveSkillFlow", () => {
   });
 
   describe("what the failed removal came off, target by target", () => {
-    const partial = {
-      scope: "global",
-      tools: [
-        { tool: "claude", path: "~/.claude/skills", state: "removed" },
-        { tool: "codex", path: "~/.agents/skills", state: "not-removed" },
-      ],
-    };
+    const partial = removalIn([
+      { tool: "claude", path: "~/.claude/skills", state: "removed" },
+      { tool: "codex", path: "~/.agents/skills", state: "not-removed" },
+    ]);
     const partialFailure = failedWith(
-      { error: "remove-failed", outcome: partial },
+      { error: "remove-failed", report: partial },
       502,
     );
     const groupOf = (name: string) =>
@@ -423,7 +458,7 @@ describe("RemoveSkillFlow", () => {
         remove: failedWith(
           {
             error: "remove-failed",
-            outcome: { scope: "repo", state: "unknown" },
+            report: repoRemoval("not-confirmed"),
           },
           502,
         ),
@@ -454,24 +489,30 @@ describe("RemoveSkillFlow", () => {
     // Nothing validates the failure's body: a report this build cannot read is
     // dropped whole, never drawn from a guess.
     it("states the failure alone when the answer proved nothing it can read", async () => {
-      const outcomes = [
+      const reports = [
         undefined,
-        { scope: "repo", state: "maybe" },
+        removalIn([{ tool: "claude", path: null, state: "maybe" }]),
+        removalIn([
+          { tool: "claude", path: "~/.claude/skills", state: "probably" },
+        ]),
         {
-          scope: "global",
-          tools: [
-            { tool: "claude", path: "~/.claude/skills", state: "probably" },
+          release: "v1.0.0",
+          places: [
+            {
+              tool: "cursor",
+              path: null,
+              detected: true,
+              skills: [{ name: "tdd", state: "removed" }],
+            },
           ],
         },
-        { scope: "global", tools: [{ tool: "cursor", state: "removed" }] },
-        { scope: "repo" },
-        { scope: "global" },
-        { scope: "elsewhere", state: "removed" },
+        { release: "v1.0.0" },
+        { places: [] },
         "removed",
       ];
-      for (const outcome of outcomes) {
+      for (const report of reports) {
         const { unmount } = renderFlow({
-          remove: failedWith({ error: "remove-failed", outcome }, 502),
+          remove: failedWith({ error: "remove-failed", report }, 502),
         });
 
         expect(await fail()).toHaveTextContent("Removal outcome unknown");

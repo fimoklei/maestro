@@ -1,6 +1,6 @@
 // Every word the Update target control and its preview show.
 
-import type { CopyConsentRow, UpdateSkillState } from "@maestro/core";
+import type { CopyConsentRow, ReportSkillState } from "@maestro/core";
 import { IMPORT_LOCAL_EDITS, UPDATE_TARGET } from "../ui/control-labels";
 import { type Copy, machine, named, type Phrase, phrase } from "../ui/phrase";
 import { toolDisplayName } from "./tool-presentation";
@@ -95,7 +95,10 @@ export const RETRY_UPDATE_STEP = "Retry the update to run it again.";
 
 export const UPDATE_AGAIN = `then select ${UPDATE_TARGET} again.`;
 
-export type UnlandedState = Exclude<UpdateSkillState, "updated" | "removed">;
+export type UnlandedState = Extract<
+  ReportSkillState,
+  "not-updated" | "missing" | "not-removed" | "not-confirmed"
+>;
 
 // From what was read back, never from apm's own words. A landed row needs no
 // sentence beyond the release it reached.
@@ -104,7 +107,7 @@ export function outcomeDetail(
   releases: { from: string; to: string },
   retry: boolean,
 ): Copy {
-  if (state === "unknown") {
+  if (state === "not-confirmed") {
     return "Maestro couldn't read this skill back. Check its state on the Deploy-state screen.";
   }
   const fact = {

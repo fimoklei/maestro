@@ -1,3 +1,4 @@
+import type { WriteReport } from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
@@ -130,6 +131,31 @@ const answered = async (name: string) => {
 const openDialog = async () => {
   await userEvent.click(screen.getByRole("button", { name: "Open removal" }));
 };
+
+type RemovalState = "removed" | "not-removed" | "not-confirmed";
+
+const validRemoval = (
+  places: {
+    tool: "claude" | "codex";
+    path: string | null;
+    state: RemovalState;
+  }[],
+) =>
+  ({
+    release: "v1.0.0",
+    places: places.map(({ tool, path, state }) => ({
+      tool,
+      path,
+      detected: true,
+      skills: [{ name: "tdd", state }],
+    })),
+  }) satisfies WriteReport;
+
+const repoRemoval = (state: RemovalState) =>
+  validRemoval([
+    { tool: "claude", path: null, state },
+    { tool: "codex", path: null, state },
+  ]);
 
 describe("BulkRemoveRun", () => {
   it("checks every target the moment the dialog opens", async () => {
@@ -579,10 +605,10 @@ describe("BulkRemoveRun", () => {
   // A failed removal can still have taken the copy off disk: "go and look" and
   // "nothing left to do" are opposite instructions.
   it("adds what the probe proved about each failed target's copy", async () => {
-    const failed = (target: DeployTarget, outcome: unknown) => ({
+    const failed = (target: DeployTarget, report: unknown) => ({
       target,
       reason: "remove-failed",
-      outcome,
+      report,
     });
     stubServer({
       report: () =>
@@ -593,20 +619,20 @@ describe("BulkRemoveRun", () => {
           failed: [
             // apm removes for every tool at once: one tool still holding a
             // copy leaves the whole target uncleared.
-            failed(GLOBAL.target, {
-              scope: "global",
-              tools: [
+            failed(
+              GLOBAL.target,
+              validRemoval([
                 { tool: "claude", path: "~/.claude/skills", state: "removed" },
                 {
                   tool: "codex",
                   path: "~/.agents/skills",
                   state: "not-removed",
                 },
-              ],
-            }),
-            failed(ACME_WEB.target, { scope: "repo", state: "removed" }),
-            failed(ACME_API.target, { scope: "repo", state: "not-removed" }),
-            failed(LEGACY.target, { scope: "repo", state: "unknown" }),
+              ]),
+            ),
+            failed(ACME_WEB.target, repoRemoval("removed")),
+            failed(ACME_API.target, repoRemoval("not-removed")),
+            failed(LEGACY.target, repoRemoval("not-confirmed")),
           ],
         }),
     });

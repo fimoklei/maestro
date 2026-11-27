@@ -43,11 +43,6 @@ export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";
 export { DeployedContentAdapter } from "./deploy/deployed-content";
 export { DeployedLocation } from "./deploy/deployed-location";
 export { DeployedRefAdapter } from "./deploy/deployed-ref";
-export type {
-  FolderOutcome,
-  FolderOutcomes,
-  SkillOutcome,
-} from "./deploy/folder-outcome";
 export { InFlightLocks } from "./deploy/in-flight-locks";
 export { InventoryGitAdapter } from "./deploy/inventory-git";
 export { LocalCopyGuard } from "./deploy/local-copy-guard";
@@ -59,11 +54,8 @@ export {
   type RemoveCheck,
   RemoveDeployedSkill,
   type RemoveDeployedSkillError,
-  type RemoveOutcome,
   type RemovePreflightError,
-  type RemoveTargetState,
   type RemoveToolCheck,
-  type RemoveToolOutcome,
   type RemoveWarning,
 } from "./deploy/remove-deployed-skill";
 export {
@@ -74,14 +66,18 @@ export {
 export { TargetOperationStore } from "./deploy/target-operation";
 export {
   type CopyConsentRow,
-  type UpdateOutcomeRow,
   type UpdatePreview,
   type UpdatePreviewError,
   type UpdateRunError,
   type UpdateSkillRow,
-  type UpdateSkillState,
   UpdateTarget,
 } from "./deploy/update-target";
+export type {
+  ReportPlace,
+  ReportSkill,
+  ReportSkillState,
+  WriteReport,
+} from "./deploy/write-report";
 export {
   type DeployStateExtras,
   DeployStateReader,

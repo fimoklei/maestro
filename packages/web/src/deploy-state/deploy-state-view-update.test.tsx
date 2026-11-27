@@ -1,8 +1,8 @@
 import type {
-  FolderOutcomes,
   PendingOperation,
-  SkillOutcome,
+  ReportSkill,
   UpdatePreview,
+  WriteReport,
 } from "@maestro/core";
 import { focusManager } from "@tanstack/react-query";
 import { act, screen, waitFor, within } from "@testing-library/react";
@@ -123,26 +123,26 @@ const skillSection = (dialog: HTMLElement, label: string) =>
 // Global's per-folder outcome: Claude Code's folder, and Codex's when written.
 const foldersAt = (
   release: string,
-  claude: SkillOutcome[],
-  codex: SkillOutcome[] | null = null,
+  claude: ReportSkill[],
+  codex: ReportSkill[] | null = null,
 ) =>
   ({
     release,
-    folders: [
+    places: [
       {
-        path: "~/.claude/skills",
         tool: "claude",
+        path: "~/.claude/skills",
         detected: true,
         skills: claude,
       },
       {
-        path: "~/.agents/skills",
         tool: "codex",
+        path: "~/.agents/skills",
         detected: codex !== null,
         skills: codex ?? [],
       },
     ],
-  }) satisfies FolderOutcomes;
+  }) satisfies WriteReport;
 
 // The Report's `Written to` lines, each read as one string.
 const writtenToLines = (dialog: HTMLElement) =>
@@ -334,7 +334,15 @@ describe("Deploy-state — Update target on a repository", () => {
     update.resolve(
       jsonResponse({
         release: "v0.3.5",
-        outcome: [{ name: "tdd", tool: null, state: "updated" }],
+        report: {
+          release: "v0.3.5",
+          places: (["claude", "codex"] as const).map((tool) => ({
+            tool,
+            path: null,
+            detected: true,
+            skills: [{ name: "tdd", state: "written" as const }],
+          })),
+        },
       }),
     );
     expect(
@@ -373,7 +381,7 @@ describe("Deploy-state — Update target on the global target", () => {
     update.resolve(
       jsonResponse({
         release: "v0.3.5",
-        folders: foldersAt("v0.3.5", [{ name: "tdd", outcome: "written" }]),
+        report: foldersAt("v0.3.5", [{ name: "tdd", state: "written" }]),
       }),
     );
     expect(
@@ -397,9 +405,9 @@ describe("Deploy-state — Update target on the global target", () => {
       Promise.resolve(
         jsonResponse({
           release: "v0.3.5",
-          folders: foldersAt("v0.3.5", [
-            { name: "tdd", outcome: "written" },
-            { name: "grill", outcome: "written" },
+          report: foldersAt("v0.3.5", [
+            { name: "tdd", state: "written" },
+            { name: "grill", state: "written" },
           ]),
         }),
       ),
@@ -492,10 +500,10 @@ describe("Deploy-state — Update target on the global target", () => {
         {
           error: "update-incomplete",
           message: "irrelevant",
-          folders: foldersAt(
+          report: foldersAt(
             "v0.3.5",
-            [{ name: "tdd", outcome: "written" }],
-            [{ name: "tdd", outcome: "not-updated", stillAt: "v0.3.4" }],
+            [{ name: "tdd", state: "written" }],
+            [{ name: "tdd", state: "not-updated", stillAt: "v0.3.4" }],
           ),
         },
         502,
@@ -537,7 +545,7 @@ describe("Deploy-state — Update target on the global target", () => {
       () =>
         jsonResponse({
           completed: PENDING,
-          outcome: foldersAt("v0.3.5", [{ name: "tdd", outcome: "written" }]),
+          report: foldersAt("v0.3.5", [{ name: "tdd", state: "written" }]),
         }),
     );
     renderDeployState();
@@ -548,7 +556,7 @@ describe("Deploy-state — Update target on the global target", () => {
         {
           error: "update-incomplete",
           message: "irrelevant",
-          folders: foldersAt("v0.3.5", [{ name: "tdd", outcome: "missing" }]),
+          report: foldersAt("v0.3.5", [{ name: "tdd", state: "missing" }]),
         },
         502,
       ),
@@ -622,8 +630,8 @@ describe("Deploy-state — Update target on the global target", () => {
         {
           error: "update-incomplete",
           message: "irrelevant",
-          folders: foldersAt("v0.3.5", [
-            { name: "tdd", outcome: "not-updated", stillAt: "v0.3.4" },
+          report: foldersAt("v0.3.5", [
+            { name: "tdd", state: "not-updated", stillAt: "v0.3.4" },
           ]),
         },
         502,
@@ -669,10 +677,10 @@ describe("Deploy-state — Update target on the global target", () => {
         {
           error: "update-incomplete",
           message: "irrelevant",
-          folders: foldersAt(
+          report: foldersAt(
             "v0.3.5",
-            [{ name: "tdd", outcome: "missing" }],
-            [{ name: "tdd", outcome: "written" }],
+            [{ name: "tdd", state: "missing" }],
+            [{ name: "tdd", state: "written" }],
           ),
         },
         502,
@@ -723,7 +731,7 @@ describe("Deploy-state — Update target on the global target", () => {
     update.resolve(
       jsonResponse({
         release: "v0.3.5",
-        folders: foldersAt("v0.3.5", [{ name: "tdd", outcome: "written" }]),
+        report: foldersAt("v0.3.5", [{ name: "tdd", state: "written" }]),
       }),
     );
     expect(

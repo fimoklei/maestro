@@ -512,7 +512,12 @@ describe("UpdateTargetDialog outcome", () => {
     outcome: {
       name: string;
       tool: "claude" | "codex" | null;
-      state: "updated" | "removed" | "not-updated" | "not-removed" | "unknown";
+      state:
+        | "written"
+        | "removed"
+        | "not-updated"
+        | "not-removed"
+        | "not-confirmed";
     }[],
     props: {
       incomplete?: boolean;
@@ -538,8 +543,8 @@ describe("UpdateTargetDialog outcome", () => {
   // #1776: an unchanged skill is never listed as updated.
   it("keeps the preview's groups, Unchanged folded, and drops the plan around them", () => {
     showOutcome([
-      { name: "tdd", tool: null, state: "updated" },
-      { name: "grill", tool: null, state: "updated" },
+      { name: "tdd", tool: null, state: "written" },
+      { name: "grill", tool: null, state: "written" },
       { name: "review", tool: null, state: "removed" },
     ]);
 
@@ -582,7 +587,7 @@ describe("UpdateTargetDialog outcome", () => {
 
   it("names the tool of a failing row where the tools disagree", () => {
     showOutcome([
-      { name: "grill", tool: "claude", state: "updated" },
+      { name: "grill", tool: "claude", state: "written" },
       { name: "grill", tool: "codex", state: "not-updated" },
     ]);
 

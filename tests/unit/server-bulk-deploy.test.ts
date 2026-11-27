@@ -1,4 +1,8 @@
-import type { BulkDeployReport, DeployTarget } from "@maestro/core";
+import type {
+  BulkDeployReport,
+  DeployTarget,
+  WriteReport,
+} from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import { deployWorld, HOME } from "../helpers/deploy-world";
 
@@ -33,8 +37,8 @@ describe("bulk deploy HTTP route", () => {
 
     expect(res.status).toBe(200);
     const written = [
-      { name: "tdd", outcome: "written" },
-      { name: "review", outcome: "written" },
+      { name: "tdd", state: "written" },
+      { name: "review", state: "written" },
     ];
     expect(await res.json()).toEqual({
       target: globalTarget,
@@ -44,18 +48,18 @@ describe("bulk deploy HTTP route", () => {
       ],
       attention: [],
       failed: [],
-      outcome: {
+      report: {
         release: "v0.5.1",
-        folders: [
+        places: [
           {
-            path: "~/.claude/skills",
             tool: "claude",
+            path: "~/.claude/skills",
             detected: true,
             skills: written,
           },
           {
-            path: "~/.agents/skills",
             tool: "codex",
+            path: "~/.agents/skills",
             detected: true,
             skills: written,
           },
@@ -67,7 +71,7 @@ describe("bulk deploy HTTP route", () => {
     ]);
   });
 
-  it("names each Global folder's missing skill when the install landed short", async () => {
+  it("names each Global folder's missing skill when the install landed short, and deploys what landed everywhere", async () => {
     const w = world();
     w.answers.releasedFiles = "as-installed";
     w.answers.lands = (skills, tool) =>
@@ -80,23 +84,25 @@ describe("bulk deploy HTTP route", () => {
 
     const body = (await res.json()) as BulkDeployReport;
     expect(body.failed).toEqual([
-      { error: "deploy-incomplete", names: ["tdd", "review"] },
+      { error: "deploy-incomplete", names: ["tdd"] },
     ]);
+    expect(body.deployed).toEqual([{ name: "review", version: "v0.5.1" }]);
+    expect(body.unfinished).toBe(true);
     expect(
-      body.outcome?.folders.map((folder) => [folder.path, folder.skills]),
+      body.report?.places.map((place) => [place.path, place.skills]),
     ).toEqual([
       [
         "~/.claude/skills",
         [
-          { name: "tdd", outcome: "written" },
-          { name: "review", outcome: "written" },
+          { name: "tdd", state: "written" },
+          { name: "review", state: "written" },
         ],
       ],
       [
         "~/.agents/skills",
         [
-          { name: "tdd", outcome: "missing" },
-          { name: "review", outcome: "written" },
+          { name: "tdd", state: "missing" },
+          { name: "review", state: "written" },
         ],
       ],
     ]);
@@ -113,12 +119,10 @@ describe("bulk deploy HTTP route", () => {
     const res = await w.post("/api/deploy/retry", { target: globalTarget });
 
     expect(res.status).toBe(200);
-    const body = (await res.json()) as {
-      outcome?: BulkDeployReport["outcome"];
-    };
-    expect(body.outcome?.folders.map((folder) => folder.skills)).toEqual([
-      [{ name: "tdd", outcome: "written" }],
-      [{ name: "tdd", outcome: "written" }],
+    const body = (await res.json()) as { report?: WriteReport };
+    expect(body.report?.places.map((place) => place.skills)).toEqual([
+      [{ name: "tdd", state: "written" }],
+      [{ name: "tdd", state: "written" }],
     ]);
   });
 
@@ -130,7 +134,7 @@ describe("bulk deploy HTTP route", () => {
     const res = await w.bulk({ names: ["tdd"], target: globalTarget });
 
     const body = (await res.json()) as BulkDeployReport;
-    expect(body.outcome?.folders[1]).toEqual({
+    expect(body.report?.places[1]).toEqual({
       path: "~/.agents/skills",
       tool: "codex",
       detected: false,
@@ -243,7 +247,7 @@ describe("Deploy again HTTP route", () => {
       { name: "tdd", version: "v0.5.1" },
       { name: "review", version: "v0.5.1" },
     ]);
-    expect(body.outcome?.folders.map((folder) => folder.path)).toEqual([
+    expect(body.report?.places.map((place) => place.path)).toEqual([
       "~/.claude/skills",
       "~/.agents/skills",
     ]);

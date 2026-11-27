@@ -1,4 +1,4 @@
-import type { RemoveOutcome } from "@maestro/core";
+import type { ReportSkillState, WriteReport } from "@maestro/core";
 import { describe, expect, it } from "vitest";
 import {
   type RemoveDialogTarget,
@@ -40,6 +40,37 @@ const answer = (
 const perFolder = (
   ...folders: readonly RemoveFolderAnswer[]
 ): RemoveCheckState => ({ kind: "per-folder", folders });
+
+const REMOVE_STATE: Record<
+  string,
+  Extract<ReportSkillState, "removed" | "not-removed" | "not-confirmed">
+> = {
+  removed: "removed",
+  "not-removed": "not-removed",
+  unknown: "not-confirmed",
+};
+
+const globalRemoval = (
+  tools: { tool: "claude" | "codex"; path: string; state: string }[],
+): WriteReport => ({
+  release: "v1.0.0",
+  places: tools.map(({ tool, path, state }) => ({
+    tool,
+    path,
+    detected: true,
+    skills: [{ name: "tdd", state: REMOVE_STATE[state] ?? "not-confirmed" }],
+  })),
+});
+
+const repoRemoval = (state: string): WriteReport => ({
+  release: "v1.0.0",
+  places: (["claude", "codex"] as const).map((tool) => ({
+    tool,
+    path: null,
+    detected: true,
+    skills: [{ name: "tdd", state: REMOVE_STATE[state] ?? "not-confirmed" }],
+  })),
+});
 
 describe("removeLedgerRows", () => {
   it("states the repo path as the only row", () => {
@@ -140,13 +171,10 @@ describe("removeLedgerRows", () => {
   });
 
   describe("removeOutcomeReport, what the server proved after a failed removal", () => {
-    const globalOutcome: RemoveOutcome = {
-      scope: "global",
-      tools: [
-        { tool: "claude", path: CLAUDE, state: "removed" },
-        { tool: "codex", path: AGENTS, state: "not-removed" },
-      ],
-    };
+    const globalOutcome: WriteReport = globalRemoval([
+      { tool: "claude", path: CLAUDE, state: "removed" },
+      { tool: "codex", path: AGENTS, state: "not-removed" },
+    ]);
     const namesIn = (
       report: ReturnType<typeof removeOutcomeReport>,
       label: string,
@@ -170,13 +198,10 @@ describe("removeLedgerRows", () => {
     it("keeps the order the ledger showed before the user confirmed", () => {
       const report = removeOutcomeReport(
         { kind: "global", folders: [AGENTS, CLAUDE] },
-        {
-          scope: "global",
-          tools: [
-            { tool: "claude", path: CLAUDE, state: "removed" },
-            { tool: "codex", path: AGENTS, state: "removed" },
-          ],
-        },
+        globalRemoval([
+          { tool: "claude", path: CLAUDE, state: "removed" },
+          { tool: "codex", path: AGENTS, state: "removed" },
+        ]),
       );
 
       expect(namesIn(report, "Removed")).toEqual([AGENTS, CLAUDE]);
@@ -203,7 +228,7 @@ describe("removeLedgerRows", () => {
     it("never reads an unproven target as removed", () => {
       const report = removeOutcomeReport(
         { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
-        { scope: "repo", state: "unknown" },
+        repoRemoval("unknown"),
       );
 
       expect(namesIn(report, "Outcome unknown")).toEqual(["…/me/project"]);
@@ -213,7 +238,7 @@ describe("removeLedgerRows", () => {
     it("names the repository as the table does, never in mono", () => {
       const report = removeOutcomeReport(
         { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
-        { scope: "repo", state: "not-removed" },
+        repoRemoval("not-removed"),
       );
 
       expect(report.groups[0]?.rows[0]).toEqual({ name: "…/me/project" });
@@ -227,22 +252,22 @@ describe("removeLedgerRows", () => {
 
     it("counts an unproven folder as one the removal did not come off", () => {
       expect(
-        removeOutcomeReport(GLOBAL, {
-          scope: "global",
-          tools: [
+        removeOutcomeReport(
+          GLOBAL,
+          globalRemoval([
             { tool: "claude", path: CLAUDE, state: "unknown" },
             { tool: "codex", path: AGENTS, state: "unknown" },
-          ],
-        }).heading,
+          ]),
+        ).heading,
       ).toBe("Removed from 0 of 2 folders");
     });
 
     it("speaks of one folder in the singular", () => {
       expect(
-        removeOutcomeReport(GLOBAL, {
-          scope: "global",
-          tools: [{ tool: "claude", path: CLAUDE, state: "removed" }],
-        }).heading,
+        removeOutcomeReport(
+          GLOBAL,
+          globalRemoval([{ tool: "claude", path: CLAUDE, state: "removed" }]),
+        ).heading,
       ).toBe("Removed from 1 of 1 folder");
     });
 
@@ -250,7 +275,7 @@ describe("removeLedgerRows", () => {
       expect(
         removeOutcomeReport(
           { kind: "repo", repoPath: "/Users/me/project", name: "…/me/project" },
-          { scope: "repo", state: "removed" },
+          repoRemoval("removed"),
         ).heading,
       ).toBe("Removed from 1 of 1 target");
     });

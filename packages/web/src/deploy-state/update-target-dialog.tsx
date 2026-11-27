@@ -205,7 +205,7 @@ function reportOf(
       };
     case "folders":
       return {
-        ...updateFoldersReport({ folders: outcome.folders, retry }),
+        ...updateFoldersReport({ report: outcome.report, retry }),
         groups: [],
       };
     case "unknown":
