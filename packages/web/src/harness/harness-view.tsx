@@ -42,7 +42,7 @@ import { useWriteAction, type WriteResult } from "../ui/use-write-action";
 import { cloneSyncNotice } from "./clone-sync-notice";
 import { EditPromptAction } from "./edit-prompt-action";
 import { type HarnessTableRow, harnessColumns, rowId } from "./harness-columns";
-import { HarnessDialogs } from "./harness-dialogs";
+import type { HarnessDialogPayloads } from "./harness-dialogs";
 import { type OpenPrimitive, proposalRow } from "./harness-route";
 import {
   harnessAnnouncement,
@@ -69,6 +69,7 @@ import { harnessPromptReadNotice } from "./prompt-copy";
 import { ProposeBatchAction } from "./propose-batch-action";
 import { ReleaseDialog, type ReleasePlanLoad } from "./release-dialog";
 import { type RowActionHandlers, rowItems } from "./row-actions";
+import { rowConfirmations } from "./row-confirmations";
 import {
   ALL_RELEASED,
   harnessCounts,
@@ -136,10 +137,8 @@ export function HarnessView({
   }, [written, settle]);
 
   const [staged, setStaged] = useState<ReadonlySet<string>>(new Set());
-  const dialog = useDialogSlot<
-    "release" | "import-skills" | "import-prompts"
-  >();
-  const plan = useReleasePlan(dialog.standing === "release");
+  const dialog = useDialogSlot<HarnessDialogPayloads>();
+  const plan = useReleasePlan(dialog.standing?.name === "release");
   const discardPlan = useDiscardReleasePlan();
   const publish = usePublishRelease();
   // An Inventory left unread is the outcome notice above the table instead.
@@ -175,8 +174,10 @@ export function HarnessView({
     );
   };
 
-  const presses = useHarnessPresses(state, table);
-  const editing = useEditPromptOpening();
+  const presses = useHarnessPresses(state, table, dialog);
+  const editing = useEditPromptOpening((opened) =>
+    dialog.openUnlessStanding("edit-prompt", opened),
+  );
   // Rendered on the press only, so the view needs a router only once it leaves.
   const [leaving, setLeaving] = useState(false);
   const handlers: RowActionHandlers = {
@@ -529,71 +530,48 @@ export function HarnessView({
       }
     >
       {leaving ? <Navigate to={CATEGORIES_PAGE.to} /> : null}
-      {state !== undefined && editing.opened !== null ? (
-        <EditPromptAction
-          key={editing.opened.name}
-          opened={editing.opened}
-          screen="harness"
-          writes={table}
-          // The edited row's pane opens here; a row the edit removed leaves none.
-          onEdited={(name, written) => {
-            table.settle(written);
-            open(proposalRow({ type: "prompt", name }));
-          }}
-          onClose={editing.close}
-        />
-      ) : null}
       {state === undefined ? null : (
-        <>
-          <DialogSlot
-            standing={dialog.standing}
-            dialogs={{
-              release: () => (
-                <ReleaseDialog
-                  origin={state.origin}
-                  load={planLoad(plan)}
-                  inFlight={inFlightNames(releaseRead)}
-                  onClose={closePlan}
-                  onPublish={handlePublish}
-                  publishing={publishWrite.phase === "running"}
-                  publishError={publishWrite.failure}
-                />
-              ),
-              "import-skills": () => (
-                <ImportSkillsAction
-                  screen={table}
-                  onClose={() => dialog.close("import-skills")}
-                />
-              ),
-              "import-prompts": () => (
-                <ImportPromptsAction
-                  onClose={() => dialog.close("import-prompts")}
-                />
-              ),
-            }}
-          />
-          <HarnessDialogs
-            origin={state.origin}
-            deletionRow={presses.pendingDeletion}
-            deletion={presses.deletionWrite}
-            onDeletionClose={presses.closeConfirmation}
-            localDeletion={presses.localDeletion}
-            deleteLocal={presses.deleteLocalWrite}
-            onLocalDeletionClose={presses.closeLocalDeletion}
-            restoring={presses.restoring}
-            restore={presses.restoreWrite}
-            onRestoreClose={presses.closeRestore}
-            discarding={presses.discarding}
-            discard={presses.discardWrite}
-            onDiscardClose={presses.closeDiscard}
-            withdrawing={presses.withdrawing}
-            proposalAction={presses.proposalWrite}
-            onWithdrawClose={presses.closeWithdrawal}
-            releaseWithdrawing={presses.releaseWithdrawing}
-            releaseWithdrawal={presses.releaseWithdrawalWrite}
-            onReleaseWithdrawalClose={presses.closeReleaseWithdrawal}
-          />
-        </>
+        <DialogSlot
+          slot={dialog}
+          dialogs={{
+            release: () => (
+              <ReleaseDialog
+                origin={state.origin}
+                load={planLoad(plan)}
+                inFlight={inFlightNames(releaseRead)}
+                onClose={closePlan}
+                onPublish={handlePublish}
+                publishing={publishWrite.phase === "running"}
+                publishError={publishWrite.failure}
+              />
+            ),
+            "import-skills": () => (
+              <ImportSkillsAction
+                screen={table}
+                onClose={() => dialog.close("import-skills")}
+              />
+            ),
+            "import-prompts": () => (
+              <ImportPromptsAction
+                onClose={() => dialog.close("import-prompts")}
+              />
+            ),
+            "edit-prompt": (opened) => (
+              <EditPromptAction
+                key={opened.name}
+                opened={opened}
+                screen="harness"
+                writes={table}
+                onEdited={(name, written) => {
+                  table.settle(written);
+                  open(proposalRow({ type: "prompt", name }));
+                }}
+                onClose={() => dialog.close("edit-prompt")}
+              />
+            ),
+            ...rowConfirmations(presses, state.origin),
+          }}
+        />
       )}
     </TableScreen>
   );
