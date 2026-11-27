@@ -1,3 +1,4 @@
+import type { LinkedDestination } from "@maestro/core";
 import type { Hono } from "hono";
 import type { AppDeps } from "../app-deps";
 import {
@@ -38,9 +39,9 @@ import { reportField, writeReportBody } from "../write-report-response";
 
 const refusalBody = (result: {
   copyReceipt?: string;
-  linkedPath?: string;
+  linked?: LinkedDestination;
 }) => ({
-  ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
+  ...(result.linked ? { linked: result.linked } : {}),
   ...(result.copyReceipt ? { copyReceipt: result.copyReceipt } : {}),
 });
 
@@ -149,6 +150,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
             ? { check: result.check, receipt: result.receipt }
             : {}),
           ...editedFoldersBody(result),
+          ...refusalBody(result),
         },
         status,
       );

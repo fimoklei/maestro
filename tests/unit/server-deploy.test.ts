@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import {
   ApmCliDriver,
   type DeployTarget,
+  type LinkedDestination,
   type WriteReport,
 } from "@maestro/core";
 import { describe, expect, it } from "vitest";
@@ -366,10 +367,16 @@ describe("deploy HTTP route", () => {
     const res = await w.deploy({ target: repoTarget });
 
     expect(res.status).toBe(409);
-    const body = (await res.json()) as { error: string; linkedPath?: string };
+    const body = (await res.json()) as {
+      error: string;
+      linked?: LinkedDestination;
+    };
     expect(body.error).toBe("destination-symlinked");
     // The path is recomputed by Maestro, so the notice never forwards apm's prose (#748).
-    expect(body.linkedPath).toBe(`${REPO}/.claude/skills/tdd`);
+    expect(body.linked).toEqual({
+      kind: "skill-folder",
+      path: `${REPO}/.claude/skills/tdd`,
+    });
     expect(JSON.stringify(body)).not.toContain("ghp_secret");
     expect(JSON.stringify(body)).not.toContain("refusing to deploy");
   });

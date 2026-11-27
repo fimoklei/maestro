@@ -37,14 +37,14 @@ const editedCopies = (
   ).content;
 
 const withLinks = (
-  linkedSkillPath: DeployedContentPort["linkedSkillPath"],
+  linkedDestination: DeployedContentPort["linkedDestination"],
 ): DeployedContentPort => {
   const none = deployedCopies([]).content;
   return {
     readLockfile: (target) => none.readLockfile(target),
     classify: (input) => none.classify(input),
     contentDigest: (input) => none.contentDigest(input),
-    linkedSkillPath,
+    linkedDestination,
   };
 };
 
@@ -111,7 +111,7 @@ const buildDeps = (
         name: string;
         tools?: readonly SupportedTool[];
       }) => noCopies.contentDigest(input),
-      linkedSkillPath: async () => null,
+      linkedDestination: async () => null,
     },
     globalLayout: () => DEFAULT_GLOBAL_LAYOUT,
     toolPresence: {
@@ -913,11 +913,12 @@ describe("DeploySkill", () => {
     expect(result).toEqual({ ok: false, error: "destination-symlinked" });
   });
 
-  it("names the link apm refused, so the notice can spell out one rm", async () => {
+  it("names the link apm refused, so the notice can name it", async () => {
     const { deps, world } = buildDeps({
-      deployedContent: withLinks(
-        async () => "/registered/repo/.claude/skills/tdd",
-      ),
+      deployedContent: withLinks(async () => ({
+        kind: "skill-folder",
+        path: "/registered/repo/.claude/skills/tdd",
+      })),
     });
     world.refuseWith({ ok: false, reason: "destination-symlinked" });
     const result = await new DeploySkill(deps).execute({
@@ -929,7 +930,10 @@ describe("DeploySkill", () => {
     expect(result).toEqual({
       ok: false,
       error: "destination-symlinked",
-      linkedPath: "/registered/repo/.claude/skills/tdd",
+      linked: {
+        kind: "skill-folder",
+        path: "/registered/repo/.claude/skills/tdd",
+      },
     });
   });
 
@@ -1603,7 +1607,7 @@ describe("DeploySkill.executeBatch", () => {
             : edited.readLockfile(target),
         classify: (input) => edited.classify(input),
         contentDigest: (input) => edited.contentDigest(input),
-        linkedSkillPath: async () => null,
+        linkedDestination: async () => null,
       },
     });
     installs = deployed;
@@ -1870,7 +1874,12 @@ describe("DeploySkill.executeBatch", () => {
     const { deps, deployed } = buildDeps({
       inventory: skills("tdd", "review", "docs"),
       deployedContent: withLinks(async ({ name }) =>
-        name === "tdd" ? null : `/registered/repo/.claude/skills/${name}`,
+        name === "tdd"
+          ? null
+          : {
+              kind: "skill-folder",
+              path: `/registered/repo/.claude/skills/${name}`,
+            },
       ),
     });
 
@@ -1884,12 +1893,18 @@ describe("DeploySkill.executeBatch", () => {
       {
         error: "destination-symlinked",
         names: ["review"],
-        linkedPath: "/registered/repo/.claude/skills/review",
+        linked: {
+          kind: "skill-folder",
+          path: "/registered/repo/.claude/skills/review",
+        },
       },
       {
         error: "destination-symlinked",
         names: ["docs"],
-        linkedPath: "/registered/repo/.claude/skills/docs",
+        linked: {
+          kind: "skill-folder",
+          path: "/registered/repo/.claude/skills/docs",
+        },
       },
     ]);
     expect(deployed.map((call) => call.skills)).toEqual([["tdd"]]);
@@ -1903,8 +1918,13 @@ describe("DeploySkill.executeBatch", () => {
         readLockfile: (target) => copies.readLockfile(target),
         classify: (input) => copies.classify(input),
         contentDigest: (input) => copies.contentDigest(input),
-        linkedSkillPath: async ({ name }) =>
-          name === "docs" ? "/registered/repo/.claude/skills/docs" : null,
+        linkedDestination: async ({ name }) =>
+          name === "docs"
+            ? {
+                kind: "skill-folder",
+                path: "/registered/repo/.claude/skills/docs",
+              }
+            : null,
       },
     });
     const deploy = new DeploySkill(deps);
@@ -1924,7 +1944,10 @@ describe("DeploySkill.executeBatch", () => {
       {
         error: "destination-symlinked",
         names: ["docs"],
-        linkedPath: "/registered/repo/.claude/skills/docs",
+        linked: {
+          kind: "skill-folder",
+          path: "/registered/repo/.claude/skills/docs",
+        },
       },
     ]);
     expect(single).toEqual({
@@ -1943,7 +1966,12 @@ describe("DeploySkill.executeBatch", () => {
         readSkillFilesAtTag: async () => null,
       },
       deployedContent: withLinks(async ({ name }) =>
-        name === "review" ? "/registered/repo/.claude/skills/review" : null,
+        name === "review"
+          ? {
+              kind: "skill-folder",
+              path: "/registered/repo/.claude/skills/review",
+            }
+          : null,
       ),
     });
     world.seed({ release: "v0.4.0", skills: ["docs"] });
@@ -1963,7 +1991,10 @@ describe("DeploySkill.executeBatch", () => {
         {
           error: "destination-symlinked",
           names: ["review"],
-          linkedPath: "/registered/repo/.claude/skills/review",
+          linked: {
+            kind: "skill-folder",
+            path: "/registered/repo/.claude/skills/review",
+          },
         },
       ],
       report: { release: "v0.4.0", places: [] },

@@ -220,7 +220,10 @@ describe("BulkDeployAction", () => {
         {
           error: "destination-symlinked",
           names: ["tdd"],
-          linkedPath: "/Users/dev/.claude/skills/tdd",
+          linked: {
+            kind: "skill-folder",
+            path: "/Users/dev/.claude/skills/tdd",
+          },
         },
       ],
     });

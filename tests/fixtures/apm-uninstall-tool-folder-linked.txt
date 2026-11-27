@@ -1,0 +1,11 @@
+[>] Uninstalling 1 package...
+[+] fimoklei/agent-harness - found in apm.yml
+[x] Uninstall stopped: apm.lock.yaml records paths APM does not manage:
+[x]   - .claude/skills/tdd
+[x]   - .claude/skills/tdd/SKILL.md
+[x]   - .claude/skills/tdd/deep-modules.md
+[x]   - .claude/skills/tdd/interface-design.md
+[x]   - .claude/skills/tdd/mocking.md
+[x]   - .claude/skills/tdd/refactoring.md
+[x]   - .claude/skills/tdd/tests.md
+[i] Restore apm.lock.yaml from version control or run 'apm install' to repair it, then retry; no APM writes were made.

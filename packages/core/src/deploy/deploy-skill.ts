@@ -6,6 +6,7 @@ import type {
   DeployedContentPort,
   DeployTarget,
   InventoryGitPort,
+  LinkedDestination,
   RecordedPackagePort,
 } from "./deploy-ports";
 import {
@@ -17,12 +18,14 @@ import type { GitOrigin } from "./git-origin";
 import { type BlockingCopy, blockingCopies, heldByCopies } from "./held-copies";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
+  type CopyBlock,
   type CopyFinding,
-  type CopyVerdict,
+  copiesOf,
   copyKey,
   copyKeys,
   LocalCopyGuard,
-  linkedPathAmong,
+  linkedField,
+  linkedIn,
   worstVerdict,
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
@@ -41,6 +44,7 @@ export type {
   DeploySkillDriverResult,
   DeployTarget,
   InventoryGitPort,
+  LinkedDestination,
   RecordedPackagePort,
   RecordedPackageResult,
   RemoveSkillDriverResult,
@@ -93,7 +97,7 @@ export type DeploySkillResult =
   | {
       ok: false;
       error: DeploySkillError;
-      linkedPath?: string;
+      linked?: LinkedDestination;
       copyReceipt?: string;
       blockingCopies?: BlockingCopy[];
     };
@@ -119,7 +123,7 @@ type BulkAttentionRow = {
 type BulkFailure = {
   error: DeploySkillError;
   names: string[];
-  linkedPath?: string;
+  linked?: LinkedDestination;
 };
 
 export type BulkDeployReport = {
@@ -152,7 +156,8 @@ const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
 
 type SelectionError = Extract<SelectionResult, { ok: false }>["error"];
 
-const COPY_ERRORS: Record<Exclude<CopyVerdict, "clean">, DeploySkillError> = {
+const COPY_ERRORS: Record<CopyBlock, DeploySkillError> = {
+  linked: "destination-symlinked",
   "local-edits": "deployed-diverged-from-lock",
   unverified: "deployed-unverifiable",
   unreadable: "deployed-unreadable",
@@ -277,11 +282,11 @@ export class DeploySkill {
         });
         continue;
       }
-      const key = `${result.error}\0${result.linkedPath ?? ""}`;
+      const key = `${result.error}\0${result.linked?.kind ?? ""}\0${result.linked?.path ?? ""}`;
       const line = failures.get(key) ?? {
         error: result.error,
         names: [],
-        ...(result.linkedPath ? { linkedPath: result.linkedPath } : {}),
+        ...(result.linked ? { linked: result.linked } : {}),
       };
       line.names.push(name);
       failures.set(key, line);
@@ -509,13 +514,11 @@ export class DeploySkill {
       let check = await checkOver(tagged);
       const candidates: string[] = [];
       for (const name of tagged) {
-        const linkedPath = linkedPathAmong(check, [name]);
-        if (linkedPath) {
-          results.set(name, {
-            ok: false,
-            error: "destination-symlinked",
-            linkedPath,
-          });
+        const linked = linkedIn(
+          this.copyGuard.admits(scope, copiesOf(check, [name])),
+        );
+        if (linked) {
+          results.set(name, linkedRefusal(linked));
         } else {
           candidates.push(name);
         }
@@ -531,6 +534,13 @@ export class DeploySkill {
         check = await checkOver(candidates);
       }
       const admitted = this.copyGuard.admits(scope, check, consent.whole);
+      const linked = linkedIn(admitted);
+      if (linked) {
+        for (const name of candidates) {
+          results.set(name, linkedRefusal(linked));
+        }
+        return results;
+      }
       let isBlocking: (finding: CopyFinding) => boolean = () => false;
       let held: string[] = [];
       if (!admitted.ok) {
@@ -618,6 +628,7 @@ export class DeploySkill {
         results.set(name, {
           ok: false,
           error: COPY_ERRORS[blocked ?? "unreadable"],
+          ...linkedField(decision),
           ...(decision.ok || decision.receipt === null
             ? {}
             : {
@@ -709,16 +720,14 @@ export class DeploySkill {
     tools: readonly SupportedTool[] | undefined,
   ): Promise<DeploySkillResult> {
     if (error === "destination-symlinked") {
-      const linkedPath = await this.deps.deployedContent.linkedSkillPath({
+      const linked = await this.deps.deployedContent.linkedDestination({
         target,
         name,
         tools,
       });
-      return {
-        ok: false,
-        error: "destination-symlinked",
-        ...(linkedPath === null ? {} : { linkedPath }),
-      };
+      return linked === null
+        ? { ok: false, error: "destination-symlinked" }
+        : linkedRefusal(linked);
     }
     return {
       ok: false,
@@ -732,6 +741,10 @@ export class DeploySkill {
               : await this.failureAt(lockKey),
     };
   }
+}
+
+function linkedRefusal(linked: LinkedDestination): DeploySkillResult {
+  return { ok: false, error: "destination-symlinked", linked };
 }
 
 function once<T>(read: () => Promise<T>): () => Promise<T> {

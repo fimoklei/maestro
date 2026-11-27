@@ -1,0 +1,13 @@
+[i] Installing to user scope (/Users/dev/.apm/)
+[*] Created /Users/dev/.apm/apm.yml
+[i] Targets set: claude (persisted to /Users/dev/.apm/apm.yml)
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0
+[*] Updated apm.yml with 1 new package(s)
+[>] Installing 1 new package...
+[>] Resolving fimoklei/agent-harness...
+  [+] fimoklei/agent-harness #v0.6.0 @f8208f12
+[i] Removed apm.yml created by the failed install.
+[x] Failed to install APM dependencies: Unsafe skill destination 'real-skills/tdd/SKILL.md'; refusing deployment.
+[i] Run with --verbose for detailed diagnostics
+[x] Install failed after 3.3s.

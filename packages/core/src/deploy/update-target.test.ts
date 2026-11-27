@@ -50,7 +50,7 @@ const CLEAN_COPIES = {
     name,
     tool: null,
     verdict: "clean" as const,
-    linkedPath: null,
+    linked: null,
   })),
   digest: null,
 };
@@ -199,8 +199,8 @@ function subject(options: Options = {}) {
           place(input.name);
           return copies.content.contentDigest({ ...input, target: copyTarget });
         },
-        linkedSkillPath: (input) =>
-          copies.content.linkedSkillPath({ ...input, target: copyTarget }),
+        linkedDestination: (input) =>
+          copies.content.linkedDestination({ ...input, target: copyTarget }),
       },
     }),
   });
@@ -536,7 +536,7 @@ describe("UpdateTarget.preview linked skill folders", () => {
     expect(result).toStrictEqual({
       ok: false,
       error: "destination-symlinked",
-      linkedPath: "/home/fake/.claude/skills/tdd",
+      linked: { kind: "skill-folder", path: "/home/fake/.claude/skills/tdd" },
     });
   });
 
@@ -551,7 +551,7 @@ describe("UpdateTarget.preview linked skill folders", () => {
     expect(result).toStrictEqual({
       ok: false,
       error: "destination-symlinked",
-      linkedPath: "/repo/.agents/skills/jobs",
+      linked: { kind: "skill-folder", path: "/repo/.agents/skills/jobs" },
     });
   });
 
@@ -567,7 +567,7 @@ describe("UpdateTarget.preview linked skill folders", () => {
     expect(result).toStrictEqual({
       ok: false,
       error: "destination-symlinked",
-      linkedPath: "/repo/.claude/skills/wizard",
+      linked: { kind: "skill-folder", path: "/repo/.claude/skills/wizard" },
     });
   });
 
@@ -1029,7 +1029,7 @@ describe("UpdateTarget.run", () => {
     expect(result).toStrictEqual({
       ok: false,
       error: "destination-symlinked",
-      linkedPath: "/home/fake/.claude/skills/grill",
+      linked: { kind: "skill-folder", path: "/home/fake/.claude/skills/grill" },
     });
     expect(running.world.calls).toStrictEqual([]);
   });

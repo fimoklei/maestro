@@ -1,6 +1,7 @@
 import type {
   BulkDeployReport,
   DeploySkillError,
+  LinkedDestination,
   PendingOperation,
   RemoveDeployedSkillError,
   RemovePreflightError,
@@ -29,7 +30,12 @@ import {
   phrase,
 } from "../ui/phrase";
 import { REGISTER_STEP } from "./deploy-state-copy";
-import { REASON, type ReasonCode, TARGET_BUSY } from "./reason-copy";
+import {
+  LINKED_REASON,
+  REASON,
+  type ReasonCode,
+  TARGET_BUSY,
+} from "./reason-copy";
 import {
   RETRY_DEPLOY,
   RETRY_LABELS,
@@ -52,14 +58,20 @@ const CREATE_RELEASE_STEP = `Select ${CREATE_RELEASE} on the Harness screen`;
 
 export const FIX_AND_RELEASE = `Fix the skill in the Harness. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`;
 
-const deleteLinkedFolder = (again: string) =>
-  `Delete the linked skill folder in the target, ${again}`;
-
 // No comma after the path: a reader copying the command would paste it.
 const removeLink = (path: string, again: string) =>
   phrase`Run ${machine(`rm ${path}`)} and ${again}`;
 
-const DELETE_LINKED_FOLDER = deleteLinkedFolder(DEPLOY_AGAIN);
+const replaceLink = (path: string, again: string) =>
+  phrase`Replace the link at ${machine(path)} with a real folder that contains the same skills, ${again}`;
+
+const unnamedLink = (again: string) =>
+  `One of the target's tool or skill folders is a link. Replace the link with a real folder that contains the same files, ${again}`;
+
+const REMOVE_AGAIN = `then select ${REMOVE_SKILL} again.`;
+
+const TOOL_FOLDER_KEEPS_SKILLS =
+  "Copy the skills from the folder the link points to into the new folder, so your tools keep every skill.";
 
 const EDITS_OUTSIDE_HARNESS = "The edits never went through the Harness.";
 
@@ -202,8 +214,7 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
     detail: "GitHub refused the download.",
   },
   "destination-symlinked": {
-    message: `Nothing was written. ${DELETE_LINKED_FOLDER}`,
-    detail: LINK_TARGET_SURVIVES,
+    message: `Nothing was written. ${unnamedLink(DEPLOY_AGAIN)}`,
   },
   "tag-check-timed-out": {
     message:
@@ -280,6 +291,9 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
   "operation-unfinished": {
     message:
       "An earlier change on this target didn't finish. Open the target on the Deploy-state screen and finish that change, then remove the skill again.",
+  },
+  "destination-symlinked": {
+    message: `Nothing was removed. ${unnamedLink(REMOVE_AGAIN)}`,
   },
   "remove-incomplete": {
     message: `The skill's files are still in the target. Select ${RETRY_REMOVAL} to run the same removal again.`,
@@ -384,8 +398,7 @@ const UPDATE_PREVIEW: Record<UpdatePreviewError, Body> = {
     detail: "Nothing was changed, and the target keeps its own release.",
   },
   "destination-symlinked": {
-    message: `Nothing was written. ${deleteLinkedFolder(UPDATE_AGAIN)}`,
-    detail: LINK_TARGET_SURVIVES,
+    message: `Nothing was written. ${unnamedLink(UPDATE_AGAIN)}`,
   },
   "preview-failed": {
     message: `Nothing was changed. Wait a moment, ${UPDATE_AGAIN}`,
@@ -456,12 +469,12 @@ function noticeFor(
 /** The whole notice for one deploy code, as a bulk run reports it. */
 export function deployNoticeFor(
   code: DeploySkillError,
-  linkedPath: string | undefined,
+  linked: LinkedDestination | undefined,
 ): DeployStateNotice {
   const { recovery: _recovery, ...body } = DEPLOY[code];
   const notice = { label: REASON[code], ...body };
-  return code === "destination-symlinked" && linkedPath !== undefined
-    ? withRm(notice, linkedPath, DEPLOY_AGAIN)
+  return code === "destination-symlinked" && linked !== undefined
+    ? linkedNotice(linked, "Nothing was written.", DEPLOY_AGAIN)
     : notice;
 }
 
@@ -513,24 +526,26 @@ export function deployAttentionNotice(
 export function deployNotice(error: unknown): DeployStateNotice {
   return error instanceof HttpError && Object.hasOwn(DEPLOY, error.code ?? "")
     ? // Object.hasOwn above proves the code is a key of DEPLOY.
-      deployNoticeFor(error.code as DeploySkillError, linkedPathOf(error))
+      deployNoticeFor(error.code as DeploySkillError, linkedOf(error))
     : noticeFor(DEPLOY, error, UNKNOWN_DEPLOY);
 }
 
 /** The whole notice for a refused Update preview. */
 export function updatePreviewNotice(error: unknown): DeployStateNotice {
-  return withLinkedPath(
+  return withLinked(
     noticeFor(UPDATE_PREVIEW, error, UNKNOWN_UPDATE),
     error,
+    "Nothing was written.",
     UPDATE_AGAIN,
   );
 }
 
 /** The whole notice for a refused or failed Update. */
 export function updateNotice(error: unknown): DeployStateNotice {
-  return withLinkedPath(
+  return withLinked(
     noticeFor(UPDATE, error, UNKNOWN_UPDATE_RUN),
     error,
+    "Nothing was written.",
     UPDATE_AGAIN,
   );
 }
@@ -546,44 +561,66 @@ export function globalUpdateNotice(error: unknown): {
     : { notice, unknown: false };
 }
 
-// The path the server read from disk replaces the general instruction.
-function withLinkedPath(
+function withLinked(
   notice: DeployStateNotice,
   error: unknown,
+  outcome: string,
   again: string,
 ): DeployStateNotice {
-  const linkedPath = linkedPathOf(error);
+  const linked = linkedOf(error);
   return error instanceof HttpError &&
     error.code === "destination-symlinked" &&
-    linkedPath !== undefined
-    ? withRm(notice, linkedPath, again)
+    linked !== undefined
+    ? linkedNotice(linked, outcome, again)
     : notice;
 }
 
-function linkedPathOf(error: unknown): string | undefined {
-  return error instanceof HttpError &&
-    typeof error.body === "object" &&
-    error.body !== null &&
-    "linkedPath" in error.body &&
-    typeof error.body.linkedPath === "string"
-    ? error.body.linkedPath
+function linkedOf(error: unknown): LinkedDestination | undefined {
+  if (
+    !(error instanceof HttpError) ||
+    typeof error.body !== "object" ||
+    error.body === null
+  ) {
+    return undefined;
+  }
+  const linked: unknown = Reflect.get(error.body, "linked");
+  if (typeof linked !== "object" || linked === null) {
+    return undefined;
+  }
+  const kind: unknown = Reflect.get(linked, "kind");
+  const path: unknown = Reflect.get(linked, "path");
+  return (kind === "tool-folder" || kind === "skill-folder") &&
+    typeof path === "string"
+    ? { kind, path }
     : undefined;
 }
 
-function withRm(
-  notice: DeployStateNotice,
-  linkedPath: string,
+function linkedNotice(
+  linked: LinkedDestination,
+  outcome: string,
   again: string,
 ): DeployStateNotice {
-  return {
-    ...notice,
-    message: phrase`Nothing was written. ${removeLink(linkedPath, again)}`,
-  };
+  return linked.kind === "tool-folder"
+    ? {
+        label: LINKED_REASON[linked.kind],
+        message: phrase`${outcome} ${replaceLink(linked.path, again)}`,
+        detail: TOOL_FOLDER_KEEPS_SKILLS,
+      }
+    : {
+        label: LINKED_REASON[linked.kind],
+        message: phrase`${outcome} ${removeLink(linked.path, again)}`,
+        detail: LINK_TARGET_SURVIVES,
+      };
 }
 
 /** The whole notice for a refused or failed removal. */
 export function removeNotice(error: unknown): DeployStateNotice {
-  const notice = noticeFor(REMOVE, error, UNKNOWN_REMOVE);
+  const notice = withLinked(
+    noticeFor(REMOVE, error, UNKNOWN_REMOVE),
+    error,
+    "Nothing was removed.",
+    REMOVE_AGAIN,
+  );
   const folders = editedFolders(error, "folders");
   const notWritten = editedFolders(error, "notWritten");
   return folders.length === 0
@@ -682,6 +719,10 @@ function retryCopy(
       detail:
         "The file is present but doesn't parse, so the target's state is unknown.",
     },
+    "destination-symlinked": {
+      label: REASON["destination-symlinked"],
+      message: `Nothing was changed. ${unnamedLink(again)}`,
+    },
     "manifest-not-recognised": {
       label: REASON["manifest-not-recognised"],
       message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${again}`,
@@ -714,6 +755,14 @@ export function retryNotice(
     if (requestShape) {
       const { level: _level, ...notice } = requestShape;
       return notice;
+    }
+    const linked = linkedOf(error);
+    if (error.code === "destination-symlinked" && linked !== undefined) {
+      return linkedNotice(
+        linked,
+        "Nothing was changed.",
+        `then select ${RETRY_LABELS[operation.kind]} again.`,
+      );
     }
     if (Object.hasOwn(copy, error.code ?? "")) {
       // Object.hasOwn above proves the code is a key of the table.

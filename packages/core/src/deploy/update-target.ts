@@ -8,17 +8,18 @@ import type {
   DeployedContentPort,
   DeployedContentState,
   DeployTarget,
+  LinkedDestination,
 } from "./deploy-skill";
 import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
 import { discardDroppedCopies } from "./discard-dropped-copies";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
-  type CopyVerdict,
+  type CopyBlock,
   copyKeys,
   type LocalCopyCheck,
   type LocalCopyGuard,
-  linkedPathAmong,
+  linkedField,
 } from "./local-copy-guard";
 import type { PlaceReader } from "./place-reading";
 import { ConsentSigner } from "./signed-consent";
@@ -69,7 +70,7 @@ export type UpdatePreviewError =
 type PreviewRefusal = {
   ok: false;
   error: UpdatePreviewError;
-  linkedPath?: string;
+  linked?: LinkedDestination;
 };
 
 export type UpdatePreviewResult =
@@ -102,12 +103,13 @@ export type UpdateRunResult =
   | {
       ok: false;
       error: UpdateRunError;
-      linkedPath?: string;
+      linked?: LinkedDestination;
       report?: WriteReport;
       copyReceipt?: string;
     };
 
-const COPY_ERRORS: Record<Exclude<CopyVerdict, "clean">, UpdateRunError> = {
+const COPY_ERRORS: Record<CopyBlock, UpdateRunError> = {
+  linked: "destination-symlinked",
   "local-edits": "deployed-diverged-from-lock",
   unverified: "deployed-unverifiable",
   unreadable: "deployed-unreadable",
@@ -237,6 +239,7 @@ export class UpdateTarget {
         return {
           ok: false,
           error: COPY_ERRORS[admitted.blocked],
+          ...linkedField(admitted),
           ...(admitted.receipt === null
             ? {}
             : { copyReceipt: admitted.receipt }),
@@ -401,14 +404,17 @@ export class UpdateTarget {
       ...toolScope,
       release: latest.name,
     });
-    const linkedPath = linkedPathAmong(copies, desired);
-    if (linkedPath) {
-      return { ok: false, error: "destination-symlinked", linkedPath };
-    }
     const decision = this.deps.copyGuard.admits(
       { write: "update", target },
       copies,
     );
+    if (!decision.ok && decision.blocked === "linked") {
+      return {
+        ok: false,
+        error: "destination-symlinked",
+        linked: decision.linked,
+      };
+    }
     if (!decision.ok && decision.receipt === null) {
       return {
         ok: false,

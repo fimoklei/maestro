@@ -37,6 +37,7 @@ export {
   type DeploySkillError,
   type DeployTarget,
   type HeldSkill,
+  type LinkedDestination,
 } from "./deploy/deploy-skill";
 export { DEPLOY_TOOLS, type SupportedTool } from "./deploy/deploy-tools";
 export { DeployedCleanupAdapter } from "./deploy/deployed-cleanup";

@@ -560,7 +560,7 @@ function bulkDeployReportGroups(input: {
       rows: view.failed.map((line) => ({
         name: line.names.join(", "),
         count: line.names.length,
-        notice: deployNoticeFor(line.error, line.linkedPath),
+        notice: deployNoticeFor(line.error, line.linked),
       })),
     },
     {
