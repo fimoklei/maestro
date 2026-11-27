@@ -55,6 +55,9 @@ Run from the repo root.
 - Test behaviour through the public interface. A test must survive a refactor that keeps behaviour.
 - A test written to guard a refactor passes before it, so prove it RED
   another way: remove each line it guards, see it fail, restore the line.
+  For a reset (a dialog that opens empty again), keep every piece of its
+  state in the mutation: fields, chosen step, source and write error. One
+  piece kept alone is reset again by another.
 - A component's callback props are its public interface; asserting that `onClose` was called is fine.
 - Never: mock your own modules, test a private function, assert call counts or order of internal calls, or verify through a side channel instead of the interface.
 - Never test a trivial function (one-liner, simple mapping, string concatenation) whose test only restates the code.
