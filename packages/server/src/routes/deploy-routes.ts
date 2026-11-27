@@ -243,6 +243,7 @@ export function registerDeployRoutes(app: Hono, deps: Deps) {
     return c.json({
       completed: result.completed,
       ...reportField(result.report),
+      landed: result.landed,
     });
   });
 

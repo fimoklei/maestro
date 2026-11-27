@@ -1,4 +1,9 @@
-import type { BulkDeployReport, ReportSkill, WriteReport } from "@maestro/core";
+import type {
+  BulkDeployReport,
+  ReportSkill,
+  RetryTargetOperationResult,
+  WriteReport,
+} from "@maestro/core";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -44,6 +49,11 @@ const BOTH_WRITTEN = outcome(
   [written("code-review"), written("commit-message")],
 );
 
+const CODEX_SHORT = outcome(
+  [written("code-review"), written("commit-message")],
+  [written("code-review"), { name: "commit-message", state: "missing" }],
+);
+
 // One install wrote commit-message to the Claude Code folder only.
 const ONE_SHORT: BulkDeployReport = {
   target: { kind: "global" },
@@ -51,23 +61,24 @@ const ONE_SHORT: BulkDeployReport = {
   attention: [],
   failed: [{ error: "deploy-incomplete", names: ["commit-message"] }],
   unfinished: true,
-  report: outcome(
-    [written("code-review"), written("commit-message")],
-    [written("code-review"), { name: "commit-message", state: "missing" }],
-  ),
+  report: CODEX_SHORT,
 };
+
+const retryAnswer = (report: WriteReport, landed: string[]) =>
+  jsonResponse({
+    completed: {
+      kind: "deploy",
+      release: "v1.0.0",
+      desired: ["code-review", "commit-message"],
+    },
+    report,
+    landed,
+  } satisfies Omit<Extract<RetryTargetOperationResult, { ok: true }>, "ok">);
 
 function stub(
   report: BulkDeployReport,
   retry: () => Response = () =>
-    jsonResponse({
-      completed: {
-        kind: "deploy",
-        release: "v1.0.0",
-        desired: ["code-review", "commit-message"],
-      },
-      report: BOTH_WRITTEN,
-    }),
+    retryAnswer(BOTH_WRITTEN, ["code-review", "commit-message"]),
 ) {
   vi.stubGlobal(
     "fetch",
@@ -266,6 +277,24 @@ describe("Global deploy Report: Written to", () => {
     expect(JSON.parse(init.body as string)).toEqual({
       target: { kind: "global" },
     });
+  });
+
+  it("keeps a skill the retry still left missing out of Deployed", async () => {
+    stub(ONE_SHORT, () => retryAnswer(CODEX_SHORT, ["code-review"]));
+    const dialog = await deployToGlobal();
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Retry deploy" }),
+    );
+
+    await waitFor(() =>
+      expect(
+        within(dialog).queryByRole("button", { name: "Retry deploy" }),
+      ).not.toBeInTheDocument(),
+    );
+    expect(within(dialog).getByRole("heading", { level: 3 })).toHaveTextContent(
+      "Deployed 1 of 2 skills to Global",
+    );
   });
 
   it("reads the folders again after a row's own Deploy again", async () => {

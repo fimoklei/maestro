@@ -1,8 +1,4 @@
-import type {
-  BulkDeployReport,
-  PendingOperation,
-  WriteReport,
-} from "@maestro/core";
+import type { BulkDeployReport, WriteReport } from "@maestro/core";
 import {
   folderLines,
   folderReports,
@@ -30,14 +26,14 @@ export function writtenToLines(input: {
   return folderLines(folders, (folder) => writtenToLine(folder, retry));
 }
 
-export function landedSince(
+export function landedByRetry(
   ran: BulkDeployReport,
-  retried: Pick<PendingOperation, "release" | "desired"> | null,
+  retry: { release: string; landed: readonly string[] } | null,
 ): { name: string; version: string }[] {
-  if (retried === null) return [];
+  if (retry === null) return [];
   return ran.failed
     .filter((line) => line.error === "deploy-incomplete")
     .flatMap((line) => line.names)
-    .filter((name) => retried.desired.includes(name))
-    .map((name) => ({ name, version: retried.release }));
+    .filter((name) => retry.landed.includes(name))
+    .map((name) => ({ name, version: retry.release }));
 }
