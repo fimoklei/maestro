@@ -10,4 +10,4 @@
 [i] Removed apm.yml created by the failed install.
 [x] Failed to install APM dependencies: Unsafe skill destination 'linked-tdd/SKILL.md'; refusing deployment.
 [i] Run with --verbose for detailed diagnostics
-[x] Install failed after 6.0s.
+[x] Install failed after 5.8s.

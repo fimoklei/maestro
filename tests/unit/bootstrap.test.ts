@@ -31,7 +31,7 @@ describe("checkPrerequisites", () => {
         { name: "pnpm", banner: "11.24.0" },
         {
           name: "apm",
-          banner: "Agent Package Manager (APM) CLI version 0.38.1",
+          banner: "Agent Package Manager (APM) CLI version 0.39.1",
         },
       ]),
     });
@@ -57,7 +57,7 @@ describe("checkPrerequisites", () => {
     expect(apmGap?.fix).toBe("Run `curl -sSL https://aka.ms/apm-unix | sh`");
   });
 
-  it("warns instead of failing when apm is present but not 0.38.1", () => {
+  it("warns instead of failing when apm is present but not 0.39.1", () => {
     const result = checkPrerequisites({
       nodeVersion: "v24.1.0",
       requiredMajor: 24,
@@ -73,7 +73,7 @@ describe("checkPrerequisites", () => {
 
     expect(result.gaps).toEqual([]);
     expect(result.apmWarning).toBe(
-      "apm 0.25.0 found; Maestro is measured against 0.38.1 — continuing anyway",
+      "apm 0.25.0 found; Maestro is measured against 0.39.1 — continuing anyway",
     );
   });
 

@@ -1,6 +1,6 @@
 [>] Uninstalling 1 package...
 [+] fimoklei/agent-harness/skills/tdd - found in apm.yml
 [x] Uninstall refused: deleting these tracked files needs deployment evidence that APM wrote them. Nothing was removed; apm.yml and apm.lock.yaml were not changed.
-[x]   - .claude/skills/tdd/SKILL.md: edited since APM deployed it
+[x]   - .claude/skills/tdd/SKILL.md: edited since APM deployed it; kept even with --trust-lockfile
 [x] Move aside any listed file that holds your edits, then run 'apm install' to re-establish deployment evidence (once, with access to the package source), then rerun 'apm uninstall'.
 [x] If the source is unreachable, move each listed file aside or delete it, then run 'apm uninstall' to finish the uninstall.

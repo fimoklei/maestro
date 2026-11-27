@@ -1,21 +1,21 @@
 # apm fixture provenance
 
 What produced each captured file, so a future reader can re-run it instead of
-trusting it. The fixtures under **Command output** reflect `apm` **0.38.1**:
-on 2026-11-25 `node scripts/capture-apm-fixtures.mjs` re-ran every one.
+trusting it. The fixtures under **Command output** reflect `apm` **0.39.1**:
+on 2026-11-27 `node scripts/capture-apm-fixtures.mjs` re-ran every one.
 Every other section names the version it was captured on. Each
 Command-output fixture is in one of three states — the difference matters
 when you audit one:
 
-- **Re-captured** — the 0.38.1 output differed from the older capture and
+- **Re-captured** — the 0.39.1 output differed from the older capture and
   overwrote it: every row without a mark below.
-- **New** (✚ below) — first captured on 0.38.1.
-- **Verified unchanged** (✓= below) — the 0.38.1 output matched, so nothing
+- **New** (✚ below) — first captured on 0.39.1.
+- **Verified unchanged** (✓= below) — the 0.39.1 output matched, so nothing
   was written and git still shows the older capture date.
 
 The lockfiles and the `apm-spike-*` fixtures were not re-run: the
 `apm-spike-833` repository is gone, and the root-package canary covers those
-contracts on 0.38.1. A 0.38.1 lockfile writes `lockfile_version: '4'` and
+contracts on 0.39.1. A 0.39.1 lockfile writes `lockfile_version: '4'` and
 adds `manifest_targets` (`docs/apm-behavior.md` § Lockfile). An upgrade rewrites this header and the ✓= marks; it never appends a
 version paragraph.
 
@@ -77,23 +77,23 @@ folder: copying a capture over a fixture is the upgrader's call.
 
 | Fixture | Command | Conditions | Exit | Streams |
 |---|---|---|---|---|
-| `apm-install-ok.txt` | `apm install <ref>#v0.5.0 -t claude` | fresh `git init` repo | 0 | out+err |
-| `apm-install-no-changes.txt` | `apm install github.com/fimoklei/agent-harness/.apm/skills/47#v0.6.0 -t claude,codex` | `COLUMNS=200`, same ref already installed and unchanged | 0 | out+err |
-| `apm-install-probes-failed.txt` | `apm install <ref>#v0.5.0 -t claude` | no credentials in env | 1 | out+err |
+| `apm-install-ok.txt` ✓= | `apm install <ref>#v0.5.0 -t claude` | fresh `git init` repo | 0 | out+err |
+| `apm-install-no-changes.txt` ✓= | `apm install github.com/fimoklei/agent-harness/.apm/skills/47#v0.6.0 -t claude,codex` | `COLUMNS=200`, same ref already installed and unchanged | 0 | out+err |
+| `apm-install-probes-failed.txt` ✓= | `apm install <ref>#v0.5.0 -t claude` | no credentials in env | 1 | out+err |
 | `apm-install-symlink-refused.txt` | `apm install <ref>#v0.5.1 -g -t claude` | sandbox `~/.claude/skills/tdd` pre-created as a symlink to a real folder | 1 | out+err |
-| `apm-install-narrowed.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -t claude,codex` | `COLUMNS=200`, after installing `--skill 47 --skill tdd` and deleting `- tdd` from `skills:` | 0 | out+err |
-| `apm-install-unknown-skill.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 --skill no-such-skill -t claude,codex` | `COLUMNS=200`, fresh `git init` repo | 1 | out+err |
-| `apm-install-unmanaged-conflict.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 --skill caveman -t claude,codex` | `COLUMNS=200`, hand-made `.claude/skills/caveman/SKILL.md` | 1 | out+err |
-| `apm-view-versions.txt` | `apm view fimoklei/agent-harness versions` | authed | 0 | out |
-| `apm-view-auth-failed.txt` | `apm view fimoklei/agent-harness versions` | no credentials, `GIT_TERMINAL_PROMPT=0` | 1 | err |
-| `apm-outdated-could-not-check.txt` | `apm outdated` | `COLUMNS=200`, repo pinned at v0.5.0, no credentials | 0 | out |
-| `apm-outdated-global.txt` | `apm outdated -g` | `COLUMNS=200`, global install pinned at v0.5.0, authed | 0 | out |
+| `apm-install-narrowed.txt` ✓= | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -t claude,codex` | `COLUMNS=200`, after installing `--skill 47 --skill tdd` and deleting `- tdd` from `skills:` | 0 | out+err |
+| `apm-install-unknown-skill.txt` ✓= | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 --skill no-such-skill -t claude,codex` | `COLUMNS=200`, fresh `git init` repo | 1 | out+err |
+| `apm-install-unmanaged-conflict.txt` | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 --skill caveman -t claude,codex` | `COLUMNS=200`, hand-made `.claude/skills/caveman/SKILL.md` | 1 | out+err |
+| `apm-view-versions.txt` ✓= | `apm view fimoklei/agent-harness versions` | authed | 0 | out |
+| `apm-view-auth-failed.txt` ✓= | `apm view fimoklei/agent-harness versions` | no credentials, `GIT_TERMINAL_PROMPT=0` | 1 | err |
+| `apm-outdated-could-not-check.txt` ✓= | `apm outdated` | `COLUMNS=200`, repo pinned at v0.5.0, no credentials | 0 | out |
+| `apm-outdated-global.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install pinned at v0.5.0, authed | 0 | out |
 | `apm-outdated-global-uptodate.txt` ✓= | `apm outdated -g` | `COLUMNS=200`, global install of `.apm/skills/tdd` at the latest tag (v0.6.0), authed | 0 | out |
 | `apm-update-noop.txt` ✓= | `apm update -y -t claude,codex` | `COLUMNS=120`, repo pinned at v0.5.0 while v0.5.1 exists | 0 | out+err |
 | `apm-targets-claude.json` ✓= | `apm targets --json` | repo containing `.claude/` only | 0 | out |
-| `apm-uninstall-dry-run.txt` | `apm uninstall --dry-run -v <ref>#v0.5.1` | repo holding two deps at `-t claude,codex` | 0 | out+err |
-| `apm-uninstall-ok.txt` | `apm uninstall -v <ref>#v0.5.1` | same repo, removes one of the two deps | 0 | out+err |
-| `apm-uninstall-not-found.txt` | `apm uninstall <ref>#v0.5.1` | same repo, package already gone | 1 | out+err |
+| `apm-uninstall-dry-run.txt` ✓= | `apm uninstall --dry-run -v <ref>#v0.5.1` | repo holding two deps at `-t claude,codex` | 0 | out+err |
+| `apm-uninstall-ok.txt` ✓= | `apm uninstall -v <ref>#v0.5.1` | same repo, removes one of the two deps | 0 | out+err |
+| `apm-uninstall-not-found.txt` ✓= | `apm uninstall <ref>#v0.5.1` | same repo, package already gone | 1 | out+err |
 | `apm-spike-941-step1-project.txt` | `apm install github.com/fimoklei/apm-spike-833#v2.0.0 --skill alpha --skill beta --skill gamma --skill delta --skill zeta -t claude,codex` | fresh `git init` repo, no credentials (#941) | 0 | out+err |
 | `apm-spike-941-step1-global.txt` | same, `-g`, from a neutral cwd | sandbox `HOME` | 0 | out+err |
 | `apm-spike-941-step2-narrow-project.txt` | `skills:` written to four, then `apm install <ref>#v2.0.0 --skill alpha --skill beta --skill gamma --skill zeta -t claude,codex` | five installed before | 0 | out+err |
@@ -114,10 +114,10 @@ folder: copying a capture over a fixture is the upgrader's call.
 | `apm-spike-941-step6-install-cli.txt` | `apm install <ref>#v2.0.0 --skill alpha --skill beta --skill gamma -t claude,codex` | `apm.yml` = `apm.yml.spike-941-step6-after-writer.yaml` | 0 | out+err |
 | `apm-spike-941-step6-install-bare.txt` | `apm install -t claude,codex` | same manifest, second (local-path) dependency present | 0 | out+err |
 | `apm-uninstall-retained.txt` | `apm uninstall -v <ref>#v0.5.1` | same repo, `.claude/skills/tdd/SKILL.md` edited before the call | 1 | out+err |
-| `apm-uninstall-global-ok.txt` | `apm uninstall -g -v <ref>#v0.5.1` | neutral cwd, global install at `-t claude,codex` beside an unrelated skill | 0 | out+err |
-| `apm-uninstall-claude-config-dir.txt` ✚ | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, `CLAUDE_CONFIG_DIR=$HOME/.claude-work` for the install and the uninstall (#1947) | 0 | out+err |
-| `apm-uninstall-selected-profile-only.txt` ✚ | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, installed once without and once with `CLAUDE_CONFIG_DIR=$HOME/.claude-work`; the uninstall with it set | 0 | out+err |
-| `apm-install-lockfile-upgraded.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -g -t claude,codex` | by hand, not in the script: neutral cwd, `COLUMNS=200`, the same install run first with apm 0.32.0 | 0 | out+err |
+| `apm-uninstall-global-ok.txt` ✓= | `apm uninstall -g -v <ref>#v0.5.1` | neutral cwd, global install at `-t claude,codex` beside an unrelated skill | 0 | out+err |
+| `apm-uninstall-claude-config-dir.txt` ✓= | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, `CLAUDE_CONFIG_DIR=$HOME/.claude-work` for the install and the uninstall (#1947) | 0 | out+err |
+| `apm-uninstall-selected-profile-only.txt` ✓= | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, installed once without and once with `CLAUDE_CONFIG_DIR=$HOME/.claude-work`; the uninstall with it set | 0 | out+err |
+| `apm-install-lockfile-upgraded.txt` ✓= | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -g -t claude,codex` | by hand, not in the script: neutral cwd, `COLUMNS=200`, the same install run first with apm 0.32.0 | 0 | out+err |
 
 The five uninstall fixtures came from one scripted run against a throwaway
 sandbox, `COLUMNS=200`, no token in the environment — uninstall needs neither
@@ -127,7 +127,7 @@ capture sandbox's path, and `[i] Cleaned <n> stale deployed paths` counts what
 that run deleted (`docs/apm-behavior.md` § Remove).
 
 ✓= marks a **verified unchanged** fixture (see the top of this file): re-run on
-0.38.1, output identical, file untouched.
+0.39.1, output identical, file untouched.
 
 `COLUMNS=200` matches `WIDE_COLUMNS` in `apm-cli-driver.ts` — the width
 production actually sets, so the fixture wraps the way the parser will see it.
@@ -193,27 +193,27 @@ parser is exercised against it.
 
 | Fixture | Command | Conditions | Exit | Streams |
 |---|---|---|---|---|
-| `apm-spike-833-view-versions.txt` | `apm view fimoklei/apm-spike-833 versions` | first command in a fresh sandbox | 0 | out |
-| `apm-spike-833-step1-project.txt` | `apm install <ref>#v1.0.0 FIVE -t claude` | fresh `git init` repo | 0 | out+err |
-| `apm-spike-833-step1-global.txt` | `apm install <ref>#v1.0.0 FIVE -g -t claude,codex` | empty sandbox home | 0 | out+err |
-| `apm-spike-833-step2-project-cli.txt` | `apm install <ref>#v2.0.0 FIVE -t claude` | after step 1 project | 1 | out+err |
-| `apm-spike-833-step2-project-bare.txt` | `apm install -t claude` | after step 1 project, ref edit, `epsilon` still in `skills:` | 0 | out+err |
-| `apm-spike-833-step2c-cli-four.txt` | `apm install <ref>#v2.0.0 FOUR -t claude` | fresh repo after a v1 `FIVE` install | 0 | out+err |
-| `apm-spike-833-step2-global-cli.txt` | `apm install <ref>#v2.0.0 FIVE -g -t claude,codex` | after step 1 global | 1 | out+err |
-| `apm-spike-833-step2-global-bare.txt` | `apm install -g -t claude,codex` | after step 1 global, ref edit | 0 | out+err |
-| `apm-spike-833-step2-global-bare-verbose.txt` | `apm install -g -t claude,codex --verbose` | same state, second sandbox | 0 | out+err |
-| `apm-spike-833-step3-narrow.txt` | `apm install -t claude` | after step 2 project bare, `- delta` removed from `skills:` | 0 | out+err |
-| `apm-spike-833-step3-narrow-global.txt` | `apm install -g -t claude,codex` | after step 2 global bare, `- delta` removed | 0 | out+err |
-| `apm-spike-833-step4-bare.txt` | `apm install -t claude` | v1 `FOUR` install, `beta`/`gamma` copies overwritten with v2 content, ref edit | 0 | out+err |
-| `apm-spike-833-step4c-same-ref.txt` | `apm install -t claude` | v1 `FOUR` install, `beta` copy overwritten, ref unchanged | 0 | out+err |
-| `apm-spike-833-same-ref-clean-reinstall.txt` | `apm install -t claude` | v1 `FIVE` install, nothing touched | 0 | out+err |
-| `apm-spike-833-step5-fail.txt` | `apm install -t claude` | v1 `FOUR` install, `.claude/skills/gamma` `chmod 555` and its `SKILL.md` `chmod 444`, ref edit | 1 | out+err |
-| `apm-spike-833-step5-retry.txt` | `apm install -t claude` | same repo, permissions restored | 0 | out+err |
-| `apm-spike-833-step6-outdated-project.txt` | `apm outdated` | after step 1 project (v1 pinned, v2 exists) | 0 | out |
-| `apm-spike-833-step6-outdated-global.txt` | `apm outdated -g` | after step 1 global | 0 | out |
-| `apm-spike-833-step6-outdated-project-v2.txt` | `apm outdated` | after step 3 (v2 pinned) | 0 | out |
-| `apm-spike-833-step6-uninstall-project.txt` | `apm uninstall <ref>#v2.0.0` | after step 3 project | 0 | out+err |
-| `apm-spike-833-step6-uninstall-global.txt` | `apm uninstall -g <ref>#v2.0.0` | after step 3 global, neutral cwd | 0 | out+err |
+| `apm-spike-833-view-versions.txt` ✓= | `apm view fimoklei/apm-spike-833 versions` | first command in a fresh sandbox | 0 | out |
+| `apm-spike-833-step1-project.txt` ✓= | `apm install <ref>#v1.0.0 FIVE -t claude` | fresh `git init` repo | 0 | out+err |
+| `apm-spike-833-step1-global.txt` ✓= | `apm install <ref>#v1.0.0 FIVE -g -t claude,codex` | empty sandbox home | 0 | out+err |
+| `apm-spike-833-step2-project-cli.txt` ✓= | `apm install <ref>#v2.0.0 FIVE -t claude` | after step 1 project | 1 | out+err |
+| `apm-spike-833-step2-project-bare.txt` ✓= | `apm install -t claude` | after step 1 project, ref edit, `epsilon` still in `skills:` | 0 | out+err |
+| `apm-spike-833-step2c-cli-four.txt` ✓= | `apm install <ref>#v2.0.0 FOUR -t claude` | fresh repo after a v1 `FIVE` install | 0 | out+err |
+| `apm-spike-833-step2-global-cli.txt` ✓= | `apm install <ref>#v2.0.0 FIVE -g -t claude,codex` | after step 1 global | 1 | out+err |
+| `apm-spike-833-step2-global-bare.txt` ✓= | `apm install -g -t claude,codex` | after step 1 global, ref edit | 0 | out+err |
+| `apm-spike-833-step2-global-bare-verbose.txt` ✓= | `apm install -g -t claude,codex --verbose` | same state, second sandbox | 0 | out+err |
+| `apm-spike-833-step3-narrow.txt` ✓= | `apm install -t claude` | after step 2 project bare, `- delta` removed from `skills:` | 0 | out+err |
+| `apm-spike-833-step3-narrow-global.txt` ✓= | `apm install -g -t claude,codex` | after step 2 global bare, `- delta` removed | 0 | out+err |
+| `apm-spike-833-step4-bare.txt` ✓= | `apm install -t claude` | v1 `FOUR` install, `beta`/`gamma` copies overwritten with v2 content, ref edit | 0 | out+err |
+| `apm-spike-833-step4c-same-ref.txt` ✓= | `apm install -t claude` | v1 `FOUR` install, `beta` copy overwritten, ref unchanged | 0 | out+err |
+| `apm-spike-833-same-ref-clean-reinstall.txt` ✓= | `apm install -t claude` | v1 `FIVE` install, nothing touched | 0 | out+err |
+| `apm-spike-833-step5-fail.txt` ✓= | `apm install -t claude` | v1 `FOUR` install, `.claude/skills/gamma` `chmod 555` and its `SKILL.md` `chmod 444`, ref edit | 1 | out+err |
+| `apm-spike-833-step5-retry.txt` ✓= | `apm install -t claude` | same repo, permissions restored | 0 | out+err |
+| `apm-spike-833-step6-outdated-project.txt` ✓= | `apm outdated` | after step 1 project (v1 pinned, v2 exists) | 0 | out |
+| `apm-spike-833-step6-outdated-global.txt` ✓= | `apm outdated -g` | after step 1 global | 0 | out |
+| `apm-spike-833-step6-outdated-project-v2.txt` ✓= | `apm outdated` | after step 3 (v2 pinned) | 0 | out |
+| `apm-spike-833-step6-uninstall-project.txt` ✓= | `apm uninstall <ref>#v2.0.0` | after step 3 project | 0 | out+err |
+| `apm-spike-833-step6-uninstall-global.txt` ✓= | `apm uninstall -g <ref>#v2.0.0` | after step 3 global, neutral cwd | 0 | out+err |
 
 Lockfiles from the same run, copied verbatim:
 
@@ -236,17 +236,17 @@ global runs used `-g -t claude,codex` from a scratch cwd inside the sandbox.
 
 | Fixture | Command | Conditions | Exit | Streams |
 |---|---|---|---|---|
-| `apm-957-root-install-project.txt` | `apm install <root> --skill prototype --skill caveman -t claude` | fresh repo | 0 | out+err |
-| `apm-957-narrow-project.txt` | `apm install <root> --skill prototype -t claude` | `skills:` written down to `prototype`, `<foreign>` installed beside it | 0 | out+err |
-| `apm-957-empty-skills-bare.txt` | `apm install -t claude` | `skills: []` written under the root entry | 1 | out+err |
-| `apm-957-empty-skills-cli.txt` | `apm install <root> -t claude` | same manifest | 1 | out+err |
-| `apm-957-no-skills-field.txt` | `apm install -t claude` | `skills:` key deleted — the whole bundle installs | 0 | out+err |
-| `apm-957-uninstall-root-project.txt` | `apm uninstall <root>` | after the narrow, `<foreign>` and the hand-placed skill present | 0 | out+err |
-| `apm-957-uninstall-root-retained.txt` | `apm uninstall <root>` | two-skill Selection, `.claude/skills/caveman/SKILL.md` edited | 1 | out+err |
-| `apm-957-root-install-global.txt` | `apm install <root> --skill prototype --skill caveman -g -t claude,codex` | empty sandbox home | 0 | out+err |
-| `apm-957-narrow-global.txt` | `apm install <root> --skill prototype -g -t claude,codex` | as the project narrow, at `-g` | 0 | out+err |
-| `apm-957-empty-skills-global.txt` | `apm install -g -t claude,codex` | `skills: []` in `~/.apm/apm.yml` | 1 | out+err |
-| `apm-957-uninstall-root-global.txt` | `apm uninstall -g <root>` | after the global narrow | 0 | out+err |
+| `apm-957-root-install-project.txt` ✓= | `apm install <root> --skill prototype --skill caveman -t claude` | fresh repo | 0 | out+err |
+| `apm-957-narrow-project.txt` ✓= | `apm install <root> --skill prototype -t claude` | `skills:` written down to `prototype`, `<foreign>` installed beside it | 0 | out+err |
+| `apm-957-empty-skills-bare.txt` ✓= | `apm install -t claude` | `skills: []` written under the root entry | 1 | out+err |
+| `apm-957-empty-skills-cli.txt` ✓= | `apm install <root> -t claude` | same manifest | 1 | out+err |
+| `apm-957-no-skills-field.txt` ✓= | `apm install -t claude` | `skills:` key deleted — the whole bundle installs | 0 | out+err |
+| `apm-957-uninstall-root-project.txt` ✓= | `apm uninstall <root>` | after the narrow, `<foreign>` and the hand-placed skill present | 0 | out+err |
+| `apm-957-uninstall-root-retained.txt` ✓= | `apm uninstall <root>` | two-skill Selection, `.claude/skills/caveman/SKILL.md` edited | 1 | out+err |
+| `apm-957-root-install-global.txt` ✓= | `apm install <root> --skill prototype --skill caveman -g -t claude,codex` | empty sandbox home | 0 | out+err |
+| `apm-957-narrow-global.txt` ✓= | `apm install <root> --skill prototype -g -t claude,codex` | as the project narrow, at `-g` | 0 | out+err |
+| `apm-957-empty-skills-global.txt` ✓= | `apm install -g -t claude,codex` | `skills: []` in `~/.apm/apm.yml` | 1 | out+err |
+| `apm-957-uninstall-root-global.txt` ✓= | `apm uninstall -g <root>` | after the global narrow | 0 | out+err |
 
 Two files from the same run, copied verbatim:
 
@@ -267,10 +267,10 @@ above.
 
 | Fixture | Command | Conditions | Exit | Streams |
 |---|---|---|---|---|
-| `apm-1039-batch-ok.txt` | `apm install <ref> --skill 47 --skill audit-dependencies --skill caveman -t claude,codex` | empty repo | 0 | out+err |
-| `apm-1039-batch-symlink-skipped.txt` | same | `.claude/skills/caveman` pre-created as a symlink to an empty folder | 0 | out+err |
-| `apm-1039-batch-unknown-skill.txt` | `apm install <ref> --skill 47 --skill audit-dependencies --skill no-such-skill -t claude,codex` | empty repo | 1 | out+err |
-| `apm-1039-batch-unknown-skill-over-selection.txt` | same | `47` installed first; `skills:` then written to all three names | 1 | out+err |
+| `apm-1039-batch-ok.txt` ✓= | `apm install <ref> --skill 47 --skill audit-dependencies --skill caveman -t claude,codex` | empty repo | 0 | out+err |
+| `apm-1039-batch-symlink-skipped.txt` ✓= | same | `.claude/skills/caveman` pre-created as a symlink to an empty folder | 0 | out+err |
+| `apm-1039-batch-unknown-skill.txt` ✓= | `apm install <ref> --skill 47 --skill audit-dependencies --skill no-such-skill -t claude,codex` | empty repo | 1 | out+err |
+| `apm-1039-batch-unknown-skill-over-selection.txt` ✓= | same | `47` installed first; `skills:` then written to all three names | 1 | out+err |
 
 `apm.lock.1039-batch-symlink-skipped.yaml` is the lockfile the symlink run
 wrote: `skill_subset` names `caveman`, `deployed_files` holds no
@@ -290,8 +290,8 @@ What they mean is in `docs/apm-behavior.md` § Update.
 
 | Fixture | Command | Conditions | Exit | Streams |
 |---|---|---|---|---|
-| `apm-1217-update-over-owned-link.txt` | `apm install <root>#v0.4.1 <sel> -g -t claude,codex` | `apm install <root>#v0.3.5 <sel> -g -t claude,codex`, then both `.claude/skills` folders replaced by links | 1 | out+err |
-| `apm-1217-update-over-unowned-link.txt` | same | `apm install <root>#v0.3.5 <sel> -g -t codex`, links created, then the same install with `-t claude,codex` | 0 | out+err |
+| `apm-1217-update-over-owned-link.txt` ✓= | `apm install <root>#v0.4.1 <sel> -g -t claude,codex` | `apm install <root>#v0.3.5 <sel> -g -t claude,codex`, then both `.claude/skills` folders replaced by links | 1 | out+err |
+| `apm-1217-update-over-unowned-link.txt` ✓= | same | `apm install <root>#v0.3.5 <sel> -g -t codex`, links created, then the same install with `-t claude,codex` | 0 | out+err |
 
 `links-1217-*.txt` are assembled, not verbatim, and like `apm-update-noop.txt`
 have no reader: `## before` / `## after` headings over, per case, `stat -f '%HT %N%SY'` of every entry under
