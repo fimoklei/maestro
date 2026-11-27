@@ -634,7 +634,7 @@
   "scripts/bootstrap.d.mts": 2,
   "scripts/bootstrap.mjs": 6,
   "scripts/capture-apm-fixtures.d.mts": 1,
-  "scripts/capture-apm-fixtures.mjs": 11,
+  "scripts/capture-apm-fixtures.mjs": 9,
   "scripts/cockpit-hover.mjs": 9,
   "scripts/cockpit-ports.d.mts": 1,
   "scripts/cockpit-ports.mjs": 11,

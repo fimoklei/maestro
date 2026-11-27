@@ -1,5 +1,5 @@
-// apm probes github.com anonymously before it uses a token, so every install
-// spends this machine's unauthenticated GitHub quota (60 per hour per IP).
+// A default apm install probes github.com anonymously before it uses a token,
+// so it spends the IP address's unauthenticated GitHub quota (60 per hour).
 // `node scripts/github-quota.mjs <needed>` exits 1 when fewer remain.
 import { pathToFileURL } from "node:url";
 

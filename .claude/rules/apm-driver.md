@@ -7,6 +7,7 @@ paths:
   - "packages/core/src/drift/**"
   - "tests/integration/apm-*"
   - "tests/fixtures/apm*"
+  - "scripts/capture-apm-fixtures.mjs"
   - "docs/apm-behavior.md"
 ---
 
@@ -24,7 +25,11 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
 - Build fixtures from real captures, never retyped; every capture command is
   recorded in `tests/fixtures/README.md`. Capture an install fixture only
   when no `GitHub API rate limit hit` line appears — that line belongs to
-  the capturing machine's spent anonymous quota, not to apm.
+  the capturing IP address's spent anonymous quota, not to apm.
+- Run an install whose output nobody reads (a setup step) auth-first:
+  `APM_GITHUB_AUTH_FIRST=1`. Run default every command whose output is
+  evidence — a fixture capture, the measured command of a bug measurement —
+  and the canaries.
 - Before departing from APM's model, read ADR-0019 — the accepted departures.
   A new departure is amended into it, never given its own ADR.
 
