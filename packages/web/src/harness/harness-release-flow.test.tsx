@@ -138,6 +138,34 @@ describe("Harness release", () => {
     expect(within(dialog).getByText(/broken/)).toBeInTheDocument();
   });
 
+  it("opens with no chosen step and no failure left after closing", async () => {
+    stubHarnessServer({ read: { body: FETCHED }, plan: { body: PLAN } });
+    const user = userEvent.setup();
+    renderHarness();
+    const release = await screen.findByRole("button", {
+      name: /^create a release$/i,
+    });
+    await waitFor(() => expect(release).toBeEnabled());
+    await user.click(release);
+    const first = await screen.findByRole("dialog");
+    await within(first).findByText("Releasing as");
+    await user.click(within(first).getByRole("button", { name: /^major$/i }));
+    await user.click(
+      within(first).getByRole("button", { name: /^publish release$/i }),
+    );
+    expect(await within(first).findByRole("alert")).toHaveTextContent(
+      "Release not published",
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    await user.click(release);
+    const again = await screen.findByRole("dialog");
+    await within(again).findByText("Releasing as");
+    expect(releasingAs()).toHaveTextContent(/^v1\.3\.0$/);
+    expect(within(again).queryByRole("alert")).toBeNull();
+  });
+
   const IN_FLIGHT_NOTICE = sentence(
     /^These skills and prompts have newer changes that aren't merged: /,
   );

@@ -102,6 +102,26 @@ async function openImportSkills(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("Harness import of several skills", () => {
+  it("opens empty again after Cancel, with no folder or list left", async () => {
+    stubServer({});
+    const user = userEvent.setup();
+    renderWithQuery(<HarnessView openPrimitive={null} written={null} />);
+    const first = await openImportSkills(user);
+    await user.click(
+      within(first).getByRole("checkbox", { name: "code-review" }),
+    );
+    await user.click(within(first).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    await user.click(await screen.findByRole("button", { name: "Import" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Import skills" }),
+    );
+    const again = await screen.findByRole("dialog", { name: "Import skills" });
+    expect(within(again).getByLabelText("Folder path")).toHaveValue("");
+    expect(within(again).queryAllByRole("checkbox")).toEqual([]);
+  });
+
   it("lists the folders inside the chosen one, with what cannot be imported apart", async () => {
     stubServer({});
     const user = userEvent.setup();
