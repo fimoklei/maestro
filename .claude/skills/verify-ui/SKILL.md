@@ -25,10 +25,17 @@ and zoom the change touches, and each state you could not reach.
    - No tool detected → `--scenario no-tools`: alone it shows No targets
      yet; with a repo scenario (`no-tools,empty`) Global shows no tool beside
      that repository.
-   - A Global state no scenario seeds → stub Global's read before opening the
-     screen: `ab network route "**/api/deploy-state/global" --body "$(cat
-     <file>.json)"`, the JSON shaped as core's `GlobalDeployStateResult`;
-     `ab network unroute` ends it. Name the state as stubbed in step 8.
+   - A state no scenario seeds, or a write's answer the dialog never asks
+     for → stub the route before the action, its body always read from a
+     file: `ab network route "<route glob>" --body "$(cat <file>.json)"`;
+     `ab network unroute` ends it. Global's read takes
+     `"**/api/deploy-state/global"`, shaped as core's
+     `GlobalDeployStateResult`. A write's real answer comes from the API:
+     after `--scenario global-folders`, `curl` a `POST /api/deploy/bulk` of
+     `code-review` to Global (headers `content-type: application/json` and
+     `origin: <cockpit URL>`) into the file, then route
+     `"**/api/deploy/bulk"`: code-review comes back refused while its
+     v1.1.0 copy stays in both folders. Name the state as stubbed in step 8.
    - In smoke, `gh` reads reach GitHub and its pull-request writes stop in
      the sandbox (`scripts/smoke-gh.mjs`), so a proposal opens no pull
      request.

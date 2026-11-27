@@ -26,7 +26,8 @@ not the shell, before starting the task.
 - Writing a script in `scripts/` → `scripts.md`
 
 **Reviewing a diff:** run `git fetch origin`, then diff against
-`origin/main`; a local `main` can trail it. Review against this file and
+`git merge-base origin/main HEAD`, working tree included, so the diff holds
+only this branch's work. Review against this file and
 every rule file whose `paths:` matches a changed file. Cite the file and the rule. A commit that
 changes what `packages/web` renders and lists no browser check in its body is
 a finding (`verify-ui` skill).
@@ -46,7 +47,7 @@ text names, are findings.
 
 - **`core` — the brains.** Domain model, drift, ports, and the adapters that implement them. Node built-ins (`node:fs`, `node:child_process`) only behind a port. No React, no Hono, no HTTP, no JSX. Product behavior lives here.
 - **`server` — the plumbing.** Transport only: Hono routes, Zod at the edge, delegate to `core`. No domain logic, no drift math, no business rules.
-- **`web` — the screen.** UI only: React, talks to `server` over HTTP. Never touches the filesystem, never shells out.
+- **`web` — the screen.** UI only: React, talks to `server` over HTTP. Never touches the filesystem, never shells out. Takes each status from one server answer and maps it to words; a status that needs two answers combined is core's to return.
 
 Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` depends on nothing else in this repo.
 
