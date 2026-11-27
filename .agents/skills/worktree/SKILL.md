@@ -62,8 +62,8 @@ Switch this session into the worktree — no manual `cd`, no new session:
   tilde is joined to the cwd and fails with ENOENT. This session now runs there. (It only enters — it never removes your worktree, since you created it with `git worktree add`.)
 - Confirm in Dutch: worktree path, branch, that deps are installed, the blocker status, and the one-line task summary from step 4.
 
-Then hand off to the `implement` skill to build the issue — it runs the work through TDD at the agreed seams and keeps the repo's rules. Do not start `/tdd` directly from here.
-**Done when:** the session's working directory is the worktree and the `implement` skill has taken over the issue.
+Then end the turn with the command Michiel types to build the issue, ready to paste: `/mattpocock-skills:implement #<N>`. The `implement` skill is user-only, so only that typed command starts it.
+**Done when:** the session's working directory is the worktree and Michiel has the `/mattpocock-skills:implement #<N>` command.
 
 ## Cleaning up
 

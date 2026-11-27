@@ -72,8 +72,9 @@ for `view` and `outdated`.
 `node scripts/capture-apm-fixtures.mjs` re-runs every row below except the
 `apm-spike-941-*` ones (their repository is gone) under these conditions, and
 reports per fixture whether the output is the same, differs, exits otherwise,
-or was throttled. It writes to `.logs/apm-captures/` and never touches this
-folder: copying a capture over a fixture is the upgrader's call.
+or was throttled. It writes to `.logs/apm-captures/`; with `--write` it also
+copies each capture that differs or is new over its fixture and sets each
+row's mark below.
 
 | Fixture | Command | Conditions | Exit | Streams |
 |---|---|---|---|---|
@@ -154,6 +155,7 @@ which drops comments, not by the raw-text greps the section above is about.
 | `apm.lock.spike-941-step3-kept-edited.yaml` | step 3 narrow over an edited `delta` copy (per-repo) — the kept file stays owned |
 | `apm.lock.spike-941-step3d-phantom.yaml` | step 3d narrow (per-repo) — `.agents/skills/delta` rows with no file on disk |
 | `apm.lock.spike-941-step4b-fail.yaml` | step 4b narrow with `.claude/skills` read-only (per-repo) — the dir row retained |
+| `apm.lock.0.32.0-global-tdd.yaml` | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill tdd -g -t claude` (apm 0.32.0, `lockfile_version: '1'`); `apm-edited-copy-canary.test.ts` seeds it beside `apm.yml.0.32.0-global-tdd.yaml`, the manifest of the same install with its sandbox name replaced by `dev` |
 
 Two manifests sit beside them for #941 step 6: `apm.yml.spike-941-step6-before.yaml`
 (hand-edited: a `#` line above the Harness entry, an inline comment on a list

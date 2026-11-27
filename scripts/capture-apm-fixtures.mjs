@@ -1,10 +1,11 @@
 // Re-runs each single-command apm fixture against the installed apm, every
 // case in its own sandbox HOME, and compares it with the committed file.
-// Writes to .logs/apm-captures/ only; overwriting a fixture is the reader's call.
+// Writes to .logs/apm-captures/; --write also copies changed captures and marks.
 import { execFileSync, spawnSync } from "node:child_process";
 import {
   appendFileSync,
   closeSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -40,6 +41,16 @@ const comparable = (text) => {
   const start = lines.findIndex((line) => !/^(# |\$ )/.test(line));
   return start === -1 ? "" : lines.slice(start).join("\n").trimEnd();
 };
+
+const MARKS = { same: " ✓=", differs: "", new: " ✚" };
+
+export function markRows(readme, verdicts) {
+  return readme.replace(/^\| `([^`]+)`(?: ✓=| ✚)? \|/gm, (row, name) =>
+    verdicts.has(name) && verdicts.get(name) in MARKS
+      ? `| \`${name}\`${MARKS[verdicts.get(name)]} |`
+      : row,
+  );
+}
 
 /** How one capture relates to its committed fixture. */
 export function verdict({ text, exit, expectedExit, committed }) {
@@ -365,6 +376,7 @@ async function main() {
 
   let box;
   let failed = false;
+  const verdicts = new Map();
   try {
     for (const row of cases) {
       if (!row.sameSandbox) {
@@ -386,11 +398,25 @@ async function main() {
       } catch (error) {
         result = `error: ${error.message}`;
       }
+      verdicts.set(row.name, result);
       if (result !== "same" && result !== "differs") failed = true;
       console.log(`${result.padEnd(14)} ${row.name}`);
     }
   } finally {
     rmSync(root, { recursive: true, force: true });
+  }
+  if (process.argv.includes("--write")) {
+    for (const [name, result] of verdicts) {
+      if (result === "differs" || result === "new") {
+        copyFileSync(
+          join(outDir, name),
+          join(repoRoot, "tests/fixtures", name),
+        );
+      }
+    }
+    const readme = join(repoRoot, "tests/fixtures/README.md");
+    writeFileSync(readme, markRows(readFileSync(readme, "utf8"), verdicts));
+    console.log("fixtures and README marks written");
   }
   console.log(`captures in ${outDir}`);
   process.exit(failed ? 1 : 0);
