@@ -87,6 +87,7 @@ Direction: `web` → HTTP → `server` → `core`. Never the reverse. `core` dep
 | Feature code takes status, colour, icon, toast and checkbox from `ui/` | `design-guard` in `pnpm lint` |
 | Every rule file has a `paths:` that matches a file | `rules-guard` in `pnpm lint` |
 | A source file stays under 800 lines | Biome in `pnpm lint` |
+| In `core`, only `process/run-process.ts` imports `node:child_process` | Biome `noRestrictedImports` override in `pnpm lint` |
 | Tests run in a sandbox home and change env only through `vi.stubEnv` | `tests/unit/test-isolation.test.ts` |
 
 Run from the repo root:

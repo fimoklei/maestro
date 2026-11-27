@@ -33,6 +33,7 @@ that repeats gets a check in the same change.
 | --- | --- |
 | Merge only after CI is green | `workflow-ship` → `wait-for-checks.sh`; ruleset on `main` |
 | Product copy reads natural and states traced facts | judgement: `.claude/rules/copy.md`, `.claude/agents/copy-reviewer.md` |
+| A spec promises unchanged behaviour and a review finds a change: the operator decides before the commit | judgement: the implementing agent |
 
 ## Where to look
 

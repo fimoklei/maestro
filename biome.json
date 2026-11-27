@@ -108,6 +108,31 @@
     },
     {
       "includes": [
+        "packages/core/src/**",
+        "!packages/core/src/process/run-process.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "node:child_process": {
+                    "message": "Start a process through runProcess or runProcessBytes in process/run-process.ts."
+                  },
+                  "child_process": {
+                    "message": "Start a process through runProcess or runProcessBytes in process/run-process.ts."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": [
         "**/*.ts",
         "**/*.tsx",
         "**/*.js",
