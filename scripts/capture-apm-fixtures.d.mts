@@ -1,5 +1,10 @@
 export function normalizeHome(text: string, home: string): string;
 
+export function markRows(
+  readme: string,
+  verdicts: ReadonlyMap<string, string>,
+): string;
+
 export function verdict(capture: {
   text: string;
   exit: number | null;

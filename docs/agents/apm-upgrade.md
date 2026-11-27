@@ -27,23 +27,32 @@ treat them as hypotheses, not facts.
 1. **Record the new version.** `apm --version`, and note it for the
    behavior-doc header in step 4.
 2. **Re-verify the command-backed claims.** Run
-   `node scripts/capture-apm-fixtures.mjs`: it re-runs the Command-output
-   captures of `tests/fixtures/README.md` and reports each as same or
-   differs. Differs → copy the capture over the fixture (re-captured); same →
-   leave it (verified unchanged), per that README's bookkeeping. Re-run any
-   other README capture by hand from its recorded command and conditions.
-   Then run the real-apm lanes: the five canary tests, via
+   `node scripts/capture-apm-fixtures.mjs --write`: it re-runs the
+   Command-output captures of `tests/fixtures/README.md`, copies each one that
+   differs over its fixture and sets every row's mark per that README's
+   bookkeeping. Re-run any other README capture by hand from its recorded
+   command and conditions, and set its mark.
+   Then run the real-apm lanes: the canary tests, via
    `scripts/run-apm-canary.sh`, and the integration suite. A failing lane is
    the finding, not an obstacle — it marks a behavior change. The canaries are
    a gate: the upgrade is not done until they are green against the new
    version.
 3. **Re-verify the source-read claims.** Some claims in
    `docs/apm-behavior.md` are marked "(source)" — no command proves them.
-   Re-read the named functions in the installed apm source (currently:
+   Diff the named functions between the old and the new apm source (currently:
    `_read_yaml_targets`, `declared_target_profiles`, `_is_stale` for
    ghost-entry retention; `core/target_detection.py::resolve_effective_target_decision`
    for literal `-t` handling; `core/scope.py` for `Path.home()` derivation)
-   rather than re-running an install.
+   rather than re-running an install. Unpack both wheels into an empty scratch
+   folder and compare with `/usr/bin/diff -u`:
+
+   ```sh
+   for v in <old> <new>; do
+     uv run --no-project --with pip python -I -m pip download "apm-cli==$v" --no-deps -d "$v" -q
+     (cd "$v" && unzip -qo ./*.whl)
+   done
+   /usr/bin/diff -u <old>/apm_cli/core/scope.py <new>/apm_cli/core/scope.py
+   ```
 4. **Rewrite `docs/apm-behavior.md` section by section.** Replace each
    section's content with what the new version does; bump the version and
    date in the header. Bump the same version in the `tests/fixtures/README.md`
@@ -61,6 +70,10 @@ treat them as hypotheses, not facts.
      #1872 and #1947; since 0.38.1 apm keeps the old copies and removes per folder.
    - The upgrade path: install with the old apm, then install and uninstall
      with the new one over that state.
+   - Open bugs: re-measure every open issue whose title names an earlier apm
+     version, in a sandbox `HOME`. Comment the result on the issue; close one
+     the new version fixes, with that evidence, and rewrite the "What happens"
+     of one that remains for the new version.
    - `LEARNINGS.md`: reconfirm or archive entries naming an apm version.
    - `.claude/rules/apm-driver.md`: do the imperatives still match the
      measured behavior?

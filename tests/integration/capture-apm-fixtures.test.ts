@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { normalizeHome, verdict } from "../../scripts/capture-apm-fixtures.mjs";
+import {
+  markRows,
+  normalizeHome,
+  verdict,
+} from "../../scripts/capture-apm-fixtures.mjs";
 
 describe("normalizeHome", () => {
   it("replaces the sandbox home and its dash-encoded form", () => {
@@ -51,7 +55,44 @@ describe("verdict", () => {
     expect(verdict({ ...capture, text, committed })).toBe("same");
   });
 
+  it("is same when only the failure timing differs", () => {
+    const text = "[x] Install failed after 6.0s.\n";
+    const committed = "[x] Install failed after 5.8s.\n";
+
+    expect(verdict({ ...capture, text, committed })).toBe("same");
+  });
+
   it("differs when the output changed", () => {
     expect(verdict({ ...capture, committed: "[+] other\n" })).toBe("differs");
+  });
+});
+
+describe("markRows", () => {
+  const readme = [
+    "| Fixture | Command |",
+    "|---|---|",
+    "| `apm-a.txt` | `apm install a` |",
+    "| `apm-b.txt` ✓= | `apm install b` |",
+    "| `apm-c.txt` ✚ | `apm install c` |",
+    "| `apm-by-hand.txt` ✚ | by hand |",
+    "",
+  ].join("\n");
+
+  it("marks each captured row by its verdict and leaves other rows alone", () => {
+    const marked = markRows(
+      readme,
+      new Map([
+        ["apm-a.txt", "same"],
+        ["apm-b.txt", "differs"],
+        ["apm-c.txt", "new"],
+      ]),
+    );
+
+    expect(marked.split("\n").slice(2, 6)).toEqual([
+      "| `apm-a.txt` ✓= | `apm install a` |",
+      "| `apm-b.txt` | `apm install b` |",
+      "| `apm-c.txt` ✚ | `apm install c` |",
+      "| `apm-by-hand.txt` ✚ | by hand |",
+    ]);
   });
 });

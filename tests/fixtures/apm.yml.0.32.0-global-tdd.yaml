@@ -1,0 +1,18 @@
+name: dev
+version: 1.0.0
+description: APM project for dev
+author: Developer
+# Which agent platforms to deploy to.
+# Resolution order: --target flag > this field > auto-detect from filesystem.
+# Accepted values: agent-skills, antigravity, claude, codex, copilot, cursor, gemini, grok-build, hermes, kiro, opencode, vscode, windsurf
+targets:
+  - claude
+dependencies:
+  apm:
+    - git: fimoklei/agent-harness
+      ref: v0.6.0
+      skills:
+        - tdd
+  mcp: []
+includes: auto
+scripts: {}
