@@ -14,12 +14,13 @@ describe("createProcessRunner", () => {
   it("returns the output of a run that succeeds", async () => {
     const run = createProcessRunner(async (file, args) => ({
       stdout: `${file} ${args.join(" ")}`,
-      stderr: "",
+      stderr: "warning: printed beside the answer",
     }));
 
     await expect(run("git", ["status"], OPTIONS)).resolves.toEqual({
       ok: true,
       stdout: "git status",
+      stderr: "warning: printed beside the answer",
     });
   });
 
@@ -31,6 +32,7 @@ describe("createProcessRunner", () => {
     await expect(run("gh", [], OPTIONS)).resolves.toEqual({
       ok: false,
       failure: "missing",
+      stdout: "",
       stderr: "",
     });
   });
@@ -40,6 +42,7 @@ describe("createProcessRunner", () => {
       Object.assign(new Error("timed out"), {
         killed: true,
         code: null,
+        stdout: "Fetching origin",
         stderr: "fatal: unable to access",
       }),
     );
@@ -47,6 +50,7 @@ describe("createProcessRunner", () => {
     await expect(run("git", [], OPTIONS)).resolves.toEqual({
       ok: false,
       failure: "killed",
+      stdout: "Fetching origin",
       stderr: "fatal: unable to access",
     });
   });
@@ -64,6 +68,7 @@ describe("createProcessRunner", () => {
       ok: false,
       failure: "failed",
       exitCode: null,
+      stdout: "",
       stderr: "",
     });
   });
@@ -73,6 +78,7 @@ describe("createProcessRunner", () => {
       Object.assign(new Error("git failed"), {
         code: 1,
         killed: false,
+        stdout: "[x] Installation failed",
         stderr: "fatal: not a git repository",
       }),
     );
@@ -81,6 +87,7 @@ describe("createProcessRunner", () => {
       ok: false,
       failure: "failed",
       exitCode: 1,
+      stdout: "[x] Installation failed",
       stderr: "fatal: not a git repository",
     });
   });
@@ -94,7 +101,26 @@ describe("createProcessRunner", () => {
       ok: false,
       failure: "failed",
       exitCode: null,
+      stdout: "",
       stderr: "",
+    });
+  });
+
+  it("reads output a buffered run printed as text", async () => {
+    const run = rejecting(
+      Object.assign(new Error("git failed"), {
+        code: 128,
+        stdout: Buffer.from("partial"),
+        stderr: Buffer.from("fatal: bad object"),
+      }),
+    );
+
+    await expect(run("git", [], OPTIONS)).resolves.toEqual({
+      ok: false,
+      failure: "failed",
+      exitCode: 128,
+      stdout: "partial",
+      stderr: "fatal: bad object",
     });
   });
 
@@ -109,6 +135,7 @@ describe("createProcessRunner", () => {
         ok: false,
         failure: "failed",
         exitCode,
+        stdout: "",
         stderr: "",
       });
     },
@@ -117,11 +144,16 @@ describe("createProcessRunner", () => {
 
 describe("stdoutOf", () => {
   it("returns the output of a run that succeeds", () => {
-    expect(stdoutOf({ ok: true, stdout: "abc\n" })).toBe("abc\n");
+    expect(stdoutOf({ ok: true, stdout: "abc\n", stderr: "" })).toBe("abc\n");
   });
 
   it("throws a failed run with its outcome", () => {
-    const outcome = { ok: false, failure: "killed", stderr: "" } as const;
+    const outcome = {
+      ok: false,
+      failure: "killed",
+      stdout: "",
+      stderr: "",
+    } as const;
 
     expect(() => stdoutOf(outcome)).toThrow(
       expect.objectContaining({ outcome }),

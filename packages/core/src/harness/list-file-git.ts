@@ -1,10 +1,8 @@
-import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
-import { gitOptions, NO_HOOKS } from "../git/non-interactive";
-import { runGit, runGitText } from "../git/run-git-text";
+import { NO_HOOKS } from "../git/non-interactive";
+import { runGit, runGitProcess, runGitText } from "../git/run-git-text";
 import { classifyFetchFailure } from "./classify-fetch-failure";
 import { classifyGitError } from "./classify-git-error";
 import { PROPOSAL_REFS } from "./harness-primitive";
@@ -12,8 +10,6 @@ import { commitSubjectsOnto } from "./harness-primitive-git";
 import { subjectBranch, subjectBranchLeaf } from "./proposal-subject";
 import type { ListFilePush, ListPushOutcome } from "./read-harness-state";
 import { remoteBranchHolds } from "./remote-branch-holds";
-
-const run = promisify(execFile);
 
 const parentsOf = async (
   root: string,
@@ -42,11 +38,7 @@ export async function pushListFile(
   const fetchedRef = `${PROPOSAL_REFS}/${subjectBranchLeaf(subject)}`;
   const refspec = `+${branchRef}:${fetchedRef}`;
   // Re-fetched right before trusting it; failure leaves the fetched ref standing.
-  await run(
-    "git",
-    ["-C", root, "fetch", "origin", refspec],
-    gitOptions(),
-  ).catch(() => {});
+  await runGitProcess(root, ["fetch", "origin", refspec]);
   const tip = await runGitText(root, [
     "rev-parse",
     "--verify",
@@ -60,14 +52,19 @@ export async function pushListFile(
     const file = join(indexDir, "file");
     await writeFile(file, text, "utf8");
     // `--no-filters`: the bytes the writer produced, whatever the attributes say.
-    const { stdout: blob } = await run(
-      "git",
-      ["-C", root, "hash-object", "-w", "--no-filters", "--", file],
-      gitOptions(),
-    );
+    const blob = await runGitProcess(root, [
+      "hash-object",
+      "-w",
+      "--no-filters",
+      "--",
+      file,
+    ]);
+    if (!blob.ok) {
+      return "push-failed";
+    }
     commit = await commitSubjectsOnto(
       root,
-      [{ subject, object: { hash: blob.trim(), mode: "100644" } }],
+      [{ subject, object: { hash: blob.stdout.trim(), mode: "100644" } }],
       {
         treeBase: defaultTip,
         parents: await parentsOf(root, tip, defaultTip),
@@ -82,19 +79,19 @@ export async function pushListFile(
   }
 
   // Never `--force`: a branch this commit does not descend from refuses.
-  try {
-    await run(
-      "git",
-      ["-C", root, ...NO_HOOKS, "push", "origin", `${commit}:${branchRef}`],
-      gitOptions(),
-    );
+  const pushed = await runGitProcess(root, [
+    ...NO_HOOKS,
+    "push",
+    "origin",
+    `${commit}:${branchRef}`,
+  ]);
+  if (
+    pushed.ok ||
+    (await remoteBranchHolds(root, branchRef, commit, refspec))
+  ) {
     return "pushed";
-  } catch (error) {
-    if (await remoteBranchHolds(root, branchRef, commit, refspec)) {
-      return "pushed";
-    }
-    return classifyGitError(error, classifyFetchFailure) === "offline"
-      ? "offline"
-      : "push-failed";
   }
+  return classifyGitError(pushed, classifyFetchFailure) === "offline"
+    ? "offline"
+    : "push-failed";
 }

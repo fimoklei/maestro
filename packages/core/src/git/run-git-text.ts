@@ -1,12 +1,24 @@
-import { runProcess } from "../process/run-process";
+import {
+  type ProcessOptions,
+  type ProcessOutcome,
+  runProcess,
+} from "../process/run-process";
 import { gitOptions } from "./non-interactive";
 
 export type GitRun =
   | { ok: true; stdout: string }
   | { ok: false; exitCode: number | null };
 
+export function runGitProcess(
+  root: string,
+  args: string[],
+  options: ProcessOptions = gitOptions(),
+): Promise<ProcessOutcome> {
+  return runProcess("git", ["-C", root, ...args], options);
+}
+
 export async function runGit(root: string, args: string[]): Promise<GitRun> {
-  const outcome = await runProcess("git", ["-C", root, ...args], gitOptions());
+  const outcome = await runGitProcess(root, args);
   if (outcome.ok) {
     return { ok: true, stdout: outcome.stdout.trim() };
   }
