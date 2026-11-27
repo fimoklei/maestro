@@ -1,12 +1,10 @@
-import {
-  LocalDeletionDialog,
-  type LocalDeletionTarget,
-} from "../harness/harness-dialogs";
+import type { LocalDeletionTarget } from "../harness/harness-dialogs";
 import { proposalRow } from "../harness/harness-route";
 import {
   type LocalDeletionContext,
   localDeletionNotice,
 } from "../harness/local-deletion-copy";
+import { LocalDeletionDialog } from "../harness/local-deletion-dialog";
 import { useDeleteLocalPrimitive } from "../harness/use-harness";
 import {
   useScreenReport,

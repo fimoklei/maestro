@@ -18,11 +18,19 @@ const frame = (title: string, body: string) => (
   </Dialog>
 );
 
+type Dialogs = { "import-skills": undefined; "import-prompts": undefined };
+
 const meta = {
   title: "Shell/DialogSlot",
-  component: DialogSlot<"import-skills" | "import-prompts">,
+  component: DialogSlot<Dialogs>,
   args: {
-    standing: "import-skills",
+    slot: {
+      standing: { name: "import-skills", payload: undefined },
+      open: () => {},
+      openUnlessStanding: () => {},
+      close: () => {},
+      payloadOf: () => null,
+    },
     dialogs: {
       "import-skills": () =>
         frame("Import skills", "Choose a folder of skills to import."),
@@ -30,7 +38,7 @@ const meta = {
         frame("Import prompts", "Choose prompt files to import."),
     },
   },
-} satisfies Meta<typeof DialogSlot<"import-skills" | "import-prompts">>;
+} satisfies Meta<typeof DialogSlot<Dialogs>>;
 
 export default meta;
 

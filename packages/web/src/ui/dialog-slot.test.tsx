@@ -59,7 +59,7 @@ function RemoveDialog({ onClose }: { onClose: () => void }) {
 }
 
 function Screen() {
-  const dialog = useDialogSlot<"rename" | "remove">();
+  const dialog = useDialogSlot<{ rename: undefined; remove: undefined }>();
   const closeRename = () => dialog.close("rename");
   const closeRemove = () => dialog.close("remove");
   return (
@@ -72,7 +72,7 @@ function Screen() {
         items={[{ label: "Remove", onSelect: () => dialog.open("remove") }]}
       />
       <DialogSlot
-        standing={dialog.standing}
+        slot={dialog}
         dialogs={{
           rename: () => (
             <RenameDialog
@@ -84,6 +84,58 @@ function Screen() {
             />
           ),
           remove: () => <RemoveDialog onClose={closeRemove} />,
+        }}
+      />
+    </>
+  );
+}
+
+function RowRemoveDialog({
+  name,
+  onClose,
+}: {
+  name: string;
+  onClose: () => void;
+}) {
+  return (
+    <Dialog
+      title={`Remove ${name}`}
+      version={null}
+      width={480}
+      phase="idle"
+      action={null}
+      failure={null}
+      describedBy={null}
+      fieldsChanged={false}
+      onClose={onClose}
+    >
+      <p>Removes the row.</p>
+    </Dialog>
+  );
+}
+
+function RowsScreen() {
+  const dialog = useDialogSlot<{ remove: { name: string } }>();
+  return (
+    <>
+      {["notes", "drafts"].map((name) => (
+        <Button
+          key={name}
+          variant="quiet"
+          onClick={() => dialog.open("remove", { name })}
+        >
+          {`Remove ${name}`}
+        </Button>
+      ))}
+      <DialogSlot
+        slot={dialog}
+        dialogs={{
+          remove: ({ name }) => (
+            <RowRemoveDialog
+              name={name}
+              onClose={() => dialog.close("remove")}
+            />
+          ),
         }}
       />
     </>
@@ -111,6 +163,15 @@ describe("DialogSlot", () => {
 
     await screen.findByRole("dialog", { name: "Remove" });
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+
+  it("hands the dialog the payload it was opened with", async () => {
+    const user = userEvent.setup();
+    renderWithQuery(<RowsScreen />);
+
+    await user.click(screen.getByRole("button", { name: "Remove drafts" }));
+
+    await screen.findByRole("dialog", { name: "Remove drafts" });
   });
 
   it("forgets a dialog's fields once it closes", async () => {

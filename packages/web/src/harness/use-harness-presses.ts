@@ -7,14 +7,17 @@ import type {
 import { useState } from "react";
 import type { NoticeContent } from "../ui/notice";
 import { named, phrase } from "../ui/phrase";
+import type { DialogSlotState } from "../ui/use-dialog-slot";
 import {
   type ScreenWrites,
   type Subject,
   useWriteAction,
 } from "../ui/use-write-action";
-import { type Confirmation, closed, targetOf } from "./confirmation";
 import { rowId } from "./harness-columns";
-import type { ReleaseWithdrawalItem } from "./harness-dialogs";
+import type {
+  HarnessDialogPayloads,
+  ReleaseWithdrawalItem,
+} from "./harness-dialogs";
 import { CATEGORIES_NAME } from "./item-words";
 import { localDeletionNotice } from "./local-deletion-copy";
 import {
@@ -66,17 +69,11 @@ const primitiveOf = ({ type, name }: HarnessStageRow): PrimitiveRef | null =>
 export function useHarnessPresses(
   state: HarnessState | undefined,
   screen: ScreenWrites,
+  dialog: DialogSlotState<HarnessDialogPayloads>,
 ) {
-  // At most one confirmation stands; a press opens it in place of any other.
-  const [open, setOpen] = useState<Confirmation | null>(null);
-  const close = (kind: Confirmation["kind"]) => () =>
-    setOpen((current) => closed(current, kind));
-  const confirming = targetOf(open, "deletion");
-  const localDeletion = targetOf(open, "local-deletion");
-  const restoring = targetOf(open, "restore");
-  const discarding = targetOf(open, "discard");
-  const withdrawing = targetOf(open, "withdraw");
-  const releaseWithdrawalTarget = targetOf(open, "release-withdrawal");
+  const close = (kind: keyof HarnessDialogPayloads) => () => dialog.close(kind);
+  const withdrawing = dialog.payloadOf("withdraw");
+  const releaseWithdrawalTarget = dialog.payloadOf("release-withdrawal");
 
   const promote = usePromotePrimitive();
   const promoteWrite = useWriteAction(promote, {
@@ -116,12 +113,6 @@ export function useHarnessPresses(
         screen: "harness",
       }),
   });
-  const pendingDeletion =
-    confirming === null
-      ? null
-      : (proposalRows(state).find(
-          (row) => row.type === confirming.type && row.name === confirming.name,
-        ) ?? null);
 
   // The press freezes what it was made against, so a check landing while the
   // confirmation stands cannot rewrite the source or close it (#915).
@@ -290,7 +281,7 @@ export function useHarnessPresses(
       setPromotedFrom(row.stage);
       if (row.change === "deletion") {
         deletion.reset();
-        setOpen({ kind: "deletion", target: item });
+        dialog.open("deletion", { ...row, ...item });
         return;
       }
       promoteWrite.run(item);
@@ -306,9 +297,11 @@ export function useHarnessPresses(
     },
     withdraw: (row, number) => {
       proposalAction.reset();
-      setOpen({
-        kind: "withdraw",
-        target: { type: row.type, name: row.name, branch: row.branch, number },
+      dialog.open("withdraw", {
+        type: row.type,
+        name: row.name,
+        branch: row.branch,
+        number,
       });
     },
     deleteLocal: (row) => {
@@ -317,9 +310,10 @@ export function useHarnessPresses(
       deleteLocal.reset();
       // Frozen at the press: two stages carry Delete skill, and the row it
       // came from turns into a Deletion once the folder is gone.
-      setOpen({
-        kind: "local-deletion",
-        target: { ...item, path: row.path, localOnly: row.localOnly },
+      dialog.open("local-deletion", {
+        ...item,
+        path: row.path,
+        localOnly: row.localOnly,
       });
     },
     discard: (row) => {
@@ -330,38 +324,33 @@ export function useHarnessPresses(
       discard.reset();
       // Frozen at the press, like a restore: a later read never rewrites the
       // tree the author confirms.
-      setOpen({
-        kind: "discard",
-        target: { ...item, path: row.path, seenRemoteTree: row.remoteTree },
+      dialog.open("discard", {
+        ...item,
+        path: row.path,
+        seenRemoteTree: row.remoteTree,
       });
     },
     withdrawFromRelease: (row) => {
       releaseWithdrawal.reset();
       // Frozen at the press: the dialog's copy follows the row it was opened from.
-      setOpen({
-        kind: "release-withdrawal",
-        target: {
-          type: row.type,
-          name: row.name,
-          path: row.path,
-          change: row.change,
-          previousName: row.previousName,
-          mergedRequest: row.mergedRequest,
-        },
+      dialog.open("release-withdrawal", {
+        type: row.type,
+        name: row.name,
+        path: row.path,
+        change: row.change,
+        previousName: row.previousName,
+        mergedRequest: row.mergedRequest,
       });
     },
     restore: (row, commit) => {
       const item = primitiveOf(row);
       if (item === null) return;
       restore.reset();
-      setOpen({
-        kind: "restore",
-        target: {
-          ...item,
-          path: row.path,
-          commit,
-          hasRequest: row.requests.length > 0,
-        },
+      dialog.open("restore", {
+        ...item,
+        path: row.path,
+        commit,
+        hasRequest: row.requests.length > 0,
       });
     },
   };
@@ -383,17 +372,12 @@ export function useHarnessPresses(
     running,
     failure,
     movedTo,
-    pendingDeletion,
     // Left unreset, so a landed deletion still names the row that just moved
     // after its dialog closes. The next press resets it (#580, #581).
     closeConfirmation: close("deletion"),
-    localDeletion,
     closeLocalDeletion: close("local-deletion"),
-    restoring,
     closeRestore: close("restore"),
-    discarding,
     closeDiscard: close("discard"),
-    withdrawing,
     closeWithdrawal: close("withdraw"),
     releaseWithdrawing,
     closeReleaseWithdrawal: close("release-withdrawal"),
@@ -412,16 +396,3 @@ function releaseRows(state: HarnessState | undefined): HarnessStageRow[] {
   const stage = state?.stages.release;
   return stage?.outcome === "read" ? stage.rows : [];
 }
-
-// Pending proposal's rows, or none where the stage could not be read: a press
-// aimed at a row nobody read is refused here rather than sent.
-function proposalRows(
-  state: HarnessState | undefined,
-): (HarnessStageRow & PrimitiveRef)[] {
-  const stage = state?.stages.proposal;
-  return stage?.outcome === "read" ? stage.rows.filter(isPrimitiveRow) : [];
-}
-
-const isPrimitiveRow = (
-  row: HarnessStageRow,
-): row is HarnessStageRow & PrimitiveRef => row.type !== "categories";

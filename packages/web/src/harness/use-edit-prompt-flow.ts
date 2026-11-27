@@ -48,11 +48,9 @@ const SCREEN_NAME: Record<EditScreen, string> = {
 
 // The screen's half of Edit prompt: the read that opens the dialog, and the
 // prompt it opened on. A refused read opens nothing; the screen states it.
-export function useEditPromptOpening() {
-  const [opened, setOpened] = useState<OpenedPrompt | null>(null);
+export function useEditPromptOpening(onOpened: (opened: OpenedPrompt) => void) {
   const reading = useReadPrompt();
   return {
-    opened,
     /** The prompt a refused read was for, and why; the screen states it. */
     readRefusal:
       reading.isError && reading.variables !== undefined
@@ -62,9 +60,8 @@ export function useEditPromptOpening() {
     start: (prompt: string, onRefused: () => void) =>
       reading.mutate(prompt, {
         onError: onRefused,
-        onSuccess: (read) => setOpened({ name: prompt, read }),
+        onSuccess: (read) => onOpened({ name: prompt, read }),
       }),
-    close: () => setOpened(null),
   };
 }
 

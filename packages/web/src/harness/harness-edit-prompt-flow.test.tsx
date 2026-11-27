@@ -274,6 +274,48 @@ describe("Harness — Edit prompt", () => {
     );
   });
 
+  it("keeps Import skills standing when the prompt's read lands after Import skills opened", async () => {
+    stubServer(
+      withStages(FETCHED, {
+        proposal: [prompt("pending-proposal", "not-yet-proposed")],
+      }),
+    );
+    let releaseRead = () => {};
+    const readHeld = new Promise<void>((resolve) => {
+      releaseRead = resolve;
+    });
+    const served = globalThis.fetch;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input) === "/api/harness/prompt/read") await readHeld;
+        return served(input, init);
+      }),
+    );
+    await render();
+    const menu = await openRowMenu("pr-review", "Pending proposal", "prompt");
+    await userEvent.click(
+      within(menu).getByRole("menuitem", { name: "Edit prompt" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Import skills" }),
+    );
+    await screen.findByRole("dialog", { name: "Import skills" });
+
+    releaseRead();
+
+    await waitFor(() =>
+      expect(served).toHaveBeenCalledWith(
+        "/api/harness/prompt/read",
+        expect.anything(),
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.getByRole("dialog", { name: "Import skills" })).toBeVisible();
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+  });
+
   it("shows a prompt edited under an open pull request in Pending proposal, ready for Update proposal", async () => {
     const request = {
       ...pullRequest(45),
