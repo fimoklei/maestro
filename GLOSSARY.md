@@ -156,6 +156,10 @@ _Avoid_: linked skills folder, linked Global folder, coding agent (for "tool").
 One skill's folder inside a tool's skills folder when that folder is a link. Maestro refuses a write through it and names the link to delete.
 _Avoid_: symlinked destination.
 
+**Hand-made skill folder**:
+A folder in a tool's skills folder whose name is a selected skill but whose files the deployment record does not hold, usually one the user made. apm refuses every install that selects that name, so Maestro refuses first, with no consent, and asks to rename or move the folder, never to delete it (#1975). It is not **Unverified**: that word belongs to a copy apm deployed.
+_Avoid_: unmanaged folder, own skill, foreign copy.
+
 **Consuming repo**:
 A project that receives locally-deployed primitives from the central inventory.
 _Avoid_: target repo (ambiguous with "target"), client repo.
