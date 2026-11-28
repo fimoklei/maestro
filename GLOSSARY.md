@@ -144,6 +144,14 @@ _Avoid_: system-wide, machine install, "always both tools" (the reversed pre-ADR
 The skills folder of a detected tool, which Global writes to. Several tools may read one folder. It is not a target: it has no release, Selection or action of its own (#1771).
 _Avoid_: global target, tool target, tool row, tool config.
 
+**Linked tool folder**:
+The skills folder of a tool (`~/.claude/skills`, `~/.agents/skills`, or `.claude/skills` / `.agents/skills` in a consuming repo) when that folder itself is a link. apm refuses every Deploy, Update and Remove through it, so Maestro refuses first and asks for a real folder that contains the same skills (#1972).
+_Avoid_: linked skills folder, linked Global folder, coding agent (for "tool").
+
+**Linked skill folder**:
+One skill's folder inside a tool's skills folder when that folder is a link. Maestro refuses a write through it and names the link to delete.
+_Avoid_: symlinked destination.
+
 **Consuming repo**:
 A project that receives locally-deployed primitives from the central inventory.
 _Avoid_: target repo (ambiguous with "target"), client repo.

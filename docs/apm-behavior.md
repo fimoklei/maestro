@@ -119,7 +119,17 @@ The deploy path must not trust the exit code:
    `Install failed after <t>s.`. For the directory-level link the quoted
    path is the link's target (`real-skills/tdd/SKILL.md`), not
    `.claude/skills`. A directory-level symlink is **no longer** a working
-   layout.
+   layout. In a consuming repo the same link, its target inside or outside
+   the repo, fails earlier with `Refusing deployment through a symlinked path
+   component: .claude/skills. Replace the symlink with a regular directory or
+   remove it, then retry.` and writes nothing. An uninstall after the folder
+   became a link stops with `Uninstall stopped: apm.lock.yaml records paths
+   APM does not manage:`, one line per recorded path, then `… no APM writes
+   were made.` (0.39.1, 2026-11-27). The driver reads all three phrases as a
+   linked destination. The uninstall phrase can name paths that are no link,
+   so Remove names a link only when Maestro's own check finds one. Fixtures: `apm-install-tool-folder-linked-global.txt`,
+   `apm-install-tool-folder-linked-repo.txt`,
+   `apm-uninstall-tool-folder-linked.txt`.
    Two other linked shapes crash instead, with `Cannot translate
    PosixPath(…) to a lockfile path: path is outside the project tree … This
    is a bug -- please report it.`: a **dangling** leaf symlink, and a leaf
@@ -226,8 +236,8 @@ and re-measured on 0.39.1 (2026-11-27). Fixtures:
   `.claude/skills/<name>/SKILL.md` present and not owned by apm, the install
   exits 1 with `Installation refused: skill '<name>' from '<repo>' … conflicts
   with unmanaged file '.claude/skills/<name>/SKILL.md'.` and writes nothing.
-- **A symlinked leaf fails the whole install** (§ Install signals, item 3).
-  Maestro refuses a linked destination before the install.
+- **A symlinked leaf or tool folder fails the whole install** (§ Install
+  signals, item 3). Maestro refuses a linked destination before the install.
 
 ## Lockfile — `apm.lock.yaml`
 

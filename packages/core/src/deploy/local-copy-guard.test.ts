@@ -53,9 +53,9 @@ function guardOver(
         onRead.place(input.target, input.name);
         return fake.content.contentDigest(input);
       },
-      linkedSkillPath: async (input) => {
+      linkedDestination: async (input) => {
         onRead.place(input.target, input.name);
-        return fake.content.linkedSkillPath(input);
+        return fake.content.linkedDestination(input);
       },
     },
   });
@@ -84,8 +84,8 @@ describe("LocalCopyGuard", () => {
     const check = await guard.check({ ...scope, names: ["tdd", "grill"] });
 
     expect(check.findings).toEqual([
-      { name: "tdd", tool: null, verdict: "clean", linkedPath: null },
-      { name: "grill", tool: null, verdict: "clean", linkedPath: null },
+      { name: "tdd", tool: null, verdict: "clean", linked: null },
+      { name: "grill", tool: null, verdict: "clean", linked: null },
     ]);
     expect(guard.admits(scope, check)).toEqual({ ok: true });
   });
@@ -243,7 +243,7 @@ describe("LocalCopyGuard", () => {
     const check = await guard.check({ ...scope, names: ["tdd"] });
 
     expect(check.findings).toEqual([
-      { name: "tdd", tool: null, verdict: "unreadable", linkedPath: null },
+      { name: "tdd", tool: null, verdict: "unreadable", linked: null },
     ]);
   });
 
@@ -275,8 +275,8 @@ describe("LocalCopyGuard", () => {
       { name: "tdd", tools: ["codex"] },
     ]);
     expect(check.findings).toEqual([
-      { name: "tdd", tool: "claude", verdict: "clean", linkedPath: null },
-      { name: "tdd", tool: "codex", verdict: "local-edits", linkedPath: null },
+      { name: "tdd", tool: "claude", verdict: "clean", linked: null },
+      { name: "tdd", tool: "codex", verdict: "local-edits", linked: null },
     ]);
     const refused = guard.admits(scope, check);
     expect(refused.ok).toBe(false);
@@ -317,7 +317,8 @@ describe("LocalCopyGuard", () => {
           return copy.content.classify(input);
         },
         contentDigest: async (input) => copy.content.contentDigest(input),
-        linkedSkillPath: async (input) => copy.content.linkedSkillPath(input),
+        linkedDestination: async (input) =>
+          copy.content.linkedDestination(input),
       },
     });
 
@@ -345,21 +346,63 @@ describe("LocalCopyGuard", () => {
     });
 
     expect(
-      check.findings.map(({ name, tool, linkedPath }) => ({
-        name,
-        tool,
-        linkedPath,
-      })),
+      check.findings.map(({ name, tool, linked }) => ({ name, tool, linked })),
     ).toEqual([
-      { name: "tdd", tool: "claude", linkedPath: null },
+      { name: "tdd", tool: "claude", linked: null },
       {
         name: "tdd",
         tool: "codex",
-        linkedPath: "/home/fake/.agents/skills/tdd",
+        linked: {
+          kind: "skill-folder",
+          path: "/home/fake/.agents/skills/tdd",
+        },
       },
-      { name: "grill", tool: "claude", linkedPath: null },
-      { name: "grill", tool: "codex", linkedPath: null },
+      { name: "grill", tool: "claude", linked: null },
+      { name: "grill", tool: "codex", linked: null },
     ]);
+  });
+
+  it("refuses a write through a linked skill folder, naming it", async () => {
+    const copies = deployedCopies([
+      { target: repo, name: "tdd", state: "clean" },
+    ]);
+    copies.tree.remove("/repo/.claude/skills/tdd");
+    copies.tree.symlink("/repo/.claude/skills/tdd", "/elsewhere/tdd");
+    const guard = new LocalCopyGuard({ content: copies.content });
+    const scope = { write: "deploy", target: repo } as const;
+    const check = await guard.check({ ...scope, names: ["tdd"] });
+
+    expect(guard.admits(scope, check)).toMatchObject({
+      ok: false,
+      blocked: "linked",
+      linked: { kind: "skill-folder", path: "/repo/.claude/skills/tdd" },
+      receipt: null,
+    });
+  });
+
+  it("refuses a write through a linked tool folder before any consent, and names the folder", async () => {
+    const copies = deployedCopies([
+      { target: globalTarget, name: "tdd", state: "diverged" },
+    ]);
+    copies.tree.remove("/home/fake/.claude/skills/tdd");
+    copies.tree.symlink("/home/fake/.claude/skills/tdd", "/elsewhere/tdd");
+    copies.tree.remove("/home/fake/.agents/skills");
+    copies.tree.symlink("/home/fake/.agents/skills", "/elsewhere/skills");
+    const guard = new LocalCopyGuard({ content: copies.content });
+    const scope = { write: "remove", target: globalTarget } as const;
+    const check = await guard.check({
+      ...scope,
+      names: ["tdd"],
+      tools: ["claude", "codex"],
+    });
+
+    expect(guard.admits(scope, check, guard.receipt(scope, check))).toEqual({
+      ok: false,
+      blocked: "linked",
+      linked: { kind: "tool-folder", path: "/home/fake/.agents/skills" },
+      check,
+      receipt: null,
+    });
   });
 
   it("still blocks an edited copy whose bytes could not be read for consent", async () => {
@@ -369,7 +412,7 @@ describe("LocalCopyGuard", () => {
       content: {
         readLockfile: (target) => fake.content.readLockfile(target),
         classify: (input) => fake.content.classify(input),
-        linkedSkillPath: (input) => fake.content.linkedSkillPath(input),
+        linkedDestination: (input) => fake.content.linkedDestination(input),
         contentDigest: async () => {
           throw new Error("unreadable bytes");
         },

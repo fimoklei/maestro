@@ -1,5 +1,6 @@
 import type {
   DeploySkillError,
+  LinkedDestination,
   RemoveDeployedSkillError,
   RemovePreflightError,
   UpdatePreviewError,
@@ -14,6 +15,11 @@ export type ReasonCode =
   | UpdateRunError;
 
 export const TARGET_BUSY = "Target busy";
+
+export const LINKED_REASON: Record<LinkedDestination["kind"], string> = {
+  "tool-folder": "Linked tool folder",
+  "skill-folder": "Linked skill folder",
+};
 
 /** The one reason per server code: Deploy-state's notices, the bulk Remove dialog and its Report. */
 export const REASON: Record<ReasonCode, string> = {
@@ -42,7 +48,7 @@ export const REASON: Record<ReasonCode, string> = {
   "remove-incomplete": "Removal incomplete",
   "no-supported-tool": "No supported tool",
   "auth-required": "No GitHub access",
-  "destination-symlinked": "Linked skill folder",
+  "destination-symlinked": "Linked folder",
   "tag-check-timed-out": "Release check timed out",
   "deploy-timed-out": "Deploy timed out",
   "deploy-failed": "Deploy didn't finish",

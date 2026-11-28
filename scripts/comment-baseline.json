@@ -120,7 +120,7 @@
   "packages/web/src/deploy-state/import-local-edits-handover.test.tsx": 2,
   "packages/web/src/deploy-state/join-names.ts": 1,
   "packages/web/src/deploy-state/notice-copy.test.ts": 14,
-  "packages/web/src/deploy-state/notice-copy.ts": 28,
+  "packages/web/src/deploy-state/notice-copy.ts": 27,
   "packages/web/src/deploy-state/reason-copy.ts": 3,
   "packages/web/src/deploy-state/release-head-copy.test.ts": 4,
   "packages/web/src/deploy-state/release-head-copy.ts": 11,

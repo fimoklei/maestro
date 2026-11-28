@@ -25,6 +25,10 @@ to `.claude/skills/`, because Claude Code does not read `.agents/skills/`.
 
 ## The topology decision (grill outcome, 2026-07-18)
 
+> **Retired (#1972).** apm 0.38.1 and later refuse a directory-level link as
+> well (`docs/apm-behavior.md` § Install signals, item 3). A linked tool folder
+> is no longer a supported layout; keep `~/.claude/skills` a real folder.
+
 Replace the 57 per-skill symlinks in `~/.claude/skills/` with **one
 directory-level symlink** `~/.claude/skills -> ~/.agents/skills`. Measured on
 both 0.20.0 and 0.25.0:

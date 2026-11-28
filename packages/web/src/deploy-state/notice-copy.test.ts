@@ -98,6 +98,7 @@ const UPDATE_RUN: UpdateRunError[] = [
 
 const RETRY = codes<RetryTargetOperationError>({
   "repo-not-registered": true,
+  "destination-symlinked": true,
   "nothing-to-retry": true,
   "retry-in-progress": true,
   "deployed-diverged-from-lock": true,
@@ -150,6 +151,7 @@ const SURFACES: Surface[] = [
       "preflight-failed": true,
       "manifest-not-recognised": true,
       "operation-unfinished": true,
+      "destination-symlinked": true,
     }),
     // "Removal outcome unknown" is both the fallback and remove-failed's label.
     fallbackCode: "remove-failed",
@@ -460,22 +462,20 @@ describe("a Global update nothing read back", () => {
 
 describe("a linked skill folder", () => {
   const LINKED = "/Users/dev/.claude/skills/tdd";
-  const linked = (body: unknown) =>
-    new HttpError(409, "unused", "destination-symlinked", body);
-  const withPath = linked({
+  const withPath = new HttpError(409, "unused", "destination-symlinked", {
     error: "destination-symlinked",
-    linkedPath: LINKED,
+    linked: { kind: "skill-folder", path: LINKED },
   });
-  const withoutPath = linked({ error: "destination-symlinked" });
 
   it.each([
     ["deploy", deployNotice],
     ["update preview", (e: unknown) => updatePreviewNotice(e)],
     ["update run", (e: unknown) => updateNotice(e)],
+    ["remove", removeNotice],
+    ["retry", (e: unknown) => retryNotice(e, pending("deploy"))],
   ])("sets apart the rm for the path the server read (%s)", (_, notice) => {
+    expect(notice(withPath).label).toBe("Linked skill folder");
     expect(machineValues(notice(withPath).message)).toEqual([`rm ${LINKED}`]);
-    expect(machineValues(notice(withoutPath).message)).toEqual([]);
-    expect(notice(withPath).detail).toEqual(notice(withoutPath).detail);
     expect(notice(withPath).detail).toBe(
       "Deleting the link doesn't delete the folder it points to.",
     );
@@ -483,8 +483,108 @@ describe("a linked skill folder", () => {
 
   it("sets apart the rm for the path a bulk run carries", () => {
     expect(
-      machineValues(deployNoticeFor("destination-symlinked", LINKED).message),
+      machineValues(
+        deployNoticeFor("destination-symlinked", {
+          kind: "skill-folder",
+          path: LINKED,
+        }).message,
+      ),
     ).toEqual([`rm ${LINKED}`]);
+  });
+
+  it("tells a removal to run the rm, then remove again", () => {
+    expect(plainText(removeNotice(withPath).message)).toBe(
+      `Nothing was removed. Run rm ${LINKED} and then select Remove skill again.`,
+    );
+  });
+});
+
+describe("a linked tool folder", () => {
+  const FOLDER = "/Users/dev/.claude/skills";
+  const linked = new HttpError(409, "unused", "destination-symlinked", {
+    error: "destination-symlinked",
+    linked: { kind: "tool-folder", path: FOLDER },
+  });
+  const DETAIL =
+    "Copy the skills from the folder the link points to into the new folder, so your tools keep every skill.";
+  const replace = (outcome: string, again: string) =>
+    `${outcome} Replace the link at ${FOLDER} with a real folder that contains the same skills, ${again}`;
+
+  it.each([
+    [
+      "deploy",
+      deployNotice(linked),
+      replace("Nothing was written.", "then deploy again."),
+    ],
+    [
+      "bulk deploy",
+      deployNoticeFor("destination-symlinked", {
+        kind: "tool-folder",
+        path: FOLDER,
+      }),
+      replace("Nothing was written.", "then deploy again."),
+    ],
+    [
+      "update preview",
+      updatePreviewNotice(linked),
+      replace("Nothing was written.", "then select Update target again."),
+    ],
+    [
+      "update run",
+      updateNotice(linked),
+      replace("Nothing was written.", "then select Update target again."),
+    ],
+    [
+      "remove",
+      removeNotice(linked),
+      replace("Nothing was removed.", "then select Remove skill again."),
+    ],
+    [
+      "retry removal",
+      retryNotice(linked, pending("remove")),
+      replace("Nothing was changed.", "then select Retry removal again."),
+    ],
+  ])(
+    "says to replace the link with a real folder (%s)",
+    (_, notice, message) => {
+      expect(readNotice(notice)).toEqual({
+        label: "Linked tool folder",
+        message,
+        detail: DETAIL,
+      });
+      expect(machineValues(notice.message)).toEqual([FOLDER]);
+    },
+  );
+});
+
+describe("a link apm refused that Maestro's check did not find", () => {
+  const unnamed = refusal("destination-symlinked");
+  const fallback = (outcome: string, again: string) =>
+    `${outcome} One of the target's tool or skill folders is a link. Replace the link with a real folder that contains the same files, ${again}`;
+
+  it.each([
+    [
+      "deploy",
+      deployNotice(unnamed),
+      fallback("Nothing was written.", "then deploy again."),
+    ],
+    [
+      "update",
+      updateNotice(unnamed),
+      fallback("Nothing was written.", "then select Update target again."),
+    ],
+    [
+      "remove",
+      removeNotice(unnamed),
+      fallback("Nothing was removed.", "then select Remove skill again."),
+    ],
+    [
+      "retry update",
+      retryNotice(unnamed, pending("update")),
+      fallback("Nothing was changed.", "then select Retry update again."),
+    ],
+  ])("never says to delete the folder (%s)", (_, notice, message) => {
+    expect(readNotice(notice)).toEqual({ label: "Linked folder", message });
   });
 });
 

@@ -1,0 +1,10 @@
+[*] Created apm.yml
+[i] Targets set: claude, codex (persisted to apm.yml)
+[*] Validating 1 package...
+[+] fimoklei/agent-harness#v0.6.0
+[*] Updated apm.yml with 1 new package(s)
+[>] Installing 1 new package...
+[x] Refusing deployment through a symlinked path component: .claude/skills. Replace the symlink with a regular directory or remove it, then retry.
+[i] Run with --verbose for detailed diagnostics
+[i] Removed apm.yml created by the failed install.
+[x] Install failed after 0.6s.

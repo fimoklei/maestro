@@ -235,7 +235,11 @@ describe("Deploy-state — Update target on a repository", () => {
       repo: { [REPO]: repoAt("v0.3.4") },
       other: () =>
         jsonResponse(
-          { error: "destination-symlinked", message: "unused", linkedPath },
+          {
+            error: "destination-symlinked",
+            message: "unused",
+            linked: { kind: "skill-folder", path: linkedPath },
+          },
           409,
         ),
     }));

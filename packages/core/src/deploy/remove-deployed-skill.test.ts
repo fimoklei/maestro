@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { DeployedContentState, DeployTarget } from "./deploy-skill";
+import type {
+  DeployedContentState,
+  DeployTarget,
+  LinkedDestination,
+} from "./deploy-skill";
 import type { SupportedTool } from "./deploy-tools";
 import {
   type CopyStates,
@@ -53,7 +57,8 @@ type Overrides = {
   isRegistered?: (path: string) => Promise<boolean>;
   lookup?: DeployedRefLookup;
   lookupFor?: (target: DeployTarget) => DeployedRefLookup | undefined;
-  removed?: boolean | "timed-out";
+  removed?: boolean | "timed-out" | "destination-symlinked";
+  linkedAfterUninstall?: LinkedDestination;
   afterApmRemove?: (copies: ReturnType<typeof inMemoryDeployedContent>) => void;
   locks?: InFlightLocks;
   canonicalPath?: (path: string) => Promise<string>;
@@ -102,7 +107,8 @@ function buildUseCase(overrides: Overrides = {}) {
       onRead.place(input.target, input.name);
       return copies.content.contentDigest(input);
     },
-    linkedSkillPath: async () => null,
+    linkedDestination: async () =>
+      apmRan ? (overrides.linkedAfterUninstall ?? null) : null,
   };
   const useCase = new RemoveDeployedSkill({
     registry: {
@@ -125,8 +131,11 @@ function buildUseCase(overrides: Overrides = {}) {
         calls.removes.push({ target, ref });
         apmRan = true;
         overrides.afterApmRemove?.(copies);
-        if (overrides.removed === "timed-out") {
-          return { ok: false, reason: "timed-out" };
+        if (
+          overrides.removed === "timed-out" ||
+          overrides.removed === "destination-symlinked"
+        ) {
+          return { ok: false, reason: overrides.removed };
         }
         return (overrides.removed ?? true) ? { ok: true } : { ok: false };
       },
@@ -430,6 +439,32 @@ describe("RemoveDeployedSkill", () => {
     await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
       ok: false,
       error: "remove-timed-out-unrecorded",
+    });
+  });
+
+  it("names the link apm refused when Maestro's check finds it too", async () => {
+    const linked: LinkedDestination = {
+      kind: "tool-folder",
+      path: "/repo/.claude/skills",
+    };
+    const { useCase } = buildUseCase({
+      removed: "destination-symlinked",
+      linkedAfterUninstall: linked,
+    });
+
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
+      ok: false,
+      error: "destination-symlinked",
+      linked,
+    });
+  });
+
+  it("reports a failed removal when apm names a link Maestro's check cannot find", async () => {
+    const { useCase } = buildUseCase({ removed: "destination-symlinked" });
+
+    await expect(confirmedExecute(useCase, removeTdd)).resolves.toMatchObject({
+      ok: false,
+      error: "remove-failed",
     });
   });
 
@@ -939,7 +974,7 @@ describe("RemoveDeployedSkill.preflight", () => {
       contentDigest: (
         input: Parameters<typeof copies.content.contentDigest>[0],
       ) => copies.content.contentDigest(input),
-      linkedSkillPath: async () => null,
+      linkedDestination: async () => null,
     };
     const useCase = new RemoveDeployedSkill({
       registry: { isRegistered: async () => false },
@@ -991,7 +1026,7 @@ describe("RemoveDeployedSkill.preflight", () => {
             throw new Error("disk exploded");
           },
           contentDigest: async () => null,
-          linkedSkillPath: async () => null,
+          linkedDestination: async () => null,
         },
       }),
       deployedContent: {
@@ -1000,7 +1035,7 @@ describe("RemoveDeployedSkill.preflight", () => {
           throw new Error("disk exploded");
         },
         contentDigest: async () => null,
-        linkedSkillPath: async () => null,
+        linkedDestination: async () => null,
       },
       apm: { removeSkill: async () => ({ ok: true }) },
       globalLayout: () => DEFAULT_GLOBAL_LAYOUT,

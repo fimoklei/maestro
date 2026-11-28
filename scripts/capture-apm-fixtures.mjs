@@ -12,6 +12,7 @@ import {
   openSync,
   readFileSync,
   realpathSync,
+  renameSync,
   rmSync,
   symlinkSync,
   writeFileSync,
@@ -97,6 +98,46 @@ const cases = [
     },
     cwd: "neutral",
     capture: ["authed", ["install", `${REF}#v0.5.1`, "-g", "-t", "claude"]],
+    exit: 1,
+  },
+  {
+    name: "apm-install-tool-folder-linked-global.txt",
+    setup: (s) => {
+      mkdirSync(join(s.home, ".claude"));
+      mkdirSync(join(s.home, "real-skills"));
+      symlinkSync(join(s.home, "real-skills"), join(s.home, ".claude/skills"));
+    },
+    cwd: "neutral",
+    capture: [
+      "authed",
+      ["install", ROOT, "--skill", "tdd", "-g", "-t", "claude"],
+    ],
+    columns: 200,
+    exit: 1,
+  },
+  {
+    name: "apm-install-tool-folder-linked-repo.txt",
+    setup: (s) => {
+      mkdirSync(join(s.repo, ".claude"));
+      mkdirSync(join(s.home, "real-skills"));
+      symlinkSync(join(s.home, "real-skills"), join(s.repo, ".claude/skills"));
+    },
+    capture: [
+      "authed",
+      ["install", ROOT, "--skill", "tdd", "-t", "claude,codex"],
+    ],
+    columns: 200,
+    exit: 1,
+  },
+  {
+    name: "apm-uninstall-tool-folder-linked.txt",
+    setup: (s) => {
+      s.apm(["install", ROOT, "--skill", "tdd", "-t", "claude,codex"]);
+      renameSync(join(s.repo, ".claude/skills"), join(s.home, "real-skills"));
+      symlinkSync(join(s.home, "real-skills"), join(s.repo, ".claude/skills"));
+    },
+    capture: ["anon", ["uninstall", ROOT]],
+    columns: 200,
     exit: 1,
   },
   {
@@ -378,7 +419,10 @@ async function main() {
   let failed = false;
   const verdicts = new Map();
   try {
+    const only = process.argv.indexOf("--only");
+    const names = only === -1 ? null : process.argv.slice(only + 1);
     for (const row of cases) {
+      if (names !== null && !names.includes(row.name)) continue;
       if (!row.sameSandbox) {
         box = sandbox(root, token);
         box.cwd = row.cwd === "neutral" ? box.neutral : box.repo;
