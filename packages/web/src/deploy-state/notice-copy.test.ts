@@ -54,6 +54,7 @@ const DEPLOY = codes<DeploySkillError>({
   "not-at-target-release": true,
   "target-pinned-per-skill": true,
   "manifest-not-recognised": true,
+  "manifest-legacy-entry": true,
   "operation-unfinished": true,
   "deploy-incomplete": true,
   "no-supported-tool": true,
@@ -90,6 +91,7 @@ const UPDATE_RUN: UpdateRunError[] = [
     "deployed-diverged-from-lock": true,
     "deployed-unverifiable": true,
     "manifest-not-recognised": true,
+    "manifest-legacy-entry": true,
     "update-incomplete": true,
     "update-timed-out": true,
     "update-failed": true,
@@ -106,6 +108,7 @@ const RETRY = codes<RetryTargetOperationError>({
   "deployed-unreadable": true,
   "lockfile-malformed": true,
   "manifest-not-recognised": true,
+  "manifest-legacy-entry": true,
   "retry-incomplete": true,
   "retry-timed-out": true,
   "retry-failed": true,
@@ -150,6 +153,7 @@ const SURFACES: Surface[] = [
       "remove-failed": true,
       "preflight-failed": true,
       "manifest-not-recognised": true,
+      "manifest-legacy-entry": true,
       "operation-unfinished": true,
       "destination-symlinked": true,
     }),
@@ -745,5 +749,51 @@ describe("an update preview refused because the Inventory couldn't be read", () 
     ).toBe(
       "Select Re-read Inventory on the Harness location screen, then select Update target again.",
     );
+  });
+});
+
+describe("a per-skill dependency beside the Harness dependency", () => {
+  const legacy = refusal("manifest-legacy-entry");
+  const detail =
+    "A per-skill dependency points at one skill through .apm/skills/ in its path. Keep the dependency on the Harness itself, because apm won't install both in one apm.yml.";
+  const fix = "Delete each per-skill dependency on the Harness from apm.yml,";
+
+  it.each([
+    [
+      "deploy",
+      deployNotice(legacy),
+      `Nothing was deployed. ${fix} then deploy again.`,
+    ],
+    [
+      "remove",
+      removeNotice(legacy),
+      `Nothing was removed. ${fix} then remove the skill again.`,
+    ],
+    [
+      "update",
+      updateNotice(legacy),
+      `Nothing was changed. ${fix} then select Update target again.`,
+    ],
+    [
+      "retry deploy",
+      retryNotice(legacy, pending("deploy")),
+      `Nothing was changed. ${fix} then select Retry deploy again.`,
+    ],
+    [
+      "retry removal",
+      retryNotice(legacy, pending("remove")),
+      `Nothing was changed. ${fix} then select Retry removal again.`,
+    ],
+    [
+      "retry update",
+      retryNotice(legacy, pending("update")),
+      `Nothing was changed. ${fix} then select Retry update again.`,
+    ],
+  ])("names the fix by hand on %s", (_place, notice, message) => {
+    expect(readNotice(notice)).toMatchObject({
+      label: "Per-skill dependencies in apm.yml",
+      message,
+      detail,
+    });
   });
 });

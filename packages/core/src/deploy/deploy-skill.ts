@@ -70,6 +70,7 @@ export type DeploySkillError =
   | "not-at-target-release"
   | "target-pinned-per-skill"
   | "manifest-not-recognised"
+  | "manifest-legacy-entry"
   | "ref-unresolvable"
   | "operation-unfinished"
   | "deploy-incomplete"
@@ -151,6 +152,7 @@ const ATTENTION: Partial<Record<DeploySkillError, { forceable: boolean }>> = {
   "target-pinned-per-skill": { forceable: false },
   "deploy-in-progress": { forceable: false },
   "manifest-not-recognised": { forceable: false },
+  "manifest-legacy-entry": { forceable: false },
   "operation-unfinished": { forceable: false },
 };
 
@@ -732,8 +734,8 @@ export class DeploySkill {
     return {
       ok: false,
       error:
-        error === "manifest-not-recognised"
-          ? "manifest-not-recognised"
+        error === "manifest-not-recognised" || error === "manifest-legacy-entry"
+          ? error
           : error === "apply-incomplete"
             ? "deploy-incomplete"
             : error === "apply-timed-out"

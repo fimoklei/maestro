@@ -233,6 +233,20 @@ describe("SelectionWriter.apply", () => {
     expect(await stage.operations.read("/repo")).toBeNull();
   });
 
+  it("refuses a legacy per-skill entry beside the root package before any write", async () => {
+    const pair = `${manifest(["prototype"])}    - ${HARNESS}/.apm/skills/tdd#v0.5.0\n`;
+    stage.files.set("/repo/apm.yml", pair);
+
+    for (const desired of [["prototype", "review"], []]) {
+      const result = await apply(write({ previous: ["prototype"], desired }));
+
+      expect(result).toEqual({ ok: false, error: "manifest-legacy-entry" });
+    }
+    expect(stage.calls).toEqual([]);
+    expect(stage.files.get("/repo/apm.yml")).toBe(pair);
+    expect(await stage.operations.read("/repo")).toBeNull();
+  });
+
   it("removes the last skill with the named uninstall of the Harness dependency", async () => {
     const result = await apply(
       write({ kind: "remove", previous: ["prototype"], desired: [] }),

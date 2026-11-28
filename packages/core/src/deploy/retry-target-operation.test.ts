@@ -187,6 +187,21 @@ describe("RetryTargetOperation", () => {
     expect(await world.operations.read("/repo")).not.toBeNull();
   });
 
+  it("refuses a manifest holding a legacy per-skill entry beside the root package and keeps the operation", async () => {
+    const { world, retry } = buildUseCase();
+    world.seed({ release: "v0.6.0", skills: ["prototype"] });
+    await world.operations.begin(interrupted);
+    const pair = world.addsLegacyEntry();
+
+    expect(await retry.execute({ target })).toEqual({
+      ok: false,
+      error: "manifest-legacy-entry",
+    });
+    expect(world.calls).toEqual([]);
+    expect(world.files.get("/target/apm.yml")).toBe(pair);
+    expect(await world.operations.read("/repo")).not.toBeNull();
+  });
+
   it("keeps the operation when the retry still did not converge", async () => {
     const { world, retry } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["prototype"] });

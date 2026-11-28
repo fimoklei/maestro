@@ -49,6 +49,31 @@ describe("readHarnessSelection", () => {
     expect(readHarnessSelection(perSkill, HARNESS)).toEqual({ kind: "absent" });
   });
 
+  it("reads a per-skill dependency beside the Harness root package as a legacy entry", () => {
+    const pair = manifest(`    - git: ${HARNESS}
+      ref: v0.6.0
+      skills:
+        - prototype
+    - ${HARNESS}/.apm/skills/tdd#v0.6.0`);
+    expect(readHarnessSelection(pair, HARNESS)).toEqual({
+      kind: "legacy-entry",
+    });
+  });
+
+  it("reads a per-skill dependency from another repository or host beside the root package as the selection", () => {
+    const foreign = manifest(`    - git: ${HARNESS}
+      ref: v0.6.0
+      skills:
+        - prototype
+    - other/repo/.apm/skills/tdd#v1.0.0
+    - ${HARNESS}-fork/.apm/skills/tdd#v1.0.0
+    - gitlab.com/${HARNESS}/.apm/skills/tdd#v1.0.0`);
+    expect(readHarnessSelection(foreign, HARNESS)).toEqual({
+      kind: "selection",
+      skills: ["prototype"],
+    });
+  });
+
   it("refuses two dependencies on the connected Harness", () => {
     const twice = manifest(`    - git: ${HARNESS}
       ref: v0.6.0

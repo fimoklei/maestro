@@ -414,6 +414,23 @@ describe("DeploySkill", () => {
     expect(deployed).toEqual([]);
   });
 
+  it("refuses before any write when the manifest holds a legacy per-skill entry beside the root package", async () => {
+    const { deps, deployed, world } = buildDeps();
+    world.seed({ release: "v0.4.0", skills: ["review"] });
+    const pair = world.addsLegacyEntry();
+
+    expect(
+      await new DeploySkill(deps).execute({
+        type: "skill",
+        name: "tdd",
+        target: repo("/registered/repo"),
+      }),
+    ).toEqual({ ok: false, error: "manifest-legacy-entry" });
+    expect(deployed).toEqual([]);
+    expect(world.files.get("/target/apm.yml")).toBe(pair);
+    expect(await world.operations.read("/registered/repo")).toBeNull();
+  });
+
   it("refuses when the skill is not in the release the target follows", async () => {
     const { deps, deployed, world } = buildDeps({
       inventoryGit: {

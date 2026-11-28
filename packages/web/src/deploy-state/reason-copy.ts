@@ -43,6 +43,7 @@ export const REASON: Record<ReasonCode, string> = {
   "skill-not-in-release": "Not in the latest release",
   "target-pinned-per-skill": "Pinned per skill",
   "manifest-not-recognised": "Manifest not recognised",
+  "manifest-legacy-entry": "Per-skill dependencies in apm.yml",
   "operation-unfinished": "Unfinished operation",
   "deploy-incomplete": "Deploy incomplete",
   "remove-incomplete": "Removal incomplete",

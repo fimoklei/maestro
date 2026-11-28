@@ -738,6 +738,17 @@ describe("UpdateTarget.run", () => {
     expect(running.world.files.get("/target/apm.yml")).not.toContain("review");
   });
 
+  it("refuses before any write when the manifest holds a legacy per-skill entry beside the root package", async () => {
+    const running = await confirmed();
+    const before = running.world.addsLegacyEntry();
+
+    const result = await running.run({ token: running.token });
+
+    expect(result).toEqual({ ok: false, error: "manifest-legacy-entry" });
+    expect(running.world.calls).toEqual([]);
+    expect(running.world.files.get("/target/apm.yml")).toBe(before);
+  });
+
   it("writes every detected tool of the global target", async () => {
     const running = await confirmed({
       target: GLOBAL,

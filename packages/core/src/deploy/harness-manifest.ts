@@ -4,12 +4,18 @@ import { isValidSkillSlug } from "./package-ref";
 export type ManifestSelection =
   | { kind: "absent" }
   | { kind: "selection"; skills: string[] }
+  | { kind: "legacy-entry" }
   | { kind: "not-recognised" };
 
 const NOT_RECOGNISED = { kind: "not-recognised" } as const;
 
 const rootRefFor = (ownerRepo: string) =>
   new RegExp(`^(?:[^/]+/)?${escapeForPattern(ownerRepo)}(?:#.*)?$`);
+
+const subpathRefFor = (ownerRepo: string) =>
+  new RegExp(
+    `^(?:github\\.com/)?${escapeForPattern(ownerRepo)}/[^#]+(?:#.*)?$`,
+  );
 
 export function readHarnessSelection(
   raw: string | null,
@@ -18,16 +24,19 @@ export function readHarnessSelection(
   if (raw === null) {
     return { kind: "absent" };
   }
-  const entries = harnessEntries(raw, ownerRepo);
-  if (entries === null) {
+  const found = harnessEntries(raw, ownerRepo);
+  if (found === null) {
     return NOT_RECOGNISED;
   }
-  const [entry, ...others] = entries;
+  const [entry, ...others] = found.roots;
   if (entry === undefined) {
     return { kind: "absent" };
   }
   if (others.length > 0) {
     return NOT_RECOGNISED;
+  }
+  if (found.hasSubpath) {
+    return { kind: "legacy-entry" };
   }
   return skillsOf(entry);
 }
@@ -41,8 +50,8 @@ export function writeHarnessSelection(
     return null;
   }
   const doc = parseDocumentOrNull(raw);
-  const entries = doc === null ? null : harnessEntries(raw, ownerRepo, doc);
-  const [entry, ...others] = entries ?? [];
+  const found = doc === null ? null : harnessEntries(raw, ownerRepo, doc);
+  const [entry, ...others] = found?.roots ?? [];
   if (doc === null || entry === undefined || others.length > 0) {
     return null;
   }
@@ -57,34 +66,45 @@ function harnessEntries(
   raw: string,
   ownerRepo: string,
   parsed?: ReturnType<typeof parseDocument>,
-): YAMLMap[] | null {
+): { roots: YAMLMap[]; hasSubpath: boolean } | null {
   const doc = parsed ?? parseDocumentOrNull(raw);
   if (doc === null) {
     return null;
   }
   const apm = doc.getIn(["dependencies", "apm"], true);
   if (apm === undefined || apm === null) {
-    return [];
+    return { roots: [], hasSubpath: false };
   }
   if (!isSeq(apm)) {
     return null;
   }
   const rootRef = rootRefFor(ownerRepo);
-  const matches: YAMLMap[] = [];
+  const subpathRef = subpathRefFor(ownerRepo);
+  const roots: YAMLMap[] = [];
+  let hasSubpath = false;
   for (const item of apm.items) {
-    if (isMap(item)) {
-      const git = item.get("git");
-      if (typeof git === "string" && rootRef.test(git)) {
-        matches.push(item);
-      }
+    const ref = refOf(item);
+    if (ref === null) {
       continue;
     }
-    const ref = plainString(item);
-    if (ref !== null && rootRef.test(ref)) {
-      return null;
+    if (subpathRef.test(ref)) {
+      hasSubpath = true;
+    } else if (rootRef.test(ref)) {
+      if (!isMap(item)) {
+        return null;
+      }
+      roots.push(item);
     }
   }
-  return matches;
+  return { roots, hasSubpath };
+}
+
+function refOf(item: unknown): string | null {
+  if (!isMap(item)) {
+    return plainString(item);
+  }
+  const git = item.get("git");
+  return typeof git === "string" ? git : null;
 }
 
 function skillsOf(entry: YAMLMap): ManifestSelection {

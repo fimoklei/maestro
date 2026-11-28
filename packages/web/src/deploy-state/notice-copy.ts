@@ -84,6 +84,12 @@ const COPIES_PREDATE_TRACKING =
 const MANIFEST_OTHER_SHAPE =
   "Maestro edits that list only, and it found another shape.";
 
+const DELETE_PER_SKILL_DEPENDENCIES =
+  "Delete each per-skill dependency on the Harness from apm.yml,";
+
+const PER_SKILL_DEPENDENCY =
+  "A per-skill dependency points at one skill through .apm/skills/ in its path. Keep the dependency on the Harness itself, because apm won't install both in one apm.yml.";
+
 const FILES_MISSING = "apm reported success, but some files are missing.";
 
 const FILES_REMAIN = "apm reported success, but some files remain.";
@@ -194,6 +200,10 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
       "Nothing was deployed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
     detail: MANIFEST_OTHER_SHAPE,
   },
+  "manifest-legacy-entry": {
+    message: `Nothing was deployed. ${DELETE_PER_SKILL_DEPENDENCIES} ${DEPLOY_AGAIN}`,
+    detail: PER_SKILL_DEPENDENCY,
+  },
   "operation-unfinished": {
     message:
       "Nothing was deployed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
@@ -287,6 +297,10 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
     message:
       "Nothing was removed. Leave one dependency on the Harness with a skills list in apm.yml, then remove the skill again.",
     detail: MANIFEST_OTHER_SHAPE,
+  },
+  "manifest-legacy-entry": {
+    message: `Nothing was removed. ${DELETE_PER_SKILL_DEPENDENCIES} then remove the skill again.`,
+    detail: PER_SKILL_DEPENDENCY,
   },
   "operation-unfinished": {
     message:
@@ -428,6 +442,10 @@ const UPDATE: Record<UpdateRunError, Body> = {
   "manifest-not-recognised": {
     message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${UPDATE_AGAIN}`,
     detail: MANIFEST_OTHER_SHAPE,
+  },
+  "manifest-legacy-entry": {
+    message: `Nothing was changed. ${DELETE_PER_SKILL_DEPENDENCIES} ${UPDATE_AGAIN}`,
+    detail: PER_SKILL_DEPENDENCY,
   },
   "update-incomplete": {
     message: UPDATE_INCOMPLETE_SENTENCE,
@@ -727,6 +745,11 @@ function retryCopy(
       label: REASON["manifest-not-recognised"],
       message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${again}`,
       detail: MANIFEST_OTHER_SHAPE,
+    },
+    "manifest-legacy-entry": {
+      label: REASON["manifest-legacy-entry"],
+      message: `Nothing was changed. ${DELETE_PER_SKILL_DEPENDENCIES} ${again}`,
+      detail: PER_SKILL_DEPENDENCY,
     },
     "retry-incomplete": {
       label: `${name} still incomplete`,
