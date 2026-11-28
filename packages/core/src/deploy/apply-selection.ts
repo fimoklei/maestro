@@ -28,6 +28,7 @@ export type SelectionWrite = {
 
 type SelectionError =
   | "manifest-not-recognised"
+  | "manifest-legacy-entry"
   | "destination-symlinked"
   | "apply-incomplete"
   | "apply-timed-out"
@@ -86,6 +87,9 @@ async function applySelection(
   const reading = readHarnessSelection(before, write.origin.ownerRepo);
   if (reading.kind === "not-recognised") {
     return { ok: false, error: "manifest-not-recognised" };
+  }
+  if (reading.kind === "legacy-entry") {
+    return { ok: false, error: "manifest-legacy-entry" };
   }
 
   await deps.operations.begin({

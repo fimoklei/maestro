@@ -94,6 +94,7 @@ export type UpdateRunError =
   | "deployed-diverged-from-lock"
   | "deployed-unverifiable"
   | "manifest-not-recognised"
+  | "manifest-legacy-entry"
   | "update-incomplete"
   | "update-timed-out"
   | "update-failed";
@@ -262,6 +263,13 @@ export class UpdateTarget {
         desired: scope.desired,
         ...(scope.tools.length === 0 ? {} : { tools: scope.tools }),
       });
+      if (
+        !applied.ok &&
+        (applied.error === "manifest-legacy-entry" ||
+          applied.error === "manifest-not-recognised")
+      ) {
+        return { ok: false, error: applied.error };
+      }
       const report =
         input.target.kind === "global"
           ? reportWrite({
@@ -282,7 +290,6 @@ export class UpdateTarget {
       return {
         ok: false,
         error:
-          applied.error === "manifest-not-recognised" ||
           applied.error === "destination-symlinked"
             ? applied.error
             : applied.error === "apply-incomplete"

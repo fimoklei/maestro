@@ -33,6 +33,7 @@ export type SelectionWorld = {
   skipsCopy(tool: SupportedTool, skill: string): void;
   refuseWith(result: DeploySkillDriverResult | "throw" | null): void;
   seed(input: { release: string; skills: string[] }): void;
+  addsLegacyEntry(): string;
 };
 
 const HARNESS = "fimoklei/agent-harness";
@@ -252,6 +253,14 @@ ${
       files.set(manifestPath, manifest(skills));
       files.set(lockfilePath, lockfile(release, skills, SUPPORTED_TOOLS, []));
       place(skills, SUPPORTED_TOOLS);
+    },
+    addsLegacyEntry: () => {
+      const pair = (files.get(manifestPath) ?? "").replace(
+        "  apm:\n",
+        `  apm:\n    - ${harness}/.apm/skills/tdd#v0.1.0\n`,
+      );
+      files.set(manifestPath, pair);
+      return pair;
     },
   };
 }

@@ -161,6 +161,19 @@ describe("RemoveDeployedSkill on a target following one release", () => {
     expect(world.calls).toEqual([]);
   });
 
+  it("refuses before any write when the manifest holds a legacy per-skill entry beside the root package", async () => {
+    const { world, remove } = buildUseCase();
+    world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });
+    const pair = world.addsLegacyEntry();
+
+    expect(await removeConfirmed(remove, "caveman")).toMatchObject({
+      ok: false,
+      error: "manifest-legacy-entry",
+    });
+    expect(world.calls).toEqual([]);
+    expect(world.files.get("/target/apm.yml")).toBe(pair);
+  });
+
   it("narrows the selection when the removal runs as part of a batch", async () => {
     const { world, remove } = buildUseCase();
     world.seed({ release: "v0.6.0", skills: ["caveman", "prototype"] });

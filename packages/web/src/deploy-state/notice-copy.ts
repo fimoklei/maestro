@@ -31,11 +31,12 @@ import {
 } from "../ui/phrase";
 import { REGISTER_STEP } from "./deploy-state-copy";
 import {
-  LINKED_REASON,
-  REASON,
-  type ReasonCode,
-  TARGET_BUSY,
-} from "./reason-copy";
+  linkedNotice,
+  linkedOf,
+  unnamedLink,
+  withLinked,
+} from "./linked-notice-copy";
+import { REASON, type ReasonCode, TARGET_BUSY } from "./reason-copy";
 import {
   RETRY_DEPLOY,
   RETRY_LABELS,
@@ -58,20 +59,7 @@ const CREATE_RELEASE_STEP = `Select ${CREATE_RELEASE} on the Harness screen`;
 
 export const FIX_AND_RELEASE = `Fix the skill in the Harness. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`;
 
-// No comma after the path: a reader copying the command would paste it.
-const removeLink = (path: string, again: string) =>
-  phrase`Run ${machine(`rm ${path}`)} and ${again}`;
-
-const replaceLink = (path: string, again: string) =>
-  phrase`Replace the link at ${machine(path)} with a real folder that contains the same skills, ${again}`;
-
-const unnamedLink = (again: string) =>
-  `One of the target's tool or skill folders is a link. Replace the link with a real folder that contains the same files, ${again}`;
-
 const REMOVE_AGAIN = `then select ${REMOVE_SKILL} again.`;
-
-const TOOL_FOLDER_KEEPS_SKILLS =
-  "Copy the skills from the folder the link points to into the new folder, so your tools keep every skill.";
 
 const EDITS_OUTSIDE_HARNESS = "The edits never went through the Harness.";
 
@@ -84,6 +72,12 @@ const COPIES_PREDATE_TRACKING =
 const MANIFEST_OTHER_SHAPE =
   "Maestro edits that list only, and it found another shape.";
 
+const DELETE_PER_SKILL_DEPENDENCIES =
+  "Delete each per-skill dependency on the Harness from apm.yml,";
+
+const PER_SKILL_DEPENDENCY =
+  "A per-skill dependency points at one skill through .apm/skills/ in its path. Keep the dependency on the Harness itself, because apm won't install both in one apm.yml.";
+
 const FILES_MISSING = "apm reported success, but some files are missing.";
 
 const FILES_REMAIN = "apm reported success, but some files remain.";
@@ -93,9 +87,6 @@ const STOPPED_AFTER = "stopped after 5 minutes.";
 
 const FILES_MAY_REMAIN =
   "Some of the skill's files may still be in the target.";
-
-const LINK_TARGET_SURVIVES =
-  "Deleting the link doesn't delete the folder it points to.";
 
 type Body = { message: string; detail?: string };
 
@@ -194,6 +185,10 @@ const DEPLOY: Record<DeploySkillError, Body & { recovery?: DeployRecovery }> = {
       "Nothing was deployed. Leave one dependency on the Harness with a skills list in apm.yml, then deploy again.",
     detail: MANIFEST_OTHER_SHAPE,
   },
+  "manifest-legacy-entry": {
+    message: `Nothing was deployed. ${DELETE_PER_SKILL_DEPENDENCIES} ${DEPLOY_AGAIN}`,
+    detail: PER_SKILL_DEPENDENCY,
+  },
   "operation-unfinished": {
     message:
       "Nothing was deployed. Open the target on the Deploy-state screen and finish the earlier change, then deploy again.",
@@ -287,6 +282,10 @@ const REMOVE: Record<RemoveDeployedSkillError | RemovePreflightError, Body> = {
     message:
       "Nothing was removed. Leave one dependency on the Harness with a skills list in apm.yml, then remove the skill again.",
     detail: MANIFEST_OTHER_SHAPE,
+  },
+  "manifest-legacy-entry": {
+    message: `Nothing was removed. ${DELETE_PER_SKILL_DEPENDENCIES} then remove the skill again.`,
+    detail: PER_SKILL_DEPENDENCY,
   },
   "operation-unfinished": {
     message:
@@ -429,6 +428,10 @@ const UPDATE: Record<UpdateRunError, Body> = {
     message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${UPDATE_AGAIN}`,
     detail: MANIFEST_OTHER_SHAPE,
   },
+  "manifest-legacy-entry": {
+    message: `Nothing was changed. ${DELETE_PER_SKILL_DEPENDENCIES} ${UPDATE_AGAIN}`,
+    detail: PER_SKILL_DEPENDENCY,
+  },
   "update-incomplete": {
     message: UPDATE_INCOMPLETE_SENTENCE,
     detail: FILES_MISSING,
@@ -559,58 +562,6 @@ export function globalUpdateNotice(error: unknown): {
   return notice.label === UNKNOWN_UPDATE_RUN.label
     ? { notice: UNKNOWN_GLOBAL_UPDATE_RUN, unknown: true }
     : { notice, unknown: false };
-}
-
-function withLinked(
-  notice: DeployStateNotice,
-  error: unknown,
-  outcome: string,
-  again: string,
-): DeployStateNotice {
-  const linked = linkedOf(error);
-  return error instanceof HttpError &&
-    error.code === "destination-symlinked" &&
-    linked !== undefined
-    ? linkedNotice(linked, outcome, again)
-    : notice;
-}
-
-function linkedOf(error: unknown): LinkedDestination | undefined {
-  if (
-    !(error instanceof HttpError) ||
-    typeof error.body !== "object" ||
-    error.body === null
-  ) {
-    return undefined;
-  }
-  const linked: unknown = Reflect.get(error.body, "linked");
-  if (typeof linked !== "object" || linked === null) {
-    return undefined;
-  }
-  const kind: unknown = Reflect.get(linked, "kind");
-  const path: unknown = Reflect.get(linked, "path");
-  return (kind === "tool-folder" || kind === "skill-folder") &&
-    typeof path === "string"
-    ? { kind, path }
-    : undefined;
-}
-
-function linkedNotice(
-  linked: LinkedDestination,
-  outcome: string,
-  again: string,
-): DeployStateNotice {
-  return linked.kind === "tool-folder"
-    ? {
-        label: LINKED_REASON[linked.kind],
-        message: phrase`${outcome} ${replaceLink(linked.path, again)}`,
-        detail: TOOL_FOLDER_KEEPS_SKILLS,
-      }
-    : {
-        label: LINKED_REASON[linked.kind],
-        message: phrase`${outcome} ${removeLink(linked.path, again)}`,
-        detail: LINK_TARGET_SURVIVES,
-      };
 }
 
 /** The whole notice for a refused or failed removal. */
@@ -749,6 +700,11 @@ function retryCopy(
       label: REASON["manifest-not-recognised"],
       message: `Nothing was changed. Leave one dependency on the Harness with a skills list in apm.yml, ${again}`,
       detail: MANIFEST_OTHER_SHAPE,
+    },
+    "manifest-legacy-entry": {
+      label: REASON["manifest-legacy-entry"],
+      message: `Nothing was changed. ${DELETE_PER_SKILL_DEPENDENCIES} ${again}`,
+      detail: PER_SKILL_DEPENDENCY,
     },
     "retry-incomplete": {
       label: `${name} still incomplete`,

@@ -738,6 +738,29 @@ describe("UpdateTarget.run", () => {
     expect(running.world.files.get("/target/apm.yml")).not.toContain("review");
   });
 
+  it("refuses before any write when the manifest holds a legacy per-skill entry beside the root package", async () => {
+    const running = await confirmed();
+    const before = running.world.addsLegacyEntry();
+
+    const result = await running.run({ token: running.token });
+
+    expect(result).toEqual({ ok: false, error: "manifest-legacy-entry" });
+    expect(running.world.calls).toEqual([]);
+    expect(running.world.files.get("/target/apm.yml")).toBe(before);
+  });
+
+  it("refuses an unrecognised manifest before any write and sends no report", async () => {
+    const running = await confirmed();
+    const before = `dependencies:\n  apm:\n    - github.com/${HARNESS}#v0.3.2\n`;
+    running.world.files.set("/target/apm.yml", before);
+
+    const result = await running.run({ token: running.token });
+
+    expect(result).toEqual({ ok: false, error: "manifest-not-recognised" });
+    expect(running.world.calls).toEqual([]);
+    expect(running.world.files.get("/target/apm.yml")).toBe(before);
+  });
+
   it("writes every detected tool of the global target", async () => {
     const running = await confirmed({
       target: GLOBAL,

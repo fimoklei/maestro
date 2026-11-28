@@ -27,6 +27,7 @@ const APPROVED: Record<string, string> = {
   "remove-in-progress": "Target busy",
   "update-in-progress": "Target busy",
   "manifest-not-recognised": "Manifest not recognised",
+  "manifest-legacy-entry": "Per-skill dependencies in apm.yml",
   "operation-unfinished": "Unfinished operation",
   "remove-incomplete": "Removal incomplete",
   "remove-failed": "Removal outcome unknown",

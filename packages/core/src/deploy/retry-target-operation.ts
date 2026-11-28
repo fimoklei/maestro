@@ -37,6 +37,7 @@ export type RetryTargetOperationError =
   | "lockfile-malformed"
   | "destination-symlinked"
   | "manifest-not-recognised"
+  | "manifest-legacy-entry"
   | "retry-incomplete"
   | "retry-timed-out"
   | "retry-failed";
@@ -206,8 +207,9 @@ export class RetryTargetOperation {
       return {
         ok: false,
         error:
-          applied.error === "manifest-not-recognised"
-            ? "manifest-not-recognised"
+          applied.error === "manifest-not-recognised" ||
+          applied.error === "manifest-legacy-entry"
+            ? applied.error
             : applied.error === "apply-incomplete"
               ? "retry-incomplete"
               : applied.error === "apply-timed-out"

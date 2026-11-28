@@ -60,6 +60,7 @@ export type RemoveDeployedSkillError =
   | "cost-not-acknowledged"
   | "remove-in-progress"
   | "manifest-not-recognised"
+  | "manifest-legacy-entry"
   | "operation-unfinished"
   | "destination-symlinked"
   | "remove-incomplete"
@@ -724,6 +725,7 @@ export class RemoveDeployedSkill {
       return null;
     }
     return applied.error === "manifest-not-recognised" ||
+      applied.error === "manifest-legacy-entry" ||
       applied.error === "destination-symlinked"
       ? applied.error
       : applied.error === "apply-incomplete"

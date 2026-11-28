@@ -59,7 +59,8 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
   dependency to reach it, and never widen the removal — a named uninstall
   already spares every other dependency.
 - Never install a subpath ref of the Harness repository beside its root
-  package; apm refuses the pair.
+  package; apm refuses the pair. Refuse a manifest that already holds such a
+  pair before anything is written, and leave the cleanup to the operator.
 - Expect an uninstall of a legacy per-skill entry to delete a root package's
   copies. Verify every remaining entry's `deployed_files` exist afterwards,
   and re-install a root package at its same ref when they do not
