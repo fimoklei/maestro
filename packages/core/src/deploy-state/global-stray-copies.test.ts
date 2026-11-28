@@ -36,10 +36,15 @@ function claudeOnlyGlobal(
     agentsAt?: Copies;
     detected?: SupportedTool[];
     claudeMissing?: string;
+    lockfile?: string;
+    alsoOnDisk?: string;
   } = {},
 ) {
   const tree = new InMemoryCopyTree();
-  tree.write(LOCKFILE, BOTH_AT_V1_THEN_CLAUDE_AT_V2);
+  tree.write(LOCKFILE, options.lockfile ?? BOTH_AT_V1_THEN_CLAUDE_AT_V2);
+  if (options.alsoOnDisk !== undefined) {
+    tree.write(`${HOME}/${options.alsoOnDisk}`, "copy\n");
+  }
   for (const name of SKILLS) {
     if (name !== options.claudeMissing) {
       tree.write(
@@ -85,6 +90,34 @@ const strayCopies = async (reader: GlobalDeployStateReader) => {
     result.folders.map((folder) => [folder.path, folder.strayCopies])
   );
 };
+
+describe("GlobalDeployStateReader on a former Claude Code folder", () => {
+  it("reads no stray copy into it from Claude Code's current folder", async () => {
+    const former = ".claude-work/skills/code-review/SKILL.md";
+    const lockfile = BOTH_AT_V1_THEN_CLAUDE_AT_V2.replace(
+      "\n  deployed_file_hashes:\n",
+      `\n  - ${former}\n  deployed_file_hashes:\n`,
+    ).replace(
+      "\ndeployments:\n",
+      `\ndeployments:\n- kind: project-relative\n  target: claude\n  value: ${former}\n`,
+    );
+    expect(lockfile).not.toBe(BOTH_AT_V1_THEN_CLAUDE_AT_V2);
+
+    expect(
+      await strayCopies(
+        claudeOnlyGlobal({
+          lockfile,
+          alsoOnDisk: former,
+          detected: ["claude", "codex"],
+        }),
+      ),
+    ).toStrictEqual([
+      ["~/.claude/skills", undefined],
+      ["~/.agents/skills", undefined],
+      ["~/.claude-work/skills", undefined],
+    ]);
+  });
+});
 
 describe("GlobalDeployStateReader on an undetected tool's folder", () => {
   it("names each Selection skill with a copy there, and that it differs from the Target release", async () => {

@@ -48,9 +48,11 @@ const refusalBody = (result: {
 const editedFoldersBody = (result: {
   folders?: string[];
   notWritten?: string[];
+  former?: string[];
 }) => ({
   ...(result.folders ? { folders: result.folders } : {}),
   ...(result.notWritten ? { notWritten: result.notWritten } : {}),
+  ...(result.former ? { former: result.former } : {}),
 });
 
 type Deps = Pick<

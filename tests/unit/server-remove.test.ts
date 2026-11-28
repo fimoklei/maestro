@@ -358,6 +358,40 @@ describe("remove HTTP route", () => {
       expect(w.uninstalls).toEqual([]);
     });
 
+    it("names a Former Claude Code folder whose local edits refuse the removal", async () => {
+      const w = await world({ detectedTools: ["claude"] });
+      w.disk.write(
+        lockfilePath(globalTarget),
+        [
+          lockfileWith([
+            skillEntry("tdd", [
+              ".claude/skills/tdd/SKILL.md",
+              ".claude-work/skills/tdd/SKILL.md",
+            ]),
+          ]),
+          "deployments:",
+          "- target: claude",
+          "  value: .claude-work/skills/tdd/SKILL.md",
+          "",
+        ].join("\n"),
+      );
+      w.copy(globalTarget, ".claude/skills/tdd/SKILL.md");
+      w.copy(
+        globalTarget,
+        ".claude-work/skills/tdd/SKILL.md",
+        "# tdd, edited\n",
+      );
+
+      const preflight = await w.preflight(globalTarget);
+
+      expect(await preflight.json()).toEqual({
+        error: "deployed-diverged-from-lock",
+        folders: ["~/.claude-work/skills"],
+        former: ["~/.claude-work/skills"],
+      });
+      expect(w.uninstalls).toEqual([]);
+    });
+
     it("refuses when the machine has no supported tool", async () => {
       const w = await world({ detectedTools: [] });
       w.seed(globalTarget, [skillEntry("tdd")]);

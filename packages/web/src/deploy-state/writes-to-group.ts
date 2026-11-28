@@ -10,16 +10,18 @@ export function writesToGroup(
   return {
     tone: "neutral",
     legend: WRITES_TO,
-    rows: folders.map((folder) => ({
-      key: folder.path,
-      name: folder.path,
-      machineName: true,
-      ...(folder.detected
-        ? {}
-        : {
-            muted: true,
-            sentence: notWrittenNote(toolDisplayName(folder.tool)),
-          }),
-    })),
+    rows: folders
+      .filter((folder) => folder.former !== true)
+      .map((folder) => ({
+        key: folder.path,
+        name: folder.path,
+        machineName: true,
+        ...(folder.detected
+          ? {}
+          : {
+              muted: true,
+              sentence: notWrittenNote(toolDisplayName(folder.tool)),
+            }),
+      })),
   };
 }

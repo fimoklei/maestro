@@ -29,6 +29,7 @@ describe("parseLockfile", () => {
 
     expect(result).toEqual({
       ok: true,
+      deployments: [],
       entries: [
         {
           resolved_ref: "v0.5.0",
@@ -45,6 +46,7 @@ describe("parseLockfile", () => {
 
     expect(result).toEqual({
       ok: true,
+      deployments: [],
       entries: [
         {
           resolved_ref: "v0.5.0",
@@ -80,6 +82,7 @@ describe("parseLockfile", () => {
 
     expect(parseLockfile(raw)).toEqual({
       ok: true,
+      deployments: [],
       entries: [
         {
           resolved_ref: "v0.5.0",
@@ -96,6 +99,7 @@ describe("parseLockfile", () => {
 
     expect(parseLockfile(raw)).toEqual({
       ok: true,
+      deployments: [],
       entries: [],
       unreadable: [{ virtualPath: null }],
     });
@@ -111,6 +115,7 @@ describe("parseLockfile", () => {
 
     expect(parseLockfile(raw)).toEqual({
       ok: true,
+      deployments: [],
       entries: [],
       unreadable: [{ virtualPath: null }],
     });
@@ -193,8 +198,30 @@ describe("parseLockfile package_type shape", () => {
 
     expect(parsed).toEqual({
       ok: true,
+      deployments: [],
       entries: [],
       unreadable: [{ virtualPath: "skills/tdd" }],
     });
+  });
+});
+
+describe("parseLockfile deployments", () => {
+  it("reads each deployment row's deploy root and path, and drops a malformed row", () => {
+    const raw = [
+      "dependencies: []",
+      "deployments:",
+      "- kind: project-relative",
+      "  target: claude",
+      "  value: .claude-work/skills/tdd/SKILL.md",
+      "  scope: user",
+      "- target: 7",
+      "  value: .claude/skills/tdd/SKILL.md",
+    ].join("\n");
+
+    const parsed = parseLockfile(raw);
+
+    expect(parsed.ok && parsed.deployments).toEqual([
+      { target: "claude", value: ".claude-work/skills/tdd/SKILL.md" },
+    ]);
   });
 });

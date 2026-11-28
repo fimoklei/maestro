@@ -623,14 +623,19 @@ export function removeNotice(error: unknown): DeployStateNotice {
   );
   const folders = editedFolders(error, "folders");
   const notWritten = editedFolders(error, "notWritten");
+  const former = editedFolders(error, "former");
+  const detail =
+    former.length === 0
+      ? notWritten.length === 0
+        ? undefined
+        : notWrittenEditsStep(notWritten)
+      : formerEditsStep(notWritten, former);
   return folders.length === 0
     ? notice
     : {
         ...notice,
         message: phrase`The skill wasn't removed. Its files in ${machineList(folders)} changed after deployment.`,
-        ...(notWritten.length === 0
-          ? {}
-          : { detail: notWrittenEditsStep(notWritten) }),
+        ...(detail === undefined ? {} : { detail }),
       };
 }
 
@@ -639,6 +644,23 @@ const notWrittenEditsStep = (folders: readonly string[]): Copy =>
   folders.length === 1
     ? phrase`Global doesn't write to ${machineList(folders)} because its tool isn't detected. Delete the copy yourself. Then select ${REMOVE_SKILL} again.`
     : phrase`Global doesn't write to ${machineList(folders)} because their tools aren't detected. Delete the copies yourself. Then select ${REMOVE_SKILL} again.`;
+
+const formerEditsStep = (
+  notWritten: readonly string[],
+  former: readonly string[],
+): Copy => {
+  const formerCause = phrase`${machineList(former)} because ${machine("CLAUDE_CONFIG_DIR")} changed`;
+  if (notWritten.length > 0) {
+    const toolCause =
+      notWritten.length === 1
+        ? "because its tool isn't detected"
+        : "because their tools aren't detected";
+    return phrase`Global doesn't write to ${machineList(notWritten)} ${toolCause}, or to ${formerCause}. Delete the copies yourself, or move them out of these folders to keep your edits. Then select ${REMOVE_SKILL} again.`;
+  }
+  return former.length === 1
+    ? phrase`Global doesn't write to ${formerCause}. Delete the copy yourself, or move it out of the folder to keep your edits. Then select ${REMOVE_SKILL} again.`
+    : phrase`Global doesn't write to ${formerCause}. Delete the copies yourself, or move them out of these folders to keep your edits. Then select ${REMOVE_SKILL} again.`;
+};
 
 const EDITED_COPY_REFUSALS: readonly string[] = [
   "deployed-diverged-from-lock",
@@ -649,7 +671,7 @@ const EDITED_COPY_REFUSALS: readonly string[] = [
 // `notWritten`: those Global does not write.
 function editedFolders(
   error: unknown,
-  field: "folders" | "notWritten",
+  field: "folders" | "notWritten" | "former",
 ): string[] {
   if (
     !(error instanceof HttpError) ||

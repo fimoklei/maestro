@@ -36,11 +36,31 @@ export function DataTableSubRows({
       )}
     >
       {withCheckbox ? <GridCell className="px-inline" /> : null}
-      {columnIds.map((id) => (
-        <GridCell key={id} className="truncate px-inline">
+      {spannedCells(row, columnIds).map(({ id, span }) => (
+        <GridCell
+          key={id}
+          className="truncate px-inline"
+          {...(span > 1 ? { colSpan: span } : {})}
+        >
           {row.cells[id] ?? null}
         </GridCell>
       ))}
     </tr>
   ));
+}
+
+function spannedCells(
+  row: DataTableSubRow,
+  columnIds: readonly string[],
+): { id: string; span: number }[] {
+  const cells: { id: string; span: number }[] = [];
+  for (const id of columnIds) {
+    const last = cells.at(-1);
+    if (last !== undefined && row.cells[id] == null) {
+      last.span += 1;
+    } else {
+      cells.push({ id, span: 1 });
+    }
+  }
+  return cells;
 }

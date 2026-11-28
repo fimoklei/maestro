@@ -536,10 +536,21 @@ entry went.
    selected profile; kept in apm.yml because another profile still uses it`
    and `Uninstall complete: removed 1 package from the selected profile
    only`, exit 0. Running it again prints the same and changes nothing; with
-   the variable unset the next uninstall removes the rest and the package.
-   The driver reads `from the selected profile only` as failure. Fixtures:
-   `apm-uninstall-claude-config-dir.txt`,
-   `apm-uninstall-selected-profile-only.txt`.
+   the variable unset the next uninstall removes the rest and the package:
+   it deletes the package's and its orphaned transitive dependency's
+   `~/.claude` files, drops the `apm.yml` entry and prints `Uninstall
+   complete: removed 1 package`. A hand-placed skill dir and an unrelated
+   dependency survive in both folders (measured 2026-11-27, #1973). The
+   driver reads `from the selected profile only` as failure and retries once
+   with the variable unset. The reverse switch (deployed with the variable
+   set, then unset) behaves the same way round: the uninstall deletes the
+   `~/.claude` copies and stops at `from the selected profile only`; one with
+   the variable set to the old folder removes the rest. The lockfile's
+   `deployments[]` rows name each folder with `target: claude`. Fixtures: `apm-uninstall-claude-config-dir.txt`,
+   `apm-uninstall-selected-profile-only.txt`,
+   `apm-uninstall-selected-profile-retry.txt`,
+   `apm-uninstall-selected-profile-only-reverse.txt`,
+   `apm-uninstall-selected-profile-retry-reverse.txt`.
 5. **The cleaned-paths count is what it deleted this run**, so it moves with
    the state it found. Never parse it.
 6. Match every phrase whitespace-normalized and lowercased — the output is

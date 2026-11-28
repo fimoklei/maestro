@@ -6,8 +6,12 @@ type LockfileEntry = Parameters<typeof readGlobalTarget>[0][number];
 
 const ALL_ON_DISK = {
   layout: DEFAULT_GLOBAL_LAYOUT,
+  deployments: [],
   fileExists: async () => true,
 };
+
+const claudeRows = (files: readonly string[]) =>
+  files.map((value) => ({ target: "claude", value }));
 
 function skillEntry(
   name: string,
@@ -30,6 +34,109 @@ const copiesBy = (result: Awaited<ReturnType<typeof readGlobalTarget>>) =>
     folder.detected,
     folder.primitives.map((primitive) => primitive.name),
   ]);
+
+const MOVED_CLAUDE_LAYOUT = {
+  ...DEFAULT_GLOBAL_LAYOUT,
+  roots: { ...DEFAULT_GLOBAL_LAYOUT.roots, claude: ".claude-work" },
+};
+
+describe("readGlobalTarget on a former Claude Code folder", () => {
+  it("reads copies left in ~/.claude after CLAUDE_CONFIG_DIR is set into a former folder row", async () => {
+    const entry = skillEntry("tdd", "v0.5.1", [
+      ".claude-work/skills/tdd/SKILL.md",
+      ".claude/skills/tdd/SKILL.md",
+    ]);
+
+    const result = await readGlobalTarget([entry], ["claude"], {
+      ...ALL_ON_DISK,
+      layout: MOVED_CLAUDE_LAYOUT,
+      deployments: claudeRows(entry.deployed_files ?? []),
+    });
+
+    expect(copiesBy(result)).toEqual([
+      ["~/.claude-work/skills", true, ["tdd"]],
+      ["~/.agents/skills", false, []],
+      ["~/.claude/skills", false, ["tdd"]],
+    ]);
+    expect(result.folders.map((folder) => folder.former ?? false)).toEqual([
+      false,
+      false,
+      true,
+    ]);
+  });
+
+  it("reads copies left in the variable's folder after CLAUDE_CONFIG_DIR is unset", async () => {
+    const entry = skillEntry("tdd", "v0.5.1", [
+      ".claude/skills/tdd/SKILL.md",
+      ".claude-work/skills/tdd/SKILL.md",
+    ]);
+
+    const result = await readGlobalTarget([entry], ["claude"], {
+      ...ALL_ON_DISK,
+      deployments: claudeRows(entry.deployed_files ?? []),
+    });
+
+    expect(copiesBy(result)).toEqual([
+      ["~/.claude/skills", true, ["tdd"]],
+      ["~/.agents/skills", false, []],
+      ["~/.claude-work/skills", false, ["tdd"]],
+    ]);
+  });
+
+  it("shows no former folder whose copies are gone from disk", async () => {
+    const entry = skillEntry("tdd", "v0.5.1", [
+      ".claude-work/skills/tdd/SKILL.md",
+      ".claude/skills/tdd/SKILL.md",
+    ]);
+
+    const result = await readGlobalTarget([entry], ["claude"], {
+      ...ALL_ON_DISK,
+      layout: MOVED_CLAUDE_LAYOUT,
+      deployments: claudeRows(entry.deployed_files ?? []),
+      fileExists: async (file) => !file.startsWith(".claude/"),
+    });
+
+    expect(result.folders.map((folder) => folder.path)).toEqual([
+      "~/.claude-work/skills",
+      "~/.agents/skills",
+    ]);
+  });
+
+  it("names no former folder for a deploy root other than claude", async () => {
+    const entry = skillEntry("tdd", "v0.5.1", [
+      ".claude/skills/tdd/SKILL.md",
+      ".cursor/skills/tdd/SKILL.md",
+    ]);
+
+    const result = await readGlobalTarget([entry], ["claude"], {
+      ...ALL_ON_DISK,
+      deployments: [{ target: "cursor", value: ".cursor/skills/tdd/SKILL.md" }],
+    });
+
+    expect(result.folders.map((folder) => folder.path)).toEqual([
+      "~/.claude/skills",
+      "~/.agents/skills",
+    ]);
+  });
+
+  it("names no former folder outside HOME", async () => {
+    const entry = skillEntry("tdd", "v0.5.1", [
+      ".claude/skills/tdd/SKILL.md",
+      "../elsewhere/skills/tdd/SKILL.md",
+      "/abs/skills/tdd/SKILL.md",
+    ]);
+
+    const result = await readGlobalTarget([entry], ["claude"], {
+      ...ALL_ON_DISK,
+      deployments: claudeRows(entry.deployed_files ?? []),
+    });
+
+    expect(result.folders.map((folder) => folder.path)).toEqual([
+      "~/.claude/skills",
+      "~/.agents/skills",
+    ]);
+  });
+});
 
 describe("readGlobalTarget", () => {
   it("lists every Global folder, even one with nothing deployed", async () => {

@@ -110,6 +110,21 @@ describe("removeLedgerRows", () => {
     ]);
   });
 
+  it("names a former Claude Code folder as such, muted", () => {
+    const rows = removeLedgerRows(
+      { kind: "global", folders: ["~/.claude-work/skills"] },
+      perFolder(
+        { ...answer("claude", "none"), path: "~/.claude-work/skills" },
+        { ...answer("claude", "none", false), former: true },
+      ),
+    );
+
+    expect(rows.map((row) => [row.name, row.folder])).toEqual([
+      ["~/.claude-work/skills", { muted: false }],
+      [CLAUDE, { muted: true, note: "Former Claude Code folder" }],
+    ]);
+  });
+
   describe("what the check says about a Global folder", () => {
     const rowsFor = (check: RemoveCheckState) =>
       removeLedgerRows(GLOBAL, check);

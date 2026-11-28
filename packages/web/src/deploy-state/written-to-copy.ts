@@ -67,7 +67,7 @@ function detail(skill: ReportSkill): Detail | null {
 /** A Global folder as a dialog names it: by path, with whether Global writes it. */
 export type GlobalFolderRef = Pick<
   GlobalFolderState,
-  "path" | "tool" | "detected"
+  "path" | "tool" | "detected" | "former"
 >;
 
 const notWrittenLine = (folder: GlobalFolderRef): WrittenToLine => ({
@@ -85,13 +85,15 @@ export function folderLines<F extends GlobalFolderRef>(
   folders: readonly F[],
   line: (folder: F) => WrittenToLine,
 ): FoldLine[] {
-  return folders.map((folder) => ({
-    key: folder.path,
-    name: folder.path,
-    ...(folder.detected
-      ? line(folder)
-      : { muted: true, ...notWrittenLine(folder) }),
-  }));
+  return folders
+    .filter((folder) => folder.former !== true)
+    .map((folder) => ({
+      key: folder.path,
+      name: folder.path,
+      ...(folder.detected
+        ? line(folder)
+        : { muted: true, ...notWrittenLine(folder) }),
+    }));
 }
 
 /** A folder a deploy held by local edits wrote nothing to. */

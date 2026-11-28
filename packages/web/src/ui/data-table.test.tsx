@@ -479,6 +479,26 @@ describe("DataTable", () => {
     expect(activeRowName()).toBe("apple");
   });
 
+  it("widens a sub-row's cell over the empty cells after it", () => {
+    renderTable({
+      subRows: (fruit) =>
+        fruit.name === "pear"
+          ? [
+              { id: "skin", cells: { name: "skin", colour: "speckled" } },
+              { id: "core", cells: { name: "core" } },
+            ]
+          : [],
+    });
+
+    expect(screen.getByRole("gridcell", { name: "skin" })).not.toHaveAttribute(
+      "colspan",
+    );
+    expect(screen.getByRole("gridcell", { name: "core" })).toHaveAttribute(
+      "colspan",
+      "2",
+    );
+  });
+
   it("moves the active row across a group header without stopping on it", async () => {
     renderTable({
       groups: {

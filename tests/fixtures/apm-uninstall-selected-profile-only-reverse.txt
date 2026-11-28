@@ -1,0 +1,13 @@
+[i] Uninstalling from user scope (/Users/dev/.apm/)
+[>] Uninstalling 1 package...
+[+] microsoft/apm-sample-package - found in apm.yml
+[i] Cleaned 5 stale deployed paths for microsoft/apm-sample-package:
+  - ~/.claude/agents/design-reviewer.md
+  - ~/.claude/commands/accessibility-audit.md
+  - ~/.claude/commands/design-review.md
+  - ~/.claude/rules/design-standards.md
+  - ~/.claude/skills/style-checker/
+[i] Cleaned 1 stale deployed path for github/awesome-copilot/skills/review-and-refactor:
+  - ~/.claude/skills/review-and-refactor/
+[i] Removed microsoft/apm-sample-package from the selected profile; kept in apm.yml because another profile still uses it
+[*] Uninstall complete: removed 1 package from the selected profile only

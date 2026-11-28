@@ -33,6 +33,24 @@ describe("readRemovePreflight", () => {
     });
   });
 
+  it("keeps which folder is a former Claude Code folder", () => {
+    const FORMER = {
+      ...CLAUDE,
+      path: "~/.claude-work/skills",
+      detected: false,
+      former: true,
+    };
+    expect(
+      readRemovePreflight({
+        check: { scope: "global", tools: [{ ...FORMER, warning: null }] },
+        receipt: "r1",
+      }),
+    ).toStrictEqual({
+      check: { scope: "global", tools: [{ ...FORMER, warning: null }] },
+      receipt: "r1",
+    });
+  });
+
   describe("fails closed on a body this build cannot read", () => {
     it.each([
       [

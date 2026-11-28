@@ -2,7 +2,7 @@ import type { ReportSkillState, WriteReport } from "@maestro/core";
 import type { DeployableType } from "../inventory/type-filter";
 import { DEPLOY_SKILL } from "../ui/control-labels";
 import type { ReportGroup } from "../ui/report";
-import { notDetectedNote } from "./deploy-state-copy";
+import { FORMER_CLAUDE_FOLDER, notDetectedNote } from "./deploy-state-copy";
 import type {
   RemoveCheckState,
   RemoveRowWarning,
@@ -182,7 +182,10 @@ export function removeLedgerRows(
       : {
           folder: {
             muted: true as const,
-            note: notDetectedNote(toolDisplayName(folder.tool)),
+            note:
+              folder.former === true
+                ? FORMER_CLAUDE_FOLDER
+                : notDetectedNote(toolDisplayName(folder.tool)),
           },
         }),
   }));

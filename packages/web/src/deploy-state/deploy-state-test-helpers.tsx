@@ -177,15 +177,16 @@ export function renderDeployState(
 export const grid = () =>
   screen.getByRole("grid", { name: "Deploy-state table" });
 
-// A group header spans every column; a target or folder row does not.
 export function rowOf(name: string): HTMLElement {
   const row = within(grid())
     .getAllByRole("row")
     .find((candidate) => {
-      const first = within(candidate).queryAllByRole("gridcell")[0] as
-        | HTMLTableCellElement
-        | undefined;
-      return first?.colSpan === 1 && first.textContent?.startsWith(name);
+      const first = within(candidate).queryAllByRole("gridcell")[0];
+      return (
+        first !== undefined &&
+        first.querySelector("[aria-expanded]") === null &&
+        first.textContent?.startsWith(name)
+      );
     });
   if (row === undefined) throw new Error(`no row for ${name}`);
   return row;
