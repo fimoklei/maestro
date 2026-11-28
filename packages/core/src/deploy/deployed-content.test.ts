@@ -590,18 +590,23 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
       ).resolves.toBeNull();
     });
 
-    it("checks only the tools this write targets", async () => {
-      const fake = adapterOn();
-      fake.tree.symlink(at(".agents/skills/tdd"), "/elsewhere/tdd");
-      fake.tree.symlink(at(".agents"), "/elsewhere/agents");
-      await expect(
-        fake.content.linkedDestination({
-          target: fakeRepoTarget,
-          name: "tdd",
-          tools: ["claude"],
-        }),
-      ).resolves.toBeNull();
-    });
+    it.each([
+      [".agents/skills/tdd", "/elsewhere/tdd"],
+      [".agents/skills", "/elsewhere/skills"],
+    ])(
+      "checks only the tools this write targets, past a link at %s",
+      async (link, target) => {
+        const fake = adapterOn();
+        fake.tree.symlink(at(link), target);
+        await expect(
+          fake.content.linkedDestination({
+            target: fakeRepoTarget,
+            name: "tdd",
+            tools: ["claude"],
+          }),
+        ).resolves.toBeNull();
+      },
+    );
   });
 
   describe("contentDigest", () => {

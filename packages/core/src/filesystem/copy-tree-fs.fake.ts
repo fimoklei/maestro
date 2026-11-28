@@ -30,6 +30,14 @@ export class InMemoryCopyTree implements CopyTreeFsPort {
   }
 
   symlink(path: string, target: string): void {
+    const key = normalize(path);
+    if (
+      this.files.has(key) ||
+      this.directories.has(key) ||
+      this.symlinks.has(key)
+    ) {
+      throw new Error(`EEXIST: file already exists, symlink '${path}'`);
+    }
     this.ensureParents(path);
     this.symlinks.set(normalize(path), normalize(target));
   }
