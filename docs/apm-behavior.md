@@ -440,6 +440,14 @@ tag (`apm view`) + install at that tag; no other apm command is involved.
   edit stays on disk. Under a version-1 lockfile the same install fails
   (§ Lockfile). An untracked file added beside the deployed ones was last
   measured on 0.29.0, where the install deleted it silently.
+- **A copy folder moved aside first is written fresh.** Measured on 0.39.1
+  (2026-11-28, #1978), global root package `v0.6.0`, `-g -t claude`, one
+  `SKILL.md` edited and `~/.claude/skills/<name>` renamed to a sibling of
+  `~/.claude/skills`: the same-tag re-install exits 0, prints neither the
+  `Kept` nor the `no trustworthy local deployment baseline` line, and writes
+  the released copy, under the version-4 and the version-1 lockfile alike.
+  `~/.claude/skills` then holds only the skill; apm does not read the
+  sibling. Canary "real apm install over an edited copy".
 - **An update never deletes a symlinked leaf.** Measured 2026-09-27 (#1217),
   global root package `fimoklei/harness` `v0.3.5` → `v0.4.1`,
   `-g -t claude,codex`, with `.claude/skills/<name>` a relative symlink into

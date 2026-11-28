@@ -10,6 +10,7 @@ import { discardDroppedCopies } from "./discard-dropped-copies";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
   type CopyBlock,
+  consentedCopies,
   LocalCopyGuard,
   linkedField,
 } from "./local-copy-guard";
@@ -132,6 +133,7 @@ export class RetryTargetOperation {
       if (record === null) {
         return { ok: false, error: "nothing-to-retry" };
       }
+      await this.deps.selection.settleSetAside(input.target, record);
       const tools = record.tools ?? undefined;
       const scope = { write: record.kind, target: input.target } as const;
       const check = await this.copyGuard.check({
@@ -173,6 +175,7 @@ export class RetryTargetOperation {
         previous: record.previous,
         desired: record.desired,
         ...(tools === undefined ? {} : { tools }),
+        consented: consentedCopies(check.findings),
       });
       if (applied.ok) {
         const readings = await this.deps.outcomes

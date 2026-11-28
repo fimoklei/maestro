@@ -125,6 +125,10 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
 - Never install over a dirty subtree; the deploy use-case's guards stay in
   front of every install. Never read a success marker as proof that an
   edited copy was reset.
+- Move each copy folder a consent receipt names aside, one level above its
+  skills folder, before the install. Delete it only when the read-back finds
+  the copy at the release; otherwise put it back. Name it in the operation
+  record, and settle it on Retry by the same rule.
 
 ## Remove
 

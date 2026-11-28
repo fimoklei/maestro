@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import { ConfigStore } from "../registry/config-store";
 import { type SelectionWrite, SelectionWriter } from "./apply-selection";
+import { CopySetAside } from "./copy-set-aside";
 import {
   REPO_TOOL_ROOTS,
   SUPPORTED_TOOLS,
@@ -142,6 +144,16 @@ function world() {
       },
       apm,
       operations,
+      setAside: new CopySetAside({
+        fs: new InMemoryCopyTree(),
+        location: {
+          treeRoot: () => "/repo",
+          toolRoots: () => REPO_TOOL_ROOTS,
+        },
+        readBack: {
+          read: () => Promise.reject(new Error("readBack was reached")),
+        },
+      }),
     },
   };
 }
@@ -154,6 +166,7 @@ const write = (over: Partial<SelectionWrite> = {}) => ({
   release: "v0.6.0",
   previous: ["prototype"],
   desired: ["prototype", "review"],
+  consented: [],
   ...over,
 });
 

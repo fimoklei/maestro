@@ -16,6 +16,7 @@ import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
   type CopyBlock,
+  consentedCopies,
   copyKeys,
   type LocalCopyCheck,
   type LocalCopyGuard,
@@ -262,6 +263,7 @@ export class UpdateTarget {
         previous: scope.current,
         desired: scope.desired,
         ...(scope.tools.length === 0 ? {} : { tools: scope.tools }),
+        consented: consentedCopies(scope.copies.findings),
       });
       if (
         !applied.ok &&

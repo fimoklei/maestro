@@ -1,4 +1,5 @@
 import type { LockfileReading } from "../lockfile/lockfile";
+import type { ConsentedCopy } from "./copy-set-aside";
 import type { LinkedDestination } from "./deploy-ports";
 import type {
   DeployedContentPort,
@@ -109,6 +110,14 @@ function linkedAmong(
 ): LinkedDestination | undefined {
   const linked = findings.flatMap((f) => (f.linked === null ? [] : [f.linked]));
   return linked.find((l) => l.kind === "tool-folder") ?? linked[0];
+}
+
+export function consentedCopies(
+  findings: readonly CopyFinding[],
+): ConsentedCopy[] {
+  return findings
+    .filter((f) => CONSENTABLE.has(f.verdict) && f.deployRoot === undefined)
+    .map((f) => ({ name: f.name, tool: f.tool }));
 }
 
 export function copyKeys(check: LocalCopyCheck): string[] {

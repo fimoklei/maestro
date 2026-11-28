@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { setAsideCopySchema } from "../deploy/copy-set-aside";
 import { SUPPORTED_TOOLS } from "../deploy/deploy-tools";
 import { type FileStamp, type FileSystemPort, sameStamp } from "./file-system";
 
@@ -27,6 +28,7 @@ const configSchema = z.object({
         previous: z.array(z.string()),
         desired: z.array(z.string()),
         tools: z.array(z.enum(SUPPORTED_TOOLS)).nullable(),
+        setAside: z.array(setAsideCopySchema).optional(),
         startedAt: z.iso.datetime(),
       }),
     )

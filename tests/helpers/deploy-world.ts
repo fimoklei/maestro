@@ -75,6 +75,7 @@ type Answers = {
   releasedFiles: Record<string, string> | null | "as-installed";
   // Replaces the install outright, as a driver fed a captured refusal.
   deploySkill: ApmDriverPort["deploySkill"] | null;
+  editedCopies: "kept" | "refused" | "overwritten";
 };
 
 export function deployWorld(
@@ -84,6 +85,7 @@ export function deployWorld(
     detectedTools?: readonly SupportedTool[];
     // The server's CLAUDE_CONFIG_DIR, which apm follows on Global.
     claudeConfigDir?: string;
+    disk?: InMemoryCopyTree;
   } = {},
 ) {
   const env = {
@@ -97,7 +99,7 @@ export function deployWorld(
   // A folder outside HOME is recorded absolute, as apm records it.
   const onDisk = (target: DeployTarget, file: string) =>
     file.startsWith("/") ? file : `${treeRoot(target)}/${file}`;
-  const disk = new InMemoryCopyTree();
+  const disk = options.disk ?? new InMemoryCopyTree();
   const installs: Install[] = [];
   const uninstalls: { target: DeployTarget; ref: string }[] = [];
   const state: Answers = {
@@ -111,6 +113,7 @@ export function deployWorld(
     divergedFromTag: false,
     releasedFiles: null,
     deploySkill: null,
+    editedCopies: "kept",
   };
 
   const copies = (
@@ -136,12 +139,36 @@ export function deployWorld(
       ),
     ].map((match) => match[1] as string);
 
-  const lockfile = (target: DeployTarget, release: string, files: string[]) => {
+  const recordedHashes = (target: DeployTarget) =>
+    new Map(
+      [
+        ...(disk.read(lockfilePath(target))?.toString("utf8") ?? "").matchAll(
+          /^ {4}(\S+): sha256:([0-9a-f]+)$/gm,
+        ),
+      ].map((match) => [match[1] as string, match[2] as string]),
+    );
+
+  const editedSinceRecorded = (target: DeployTarget) => {
+    const edited = new Map<string, { hash: string; bytes: Buffer }>();
+    for (const [file, hash] of recordedHashes(target)) {
+      const bytes = disk.read(onDisk(target, file));
+      if (bytes !== undefined && sha256(bytes) !== hash) {
+        edited.set(file, { hash, bytes });
+      }
+    }
+    return edited;
+  };
+
+  const lockfile = (
+    target: DeployTarget,
+    release: string,
+    files: string[],
+    kept: ReadonlyMap<string, { hash: string }> = new Map(),
+  ) => {
     const hashes = files.flatMap((file) => {
       const bytes = disk.read(onDisk(target, file));
-      return bytes === undefined
-        ? []
-        : [`    ${file}: sha256:${sha256(bytes)}`];
+      const hash = kept.get(file)?.hash ?? (bytes && sha256(bytes));
+      return hash === undefined ? [] : [`    ${file}: sha256:${hash}`];
     });
     return [
       "lockfile_version: '1'",
@@ -178,6 +205,13 @@ export function deployWorld(
       if (state.installRefusal !== null) {
         return state.installRefusal;
       }
+      const edited =
+        state.editedCopies === "overwritten"
+          ? new Map()
+          : editedSinceRecorded(input.target);
+      if (state.editedCopies === "refused" && edited.size > 0) {
+        return { ok: false, reason: "failed" };
+      }
       for (const dir of recorded(input.target)) {
         disk.remove(onDisk(input.target, dir));
       }
@@ -188,9 +222,12 @@ export function deployWorld(
           skillManifest(file.split("/").at(-2) ?? ""),
         );
       }
+      for (const [file, { bytes }] of edited) {
+        disk.write(onDisk(input.target, file), bytes);
+      }
       disk.write(
         lockfilePath(input.target),
-        lockfile(input.target, input.ref.split("#")[1] ?? "", files),
+        lockfile(input.target, input.ref.split("#")[1] ?? "", files, edited),
       );
       disk.write(
         manifestPath(input.target),

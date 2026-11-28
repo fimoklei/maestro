@@ -1,4 +1,5 @@
 import type { FileSystemPort } from "../registry/file-system";
+import type { ConsentedCopy, CopySetAside } from "./copy-set-aside";
 import type { ApmDriverPort, DeployTarget } from "./deploy-skill";
 import { SUPPORTED_TOOLS, type SupportedTool } from "./deploy-tools";
 import type { DeployedLocation } from "./deployed-location";
@@ -24,6 +25,7 @@ export type SelectionWrite = {
   previous: readonly string[];
   desired: readonly string[];
   tools?: readonly SupportedTool[];
+  consented: readonly ConsentedCopy[];
 };
 
 type SelectionError =
@@ -46,6 +48,7 @@ export type ApplySelectionDeps = {
   >;
   apm: Pick<ApmDriverPort, "deploySkill" | "removeSkill">;
   operations: Pick<TargetOperationStore, "begin" | "clear" | "read">;
+  setAside: Pick<CopySetAside, "plan" | "moveAside" | "settle">;
 };
 
 export class SelectionWriter {
@@ -76,6 +79,17 @@ export class SelectionWriter {
   async apply(write: SelectionWrite): Promise<SelectionResult> {
     return await applySelection(this.deps, write);
   }
+
+  async settleSetAside(
+    target: DeployTarget,
+    operation: TargetOperation,
+  ): Promise<void> {
+    await this.deps.setAside.settle(
+      target,
+      operation.release,
+      operation.setAside ?? [],
+    );
+  }
 }
 
 async function applySelection(
@@ -92,6 +106,7 @@ async function applySelection(
     return { ok: false, error: "manifest-legacy-entry" };
   }
 
+  const setAside = deps.setAside.plan(write.consented, write.desired);
   await deps.operations.begin({
     key: write.key,
     target: write.target,
@@ -101,8 +116,29 @@ async function applySelection(
     previous: [...write.previous],
     desired: [...write.desired],
     tools: write.tools === undefined ? null : [...write.tools],
+    setAside,
   });
 
+  let result: SelectionResult;
+  try {
+    await deps.setAside.moveAside(write.target, setAside);
+    result = await install(deps, write, reading, before);
+  } finally {
+    await deps.setAside.settle(write.target, write.release, setAside);
+  }
+  if (result.ok) {
+    await deps.operations.clear(write.key);
+  }
+  return result;
+}
+
+async function install(
+  deps: ApplySelectionDeps,
+  write: SelectionWrite,
+  reading: ReturnType<typeof readHarnessSelection>,
+  before: string | null,
+): Promise<SelectionResult> {
+  const manifestPath = deps.location.manifestPath(write.target);
   const ref = buildHarnessPackageRef({
     host: write.origin.host,
     ownerRepo: write.origin.ownerRepo,
@@ -165,7 +201,6 @@ async function verify(
   if (!(await matches(deps, write, landed))) {
     return { ok: false, error: refusal ?? "apply-incomplete" };
   }
-  await deps.operations.clear(write.key);
   return { ok: true };
 }
 
