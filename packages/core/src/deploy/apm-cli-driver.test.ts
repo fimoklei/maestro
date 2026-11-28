@@ -34,6 +34,18 @@ const viewAuthFailedOutputWithoutAuthPhrases = [
 
 const symlinkRefusalOutput = fixture("apm-install-symlink-refused.txt");
 
+const linkedToolFolderGlobalOutput = fixture(
+  "apm-install-tool-folder-linked-global.txt",
+);
+
+const linkedToolFolderRepoOutput = fixture(
+  "apm-install-tool-folder-linked-repo.txt",
+);
+
+const linkedToolFolderUninstallOutput = fixture(
+  "apm-uninstall-tool-folder-linked.txt",
+);
+
 const UNINSTALL_OK_SUMMARY = "[*] Uninstall complete: removed 1 package";
 
 const uninstallOkOutput = fixture("apm-uninstall-ok.txt");
@@ -405,6 +417,18 @@ describe("ApmCliDriver.deploySkill", () => {
     ).resolves.toEqual({ ok: false, reason: "destination-symlinked" });
   });
 
+  it.each([
+    ["a Global tool folder", linkedToolFolderGlobalOutput],
+    ["a consuming repo's tool folder", linkedToolFolderRepoOutput],
+  ])("classifies apm's refusal of %s that is a link", async (_case, stdout) => {
+    const { run } = rejectingRun({ stdout });
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.deploySkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false, reason: "destination-symlinked" });
+  });
+
   it("does not leak raw apm output in the failure it reports", async () => {
     const tokenBearing = `${symlinkRefusalOutput}\nhttps://x-access-token:ghp_secret@github.com`;
     const { run } = rejectingRun({ stdout: tokenBearing });
@@ -470,6 +494,15 @@ describe("ApmCliDriver.removeSkill", () => {
     await expect(
       driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
     ).resolves.toEqual({ ok: false });
+  });
+
+  it("classifies apm's refusal to uninstall through a linked tool folder", async () => {
+    const { run } = rejectingRun({ stdout: linkedToolFolderUninstallOutput });
+    const driver = new ApmCliDriver({ run });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false, reason: "destination-symlinked" });
   });
 
   it("fails closed when apm kept an edited file and aborted part-way", async () => {

@@ -273,9 +273,9 @@ export function copiesIn(states: CopyStates | ((name: string) => CopyStates)) {
         onRead.place(input.target, input.name);
         return fake.content.contentDigest(input);
       },
-      linkedSkillPath: (
-        input: Parameters<typeof fake.content.linkedSkillPath>[0],
-      ) => fake.content.linkedSkillPath(input),
+      linkedDestination: (
+        input: Parameters<typeof fake.content.linkedDestination>[0],
+      ) => fake.content.linkedDestination(input),
       harnessHolds: (input: Parameters<typeof fake.content.harnessHolds>[0]) =>
         fake.content.harnessHolds(input),
     },

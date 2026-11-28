@@ -129,7 +129,7 @@ describe("update into a target whose skill folder is a link", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toStrictEqual({
       error: "destination-symlinked",
-      linkedPath: linked,
+      linked: { kind: "skill-folder", path: linked },
     });
   });
 
@@ -157,7 +157,7 @@ describe("update into a target whose skill folder is a link", () => {
     expect(response.status).toBe(409);
     expect(await response.json()).toStrictEqual({
       error: "destination-symlinked",
-      linkedPath: linked,
+      linked: { kind: "skill-folder", path: linked },
     });
     expect(await snapshot()).toStrictEqual(before);
   });

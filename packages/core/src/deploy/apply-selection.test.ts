@@ -432,4 +432,20 @@ describe("SelectionWriter.apply", () => {
 
     expect(result).toEqual({ ok: false, error: "destination-symlinked" });
   });
+
+  it("passes an uninstall refused through a linked folder through as its own refusal", async () => {
+    const apm = {
+      ...stage.deps.apm,
+      removeSkill: async () => ({
+        ok: false as const,
+        reason: "destination-symlinked" as const,
+      }),
+    };
+
+    const result = await new SelectionWriter({ ...stage.deps, apm }).apply(
+      write({ kind: "remove", previous: ["caveman"], desired: [] }),
+    );
+
+    expect(result).toEqual({ ok: false, error: "destination-symlinked" });
+  });
 });

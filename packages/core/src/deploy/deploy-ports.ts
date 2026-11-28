@@ -16,7 +16,7 @@ export type DeploySkillDriverResult =
 
 export type RemoveSkillDriverResult =
   | { ok: true }
-  | { ok: false; reason?: "timed-out" };
+  | { ok: false; reason?: "timed-out" | "destination-symlinked" };
 
 export type ApmDriverPort = {
   resolveLatestTag(ownerRepo: string): Promise<ResolveLatestTagResult>;
@@ -66,12 +66,17 @@ export type DeployedContentPort = {
     tools?: readonly SupportedTool[];
     deployRoot?: string;
   }): Promise<string | null>;
-  linkedSkillPath(input: {
+  linkedDestination(input: {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
     deployRoot?: string;
-  }): Promise<string | null>;
+  }): Promise<LinkedDestination | null>;
+};
+
+export type LinkedDestination = {
+  kind: "tool-folder" | "skill-folder";
+  path: string;
 };
 
 export type RecordedPackageResult =

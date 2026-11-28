@@ -42,7 +42,13 @@ const INSTALL_FAILURE_SIGNALS = [
   /some requested packages were skipped/,
 ];
 
-const INSTALL_SYMLINK_PHRASE = "unsafe skill destination";
+const LINKED_DESTINATION_PHRASES = [
+  "unsafe skill destination",
+  "refusing deployment through a symlinked path component",
+];
+
+const UNINSTALL_LINKED_PHRASE =
+  "uninstall stopped: apm.lock.yaml records paths apm does not manage";
 
 const UNINSTALL_SUCCESS_MARKER = /uninstall complete: removed \d+ packages?\b/;
 
@@ -190,8 +196,11 @@ export class ApmCliDriver implements ApmDriverPort {
     if (!outcome.ok && outcome.failure === "killed") {
       return { ok: false, reason: "timed-out" };
     }
-    if (!removeSucceeded(outputOf(outcome))) {
-      return { ok: false };
+    const output = outputOf(outcome);
+    if (!removeSucceeded(output)) {
+      return normalizeCommandOutput(output).includes(UNINSTALL_LINKED_PHRASE)
+        ? { ok: false, reason: "destination-symlinked" }
+        : { ok: false };
     }
     this.log({
       operation: "remove-skill",
@@ -315,7 +324,8 @@ function claudeProfileEnv(profile: FormerClaudeProfile): NodeJS.ProcessEnv {
 function classifyInstallFailure(
   output: string,
 ): "destination-symlinked" | "failed" {
-  return normalizeCommandOutput(output).includes(INSTALL_SYMLINK_PHRASE)
+  const haystack = normalizeCommandOutput(output);
+  return LINKED_DESTINATION_PHRASES.some((phrase) => haystack.includes(phrase))
     ? "destination-symlinked"
     : "failed";
 }

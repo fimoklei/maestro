@@ -543,52 +543,70 @@ describe("DeployedContentAdapter (in-memory copy tree)", () => {
     });
   });
 
-  describe("linkedSkillPath", () => {
-    it("returns null when the tool's whole skills directory is a link", async () => {
+  describe("linkedDestination", () => {
+    it("names the tool folder when the tool's whole skills folder is a link", async () => {
       const fake = adapterOn();
       fake.tree.symlink(at(".claude/skills"), "/elsewhere/skills");
       await expect(
-        fake.content.linkedSkillPath({
+        fake.content.linkedDestination({
           target: fakeRepoTarget,
           name: "tdd",
           tools: ["claude"],
         }),
-      ).resolves.toBeNull();
+      ).resolves.toEqual({ kind: "tool-folder", path: at(".claude/skills") });
     });
 
-    it("names the leaf skill directory that is a symlink", async () => {
+    it("names the linked tool folder before a linked skill folder", async () => {
+      const fake = adapterOn();
+      fake.tree.symlink(at(".claude/skills/tdd"), "/elsewhere/tdd");
+      fake.tree.symlink(at(".agents/skills"), "/elsewhere/skills");
+      await expect(
+        fake.content.linkedDestination({ target: fakeRepoTarget, name: "tdd" }),
+      ).resolves.toEqual({ kind: "tool-folder", path: at(".agents/skills") });
+    });
+
+    it("names the skill folder that is a link", async () => {
       const fake = adapterOn();
       fake.tree.symlink(at(".claude/skills/tdd"), "/elsewhere/tdd");
       await expect(
-        fake.content.linkedSkillPath({
+        fake.content.linkedDestination({
           target: fakeRepoTarget,
           name: "tdd",
         }),
-      ).resolves.toBe(at(".claude/skills/tdd"));
+      ).resolves.toEqual({
+        kind: "skill-folder",
+        path: at(".claude/skills/tdd"),
+      });
     });
 
-    it("returns null when every destination is a real directory or absent", async () => {
+    it("returns null when every destination is a real folder or absent", async () => {
       const fake = adapterOn();
       fake.tree.write(at(".claude/skills/tdd/SKILL.md"), "skill\n");
       await expect(
-        fake.content.linkedSkillPath({
+        fake.content.linkedDestination({
           target: fakeRepoTarget,
           name: "tdd",
         }),
       ).resolves.toBeNull();
     });
 
-    it("checks only the tools this deploy targeted", async () => {
-      const fake = adapterOn();
-      fake.tree.symlink(at(".agents/skills/tdd"), "/elsewhere/tdd");
-      await expect(
-        fake.content.linkedSkillPath({
-          target: fakeRepoTarget,
-          name: "tdd",
-          tools: ["claude"],
-        }),
-      ).resolves.toBeNull();
-    });
+    it.each([
+      [".agents/skills/tdd", "/elsewhere/tdd"],
+      [".agents/skills", "/elsewhere/skills"],
+    ])(
+      "checks only the tools this write targets, past a link at %s",
+      async (link, target) => {
+        const fake = adapterOn();
+        fake.tree.symlink(at(link), target);
+        await expect(
+          fake.content.linkedDestination({
+            target: fakeRepoTarget,
+            name: "tdd",
+            tools: ["claude"],
+          }),
+        ).resolves.toBeNull();
+      },
+    );
   });
 
   describe("contentDigest", () => {

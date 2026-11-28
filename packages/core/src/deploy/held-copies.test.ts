@@ -7,7 +7,7 @@ const finding = (
   name: string,
   tool: CopyFinding["tool"],
   verdict: CopyFinding["verdict"],
-): CopyFinding => ({ name, tool, verdict, linkedPath: null });
+): CopyFinding => ({ name, tool, verdict, linked: null });
 
 describe("blockingCopies", () => {
   it("names each skill once, at its worst tool's verdict, with only that verdict's folders", () => {

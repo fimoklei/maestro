@@ -4,10 +4,15 @@ import type {
   DeployedCleanupPort,
   DeployedContentPort,
   DeployTarget,
+  LinkedDestination,
 } from "./deploy-skill";
 import { discardDroppedCopies } from "./discard-dropped-copies";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
-import { type CopyVerdict, LocalCopyGuard } from "./local-copy-guard";
+import {
+  type CopyBlock,
+  LocalCopyGuard,
+  linkedField,
+} from "./local-copy-guard";
 import type { PlaceReader } from "./place-reading";
 import type { TargetOperation, TargetOperationKind } from "./target-operation";
 import {
@@ -30,6 +35,7 @@ export type RetryTargetOperationError =
   | "deployed-unverifiable"
   | "deployed-unreadable"
   | "lockfile-malformed"
+  | "destination-symlinked"
   | "manifest-not-recognised"
   | "retry-incomplete"
   | "retry-timed-out"
@@ -45,13 +51,12 @@ export type RetryTargetOperationResult =
   | {
       ok: false;
       error: RetryTargetOperationError;
+      linked?: LinkedDestination;
       copyReceipt?: string;
     };
 
-const COPY_ERRORS: Record<
-  Exclude<CopyVerdict, "clean">,
-  RetryTargetOperationError
-> = {
+const COPY_ERRORS: Record<CopyBlock, RetryTargetOperationError> = {
+  linked: "destination-symlinked",
   "local-edits": "deployed-diverged-from-lock",
   unverified: "deployed-unverifiable",
   unreadable: "deployed-unreadable",
@@ -66,7 +71,7 @@ export class RetryTargetOperation {
     copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
     deployedContent: Pick<
       DeployedContentPort,
-      "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
+      "readLockfile" | "classify" | "contentDigest" | "linkedDestination"
     >;
     toolPresence: ToolPresencePort;
     canonicalPath: (path: string) => Promise<string>;
@@ -143,6 +148,7 @@ export class RetryTargetOperation {
         return {
           ok: false,
           error: COPY_ERRORS[admitted.blocked],
+          ...linkedField(admitted),
           ...(admitted.receipt === null
             ? {}
             : { copyReceipt: admitted.receipt }),

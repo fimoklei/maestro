@@ -6,6 +6,7 @@ import type {
   DeployedContentPort,
   DeployedContentState,
   DeployTarget,
+  LinkedDestination,
 } from "./deploy-skill";
 import {
   type GlobalLayout,
@@ -25,6 +26,7 @@ import {
   type CopyVerdict,
   type LocalCopyCheck,
   LocalCopyGuard,
+  linkedIn,
 } from "./local-copy-guard";
 import { isValidSkillSlug } from "./package-ref";
 import { RemoveConsentIssuer } from "./remove-consent";
@@ -59,6 +61,7 @@ export type RemoveDeployedSkillError =
   | "remove-in-progress"
   | "manifest-not-recognised"
   | "operation-unfinished"
+  | "destination-symlinked"
   | "remove-incomplete"
   | "remove-timed-out"
   | "remove-timed-out-unrecorded"
@@ -161,6 +164,7 @@ type Priced =
       ok: true;
       copies: LocalCopyCheck;
       check: RemoveCheck;
+      linked?: LinkedDestination;
     }
   | ({ ok: false; error: LocalEditsRefusal } & EditedFolders);
 
@@ -191,6 +195,7 @@ type RemoveDeployedSkillResult =
   | ({
       ok: false;
       error: RemoveDeployedSkillError;
+      linked?: LinkedDestination;
       report?: WriteReport;
       check?: RemoveCheck;
       receipt?: string;
@@ -232,10 +237,10 @@ export class RemoveDeployedSkill {
   private readonly deps: {
     registry: { isRegistered(path: string): Promise<boolean> };
     deployedRef: DeployedRefPort;
-    copyGuard?: Pick<LocalCopyGuard, "check">;
+    copyGuard?: Pick<LocalCopyGuard, "check" | "admits">;
     deployedContent: Pick<
       DeployedContentPort,
-      "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
+      "readLockfile" | "classify" | "contentDigest" | "linkedDestination"
     >;
     apm: Pick<ApmDriverPort, "removeSkill">;
     toolPresence: ToolPresencePort;
@@ -247,7 +252,7 @@ export class RemoveDeployedSkill {
   };
 
   private readonly consent = new RemoveConsentIssuer();
-  private readonly copyGuard: Pick<LocalCopyGuard, "check">;
+  private readonly copyGuard: Pick<LocalCopyGuard, "check" | "admits">;
 
   constructor(deps: RemoveDeployedSkill["deps"]) {
     this.deps = deps;
@@ -303,7 +308,13 @@ export class RemoveDeployedSkill {
     namedUninstall: boolean,
   ): Promise<Priced> {
     const copies = await this.runCheck(input, scope, release, namedUninstall);
-    if (copies.findings.some((finding) => finding.verdict === "local-edits")) {
+    const linked = linkedIn(
+      this.copyGuard.admits({ write: "remove", target: input.target }, copies),
+    );
+    if (
+      linked === undefined &&
+      copies.findings.some((finding) => finding.verdict === "local-edits")
+    ) {
       return {
         ok: false,
         error: await this.localEditsRefusal(input.target),
@@ -321,7 +332,7 @@ export class RemoveDeployedSkill {
             scope: "global",
             tools: await this.folderChecks(input, scope.detected, copies),
           };
-    return { ok: true, copies, check };
+    return { ok: true, copies, check, ...(linked ? { linked } : {}) };
   }
 
   private async folderChecks(
@@ -611,6 +622,13 @@ export class RemoveDeployedSkill {
       if (!priced.ok) {
         return priced;
       }
+      if (priced.linked !== undefined) {
+        return {
+          ok: false,
+          error: "destination-symlinked",
+          linked: priced.linked,
+        };
+      }
       const refusal = priced.copies.findings
         .map((finding) => GUARD_REFUSALS[finding.verdict])
         .find((error) => error !== undefined);
@@ -637,10 +655,21 @@ export class RemoveDeployedSkill {
         plan.kind === "root"
           ? await this.narrowSelection(plan, input, lockKey, detected)
           : await this.uninstallPackage(target, plan.ref);
+      if (failure === "destination-symlinked") {
+        const linked = await this.deps.deployedContent.linkedDestination({
+          target,
+          name: input.name,
+          ...(detected === undefined ? {} : { tools: detected }),
+        });
+        if (linked !== null) {
+          return { ok: false, error: failure, linked };
+        }
+      }
       if (failure !== null) {
         return {
           ok: false,
-          error: failure,
+          error:
+            failure === "destination-symlinked" ? "remove-failed" : failure,
           report: await this.probeReport(
             target,
             input.name,
@@ -694,8 +723,9 @@ export class RemoveDeployedSkill {
     if (applied.ok) {
       return null;
     }
-    return applied.error === "manifest-not-recognised"
-      ? "manifest-not-recognised"
+    return applied.error === "manifest-not-recognised" ||
+      applied.error === "destination-symlinked"
+      ? applied.error
       : applied.error === "apply-incomplete"
         ? "remove-incomplete"
         : applied.error === "apply-timed-out"
@@ -713,7 +743,9 @@ export class RemoveDeployedSkill {
     }
     return removed.reason === "timed-out"
       ? "remove-timed-out-unrecorded"
-      : "remove-failed";
+      : removed.reason === "destination-symlinked"
+        ? "destination-symlinked"
+        : "remove-failed";
   }
 
   private async probeReport(

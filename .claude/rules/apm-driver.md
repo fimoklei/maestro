@@ -87,7 +87,11 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
   `Updated apm.lock.yaml` or `No changes -- install state already up to
   date`, with no failure phrase from `docs/apm-behavior.md` § Install
   signals — never the exit code. Absent marker = failure, fail-closed.
-- Read `Unsafe skill destination` as a linked destination, leaf or folder.
+- Read `Unsafe skill destination`, `Refusing deployment through a symlinked
+  path component` and `Uninstall stopped: apm.lock.yaml records paths APM
+  does not manage` as a linked destination. Report that uninstall phrase as
+  a link only when `linkedDestination` finds one; otherwise as a failed
+  removal.
 - Classify auth-required only at `apm view`, only on the phrases
   `Authentication failed` / `No token available` (case-insensitive). Never
   echo matched output (`security.md`). The same phrases can appear in

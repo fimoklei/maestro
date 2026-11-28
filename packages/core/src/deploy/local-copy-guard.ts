@@ -1,4 +1,5 @@
 import type { LockfileReading } from "../lockfile/lockfile";
+import type { LinkedDestination } from "./deploy-ports";
 import type {
   DeployedContentPort,
   DeployedContentState,
@@ -37,7 +38,7 @@ export type CopyFinding = {
   tool: SupportedTool | null;
   deployRoot?: string;
   verdict: CopyVerdict;
-  linkedPath: string | null;
+  linked: LinkedDestination | null;
 };
 
 type LocalCopyWrite = "deploy" | "remove" | "update";
@@ -52,6 +53,8 @@ export type LocalCopyCheck = {
   digest: string | null;
 };
 
+export type CopyBlock = Exclude<CopyVerdict, "clean"> | "linked";
+
 export type LocalCopyDecision =
   | { ok: true }
   | {
@@ -59,6 +62,13 @@ export type LocalCopyDecision =
       blocked: Exclude<CopyVerdict, "clean">;
       check: LocalCopyCheck;
       receipt: string | null;
+    }
+  | {
+      ok: false;
+      blocked: "linked";
+      linked: LinkedDestination;
+      check: LocalCopyCheck;
+      receipt: null;
     };
 
 export function worstVerdict(
@@ -69,14 +79,36 @@ export function worstVerdict(
   );
 }
 
-export function linkedPathAmong(
+export function linkedIn(
+  decision: LocalCopyDecision,
+): LinkedDestination | undefined {
+  return !decision.ok && decision.blocked === "linked"
+    ? decision.linked
+    : undefined;
+}
+
+export function linkedField(decision: LocalCopyDecision): {
+  linked?: LinkedDestination;
+} {
+  const linked = linkedIn(decision);
+  return linked === undefined ? {} : { linked };
+}
+
+export function copiesOf(
   check: LocalCopyCheck,
   names: readonly string[],
-): string | undefined {
-  return (
-    check.findings.find((f) => f.linkedPath !== null && names.includes(f.name))
-      ?.linkedPath ?? undefined
-  );
+): LocalCopyCheck {
+  return {
+    findings: check.findings.filter((f) => names.includes(f.name)),
+    digest: check.digest,
+  };
+}
+
+function linkedAmong(
+  findings: readonly CopyFinding[],
+): LinkedDestination | undefined {
+  const linked = findings.flatMap((f) => (f.linked === null ? [] : [f.linked]));
+  return linked.find((l) => l.kind === "tool-folder") ?? linked[0];
 }
 
 export function copyKeys(check: LocalCopyCheck): string[] {
@@ -97,7 +129,7 @@ export class LocalCopyGuard {
   private readonly deps: {
     content: Pick<
       DeployedContentPort,
-      "readLockfile" | "classify" | "contentDigest" | "linkedSkillPath"
+      "readLockfile" | "classify" | "contentDigest" | "linkedDestination"
     >;
   };
   private readonly signer = new ConsentSigner();
@@ -128,7 +160,7 @@ export class LocalCopyGuard {
       input.names.flatMap((name) =>
         scopes.map(async (scope) => {
           const verdict = await this.classify(input, lockfile, name, scope);
-          const linkedPath = await this.deps.content.linkedSkillPath({
+          const linked = await this.deps.content.linkedDestination({
             target: input.target,
             name,
             ...scopeArgs(scope),
@@ -140,7 +172,7 @@ export class LocalCopyGuard {
               ? {}
               : { deployRoot: scope.deployRoot }),
             verdict,
-            linkedPath,
+            linked,
           };
           const bytes = CONSENTABLE.has(verdict)
             ? `${copyKey(finding)}:${await this.digest(input, name, scope)}`
@@ -161,6 +193,10 @@ export class LocalCopyGuard {
     check: LocalCopyCheck,
     receipt?: string,
   ): LocalCopyDecision {
+    const linked = linkedAmong(check.findings);
+    if (linked !== undefined) {
+      return { ok: false, blocked: "linked", linked, check, receipt: null };
+    }
     const blocked = worstVerdict(check.findings);
     if (blocked === undefined) {
       return { ok: true };

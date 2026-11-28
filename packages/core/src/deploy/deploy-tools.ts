@@ -117,12 +117,19 @@ export function apmTargetFlagForTools(tools: readonly SupportedTool[]): string {
     .join(",");
 }
 
-export function deployTargetSubtrees(
-  name: string,
+export function deployToolFolders(
   roots: ToolRoots,
   tools?: readonly SupportedTool[],
 ): string[] {
   return DEPLOY_TOOLS.filter(
     (tool) => tools === undefined || tools.includes(tool.apmTarget),
-  ).map((tool) => `${roots[tool.apmTarget]}/skills/${name}`);
+  ).map((tool) => `${roots[tool.apmTarget]}/skills`);
+}
+
+export function deployTargetSubtrees(
+  name: string,
+  roots: ToolRoots,
+  tools?: readonly SupportedTool[],
+): string[] {
+  return deployToolFolders(roots, tools).map((folder) => `${folder}/${name}`);
 }

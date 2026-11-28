@@ -140,7 +140,11 @@ function refusalFor(
   if (ran.ok) {
     return null;
   }
-  return ran.reason === "timed-out" ? "apply-timed-out" : "apply-failed";
+  return ran.reason === "timed-out"
+    ? "apply-timed-out"
+    : ran.reason === "destination-symlinked"
+      ? "destination-symlinked"
+      : "apply-failed";
 }
 
 async function verify(

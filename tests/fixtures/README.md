@@ -26,8 +26,8 @@ records how they were taken.
 
 `ApmCliDriver` greps this text after whitespace-normalizing and lowercasing it,
 so a `#` comment inside a `.txt` fixture is classified as apm output, not as a
-comment. A header reading "…destination is a symlink" would make a fixture
-match `INSTALL_SYMLINK_PHRASE` on its own. The table-shaped fixtures have the
+comment. A header reading "…unsafe skill destination" would make a fixture
+match `LINKED_DESTINATION_PHRASES` on its own. The table-shaped fixtures have the
 same problem with their row parsers. So provenance goes here, and the `.txt`
 fixtures the driver or a parser reads stay byte-exact captures.
 
@@ -39,7 +39,8 @@ it. Any fixture that gains a reader loses that licence.
 Phrases a fixture comment must never contain: `is a symlink`,
 `installation failed`, `installed <n> apm dependenc`,
 `authentication failed`, `no token available`, `uninstall complete`,
-`not found in apm.yml`.
+`not found in apm.yml`, `unsafe skill destination`, `refusing deployment
+through a symlinked path component`, `uninstall stopped`.
 
 ## Capture conditions common to all
 
@@ -74,7 +75,7 @@ for `view` and `outdated`.
 reports per fixture whether the output is the same, differs, exits otherwise,
 or was throttled. It writes to `.logs/apm-captures/`; with `--write` it also
 copies each capture that differs or is new over its fixture and sets each
-row's mark below.
+row's mark below. `--only <fixture>…` re-runs just the named rows.
 
 | Fixture | Command | Conditions | Exit | Streams |
 |---|---|---|---|---|
@@ -82,6 +83,9 @@ row's mark below.
 | `apm-install-no-changes.txt` ✓= | `apm install github.com/fimoklei/agent-harness/.apm/skills/47#v0.6.0 -t claude,codex` | `COLUMNS=200`, same ref already installed and unchanged | 0 | out+err |
 | `apm-install-probes-failed.txt` ✓= | `apm install <ref>#v0.5.0 -t claude` | no credentials in env | 1 | out+err |
 | `apm-install-symlink-refused.txt` | `apm install <ref>#v0.5.1 -g -t claude` | sandbox `~/.claude/skills/tdd` pre-created as a symlink to a real folder | 1 | out+err |
+| `apm-install-tool-folder-linked-global.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill tdd -g -t claude` | `COLUMNS=200`, neutral cwd, sandbox `~/.claude/skills` a symlink to `~/real-skills` | 1 | out+err |
+| `apm-install-tool-folder-linked-repo.txt` ✚ | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill tdd -t claude,codex` | `COLUMNS=200`, repo `.claude/skills` a symlink to `~/real-skills` outside the repo | 1 | out+err |
+| `apm-uninstall-tool-folder-linked.txt` ✚ | `apm uninstall github.com/fimoklei/agent-harness#v0.6.0` | `COLUMNS=200`, no credentials, after installing `--skill tdd -t claude,codex` and moving `.claude/skills` to `~/real-skills` behind a symlink | 1 | out+err |
 | `apm-install-narrowed.txt` ✓= | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -t claude,codex` | `COLUMNS=200`, after installing `--skill 47 --skill tdd` and deleting `- tdd` from `skills:` | 0 | out+err |
 | `apm-install-unknown-skill.txt` ✓= | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 --skill no-such-skill -t claude,codex` | `COLUMNS=200`, fresh `git init` repo | 1 | out+err |
 | `apm-install-unmanaged-conflict.txt` | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 --skill caveman -t claude,codex` | `COLUMNS=200`, hand-made `.claude/skills/caveman/SKILL.md` | 1 | out+err |

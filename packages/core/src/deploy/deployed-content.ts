@@ -14,13 +14,18 @@ import {
   releasesAround,
   type WrittenReading,
 } from "./copy-reading";
+import type { LinkedDestination } from "./deploy-ports";
 import type {
   DeployedContentPort,
   DeployedContentState,
   DeployTarget,
   InventoryGitPort,
 } from "./deploy-skill";
-import { deployTargetSubtrees, type SupportedTool } from "./deploy-tools";
+import {
+  deployTargetSubtrees,
+  deployToolFolders,
+  type SupportedTool,
+} from "./deploy-tools";
 import {
   classifyDeployedDrift,
   type DeployedFileHashes,
@@ -305,18 +310,29 @@ export class DeployedContentAdapter
     return true;
   }
 
-  async linkedSkillPath(input: {
+  async linkedDestination(input: {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
     deployRoot?: string;
-  }): Promise<string | null> {
+  }): Promise<LinkedDestination | null> {
     const root = this.deps.location.treeRoot(input.target);
-    for (const subtree of this.subtrees(input)) {
-      const abs = resolve(root, subtree);
-      const facts = await this.deps.fs.describe(abs);
-      if (facts?.kind === "symlink") {
-        return abs;
+    const roots = this.deps.location.toolRoots(input.target);
+    const candidates = [
+      ...(input.deployRoot === undefined
+        ? deployToolFolders(roots, input.tools).map((folder) => ({
+            kind: "tool-folder" as const,
+            path: resolve(root, folder),
+          }))
+        : []),
+      ...this.subtrees(input).map((subtree) => ({
+        kind: "skill-folder" as const,
+        path: resolve(root, subtree),
+      })),
+    ];
+    for (const candidate of candidates) {
+      if ((await this.deps.fs.describe(candidate.path))?.kind === "symlink") {
+        return candidate;
       }
     }
     return null;
