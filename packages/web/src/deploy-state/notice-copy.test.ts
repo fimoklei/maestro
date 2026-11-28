@@ -419,6 +419,49 @@ describe("a removal refused over local edits", () => {
   });
 });
 
+describe("a Global removal refused over local edits in a folder it no longer writes", () => {
+  const editedIn = (body: Record<string, string[]>) =>
+    plainText(
+      removeNotice(
+        new HttpError(409, "unused", "deployed-diverged-from-lock", body),
+      ).detail ?? "",
+    );
+
+  it("names the variable that moved Claude Code's folder", () => {
+    expect(
+      editedIn({
+        folders: ["~/.claude-work/skills"],
+        former: ["~/.claude-work/skills"],
+      }),
+    ).toBe(
+      "Global doesn't write to ~/.claude-work/skills because CLAUDE_CONFIG_DIR changed. Delete the copy yourself, or move it out of the folder to keep your edits. Then select Remove skill again.",
+    );
+  });
+
+  it("speaks of copies for several former folders", () => {
+    expect(
+      editedIn({
+        folders: ["~/.claude-old/skills", "~/.claude-work/skills"],
+        former: ["~/.claude-old/skills", "~/.claude-work/skills"],
+      }),
+    ).toBe(
+      "Global doesn't write to ~/.claude-old/skills and ~/.claude-work/skills because CLAUDE_CONFIG_DIR changed. Delete the copies yourself, or move them out of these folders to keep your edits. Then select Remove skill again.",
+    );
+  });
+
+  it("gives both causes in one step beside a folder whose tool isn't detected", () => {
+    expect(
+      editedIn({
+        folders: ["~/.agents/skills", "~/.claude-work/skills"],
+        notWritten: ["~/.agents/skills"],
+        former: ["~/.claude-work/skills"],
+      }),
+    ).toBe(
+      "Global doesn't write to ~/.agents/skills because its tool isn't detected, or to ~/.claude-work/skills because CLAUDE_CONFIG_DIR changed. Delete the copies yourself, or move them out of these folders to keep your edits. Then select Remove skill again.",
+    );
+  });
+});
+
 describe("an update on any target, Global included", () => {
   // One action has one name (#1802).
   it.each([

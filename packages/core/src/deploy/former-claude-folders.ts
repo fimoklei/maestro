@@ -33,7 +33,7 @@ export function formerClaudeRoots(
 
 export const formerFolderPath = (root: string) => `~/${root}/skills`;
 
-export function formerClaudeFoldersHolding(
+export function formerClaudeRootsHolding(
   deployments: readonly DeploymentRow[],
   layout: GlobalLayout,
   name: string,
@@ -41,7 +41,7 @@ export function formerClaudeFoldersHolding(
   const holding = deployments.filter((row) =>
     `${row.value}/`.includes(`${SKILLS_SEGMENT}${name}/`),
   );
-  return formerClaudeRoots(holding, layout).map(formerFolderPath);
+  return formerClaudeRoots(holding, layout);
 }
 
 export function formerClaudeProfiles(input: {

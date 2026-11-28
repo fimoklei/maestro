@@ -120,7 +120,12 @@ export function inMemoryDeployedContent(
     );
   };
 
-  const setCopy = (target: DeployTarget, name: string, states: CopyStates) => {
+  const setCopy = (
+    target: DeployTarget,
+    name: string,
+    states: CopyStates,
+    former: Readonly<Record<string, ToolCopyState>> = {},
+  ) => {
     const root = treeRoot(target);
     const lockPath = lockfilePath(target);
     const entries =
@@ -155,31 +160,44 @@ export function inMemoryDeployedContent(
               claude: states.claude ?? "clean",
               codex: states.codex ?? "clean",
             };
-      for (const tool of SUPPORTED_TOOLS) {
-        if (perTool[tool] !== "not-deployed") {
-          tree.write(skillFile(tool), `${name}\n`);
+      const places = [
+        ...SUPPORTED_TOOLS.map((tool) => ({
+          folder: folder(tool),
+          state: perTool[tool],
+        })),
+        ...Object.entries(former).map(([formerRoot, state]) => ({
+          folder: `${root}/${formerRoot}/skills/${name}`,
+          state,
+        })),
+      ];
+      for (const place of places) {
+        tree.remove(place.folder);
+        if (place.state !== "not-deployed") {
+          tree.write(`${place.folder}/SKILL.md`, `${name}\n`);
         }
       }
       const recorded = Object.fromEntries(
-        SUPPORTED_TOOLS.filter((tool) =>
-          ["clean", "diverged", "deleted"].includes(perTool[tool]),
-        ).flatMap((tool) =>
-          tree
-            .filePaths()
-            .filter((abs) => abs.startsWith(`${folder(tool)}/`))
-            .map((abs) => [
-              abs.slice(root.length + 1),
-              sha(tree.read(abs) ?? Buffer.alloc(0)),
-            ]),
-        ),
+        places
+          .filter((place) =>
+            ["clean", "diverged", "deleted"].includes(place.state),
+          )
+          .flatMap((place) =>
+            tree
+              .filePaths()
+              .filter((abs) => abs.startsWith(`${place.folder}/`))
+              .map((abs) => [
+                abs.slice(root.length + 1),
+                sha(tree.read(abs) ?? Buffer.alloc(0)),
+              ]),
+          ),
       );
       entries.set(name, recorded);
-      for (const tool of SUPPORTED_TOOLS) {
-        if (perTool[tool] === "diverged") {
-          tree.write(skillFile(tool), `${name}, edited\n`);
+      for (const place of places) {
+        if (place.state === "diverged") {
+          tree.write(`${place.folder}/SKILL.md`, `${name}, edited\n`);
         }
-        if (perTool[tool] === "deleted") {
-          tree.remove(folder(tool));
+        if (place.state === "deleted") {
+          tree.remove(place.folder);
         }
       }
     }

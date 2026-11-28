@@ -35,6 +35,7 @@ const CONSENTABLE = new Set<CopyVerdict>(["local-edits", "unverified"]);
 export type CopyFinding = {
   name: string;
   tool: SupportedTool | null;
+  deployRoot?: string;
   verdict: CopyVerdict;
   linkedPath: string | null;
 };
@@ -83,7 +84,14 @@ export function copyKeys(check: LocalCopyCheck): string[] {
 }
 
 export const copyKey = (finding: CopyFinding): string =>
-  `${finding.name}:${finding.tool ?? ""}:${finding.verdict}`;
+  `${finding.name}:${finding.tool ?? ""}${finding.deployRoot === undefined ? "" : `@${finding.deployRoot}`}:${finding.verdict}`;
+
+type CopyScope = { tool: SupportedTool | null; deployRoot?: string };
+
+const scopeArgs = (scope: CopyScope) => ({
+  ...(scope.tool === null ? {} : { tools: [scope.tool] }),
+  ...(scope.deployRoot === undefined ? {} : { deployRoot: scope.deployRoot }),
+});
 
 export class LocalCopyGuard {
   private readonly deps: {
@@ -102,26 +110,42 @@ export class LocalCopyGuard {
     input: LocalCopyScope & {
       names: readonly string[];
       tools?: readonly SupportedTool[];
+      formerClaudeRoots?: readonly string[];
       release?: string;
     },
   ): Promise<LocalCopyCheck> {
-    const scopes: (SupportedTool | null)[] = input.tools
-      ? [...input.tools]
-      : [null];
+    const scopes: CopyScope[] = [
+      ...(input.tools
+        ? input.tools.map((tool) => ({ tool }))
+        : [{ tool: null }]),
+      ...(input.formerClaudeRoots ?? []).map((deployRoot) => ({
+        tool: "claude" as const,
+        deployRoot,
+      })),
+    ];
     const lockfile = await this.deps.content.readLockfile(input.target);
     const checked = await Promise.all(
       input.names.flatMap((name) =>
-        scopes.map(async (tool) => {
-          const verdict = await this.classify(input, lockfile, name, tool);
+        scopes.map(async (scope) => {
+          const verdict = await this.classify(input, lockfile, name, scope);
           const linkedPath = await this.deps.content.linkedSkillPath({
             target: input.target,
             name,
-            ...(tool === null ? {} : { tools: [tool] }),
+            ...scopeArgs(scope),
           });
+          const finding: CopyFinding = {
+            name,
+            tool: scope.tool,
+            ...(scope.deployRoot === undefined
+              ? {}
+              : { deployRoot: scope.deployRoot }),
+            verdict,
+            linkedPath,
+          };
           const bytes = CONSENTABLE.has(verdict)
-            ? `${name}:${tool ?? ""}:${await this.digest(input, name, tool)}`
+            ? `${copyKey(finding)}:${await this.digest(input, name, scope)}`
             : null;
-          return { finding: { name, tool, verdict, linkedPath }, bytes };
+          return { finding, bytes };
         }),
       ),
     );
@@ -166,13 +190,13 @@ export class LocalCopyGuard {
   private async digest(
     input: LocalCopyScope,
     name: string,
-    tool: SupportedTool | null,
+    scope: CopyScope,
   ): Promise<string | null> {
     return this.deps.content
       .contentDigest({
         target: input.target,
         name,
-        ...(tool === null ? {} : { tools: [tool] }),
+        ...scopeArgs(scope),
       })
       .catch(() => null);
   }
@@ -181,7 +205,7 @@ export class LocalCopyGuard {
     input: LocalCopyScope & { release?: string },
     lockfile: LockfileReading,
     name: string,
-    tool: SupportedTool | null,
+    scope: CopyScope,
   ): Promise<CopyVerdict> {
     try {
       return VERDICTS[
@@ -189,7 +213,7 @@ export class LocalCopyGuard {
           target: input.target,
           name,
           lockfile,
-          ...(tool === null ? {} : { tools: [tool] }),
+          ...scopeArgs(scope),
           ...(input.release === undefined ? {} : { release: input.release }),
         })
       ];

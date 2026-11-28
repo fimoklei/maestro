@@ -65,6 +65,7 @@ type Overrides = {
   detectTools?: () => Promise<SupportedTool[]>;
   probeThrows?: boolean;
   deployments?: { target: string; value: string }[];
+  formerCopies?: Record<string, ToolCopyState>;
 };
 
 function buildUseCase(overrides: Overrides = {}) {
@@ -81,10 +82,18 @@ function buildUseCase(overrides: Overrides = {}) {
       return false;
     }
     placed.add(key);
-    copies.setCopy(target, name, copyStatesOf(overrides));
+    copies.setCopy(
+      target,
+      name,
+      copyStatesOf(overrides),
+      overrides.formerCopies,
+    );
     return true;
   };
   const onRead = placedOnRead(copies.content, placeCopy);
+  if (overrides.deployments !== undefined) {
+    onRead.place({ kind: "global" }, "tdd");
+  }
   let apmRan = false;
   const deployedContent = {
     readLockfile: async (target: DeployTarget) => {
@@ -705,6 +714,51 @@ describe("RemoveDeployedSkill on the global target", () => {
           warning: null,
         },
       ],
+    });
+  });
+
+  it("refuses the check over local edits in a former Claude Code folder", async () => {
+    const { useCase, calls } = buildUseCase({
+      deployments: [
+        { target: "claude", value: ".claude-work/skills/tdd/SKILL.md" },
+      ],
+      formerCopies: { ".claude-work": "diverged" },
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+      folders: ["~/.claude-work/skills"],
+      former: ["~/.claude-work/skills"],
+    });
+    await expect(useCase.execute(removeTddGlobally)).resolves.toMatchObject({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("warns that a former Claude Code folder's copy cannot be checked", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["claude"],
+      deployments: [
+        { target: "claude", value: ".claude-work/skills/tdd/SKILL.md" },
+      ],
+      formerCopies: { ".claude-work": "unverifiable" },
+    });
+
+    const preflight = await useCase.preflight(removeTddGlobally);
+
+    expect(preflight.ok && preflight.check).toMatchObject({
+      tools: expect.arrayContaining([
+        {
+          tool: "claude",
+          path: "~/.claude-work/skills",
+          detected: false,
+          former: true,
+          warning: "cannot-verify-local-edits",
+        },
+      ]),
     });
   });
 

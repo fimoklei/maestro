@@ -49,10 +49,11 @@ export class DeployedContentAdapter
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    deployRoot?: string;
     release?: string;
     lockfile: LockfileReading;
   }): Promise<DeployedContentState> {
-    const subtrees = this.subtrees(input.target, input.name, input.tools);
+    const subtrees = this.subtrees(input);
     const baseline = this.baseline(input.lockfile, input.name, subtrees);
     const root = this.deps.location.treeRoot(input.target);
     let scan: SubtreeScan;
@@ -125,7 +126,8 @@ export class DeployedContentAdapter
     const { older, latest } = releasesAround(input.release, input.tags);
     const root = this.deps.location.treeRoot(input.target);
     const scanCopy = async (name: string, tool: SupportedTool) => {
-      const subtree = this.subtrees(input.target, name, [tool])[0] ?? "";
+      const subtree =
+        this.subtrees({ target: input.target, name, tools: [tool] })[0] ?? "";
       try {
         const scan = await this.scanSubtrees(root, [subtree], { hash: true });
         return {
@@ -208,7 +210,7 @@ export class DeployedContentAdapter
   async harnessHolds(
     input: Parameters<CopyReadingPort["harnessHolds"]>[0],
   ): Promise<boolean> {
-    const subtrees = this.subtrees(input.target, input.name);
+    const subtrees = this.subtrees({ target: input.target, name: input.name });
     const baseline = this.baseline(input.lockfile, input.name, subtrees);
     if (baseline.kind !== "hashes") return false;
     const harness = await this.readWorkingSkill(input.name);
@@ -254,9 +256,10 @@ export class DeployedContentAdapter
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    deployRoot?: string;
   }): Promise<string | null> {
     const root = this.deps.location.treeRoot(input.target);
-    const subtrees = this.subtrees(input.target, input.name, input.tools);
+    const subtrees = this.subtrees(input);
     const scan = await this.scanSubtrees(root, subtrees, { hash: true }).catch(
       () => null,
     );
@@ -306,13 +309,10 @@ export class DeployedContentAdapter
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    deployRoot?: string;
   }): Promise<string | null> {
     const root = this.deps.location.treeRoot(input.target);
-    for (const subtree of this.subtrees(
-      input.target,
-      input.name,
-      input.tools,
-    )) {
+    for (const subtree of this.subtrees(input)) {
       const abs = resolve(root, subtree);
       const facts = await this.deps.fs.describe(abs);
       if (facts?.kind === "symlink") {
@@ -322,16 +322,19 @@ export class DeployedContentAdapter
     return null;
   }
 
-  private subtrees(
-    target: DeployTarget,
-    name: string,
-    tools?: readonly SupportedTool[],
-  ): string[] {
-    return deployTargetSubtrees(
-      name,
-      this.deps.location.toolRoots(target),
-      tools,
-    );
+  private subtrees(input: {
+    target: DeployTarget;
+    name: string;
+    tools?: readonly SupportedTool[];
+    deployRoot?: string;
+  }): string[] {
+    return input.deployRoot === undefined
+      ? deployTargetSubtrees(
+          input.name,
+          this.deps.location.toolRoots(input.target),
+          input.tools,
+        )
+      : [`${input.deployRoot}/skills/${input.name}`];
   }
 
   async readLockfile(target: DeployTarget): Promise<LockfileReading> {

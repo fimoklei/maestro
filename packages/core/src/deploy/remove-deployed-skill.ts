@@ -14,7 +14,10 @@ import {
   type SupportedTool,
 } from "./deploy-tools";
 import type { DeployedRefLookup } from "./deployed-ref";
-import { formerClaudeFoldersHolding } from "./former-claude-folders";
+import {
+  formerClaudeRootsHolding,
+  formerFolderPath,
+} from "./former-claude-folders";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
@@ -97,12 +100,25 @@ const soleVerdictOrUnreadable = (copies: LocalCopyCheck): CopyVerdict =>
 
 const editedTools = (findings: readonly CopyFinding[]): SupportedTool[] =>
   findings.flatMap((finding) =>
-    finding.verdict === "local-edits" && finding.tool !== null
+    finding.verdict === "local-edits" &&
+    finding.tool !== null &&
+    finding.deployRoot === undefined
       ? [finding.tool]
       : [],
   );
 
-type EditedFolders = { folders?: string[]; notWritten?: string[] };
+const editedFormerFolders = (findings: readonly CopyFinding[]): string[] =>
+  findings.flatMap((finding) =>
+    finding.verdict === "local-edits" && finding.deployRoot !== undefined
+      ? [formerFolderPath(finding.deployRoot)]
+      : [],
+  );
+
+type EditedFolders = {
+  folders?: string[];
+  notWritten?: string[];
+  former?: string[];
+};
 
 function editedFolders(
   findings: readonly CopyFinding[],
@@ -111,10 +127,13 @@ function editedFolders(
 ): EditedFolders {
   const tools = editedTools(findings);
   const notWritten = tools.filter((tool) => !detected.includes(tool));
+  const former = editedFormerFolders(findings);
   const pathOf = (tool: SupportedTool) => globalFolderPath(tool, layout);
+  const folders = [...tools.map(pathOf), ...former];
   return {
-    ...(tools.length === 0 ? {} : { folders: tools.map(pathOf) }),
+    ...(folders.length === 0 ? {} : { folders }),
     ...(notWritten.length === 0 ? {} : { notWritten: notWritten.map(pathOf) }),
+    ...(former.length === 0 ? {} : { former }),
   };
 }
 
@@ -300,12 +319,7 @@ export class RemoveDeployedSkill {
         ? repoCheck(soleVerdictOrUnreadable(copies))
         : {
             scope: "global",
-            tools: await this.folderChecks(
-              input,
-              scope.detected,
-              copies,
-              namedUninstall,
-            ),
+            tools: await this.folderChecks(input, scope.detected, copies),
           };
     return { ok: true, copies, check };
   }
@@ -314,12 +328,21 @@ export class RemoveDeployedSkill {
     input: RemoveDeployedSkillInput,
     detected: readonly SupportedTool[],
     copies: LocalCopyCheck,
-    namedUninstall: boolean,
   ): Promise<RemoveToolCheck[]> {
     const lockfile = await this.deps.deployedContent.readLockfile(input.target);
     const checks: RemoveToolCheck[] = [];
     for (const finding of copies.findings) {
       if (finding.tool === null) {
+        continue;
+      }
+      if (finding.deployRoot !== undefined) {
+        checks.push({
+          tool: finding.tool,
+          path: formerFolderPath(finding.deployRoot),
+          detected: false,
+          former: true,
+          warning: GUARD_WARNINGS[finding.verdict] ?? null,
+        });
         continue;
       }
       const isDetected = detected.includes(finding.tool);
@@ -337,21 +360,6 @@ export class RemoveDeployedSkill {
         detected: isDetected,
         warning: GUARD_WARNINGS[finding.verdict] ?? null,
       });
-    }
-    if (namedUninstall && lockfile !== "missing" && lockfile.ok) {
-      for (const path of formerClaudeFoldersHolding(
-        lockfile.deployments,
-        this.deps.globalLayout(),
-        input.name,
-      )) {
-        checks.push({
-          tool: "claude",
-          path,
-          detected: false,
-          former: true,
-          warning: null,
-        });
-      }
     }
     return checks;
   }
@@ -400,13 +408,31 @@ export class RemoveDeployedSkill {
               ),
             ]
           : scope.detected;
+    const formerClaudeRoots =
+      scope.scope === "global" && namedUninstall
+        ? await this.formerClaudeRoots(input)
+        : [];
     return await this.copyGuard.check({
       write: "remove",
       target: input.target,
       names: [input.name],
       ...(tools === undefined ? {} : { tools }),
+      ...(formerClaudeRoots.length === 0 ? {} : { formerClaudeRoots }),
       ...(release === undefined ? {} : { release }),
     });
+  }
+
+  private async formerClaudeRoots(
+    input: RemoveDeployedSkillInput,
+  ): Promise<string[]> {
+    const lockfile = await this.deps.deployedContent.readLockfile(input.target);
+    return lockfile !== "missing" && lockfile.ok
+      ? formerClaudeRootsHolding(
+          lockfile.deployments,
+          this.deps.globalLayout(),
+          input.name,
+        )
+      : [];
   }
 
   async execute(

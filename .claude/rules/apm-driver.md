@@ -131,7 +131,8 @@ The observed behavior behind every rule lives in `docs/apm-behavior.md`
   uninstall once per former Claude Code folder: a `deployments[]` row with
   `target: claude` under another root than the current one. Leave
   `CLAUDE_CONFIG_DIR` out for `.claude`, set it to `$HOME/<root>` otherwise,
-  and give a root outside `HOME` no retry (ADR-0019 §9).
+  and give a root outside `HOME` no retry (ADR-0019 §9). Guard each former
+  folder's copy before the first uninstall, as the current folders.
 - Never parse the cleaned-paths count — it counts what that run deleted.
 - Name the package with the same tag-pinned ref the install used; a bare
   skill name is rejected.
