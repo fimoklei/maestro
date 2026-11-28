@@ -20,7 +20,7 @@ agent *must do* when driving apm.
 
 ## Decision
 
-Eight entries. Each names what APM says, what this route does, and the verdict:
+Nine entries. Each names what APM says, what this route does, and the verdict:
 **deliberate**, **drift**, or **not a departure**.
 
 ### 1. The version lives on a git tag, not in the package manifest — deliberate
@@ -170,6 +170,28 @@ Eight entries. Each names what APM says, what this route does, and the verdict:
 - **Accepted cost:** Maestro keeps a folder APM knows nothing about. The
   folder stays undelivered only while the Harness root holds no `SKILL.md`
   (#1587).
+
+### 9. A Remove from Global retries once per former Claude Code folder — deliberate
+
+- **APM:** an uninstall acts on the profile that `CLAUDE_CONFIG_DIR` selects.
+  When the lockfile also records the package under another Claude Code
+  folder (the variable was set or unset after a deploy), it deletes the
+  selected profile's copies, keeps the package in `apm.yml` and prints
+  `from the selected profile only`; repeating it changes nothing (0.38.1,
+  0.39.1; #1973).
+- **This route:** on that signal the driver runs the same named uninstall
+  once per former Claude Code folder: a `deployments[]` row with
+  `target: claude` under a root other than the current one. For `.claude`
+  it leaves `CLAUDE_CONFIG_DIR` out of apm's environment, for any other
+  root it sets the variable to that root under `HOME`; a root outside
+  `HOME` gets no retry. Deploy-state shows such a folder as a muted row
+  on Global, and Remove of Global's last skill lists it under `Writes to`.
+- **Why:** otherwise Remove of Global's last skill fails on every try until
+  the user restores the old variable by hand. A Maestro-side `rm` would
+  leave the package in `apm.yml` and the lockfile (#1973; Michiel,
+  2026-11-27).
+- **Accepted cost:** Maestro changes one variable in the environment it
+  hands apm. It never adds a credential.
 
 ## Consequences
 

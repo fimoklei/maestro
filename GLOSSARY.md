@@ -144,6 +144,10 @@ _Avoid_: system-wide, machine install, "always both tools" (the reversed pre-ADR
 The skills folder of a detected tool, which Global writes to. Several tools may read one folder. It is not a target: it has no release, Selection or action of its own (#1771).
 _Avoid_: global target, tool target, tool row, tool config.
 
+**Former Claude Code folder**:
+A Claude Code skills folder the global lockfile still records copies in, after `CLAUDE_CONFIG_DIR` changed. Global no longer writes it; removing Global's last skill deletes its copies (ADR-0019 §9, #1973).
+_Avoid_: old folder, leftover folder.
+
 **Consuming repo**:
 A project that receives locally-deployed primitives from the central inventory.
 _Avoid_: target repo (ambiguous with "target"), client repo.

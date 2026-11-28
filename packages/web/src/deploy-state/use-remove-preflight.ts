@@ -51,6 +51,7 @@ function readCheck(value: unknown): RemoveCheck | null {
       tool?: unknown;
       path?: unknown;
       detected?: unknown;
+      former?: unknown;
       warning?: unknown;
     }[]) {
       const warning = readWarning(entry?.warning);
@@ -58,6 +59,7 @@ function readCheck(value: unknown): RemoveCheck | null {
         typeof entry?.tool !== "string" ||
         typeof entry.path !== "string" ||
         typeof entry.detected !== "boolean" ||
+        (entry.former !== undefined && entry.former !== true) ||
         warning === undefined
       ) {
         return null;
@@ -67,6 +69,7 @@ function readCheck(value: unknown): RemoveCheck | null {
         tool: entry.tool as RemoveToolCheck["tool"],
         path: entry.path,
         detected: entry.detected,
+        ...(entry.former === true ? { former: true as const } : {}),
         warning,
       });
     }

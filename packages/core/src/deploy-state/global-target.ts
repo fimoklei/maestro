@@ -4,9 +4,17 @@ import {
   globalFolders,
   type SupportedTool,
 } from "../deploy/deploy-tools";
+import {
+  formerClaudeRoots,
+  formerFolderPath,
+} from "../deploy/former-claude-folders";
 import type { GitOrigin } from "../deploy/git-origin";
 import type { GitHubPage } from "../git/github-page";
-import { type LockfileEntry, readPackage } from "../lockfile/lockfile";
+import {
+  type DeploymentRow,
+  type LockfileEntry,
+  readPackage,
+} from "../lockfile/lockfile";
 import {
   type DeployedPrimitive,
   type PinnedPerSkill,
@@ -53,6 +61,7 @@ export async function readGlobalTarget(
   detectedTools: readonly SupportedTool[],
   deps: {
     layout: GlobalLayout;
+    deployments: readonly DeploymentRow[];
     fileExists: (path: string) => Promise<boolean>;
     origin?: GitOrigin | null;
     harnessPage?: () => Promise<GitHubPage | null>;
@@ -64,12 +73,27 @@ export async function readGlobalTarget(
     release?: string;
   }
 > {
-  const prefixOf = (folder: GlobalFolder) => deps.layout.roots[folder.tool];
+  const formerRoots = new Map<GlobalFolder, string>();
+  const prefixOf = (folder: GlobalFolder) =>
+    formerRoots.get(folder) ?? deps.layout.roots[folder.tool];
   const folders: GlobalFolderState[] = globalFolders(
     detectedTools,
     deps.layout,
   ).map((folder) => ({ ...folder, primitives: [] }));
-  const written = folders.filter((folder) => folder.detected);
+  for (const root of formerClaudeRoots(deps.deployments, deps.layout)) {
+    const folder: GlobalFolderState = {
+      path: formerFolderPath(root),
+      tool: "claude",
+      detected: false,
+      former: true,
+      primitives: [],
+    };
+    formerRoots.set(folder, root);
+    folders.push(folder);
+  }
+  const written = folders.filter(
+    (folder) => folder.detected || folder.former === true,
+  );
   const skipped: SkippedEntry[] = [];
   const otherOrigins = new Set<string>();
   const pins: SkillPin[] = [];
@@ -129,9 +153,16 @@ export async function readGlobalTarget(
       continue;
     }
     const github = perSkillPage(entry, reading.name, await harnessPage());
-    const holders = written.filter((folder) =>
-      entryTargetsPrefix(entry, prefixOf(folder)),
-    );
+    const holders: GlobalFolderState[] = [];
+    for (const folder of written) {
+      if (
+        entryTargetsPrefix(entry, prefixOf(folder)) &&
+        (folder.former !== true ||
+          (await holdsOnDisk(entry, prefixOf(folder), deps.fileExists)))
+      ) {
+        holders.push(folder);
+      }
+    }
     for (const folder of holders) {
       addSkill(folder, reading.name, entry.resolved_ref, github);
     }
@@ -147,9 +178,12 @@ export async function readGlobalTarget(
     }
   }
   const pinnedPerSkill = tallyPins(pins);
+  const shown = folders.filter(
+    (folder) => folder.former !== true || folder.primitives.length > 0,
+  );
   return {
-    primitives: oneSkillList(folders),
-    folders,
+    primitives: oneSkillList(shown),
+    folders: shown,
     skipped,
     otherOrigins: [...otherOrigins],
     ...(pinnedPerSkill === undefined ? {} : { pinnedPerSkill }),
@@ -178,6 +212,19 @@ export function oneSkillList(
     }
   }
   return [...byName.values()];
+}
+
+async function holdsOnDisk(
+  entry: LockfileEntry,
+  prefix: string,
+  fileExists: (path: string) => Promise<boolean>,
+): Promise<boolean> {
+  for (const file of entry.deployed_files ?? []) {
+    if (file.startsWith(`${prefix}/`) && (await fileExists(file))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function entryTargetsPrefix(entry: LockfileEntry, prefix: string): boolean {

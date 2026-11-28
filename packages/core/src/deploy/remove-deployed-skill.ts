@@ -14,6 +14,7 @@ import {
   type SupportedTool,
 } from "./deploy-tools";
 import type { DeployedRefLookup } from "./deployed-ref";
+import { formerClaudeFoldersHolding } from "./former-claude-folders";
 import type { GitOrigin } from "./git-origin";
 import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
@@ -78,6 +79,7 @@ export type RemoveToolCheck = {
   tool: SupportedTool;
   path: string;
   detected: boolean;
+  former?: true;
   warning: RemoveWarning | null;
 };
 
@@ -298,7 +300,12 @@ export class RemoveDeployedSkill {
         ? repoCheck(soleVerdictOrUnreadable(copies))
         : {
             scope: "global",
-            tools: await this.folderChecks(input, scope.detected, copies),
+            tools: await this.folderChecks(
+              input,
+              scope.detected,
+              copies,
+              namedUninstall,
+            ),
           };
     return { ok: true, copies, check };
   }
@@ -307,6 +314,7 @@ export class RemoveDeployedSkill {
     input: RemoveDeployedSkillInput,
     detected: readonly SupportedTool[],
     copies: LocalCopyCheck,
+    namedUninstall: boolean,
   ): Promise<RemoveToolCheck[]> {
     const lockfile = await this.deps.deployedContent.readLockfile(input.target);
     const checks: RemoveToolCheck[] = [];
@@ -329,6 +337,21 @@ export class RemoveDeployedSkill {
         detected: isDetected,
         warning: GUARD_WARNINGS[finding.verdict] ?? null,
       });
+    }
+    if (namedUninstall && lockfile !== "missing" && lockfile.ok) {
+      for (const path of formerClaudeFoldersHolding(
+        lockfile.deployments,
+        this.deps.globalLayout(),
+        input.name,
+      )) {
+        checks.push({
+          tool: "claude",
+          path,
+          detected: false,
+          former: true,
+          warning: null,
+        });
+      }
     }
     return checks;
   }

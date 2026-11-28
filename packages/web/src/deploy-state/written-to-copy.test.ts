@@ -278,6 +278,23 @@ describe("Written to line of a held deploy", () => {
     expect(heldLine(1).fact).toBe("0 of 1 skill deployed");
   });
 
+  it("leaves out a former Claude Code folder, which no write reaches", () => {
+    expect(
+      folderLines(
+        [
+          { path: "~/.claude-work/skills", tool: "claude", detected: true },
+          {
+            path: "~/.claude/skills",
+            tool: "claude",
+            detected: false,
+            former: true,
+          },
+        ],
+        () => heldLine(2),
+      ).map((line) => line.name),
+    ).toEqual(["~/.claude-work/skills"]);
+  });
+
   it("names the undetected tool of a folder Global does not write, muted", () => {
     expect(
       folderLines(

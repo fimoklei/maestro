@@ -15,7 +15,15 @@ const lockfileEntrySchema = z.object({
 
 const lockfileSchema = z.object({
   dependencies: z.array(z.unknown()),
+  deployments: z.array(z.unknown()).optional(),
 });
+
+const deploymentRowSchema = z.object({
+  target: z.string(),
+  value: z.string(),
+});
+
+export type DeploymentRow = z.infer<typeof deploymentRowSchema>;
 
 const namedEntrySchema = z.object({ virtual_path: z.string() });
 
@@ -24,7 +32,12 @@ export type LockfileEntry = z.infer<typeof lockfileEntrySchema>;
 export type UnreadableEntry = { virtualPath: string | null };
 
 type LockfileParseResult =
-  | { ok: true; entries: LockfileEntry[]; unreadable: UnreadableEntry[] }
+  | {
+      ok: true;
+      entries: LockfileEntry[];
+      unreadable: UnreadableEntry[];
+      deployments: DeploymentRow[];
+    }
   | { ok: false };
 
 export type LockfileReading = "missing" | LockfileParseResult;
@@ -55,7 +68,11 @@ export function parseLockfile(raw: string): LockfileParseResult {
       virtualPath: named.success ? named.data.virtual_path : null,
     });
   }
-  return { ok: true, entries, unreadable };
+  const deployments = (parsed.data.deployments ?? []).flatMap((candidate) => {
+    const row = deploymentRowSchema.safeParse(candidate);
+    return row.success ? [row.data] : [];
+  });
+  return { ok: true, entries, unreadable, deployments };
 }
 
 function namesItself(entry: LockfileEntry): boolean {

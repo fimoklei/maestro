@@ -61,6 +61,19 @@ function fakeRun(stdout = "") {
   return { run, calls };
 }
 
+function sequenceRun(outputs: readonly string[]) {
+  const calls: (RunCall & { env: NodeJS.ProcessEnv })[] = [];
+  const run = async (
+    file: string,
+    args: string[],
+    options: { cwd?: string; env: NodeJS.ProcessEnv },
+  ) => {
+    calls.push({ file, args, cwd: options.cwd, env: options.env });
+    return { stdout: outputs[calls.length - 1] ?? "", stderr: "" };
+  };
+  return { run, calls };
+}
+
 function rejectingRun(output: { stdout?: string; stderr?: string }) {
   const run = async () => {
     const error = Object.assign(new Error("Command failed: apm view"), {
@@ -468,16 +481,115 @@ describe("ApmCliDriver.removeSkill", () => {
     ).resolves.toEqual({ ok: false });
   });
 
-  it("fails closed when apm removed the package from the selected profile only", async () => {
+  it("fails closed when apm removed the package from the selected profile only and no former folder is recorded", async () => {
     const { run } = fakeRun(uninstallSelectedProfileOnlyOutput);
     const driver = new ApmCliDriver({
       run,
       prepareGlobalCwd: async () => "/scratch",
+      formerClaudeProfiles: async () => [],
     });
 
     await expect(
       driver.removeSkill({ target: { kind: "global" }, ref }),
     ).resolves.toEqual({ ok: false });
+  });
+
+  it("retries without CLAUDE_CONFIG_DIR when the former Claude Code folder is ~/.claude", async () => {
+    vi.stubEnv("CLAUDE_CONFIG_DIR", "/home/ada/.claude-work");
+    const { run, calls } = sequenceRun([
+      uninstallSelectedProfileOnlyOutput,
+      fixture("apm-uninstall-selected-profile-retry.txt"),
+    ]);
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch",
+      formerClaudeProfiles: async () => [{ configDir: null }],
+    });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "global" }, ref }),
+    ).resolves.toEqual({ ok: true });
+    expect(calls.map((call) => call.args)).toEqual([
+      ["uninstall", ref, "-g"],
+      ["uninstall", ref, "-g"],
+    ]);
+    expect(calls[1]?.env).not.toHaveProperty("CLAUDE_CONFIG_DIR");
+  });
+
+  it("retries with CLAUDE_CONFIG_DIR set to the former Claude Code folder", async () => {
+    vi.stubEnv("CLAUDE_CONFIG_DIR", undefined);
+    const { run, calls } = sequenceRun([
+      fixture("apm-uninstall-selected-profile-only-reverse.txt"),
+      fixture("apm-uninstall-selected-profile-retry-reverse.txt"),
+    ]);
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch",
+      formerClaudeProfiles: async () => [
+        { configDir: "/home/ada/.claude-work" },
+      ],
+    });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "global" }, ref }),
+    ).resolves.toEqual({ ok: true });
+    expect(calls[1]?.env.CLAUDE_CONFIG_DIR).toBe("/home/ada/.claude-work");
+  });
+
+  it("fails closed when the retry also removes from the selected profile only", async () => {
+    const { run, calls } = sequenceRun([
+      uninstallSelectedProfileOnlyOutput,
+      uninstallSelectedProfileOnlyOutput,
+    ]);
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch",
+      formerClaudeProfiles: async () => [{ configDir: null }],
+    });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "global" }, ref }),
+    ).resolves.toEqual({ ok: false });
+    expect(calls).toHaveLength(2);
+  });
+
+  it("reports a timed-out retry as timed out", async () => {
+    let call = 0;
+    const run = async () => {
+      call += 1;
+      if (call === 1) {
+        return { stdout: uninstallSelectedProfileOnlyOutput, stderr: "" };
+      }
+      throw Object.assign(new Error("killed"), {
+        killed: true,
+        signal: "SIGTERM",
+      });
+    };
+    const driver = new ApmCliDriver({
+      run,
+      prepareGlobalCwd: async () => "/scratch",
+      formerClaudeProfiles: async () => [{ configDir: null }],
+    });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "global" }, ref }),
+    ).resolves.toEqual({ ok: false, reason: "timed-out" });
+  });
+
+  it("runs no retry for a repo target", async () => {
+    const { run, calls } = sequenceRun([
+      uninstallSelectedProfileOnlyOutput,
+      fixture("apm-uninstall-selected-profile-retry.txt"),
+    ]);
+    const driver = new ApmCliDriver({
+      run,
+      formerClaudeProfiles: async () => [{ configDir: null }],
+    });
+
+    await expect(
+      driver.removeSkill({ target: { kind: "repo", repoPath: "/repo" }, ref }),
+    ).resolves.toEqual({ ok: false });
+    expect(calls).toHaveLength(1);
   });
 
   it("reports success when the copies lived under CLAUDE_CONFIG_DIR alone", async () => {
