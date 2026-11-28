@@ -31,11 +31,12 @@ import {
 } from "../ui/phrase";
 import { REGISTER_STEP } from "./deploy-state-copy";
 import {
-  LINKED_REASON,
-  REASON,
-  type ReasonCode,
-  TARGET_BUSY,
-} from "./reason-copy";
+  linkedNotice,
+  linkedOf,
+  unnamedLink,
+  withLinked,
+} from "./linked-notice-copy";
+import { REASON, type ReasonCode, TARGET_BUSY } from "./reason-copy";
 import {
   RETRY_DEPLOY,
   RETRY_LABELS,
@@ -58,20 +59,7 @@ const CREATE_RELEASE_STEP = `Select ${CREATE_RELEASE} on the Harness screen`;
 
 export const FIX_AND_RELEASE = `Fix the skill in the Harness. ${CREATE_RELEASE_STEP}, ${DEPLOY_AGAIN}`;
 
-// No comma after the path: a reader copying the command would paste it.
-const removeLink = (path: string, again: string) =>
-  phrase`Run ${machine(`rm ${path}`)} and ${again}`;
-
-const replaceLink = (path: string, again: string) =>
-  phrase`Replace the link at ${machine(path)} with a real folder that contains the same skills, ${again}`;
-
-const unnamedLink = (again: string) =>
-  `One of the target's tool or skill folders is a link. Replace the link with a real folder that contains the same files, ${again}`;
-
 const REMOVE_AGAIN = `then select ${REMOVE_SKILL} again.`;
-
-const TOOL_FOLDER_KEEPS_SKILLS =
-  "Copy the skills from the folder the link points to into the new folder, so your tools keep every skill.";
 
 const EDITS_OUTSIDE_HARNESS = "The edits never went through the Harness.";
 
@@ -99,9 +87,6 @@ const STOPPED_AFTER = "stopped after 5 minutes.";
 
 const FILES_MAY_REMAIN =
   "Some of the skill's files may still be in the target.";
-
-const LINK_TARGET_SURVIVES =
-  "Deleting the link doesn't delete the folder it points to.";
 
 type Body = { message: string; detail?: string };
 
@@ -577,58 +562,6 @@ export function globalUpdateNotice(error: unknown): {
   return notice.label === UNKNOWN_UPDATE_RUN.label
     ? { notice: UNKNOWN_GLOBAL_UPDATE_RUN, unknown: true }
     : { notice, unknown: false };
-}
-
-function withLinked(
-  notice: DeployStateNotice,
-  error: unknown,
-  outcome: string,
-  again: string,
-): DeployStateNotice {
-  const linked = linkedOf(error);
-  return error instanceof HttpError &&
-    error.code === "destination-symlinked" &&
-    linked !== undefined
-    ? linkedNotice(linked, outcome, again)
-    : notice;
-}
-
-function linkedOf(error: unknown): LinkedDestination | undefined {
-  if (
-    !(error instanceof HttpError) ||
-    typeof error.body !== "object" ||
-    error.body === null
-  ) {
-    return undefined;
-  }
-  const linked: unknown = Reflect.get(error.body, "linked");
-  if (typeof linked !== "object" || linked === null) {
-    return undefined;
-  }
-  const kind: unknown = Reflect.get(linked, "kind");
-  const path: unknown = Reflect.get(linked, "path");
-  return (kind === "tool-folder" || kind === "skill-folder") &&
-    typeof path === "string"
-    ? { kind, path }
-    : undefined;
-}
-
-function linkedNotice(
-  linked: LinkedDestination,
-  outcome: string,
-  again: string,
-): DeployStateNotice {
-  return linked.kind === "tool-folder"
-    ? {
-        label: LINKED_REASON[linked.kind],
-        message: phrase`${outcome} ${replaceLink(linked.path, again)}`,
-        detail: TOOL_FOLDER_KEEPS_SKILLS,
-      }
-    : {
-        label: LINKED_REASON[linked.kind],
-        message: phrase`${outcome} ${removeLink(linked.path, again)}`,
-        detail: LINK_TARGET_SURVIVES,
-      };
 }
 
 /** The whole notice for a refused or failed removal. */
