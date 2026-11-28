@@ -20,6 +20,7 @@ import { GLOBAL_LOCK_KEY, type InFlightLocks } from "./in-flight-locks";
 import {
   type CopyBlock,
   type CopyFinding,
+  consentedCopies,
   copiesOf,
   copyKey,
   copyKeys,
@@ -545,22 +546,26 @@ export class DeploySkill {
       }
       let isBlocking: (finding: CopyFinding) => boolean = () => false;
       let held: string[] = [];
+      let consented = admitted.ok ? consentedCopies(check.findings) : [];
       if (!admitted.ok) {
         isBlocking = await this.blockingFilter(target, candidates);
-        const consented = new Set<string>();
+        const consentedKeys = new Set<string>();
         for (const row of consent.each) {
           if (!candidates.includes(row.name)) continue;
           const own = await checkOver([row.name]);
           if (this.copyGuard.admits(scope, own, row.confirmedCopyReceipt).ok) {
-            for (const key of copyKeys(own)) consented.add(key);
+            for (const key of copyKeys(own)) consentedKeys.add(key);
           }
         }
         held = heldByCopies(
           candidates,
           deployed,
           check.findings.filter(
-            (f) => isBlocking(f) && !consented.has(copyKey(f)),
+            (f) => isBlocking(f) && !consentedKeys.has(copyKey(f)),
           ),
+        );
+        consented = consentedCopies(
+          check.findings.filter((f) => consentedKeys.has(copyKey(f))),
         );
       }
       const go = candidates.filter((name) => !held.includes(name));
@@ -578,6 +583,7 @@ export class DeploySkill {
             previous: deployed,
             desired,
             ...toolScope,
+            consented,
           })
           .catch((): SelectionResult => ({ ok: false, error: "apply-failed" }));
         if (applied.ok || applied.error === "apply-incomplete") {

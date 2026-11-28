@@ -720,6 +720,7 @@ export class RemoveDeployedSkill {
       previous: plan.previous,
       desired: plan.previous.filter((name) => name !== input.name),
       ...(detected === undefined ? {} : { tools: detected }),
+      consented: [],
     });
     if (applied.ok) {
       return null;

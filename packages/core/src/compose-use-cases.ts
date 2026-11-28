@@ -2,6 +2,7 @@ import { Categories } from "./categories/categories";
 import { CategoriesProposal } from "./categories/categories-proposal";
 import { heldItemsFrom } from "./categories/held-items";
 import { SelectionWriter } from "./deploy/apply-selection";
+import { CopySetAside } from "./deploy/copy-set-aside";
 import type {
   ApmDriverPort,
   DeployedCleanupPort,
@@ -242,16 +243,21 @@ export function composeUseCases(ports: UseCasePorts) {
   // deploy racing a remove would corrupt it.
   const apmWriteLocks = new InFlightLocks();
   const copyGuard = new LocalCopyGuard({ content: releaseAwareContent });
+  const outcomes = new PlaceReader({
+    content: releaseAwareContent,
+    releaseTags: () => releaseHead.releaseTags(),
+    globalLayout,
+  });
   const selection = new SelectionWriter({
     fs,
     location: deployedLocation,
     apm,
     operations: new TargetOperationStore({ store }),
-  });
-  const outcomes = new PlaceReader({
-    content: releaseAwareContent,
-    releaseTags: () => releaseHead.releaseTags(),
-    globalLayout,
+    setAside: new CopySetAside({
+      fs: copyTreeFs,
+      location: deployedLocation,
+      readBack: outcomes,
+    }),
   });
   const deploy = new DeploySkill({
     outcomes,

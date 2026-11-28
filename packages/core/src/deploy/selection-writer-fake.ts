@@ -1,5 +1,7 @@
+import { InMemoryCopyTree } from "../filesystem/copy-tree-fs.fake";
 import { ConfigStore } from "../registry/config-store";
 import { SelectionWriter } from "./apply-selection";
+import { CopySetAside } from "./copy-set-aside";
 import type {
   DeployedCleanupPort,
   DeploySkillDriverResult,
@@ -216,6 +218,16 @@ ${
       },
       apm,
       operations,
+      setAside: new CopySetAside({
+        fs: new InMemoryCopyTree(),
+        location: {
+          treeRoot: () => treeRoot,
+          toolRoots: () => REPO_TOOL_ROOTS,
+        },
+        readBack: {
+          read: () => Promise.reject(new Error("readBack was reached")),
+        },
+      }),
     }),
     operations,
     calls,

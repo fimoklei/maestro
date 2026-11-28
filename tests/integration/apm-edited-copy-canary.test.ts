@@ -4,8 +4,10 @@ import {
   copyFile,
   mkdir,
   mkdtemp,
+  readdir,
   readFile,
   realpath,
+  rename,
   rm,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -45,6 +47,26 @@ describe.runIf(enabled)("real apm install over an edited copy", () => {
   };
 
   const skillFile = () => join(home, ".claude", "skills", SKILL, "SKILL.md");
+
+  const useVersionOneRecord = async () => {
+    const apmHome = join(home, ".apm");
+    await rm(apmHome, { recursive: true, force: true });
+    await mkdir(apmHome);
+    await copyFile(
+      fixture("apm.yml.0.32.0-global-tdd.yaml"),
+      join(apmHome, "apm.yml"),
+    );
+    await copyFile(
+      fixture("apm.lock.0.32.0-global-tdd.yaml"),
+      join(apmHome, "apm.lock.yaml"),
+    );
+  };
+
+  const setAside = async () => {
+    const aside = join(home, ".claude", `.maestro-set-aside-${SKILL}-canary`);
+    await rename(join(home, ".claude", "skills", SKILL), aside);
+    return aside;
+  };
 
   beforeEach(async () => {
     home = await realpath(
@@ -86,17 +108,7 @@ describe.runIf(enabled)("real apm install over an edited copy", () => {
   it("refuses the whole install under a version-1 lockfile", {
     timeout: 120_000,
   }, async () => {
-    const apmHome = join(home, ".apm");
-    await rm(apmHome, { recursive: true, force: true });
-    await mkdir(apmHome);
-    await copyFile(
-      fixture("apm.yml.0.32.0-global-tdd.yaml"),
-      join(apmHome, "apm.yml"),
-    );
-    await copyFile(
-      fixture("apm.lock.0.32.0-global-tdd.yaml"),
-      join(apmHome, "apm.lock.yaml"),
-    );
+    await useVersionOneRecord();
     await appendFile(skillFile(), EDIT);
 
     const reinstall = await installSelection();
@@ -110,6 +122,27 @@ describe.runIf(enabled)("real apm install over an edited copy", () => {
     );
     expect(await readFile(skillFile(), "utf8")).toContain(EDIT);
   });
+
+  for (const record of ["its own", "a version-1"] as const) {
+    it(`writes the release over a copy set aside first, under ${record} lockfile`, {
+      timeout: 120_000,
+    }, async () => {
+      const released = await readFile(skillFile(), "utf8");
+      if (record === "a version-1") await useVersionOneRecord();
+      await appendFile(skillFile(), EDIT);
+      await setAside();
+
+      const reinstall = await installSelection();
+
+      expect(reinstall.exitCode).toBe(0);
+      expect(reinstall.output).not.toContain("kept .claude/skills");
+      expect(reinstall.output).not.toContain("no trustworthy local deployment");
+      expect(await readFile(skillFile(), "utf8")).toBe(released);
+      expect((await readdir(join(home, ".claude", "skills"))).sort()).toEqual([
+        SKILL,
+      ]);
+    });
+  }
 });
 
 describe.runIf(!enabled)(
