@@ -263,7 +263,11 @@ export class UpdateTarget {
         desired: scope.desired,
         ...(scope.tools.length === 0 ? {} : { tools: scope.tools }),
       });
-      if (!applied.ok && applied.error === "manifest-legacy-entry") {
+      if (
+        !applied.ok &&
+        (applied.error === "manifest-legacy-entry" ||
+          applied.error === "manifest-not-recognised")
+      ) {
         return { ok: false, error: applied.error };
       }
       const report =
@@ -286,7 +290,6 @@ export class UpdateTarget {
       return {
         ok: false,
         error:
-          applied.error === "manifest-not-recognised" ||
           applied.error === "destination-symlinked"
             ? applied.error
             : applied.error === "apply-incomplete"
