@@ -332,6 +332,32 @@ const cases = [
     columns: 200,
     exit: 0,
   },
+  {
+    name: "apm-uninstall-selected-profile-retry.txt",
+    sameSandbox: true,
+    capture: ["anon", ["uninstall", SAMPLE, "-g"]],
+    columns: 200,
+    exit: 0,
+  },
+  {
+    name: "apm-uninstall-selected-profile-only-reverse.txt",
+    cwd: "neutral",
+    setup: (s) => {
+      s.apm(["install", SAMPLE, "-g", "-t", "claude"], claudeWork(s));
+      s.apm(["install", "-g", "-t", "claude"]);
+    },
+    capture: ["anon", ["uninstall", SAMPLE, "-g"]],
+    columns: 200,
+    exit: 0,
+  },
+  {
+    name: "apm-uninstall-selected-profile-retry-reverse.txt",
+    sameSandbox: true,
+    capture: ["anon", ["uninstall", SAMPLE, "-g"]],
+    env: claudeWork,
+    columns: 200,
+    exit: 0,
+  },
 ];
 
 const CAPTURED_COMMANDS_QUOTA = 20;

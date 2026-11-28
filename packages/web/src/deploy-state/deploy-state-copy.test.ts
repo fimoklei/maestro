@@ -6,7 +6,10 @@ import {
   deployStateNotRead,
   FOLDER_MISSING_LINE,
   FOLDER_MISSING_REASON,
+  FORMER_CLAUDE_FOLDER,
   folderMetaLine,
+  formerCopiesLine,
+  formerFolderNote,
   globalLocalEditsLine,
   localEditsCardLine,
   localEditsLine,
@@ -101,6 +104,39 @@ describe("Not updated copy", () => {
         { name: "commit-message", stillAt: null },
       ]),
     ).toBe("2 skills in ~/.agents/skills aren't at the Target release v2.0.0.");
+  });
+});
+
+describe("Copies in a former Claude Code folder", () => {
+  const FORMER = "~/.claude/skills";
+  const CURRENT = "~/.claude-work/skills";
+
+  it("names the folder and counts its copies beside it", () => {
+    expect(formerFolderNote(1)).toBe(
+      "Former Claude Code folder · not written · 1 copy",
+    );
+    expect(formerFolderNote(3)).toBe(
+      "Former Claude Code folder · not written · 3 copies",
+    );
+    expect(FORMER_CLAUDE_FOLDER).toBe("Former Claude Code folder");
+  });
+
+  it("says where Global writes now and how to delete the one copy", () => {
+    expect(plainText(formerCopiesLine(FORMER, 1, CURRENT))).toBe(
+      "~/.claude/skills still contains 1 copy from before CLAUDE_CONFIG_DIR changed. Global now writes ~/.claude-work/skills and doesn't update this copy. Remove Global's last skill to delete it.",
+    );
+  });
+
+  it("says the same of several copies", () => {
+    expect(plainText(formerCopiesLine(FORMER, 3, CURRENT))).toBe(
+      "~/.claude/skills still contains 3 copies from before CLAUDE_CONFIG_DIR changed. Global now writes ~/.claude-work/skills and doesn't update these copies. Remove Global's last skill to delete them.",
+    );
+  });
+
+  it("names no folder Global writes while Claude Code isn't detected", () => {
+    expect(plainText(formerCopiesLine(FORMER, 1, null))).toBe(
+      "~/.claude/skills still contains 1 copy from before CLAUDE_CONFIG_DIR changed. Remove Global's last skill to delete it.",
+    );
   });
 });
 

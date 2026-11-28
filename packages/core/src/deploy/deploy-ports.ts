@@ -56,6 +56,7 @@ export type DeployedContentPort = {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    deployRoot?: string;
     release?: string;
     lockfile: LockfileReading;
   }): Promise<DeployedContentState>;
@@ -63,11 +64,13 @@ export type DeployedContentPort = {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    deployRoot?: string;
   }): Promise<string | null>;
   linkedDestination(input: {
     target: DeployTarget;
     name: string;
     tools?: readonly SupportedTool[];
+    deployRoot?: string;
   }): Promise<LinkedDestination | null>;
 };
 

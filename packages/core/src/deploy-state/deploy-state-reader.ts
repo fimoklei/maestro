@@ -336,6 +336,7 @@ export class GlobalDeployStateReader extends DeployStateReader {
       detected,
       {
         layout: this.globalLayout(),
+        deployments: parsed.deployments,
         fileExists: (file) => this.fs.isFileEntry(resolve(tree, file)),
         origin: await this.connectedOrigin(),
         harnessPage: this.connectedPage(),
@@ -415,7 +416,9 @@ export class GlobalDeployStateReader extends DeployStateReader {
         folder.notUpdated = { targetRelease, copies: notUpdated };
       }
     }
-    for (const folder of folders.filter((each) => !each.detected)) {
+    for (const folder of folders.filter(
+      (each) => !each.detected && each.former !== true,
+    )) {
       const readings = await readEach(written, (name) =>
         session.read(name, folder.tool),
       );

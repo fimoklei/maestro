@@ -16,6 +16,8 @@ import type { StatusReading } from "../ui/status-reading";
 import {
   FOLDER_MISSING_REASON,
   folderMetaLine,
+  formerCopiesLine,
+  formerFolderNote,
   GLOBAL,
   localEditsCardLine,
   NO_REPOSITORIES,
@@ -281,8 +283,12 @@ export function globalRows(
     });
   };
   const release = data.releaseHead?.release;
+  const claudeFolder =
+    data.folders.find((folder) => folder.detected && folder.tool === "claude")
+      ?.path ?? null;
   const folders: FolderRow[] = data.folders.map((folder) => {
     const status = folder.detected ? readingOf(folder) : null;
+    const former = folder.former === true;
     return {
       path: folder.path,
       detected: folder.detected,
@@ -297,20 +303,31 @@ export function globalRows(
               folder.missing.length,
               data.primitives.length,
             ),
-      note: folder.detected
+      note: former
+        ? formerFolderNote(readFailed ? 0 : folder.primitives.length)
+        : folder.detected
+          ? null
+          : strayCopiesNote(
+              toolDisplayName(folder.tool),
+              readFailed ? 0 : (folder.strayCopies?.length ?? 0),
+            ),
+      notUpdated:
+        readFailed || former
+          ? null
+          : !folder.detected
+            ? strayDiffers(folder, release)
+            : !folder.notUpdated?.copies.length
+              ? null
+              : notUpdatedLine(folder.path, folder.notUpdated),
+      strayCopies: readFailed
         ? null
-        : strayCopiesNote(
-            toolDisplayName(folder.tool),
-            readFailed ? 0 : (folder.strayCopies?.length ?? 0),
-          ),
-      notUpdated: readFailed
-        ? null
-        : !folder.detected
-          ? strayDiffers(folder, release)
-          : !folder.notUpdated?.copies.length
-            ? null
-            : notUpdatedLine(folder.path, folder.notUpdated),
-      strayCopies: readFailed ? null : openCodeLine(folder, data.folders),
+        : former
+          ? formerCopiesLine(
+              folder.path,
+              folder.primitives.length,
+              claudeFolder,
+            )
+          : openCodeLine(folder, data.folders),
     };
   });
   // An undetected folder carries no mark of its own, but a copy there that

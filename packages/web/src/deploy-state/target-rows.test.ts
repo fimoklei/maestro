@@ -17,6 +17,7 @@ import {
   type StatusCard,
   statusCard,
   type TargetRow,
+  undetectedFolderLines,
 } from "./target-rows";
 import type { GlobalDeployStateView } from "./use-global-deploy-state";
 
@@ -693,6 +694,75 @@ describe("copies in an undetected tool's folder", () => {
     expect(words(stray([{ name: "code-review", atRelease: true }]))).toBe(
       "✓ In sync",
     );
+  });
+});
+
+describe("copies in a former Claude Code folder", () => {
+  const head = { ...ON_LATEST, release: "v2.0.0", latestRelease: "v2.0.0" };
+  const former = (
+    primitives: DeployedPrimitive[],
+    strayCopies?: GlobalFolderState["strayCopies"],
+  ): GlobalFolderState => ({
+    ...claude(primitives, false),
+    former: true,
+    ...(strayCopies === undefined ? {} : { strayCopies }),
+  });
+  const moved = (current: GlobalFolderState) => {
+    const [global] = globalRows(
+      globalRead([current, former([skill("code-review"), skill("tdd")])], {
+        releaseHead: head,
+      }),
+      syncedDrift,
+      false,
+    );
+    if (global === undefined) throw new Error("no Global row");
+    return global;
+  };
+  const claudeWork = {
+    ...claude([skill("code-review"), skill("tdd")]),
+    path: "~/.claude-work/skills",
+  };
+
+  it("names the former folder and counts its copies on its muted row", () => {
+    expect(moved(claudeWork).folders?.map((folder) => folder.note)).toEqual([
+      null,
+      "Former Claude Code folder · not written · 2 copies",
+    ]);
+  });
+
+  it("says in the pane where Global writes now", () => {
+    expect(undetectedFolderLines(moved(claudeWork)).map(plainText)).toEqual([
+      "~/.claude/skills still contains 2 copies from before CLAUDE_CONFIG_DIR changed. Global now writes ~/.claude-work/skills and doesn't update these copies. Remove Global's last skill to delete them.",
+    ]);
+  });
+
+  it("names no folder Global writes while Claude Code isn't detected", () => {
+    expect(
+      undetectedFolderLines(moved(agents([skill("code-review")]))).map(
+        plainText,
+      ),
+    ).toEqual([
+      "~/.claude/skills still contains 2 copies from before CLAUDE_CONFIG_DIR changed. Remove Global's last skill to delete them.",
+    ]);
+  });
+
+  it("never says Claude Code isn't detected, nor reads Global as Not updated", () => {
+    const [global] = globalRows(
+      globalRead(
+        [
+          claudeWork,
+          former(
+            [skill("code-review")],
+            [{ name: "code-review", atRelease: false }],
+          ),
+        ],
+        { releaseHead: head },
+      ),
+      syncedDrift,
+      false,
+    );
+    expect(global && words(global)).toBe("✓ In sync");
+    expect(global?.folders?.[1]?.notUpdated).toBeNull();
   });
 });
 

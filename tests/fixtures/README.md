@@ -122,6 +122,9 @@ row's mark below. `--only <fixture>…` re-runs just the named rows.
 | `apm-uninstall-global-ok.txt` ✓= | `apm uninstall -g -v <ref>#v0.5.1` | neutral cwd, global install at `-t claude,codex` beside an unrelated skill | 0 | out+err |
 | `apm-uninstall-claude-config-dir.txt` ✓= | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, `CLAUDE_CONFIG_DIR=$HOME/.claude-work` for the install and the uninstall (#1947) | 0 | out+err |
 | `apm-uninstall-selected-profile-only.txt` ✓= | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, installed once without and once with `CLAUDE_CONFIG_DIR=$HOME/.claude-work`; the uninstall with it set | 0 | out+err |
+| `apm-uninstall-selected-profile-retry.txt` ✚ | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | same sandbox, right after the row above, with `CLAUDE_CONFIG_DIR` unset (#1973) | 0 | out+err |
+| `apm-uninstall-selected-profile-only-reverse.txt` ✚ | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | neutral cwd, installed once with and once without `CLAUDE_CONFIG_DIR=$HOME/.claude-work`; the uninstall with it unset (#1973) | 0 | out+err |
+| `apm-uninstall-selected-profile-retry-reverse.txt` ✚ | `apm uninstall microsoft/apm-sample-package#v1.0.0 -g` | same sandbox, right after the row above, with `CLAUDE_CONFIG_DIR=$HOME/.claude-work` (#1973) | 0 | out+err |
 | `apm-install-lockfile-upgraded.txt` ✓= | `apm install github.com/fimoklei/agent-harness#v0.6.0 --skill 47 -g -t claude,codex` | by hand, not in the script: neutral cwd, `COLUMNS=200`, the same install run first with apm 0.32.0 | 0 | out+err |
 
 The five uninstall fixtures came from one scripted run against a throwaway

@@ -24,6 +24,8 @@ const FOLDERS_BY_TOOL = {
   },
 } as const satisfies Record<SupportedTool, ToolFolders>;
 
+export const CLAUDE_CONFIG_VARIABLE = FOLDERS_BY_TOOL.claude.configDir.variable;
+
 export const DEPLOY_TOOLS: readonly DeployTool[] = SUPPORTED_TOOLS.map(
   (apmTarget) => ({ apmTarget, ...FOLDERS_BY_TOOL[apmTarget] }),
 );
@@ -85,6 +87,7 @@ export type GlobalFolder = {
   path: string;
   tool: SupportedTool;
   detected: boolean;
+  former?: true;
 };
 
 export function globalFolderPath(

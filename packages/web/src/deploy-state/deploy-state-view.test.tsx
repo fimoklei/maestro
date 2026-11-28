@@ -204,14 +204,10 @@ describe("Deploy-state — Global and its folders", () => {
     expect(cellsOf("~/.claude/skills")).toEqual([
       "~/.claude/skills",
       "✓Up to date",
-      "",
-      "",
     ]);
     expect(cellsOf("~/.agents/skills")).toEqual([
       "~/.agents/skills",
       "⚠Local edits",
-      "",
-      "",
     ]);
     // No action on a folder: no ⋮, and a press opens no pane.
     for (const path of ["~/.claude/skills", "~/.agents/skills"]) {
@@ -230,9 +226,8 @@ describe("Deploy-state — Global and its folders", () => {
     renderDeployState();
 
     const folder = await findRow("~/.agents/skills");
-    expect(cellsOf("~/.agents/skills").slice(0, 2)).toEqual([
+    expect(cellsOf("~/.agents/skills")).toEqual([
       "~/.agents/skills Codex not detected · not written",
-      "",
     ]);
     expect(folder).toHaveClass("text-gray-11");
     expect(rowOf("~/.claude/skills")).not.toHaveClass("text-gray-11");

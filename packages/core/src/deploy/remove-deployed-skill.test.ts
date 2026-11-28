@@ -69,6 +69,8 @@ type Overrides = {
   detectedTools?: SupportedTool[];
   detectTools?: () => Promise<SupportedTool[]>;
   probeThrows?: boolean;
+  deployments?: { target: string; value: string }[];
+  formerCopies?: Record<string, ToolCopyState>;
 };
 
 function buildUseCase(overrides: Overrides = {}) {
@@ -85,13 +87,26 @@ function buildUseCase(overrides: Overrides = {}) {
       return false;
     }
     placed.add(key);
-    copies.setCopy(target, name, copyStatesOf(overrides));
+    copies.setCopy(
+      target,
+      name,
+      copyStatesOf(overrides),
+      overrides.formerCopies,
+    );
     return true;
   };
   const onRead = placedOnRead(copies.content, placeCopy);
+  if (overrides.deployments !== undefined) {
+    onRead.place({ kind: "global" }, "tdd");
+  }
   let apmRan = false;
   const deployedContent = {
-    readLockfile: onRead.readLockfile,
+    readLockfile: async (target: DeployTarget) => {
+      const reading = await onRead.readLockfile(target);
+      return reading === "missing" || !reading.ok
+        ? reading
+        : { ...reading, deployments: overrides.deployments ?? [] };
+    },
     classify: async (input: Parameters<typeof copies.content.classify>[0]) => {
       calls.classifies.push({ target: input.target, tools: input.tools });
       if (overrides.probeThrows && apmRan) {
@@ -698,6 +713,88 @@ describe("RemoveDeployedSkill on the global target", () => {
       },
     });
     expect(calls.removes).toHaveLength(1);
+  });
+
+  it("lists a former Claude Code folder its named uninstall deletes", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["claude", "codex"],
+      deployments: [
+        { target: "claude", value: ".claude-work/skills/tdd/SKILL.md" },
+        { target: "claude", value: ".claude-old/skills/other/SKILL.md" },
+      ],
+    });
+
+    const preflight = await useCase.preflight(removeTddGlobally);
+
+    expect(preflight.ok && preflight.check).toEqual({
+      scope: "global",
+      tools: [
+        {
+          tool: "claude",
+          path: "~/.claude/skills",
+          detected: true,
+          warning: null,
+        },
+        {
+          tool: "codex",
+          path: "~/.agents/skills",
+          detected: true,
+          warning: null,
+        },
+        {
+          tool: "claude",
+          path: "~/.claude-work/skills",
+          detected: false,
+          former: true,
+          warning: null,
+        },
+      ],
+    });
+  });
+
+  it("refuses the check over local edits in a former Claude Code folder", async () => {
+    const { useCase, calls } = buildUseCase({
+      deployments: [
+        { target: "claude", value: ".claude-work/skills/tdd/SKILL.md" },
+      ],
+      formerCopies: { ".claude-work": "diverged" },
+    });
+
+    await expect(useCase.preflight(removeTddGlobally)).resolves.toEqual({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+      folders: ["~/.claude-work/skills"],
+      former: ["~/.claude-work/skills"],
+    });
+    await expect(useCase.execute(removeTddGlobally)).resolves.toMatchObject({
+      ok: false,
+      error: "deployed-diverged-from-lock",
+    });
+    expect(calls.removes).toEqual([]);
+  });
+
+  it("warns that a former Claude Code folder's copy cannot be checked", async () => {
+    const { useCase } = buildUseCase({
+      detectedTools: ["claude"],
+      deployments: [
+        { target: "claude", value: ".claude-work/skills/tdd/SKILL.md" },
+      ],
+      formerCopies: { ".claude-work": "unverifiable" },
+    });
+
+    const preflight = await useCase.preflight(removeTddGlobally);
+
+    expect(preflight.ok && preflight.check).toMatchObject({
+      tools: expect.arrayContaining([
+        {
+          tool: "claude",
+          path: "~/.claude-work/skills",
+          detected: false,
+          former: true,
+          warning: "cannot-verify-local-edits",
+        },
+      ]),
+    });
   });
 
   it("lists an undetected tool's copy its named uninstall deletes", async () => {

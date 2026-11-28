@@ -18,8 +18,10 @@ import type {
 import {
   APM_DEPLOY_TARGET_FLAG,
   apmTargetFlagForTools,
+  CLAUDE_CONFIG_VARIABLE,
   type SupportedTool,
 } from "./deploy-tools";
+import type { FormerClaudeProfile } from "./former-claude-folders";
 import { resolveLatestTagFromVersionsTable } from "./latest-tag";
 
 const WIDE_COLUMNS = "200";
@@ -50,9 +52,11 @@ const UNINSTALL_LINKED_PHRASE =
 
 const UNINSTALL_SUCCESS_MARKER = /uninstall complete: removed \d+ packages?\b/;
 
+const UNINSTALL_SELECTED_PROFILE_ONLY = /from the selected profile only/;
+
 const UNINSTALL_INCOMPLETE_SIGNALS = [
   /was not found in apm\.yml/,
-  /from the selected profile only/,
+  UNINSTALL_SELECTED_PROFILE_ONLY,
 ];
 
 type SanitizedLogEntry = {
@@ -80,11 +84,15 @@ export class ApmCliDriver implements ApmDriverPort {
   private readonly log: (entry: SanitizedLogEntry) => void;
   private readonly run: ProcessRunner;
   private readonly prepareGlobalCwd: () => Promise<string>;
+  private readonly formerClaudeProfiles: () => Promise<
+    readonly FormerClaudeProfile[]
+  >;
 
   constructor(deps?: {
     log?: (entry: SanitizedLogEntry) => void;
     run?: RunFn;
     prepareGlobalCwd?: () => Promise<string>;
+    formerClaudeProfiles?: () => Promise<readonly FormerClaudeProfile[]>;
   }) {
     this.log = deps?.log ?? (() => undefined);
     this.run = deps?.run ? createProcessRunner(deps.run) : runProcess;
@@ -92,6 +100,11 @@ export class ApmCliDriver implements ApmDriverPort {
       deps?.prepareGlobalCwd ??
       (() => {
         throw new Error("global deploy requires a prepareGlobalCwd resolver");
+      });
+    this.formerClaudeProfiles =
+      deps?.formerClaudeProfiles ??
+      (() => {
+        throw new Error("global remove requires a formerClaudeProfiles reader");
       });
   }
 
@@ -167,7 +180,19 @@ export class ApmCliDriver implements ApmDriverPort {
         : ["uninstall", input.ref, "-g"];
     const logTarget =
       target.kind === "repo" ? basename(target.repoPath) : "global";
-    const outcome = await this.runApm(args, { cwd }, WRITE_TIMEOUT_MS);
+    let outcome = await this.runApm(args, { cwd }, WRITE_TIMEOUT_MS);
+    if (target.kind === "global" && removedSelectedProfileOnly(outcome)) {
+      for (const profile of await this.formerClaudeProfiles()) {
+        outcome = await this.runApm(
+          args,
+          { cwd, env: claudeProfileEnv(profile) },
+          WRITE_TIMEOUT_MS,
+        );
+        if (!removedSelectedProfileOnly(outcome)) {
+          break;
+        }
+      }
+    }
     if (!outcome.ok && outcome.failure === "killed") {
       return { ok: false, reason: "timed-out" };
     }
@@ -281,6 +306,19 @@ function removeSucceeded(output: string): boolean {
     UNINSTALL_SUCCESS_MARKER.test(haystack) &&
     !UNINSTALL_INCOMPLETE_SIGNALS.some((signal) => signal.test(haystack))
   );
+}
+
+function removedSelectedProfileOnly(outcome: ProcessOutcome): boolean {
+  return UNINSTALL_SELECTED_PROFILE_ONLY.test(
+    normalizeCommandOutput(outputOf(outcome)),
+  );
+}
+
+function claudeProfileEnv(profile: FormerClaudeProfile): NodeJS.ProcessEnv {
+  const { [CLAUDE_CONFIG_VARIABLE]: _current, ...ambient } = process.env;
+  return profile.configDir === null
+    ? ambient
+    : { ...ambient, [CLAUDE_CONFIG_VARIABLE]: profile.configDir };
 }
 
 function classifyInstallFailure(

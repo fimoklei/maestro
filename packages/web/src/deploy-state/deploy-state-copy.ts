@@ -177,6 +177,26 @@ export const strayCopiesNote = (tool: string, count: number) =>
     ? notWrittenNote(tool)
     : `${notWrittenNote(tool)} · ${count} ${count === 1 ? "copy" : "copies"}`;
 
+export const FORMER_CLAUDE_FOLDER = "Former Claude Code folder";
+
+export const formerFolderNote = (count: number) =>
+  count === 0
+    ? `${FORMER_CLAUDE_FOLDER} · not written`
+    : `${FORMER_CLAUDE_FOLDER} · not written · ${count} ${count === 1 ? "copy" : "copies"}`;
+
+export function formerCopiesLine(
+  folder: string,
+  count: number,
+  current: string | null,
+): Phrase {
+  const one = count === 1;
+  const contains = phrase`${machine(folder)} still contains ${count} ${one ? "copy" : "copies"} from before ${machine("CLAUDE_CONFIG_DIR")} changed.`;
+  const remove = `Remove Global's last skill to delete ${one ? "it" : "them"}.`;
+  return current === null
+    ? phrase`${contains} ${remove}`
+    : phrase`${contains} Global now writes ${machine(current)} and doesn't update ${one ? "this copy" : "these copies"}. ${remove}`;
+}
+
 /** Why Global reads Not updated: copies in an undetected tool's folder differ from the Target release. */
 export const strayDiffersLine = (
   folder: string,
